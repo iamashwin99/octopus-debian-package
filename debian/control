@@ -18,6 +18,8 @@ Build-Depends: debhelper-compat (=13)
  , libxc-dev
  , perl-modules
  , wget
+ , openmpi-bin
+ , openmpi-common
 Standards-Version: 4.6.2
 
 Package: octopus
