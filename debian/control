@@ -2,8 +2,23 @@ Source: octopus
 Section: science
 Priority: optional
 Maintainer: Octopus Developers Team <octopus-devel@tddft.org>
-Build-Depends: debhelper (>> 3.0.0), automake, gcc, cpp, gfortran (>> 4.1.1), liblapack-dev, libblas-dev, libgsl0-dev (>> 1.9), libfftw3-dev, wget, libopenmpi-dev |libmpich-dev, perl-modules, libnetcdf-dev, libetsf-io-dev, libxc-dev
-Standards-Version: 3.5.2
+Uploaders: Ashwin Kumar Karnad <ashwin-kumar.karnad@mpsd.mpg.de>
+Build-Depends: debhelper-compat (=13)
+ , automake
+ , cpp
+ , gcc
+ , gfortran (>> 4.1.1)
+ , libblas-dev
+ , libetsf-io-dev
+ , libfftw3-dev
+ , libgsl-dev (>> 1.9)
+ , liblapack-dev
+ , libnetcdf-dev
+ , libopenmpi-dev | libmpich-dev
+ , libxc-dev
+ , perl-modules
+ , wget
+Standards-Version: 4.6.2
 
 Package: octopus
 Architecture: i386 amd64 powerpc
