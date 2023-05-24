@@ -1,0 +1,28 @@
+# -*- coding: utf-8 mode: shell-script -*-
+
+Test       : Oct-test hash tables
+Program    : octopus
+TestGroups : short-run, components
+Enabled    : Yes
+
+Processors: 2
+Input: 32-hash-tables.01-iihash.inp
+match ; hash[1] out ; GREPFIELD(out, 'hash\[1\]', 4)  ; 5
+match ; hash[2] out ; GREPFIELD(out, 'hash\[2\]', 4)  ; -1
+match ; hash[3] out ; GREPFIELD(out, 'hash\[3\]', 4)  ; 7
+
+Processors: 2
+Input: 32-hash-tables.02-sihash.inp
+match ; hash[one] out ;   GREPFIELD(out, 'hash\["one"\]', 3)  ; 5
+match ; hash[two] out ;   GREPFIELD(out, 'hash\["two"\]', 3)  ; -1
+match ; hash[three] out ; GREPFIELD(out, 'hash\["three"\]', 3)  ; 7
+match ; counter ;  GREPFIELD(out, 'counter = ', 3) ;  4
+match ; sum;       GREPFIELD(out, 'sum = ',     3) ; 54
+
+Processors: 2
+Input: 32-hash-tables.03-sphash.inp
+match ; hash[one] out ;   GREPFIELD(out, 'hash\["one"\]', 3)  ; 1
+match ; hash[two] out ;   GREPFIELD(out, 'hash\["two"\]', 5)  ; 3
+match ; hash[three] out ; GREPFIELD(out, 'hash\["three"\]', 3)  ; 2
+match ; counter 1;  GREPFIELD(out, 'Count_clock = ', 3) ; 2
+match ; counter 2;  GREPFIELD(out, 'Count_space = ', 3) ; 1

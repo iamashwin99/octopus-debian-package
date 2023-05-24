@@ -1,0 +1,15 @@
+CalculationMode = gs
+FromScratch = yes
+
+%Coordinates
+ "C" | 0 | 0 |  0.6
+ "O" | 0 | 0 | -0.6
+%
+
+SpinComponents = polarized
+ExcessCharge = 1
+
+Radius = 5
+Spacing = 0.4
+
+PoissonSolver = fft

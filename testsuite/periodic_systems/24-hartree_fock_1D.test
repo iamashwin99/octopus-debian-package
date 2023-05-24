@@ -1,0 +1,21 @@
+# -*- coding: utf-8 mode: shell-script -*-
+	
+Test       : Hartree-Fock in 1D periodic solids
+Program    : octopus
+TestGroups : short-run, periodic_systems
+Enabled    : no-GPU
+
+Input      : 24-hartree_fock_1D.01-gs.inp
+
+match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
+
+match ;  Total energy        ; GREPFIELD(static/info, 'Total       =', 3) ; -471.74955010
+match ;  Ion-ion energy      ; GREPFIELD(static/info, 'Ion-ion     =', 3) ; 0.0
+match ;  Eigenvalues sum     ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -490.57368417
+match ;  Hartree energy      ; GREPFIELD(static/info, 'Hartree     =', 3) ; 0.20316102
+match ;  Kinetic energy      ; GREPFIELD(static/info, 'Kinetic     =', 3) ; 7.35021412
+match ;  External energy     ; GREPFIELD(static/info, 'External    =', 3) ; -460.27563107
+
+Precision: 2.5e-04
+match ;  Direct gap  ; GREPFIELD(static/info, 'Direct gap', 7, 0) ; 9.44975
+match ;  Indirect gap  ; GREPFIELD(static/info, 'Indirect gap', 10, 0) ; 9.44975

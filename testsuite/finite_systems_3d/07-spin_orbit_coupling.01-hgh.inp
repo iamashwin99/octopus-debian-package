@@ -1,0 +1,27 @@
+# -*- coding: utf-8 mode: shell-script -*-
+
+UnitsOutput = ev_angstrom
+
+CalculationMode = gs
+fromScratch = yes
+
+BoxShape = minimum
+Radius  = 5.0*angstrom
+Spacing = 0.35*angstrom
+
+PseudopotentialSet = hgh_lda
+
+%Coordinates
+  "Xe" | -1.5*angstrom | 0 | 0 
+  "Xe" |  1.5*angstrom | 0 | 0 
+%
+ExcessCharge = 1
+
+SpinComponents = non_collinear
+RelativisticCorrection = spin_orbit
+
+GuessMagnetDensity = user_defined
+%AtomsMagnetDirection
+ 0.0 | 0.0 | 1.0 
+ 0.0 | 0.0 | 1.0
+%

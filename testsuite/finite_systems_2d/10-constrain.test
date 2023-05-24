@@ -1,0 +1,33 @@
+# -*- coding: utf-8 mode: shell-script -*-
+
+Test       : Constrain magnetization 
+Program    : octopus
+TestGroups : short-run, finite_systems_2d
+Enabled    : Yes
+
+# This test demonstrates the precession of the spin of one single
+# electron around the axis determined by a static magnetic field.
+
+Input: 10-constrain.01-gs.inp
+match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
+
+Precision: 5.1e-05
+match ;  Total Magnetic Moment - x ; GREPFIELD(static/info, 'mx = ', 3) ; 0.000000
+match ;  Total Magnetic Moment - y ; GREPFIELD(static/info, 'my = ', 6) ; 0.800000
+match ;  Total Magnetic Moment - z ; GREPFIELD(static/info, 'mz = ', 9) ; 0.600000
+
+Input: 10-constrain.02-gs_dir.inp
+match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
+
+Precision: 5.1e-05
+match ;  Total Magnetic Moment - x ; GREPFIELD(static/info, 'mx = ', 3) ; 0.000000
+match ;  Total Magnetic Moment - y ; GREPFIELD(static/info, 'my = ', 6) ; 1.000000
+match ;  Total Magnetic Moment - z ; GREPFIELD(static/info, 'mz = ', 9) ; 0.000000
+
+Input: 10-constrain.03-polarized.inp
+match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
+
+Precision: 5.1e-05
+match ;  Total Magnetic Moment - z ; GREPFIELD(static/info, 'mz = ', 3) ; -1.000000
+
+

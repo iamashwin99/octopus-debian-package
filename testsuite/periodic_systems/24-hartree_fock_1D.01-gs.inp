@@ -1,0 +1,35 @@
+CalculationMode = gs
+Dimensions = 1
+PeriodicDimensions = 1
+FromScratch = yes
+
+%Species
+"Hydrogen1D" | species_soft_coulomb | softening | 1 | valence | 1
+%
+
+ll = 1.6
+%Coordinates
+"Hydrogen1D" | -ll/2
+"Hydrogen1D" |  ll/2
+%
+
+BoxShape = parallelepiped
+
+%LatticeParameters
+ 3.6
+%
+
+Spacing = 0.45
+
+%KPointsGrid
+ 500
+%
+
+ExtraStates = 1
+
+ExperimentalFeatures = yes
+TheoryLevel = hartree_fock
+AdaptivelyCompressedExchange = yes
+
+UnitsOutput = ev_angstrom
+

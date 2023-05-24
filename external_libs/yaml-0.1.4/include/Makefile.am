@@ -1,0 +1,2 @@
+AM_CPPFLAGS = yaml.h
+noinst_HEADERS = $(AM_CPPFLAGS)

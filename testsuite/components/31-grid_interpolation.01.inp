@@ -1,0 +1,15 @@
+CalculationMode = test
+
+TestMode = grid_interpolation
+
+BoxShape = parallelepiped
+
+Lsize = 8
+
+Spacing = 0.43463
+
+%Coordinates
+"H" | 0 | 0 | 0
+%
+
+

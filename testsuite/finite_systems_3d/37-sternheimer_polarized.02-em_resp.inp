@@ -1,0 +1,27 @@
+CalculationMode = em_resp
+ExperimentalFeatures = yes
+FromScratch = yes
+
+%Coordinates
+ "C" | 0 | 0 |  0.6
+ "O" | 0 | 0 | -0.6
+%
+
+SpinComponents = polarized
+ExcessCharge = 1
+
+ResponseMethod = Sternheimer
+EMEta = 0.1*eV
+
+%EMFreqs
+1 | 0.04283
+%
+
+%EMHyperpol
+-2 | 1 | 1
+%
+
+Radius = 5
+Spacing = 0.4
+
+PoissonSolver = fft

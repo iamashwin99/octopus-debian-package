@@ -1,0 +1,157 @@
+
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML-full"></script>
+<style>
+   BODY {background-color: white; 
+         font-size: 10pt; font-family: verdana,helvetica;}
+   A  {text-decoration: none;color: blue}
+</style>
+</head>
+<body>
+
+<a name='Math::RootSolver'</a>
+<H2>Math::RootSolver</H2>
+
+
+<p><b><a name='RootSolver'></a>RootSolver</b>
+<br/><i>Section</i>: Math::RootSolver
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: root_newton
+<br/><br> Specifies what kind of root solver will be used.
+
+<br/><i>Options</i>:
+<ul>
+<li><b>root_newton</b>:  Newton method.
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='RootSolverAbsTolerance'></a>RootSolverAbsTolerance</b>
+<br/><i>Section</i>: Math::RootSolver
+<br/><i>Type</i>: float
+<br/><i>Default</i>: 1e-8
+<br/><br> Relative tolerance for the root-finding process.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='RootSolverMaxIter'></a>RootSolverMaxIter</b>
+<br/><i>Section</i>: Math::RootSolver
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: 100
+<br/><br> In case of an iterative root solver, this variable determines the maximum number
+ of iteration steps.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='RootSolverRelTolerance'></a>RootSolverRelTolerance</b>
+<br/><i>Section</i>: Math::RootSolver
+<br/><i>Type</i>: float
+<br/><i>Default</i>: 1e-8
+<br/><br> Relative tolerance for the root-finding process.
+
+</p><hr width='30%' align='left'/>
+
+<a name='Math::SPARSKIT'</a>
+<H2>Math::SPARSKIT</H2>
+
+
+<p><b><a name='SPARSKITAbsTolerance'></a>SPARSKITAbsTolerance</b>
+<br/><i>Section</i>: Math::SPARSKIT
+<br/><i>Type</i>: float
+<br/><i>Default</i>: 1e-10
+<br/><br> Some SPARSKIT solvers use an absolute tolerance as a stopping criterion
+ for the iterative solution process. This variable can be used to
+ specify the tolerance.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='SPARSKITIterOut'></a>SPARSKITIterOut</b>
+<br/><i>Section</i>: Math::SPARSKIT
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: -1
+<br/><br> Determines how often status info of the solver is printed.
+ If <= 0, will never be printed.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='SPARSKITKrylovSubspaceSize'></a>SPARSKITKrylovSubspaceSize</b>
+<br/><i>Section</i>: Math::SPARSKIT
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: 15
+<br/><br> Some of the SPARSKIT solvers are Krylov subspace methods.
+ This variable determines what size the solver will use
+ for the subspace.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='SPARSKITMaxIter'></a>SPARSKITMaxIter</b>
+<br/><i>Section</i>: Math::SPARSKIT
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: 50000
+<br/><br> This variable controls the maximum number of iteration steps that
+ will be performed by the (iterative) linear solver.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='SPARSKITRelTolerance'></a>SPARSKITRelTolerance</b>
+<br/><i>Section</i>: Math::SPARSKIT
+<br/><i>Type</i>: float
+<br/><i>Default</i>: 1e-8
+<br/><br> Some SPARSKIT solvers use a relative tolerance as a stopping criterion
+ for the iterative solution process. This variable can be used to
+ specify the tolerance.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='SPARSKITSolver'></a>SPARSKITSolver</b>
+<br/><i>Section</i>: Math::SPARSKIT
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: sk_bcg
+<br/><br> Specifies what kind of linear solver will be used.
+
+<br/><i>Options</i>:
+<ul>
+<li><b>sk_dqgmres</b>:  Direct versions of the Quasi-Generalized Minimum Residual method
+</li>
+<li><b>sk_cg</b>:  Conjugate Gradient Method
+</li>
+<li><b>sk_cgnr</b>:  Conjugate Gradient Method (Normal Residual equation)
+</li>
+<li><b>sk_bcg</b>:  Bi-Conjugate Gradient Method
+</li>
+<li><b>sk_dbcg</b>:  BCG with partial pivoting
+</li>
+<li><b>sk_bcgstab</b>:  BCG stabilized
+</li>
+<li><b>sk_tfqmr</b>:  Transpose-Free Quasi-Minimum Residual method
+</li>
+<li><b>sk_fom</b>:  Full Orthogonalization Method
+</li>
+<li><b>sk_gmres</b>:  Generalized Minimum Residual method
+</li>
+<li><b>sk_fgmres</b>:  Flexible version of Generalized Minimum Residual method
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='SPARSKITVerboseSolver'></a>SPARSKITVerboseSolver</b>
+<br/><i>Section</i>: Math::SPARSKIT
+<br/><i>Type</i>: logical
+<br/><i>Default</i>: no
+<br/><br> When set to yes, the SPARSKIT solver will write more detailed output.
+
+</p><hr width='30%' align='left'/>
+
+</body>
+</html>

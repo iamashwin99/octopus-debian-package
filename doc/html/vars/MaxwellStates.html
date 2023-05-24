@@ -1,0 +1,157 @@
+
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML-full"></script>
+<style>
+   BODY {background-color: white; 
+         font-size: 10pt; font-family: verdana,helvetica;}
+   A  {text-decoration: none;color: blue}
+</style>
+</head>
+<body>
+
+<a name='MaxwellStates'</a>
+<H2>MaxwellStates</H2>
+
+
+<p><b><a name='MaxwellIncidentWaves'></a>MaxwellIncidentWaves</b>
+<br/><i>Section</i>: MaxwellStates
+<br/><i>Type</i>: block
+<br/><br> The initial electromagnetic fields can be set by the user
+ with the <tt>MaxwellIncidentWaves</tt> block variable.
+ The electromagnetic fields have to fulfill the
+ Maxwells equations in vacuum.
+<br><br>
+ Example:
+<br><br>
+ <tt>%MaxwellIncidentWaves
+ <br>&nbsp;&nbsp;   plane_wave_parser      | "k1x" | "k1y" | "k1z" | "E1x" | "E1z" | "E1x"
+ <br>&nbsp;&nbsp;   plane_wave_parser      | "k2x" | "k2y" | "k2z" | "E2x" | "E2y" | "E2z"
+ <br>&nbsp;&nbsp;   plane_wave_gauss       | "k3x" | "k3y" | "k3z" | "E3x" | "E3y" | "E3z" | "width" | "shift"
+ <br>&nbsp;&nbsp;   plane_wave_mx_function | "E4x" | "E4y" | "E4z" | mx_envelope_name
+ <br>%</tt>
+<br><br>
+ Description about MaxwellIncidentWaves follows
+<br><br>
+
+<br/><i>Options</i>:
+<ul>
+<li><b>plane_wave_parser</b>:  Parser input modus
+</li>
+<li><b>plane_wave_mx_function</b>:  The incident wave envelope is defined by an mx_function
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='PropagateSpatialMaxwellField'></a>PropagateSpatialMaxwellField</b>
+<br/><i>Section</i>: MaxwellStates
+<br/><i>Type</i>: logical
+<br/><i>Default</i>: yes
+<br/><br> Allow for numerical propagation of Maxwells equations of spatially constant field.
+ If set to no, do only analytic evaluation of the field inside the box.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='UserDefinedConstantSpatialMaxwellField'></a>UserDefinedConstantSpatialMaxwellField</b>
+<br/><i>Section</i>: MaxwellStates
+<br/><i>Type</i>: block
+<br/><br> Define parameters of spatially constant field.
+<br><br>
+ Example:
+<br><br>
+ <tt>%UserDefinedConstantSpatialMaxwellFields
+ <br>&nbsp;&nbsp;   plane_wave_parser      | E_x | E_y | E_z | B_x | B_y | B_z | "tdf_function"
+ <br>%</tt>
+<br><br>
+ This block defines three components of E field, three components of B field, and reference to
+ the TD function.
+<br><br>
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='UserDefinedInitialMaxwellStates'></a>UserDefinedInitialMaxwellStates</b>
+<br/><i>Section</i>: MaxwellStates
+<br/><i>Type</i>: block
+<br/><br> The initial electromagnetic fields can be set by the user
+ with the <tt>UserDefinedMaxwellStates</tt> block variable.
+ The electromagnetic fields have to fulfill the
+ Maxwells equations in vacuum.
+<br><br>
+ Example:
+<br><br>
+ <tt>%UserDefinedMaxwellStates
+ <br>&nbsp;&nbsp; formula | 2 | "magnetic_field" | "-1/P_c * sin(x)"
+ <br>&nbsp;&nbsp; formula | 3 | "electric_field" | "   sin(x)      "
+ <br>%</tt>
+<br><br>
+ The second column specifies the component of the dimension of
+ the electric field and magnetic field. The first column
+ indicates that column four should be interpreted
+ as a formula for the corresponding state. P_c is the
+ speed of light constant.
+<br><br>
+ Alternatively, if column one states <tt>file</tt> the
+ electric field and magnetic field will be read from
+ the files given in column four.
+<br><br>
+ <tt>%UserDefinedMaxwellStates
+ <br>&nbsp;&nbsp; file | 3 | electric_field | "/path/to/file_electric_field_of_dimension_3"
+ <br>&nbsp;&nbsp; file | 2 | magnetic_field | "/path/to/file_magnetic_field_of_dimension_2"
+ <br>%</tt>
+<br><br>
+ The third option to define the initial state inside the box is to extend
+ the plane waves used as incident waves in the <tt>MaxwellIncidentWaves</tt> block,
+ as follows:
+<br><br>
+ <tt>%UserDefinedMaxwellStates
+ <br>&nbsp;&nbsp; use_incident_waves
+ <br>%</tt>
+<br><br>
+
+<br/><i>Options</i>:
+<ul>
+<li><b>file</b>:  Read initial orbital from file.
+ Accepted file formats: obf, ncdf and csv.
+</li>
+<li><b>electric_field</b>:  This row defines the electric field component of the corresponding dimension
+</li>
+<li><b>formula</b>:  Calculate initial orbital by given analytic expression.
+</li>
+<li><b>magnetic_field</b>:  This row defines the magnetic field component of the corresponding dimension
+</li>
+<li><b>use_incident_waves</b>:  Extend the plane waves given in the <tt>MaxwellIncidentWaves</tt> block inside the box.
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='UserDefinedMaxwellExternalCurrent'></a>UserDefinedMaxwellExternalCurrent</b>
+<br/><i>Section</i>: MaxwellStates
+<br/><i>Type</i>: block
+<br/><br><br><br>
+ Example:
+<br><br>
+ <tt>%UserDefinedMaxwellExternalCurrent
+ <br>&nbsp;&nbsp; current_parser      | "expression_x_dir1" | "expression_y_dir1" | "expression_z_dir1"
+ <br>&nbsp;&nbsp; current_parser      | "expression_x_dir2" | "expression_y_dir2" | "expression_z_dir2"
+ <br>&nbsp;&nbsp; current_td_function | "amplitude_j0_x"    | "amplitude_j0_y"    | "amplitude_j0_z"    | omega   | envelope_td_function_name | phase
+ <br>%</tt>
+<br><br>
+ Description about UserDefinedMaxwellExternalCurrent follows
+<br><br>
+
+<br/><i>Options</i>:
+<ul>
+<li><b>current_parser</b>:  description follows
+</li>
+<li><b>current_td_function</b>:  description follows
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+</body>
+</html>

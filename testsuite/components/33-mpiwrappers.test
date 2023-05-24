@@ -1,0 +1,13 @@
+# -*- coding: utf-8 mode: shell-script -*-
+
+Test       : Oct-test MPI wrappers
+Program    : octopus
+TestGroups : short-run, components
+Enabled    : Yes
+
+Processors: 4
+Input: 33-mpiwrappers.01-wrappers.inp
+match ; scatterv ; GREPCOUNT(out, 'scatterv: PASS') ; 1
+match ; gatherv ; GREPCOUNT(out, ' gatherv: PASS') ; 1
+match ; allgatherv ; GREPCOUNT(out, 'allgatherv: PASS') ; 1
+match ; alltoallv ; GREPCOUNT(out, 'alltoallv: PASS') ; 1

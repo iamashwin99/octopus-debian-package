@@ -1,0 +1,124 @@
+# -*- coding: utf-8 mode: shell-script -*-
+
+Test       : Localized basis from LDA states and ACBN0 functional
+Program    : octopus
+TestGroups : long-run, periodic_systems, lda_u
+Enabled    : Yes
+
+ExtraFile: 09-basis_from_states.fhi
+
+Input      : 09-basis_from_states.01-lda.inp
+if(available cuda); then
+  match ; Error match ; GREPCOUNT(err, 'Calculation will not be continued.') ; 1
+else
+  match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
+  
+  match ; Total k-points   ; GREPFIELD(static/info, 'Total number of k-points', 6) ; 1
+  
+  match ; Total energy       ; GREPFIELD(static/info, 'Total       =', 3) ; -39.20568609
+  match ; Ion-ion energy     ; GREPFIELD(static/info, 'Ion-ion     =', 3) ; -22.49518607
+  match ; Eigenvalues sum    ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -6.50882613
+  match ; Hartree energy     ; GREPFIELD(static/info, 'Hartree     =', 3) ;  12.12218292
+  match ; Exchange energy    ; GREPFIELD(static/info, 'Exchange    =', 3) ; -5.55372248
+  match ; Correlation energy ; GREPFIELD(static/info, 'Correlation =', 3) ; -0.56599600
+  match ; Kinetic energy     ; GREPFIELD(static/info, 'Kinetic     =', 3) ;  36.46848602
+  match ; External energy    ; GREPFIELD(static/info, 'External    =', 3) ; -59.18145043
+  
+  match ; k-point 1 (x) ; GREPFIELD(static/info, '#k =       1', 7) ; 0.000000 
+  match ; k-point 1 (y) ; GREPFIELD(static/info, '#k =       1', 8) ; 0.000000
+  match ; k-point 1 (z) ; GREPFIELD(static/info, '#k =       1', 9) ; 0.000000
+  match ; Eigenvalue  1 ; GREPFIELD(static/info, '#k =       1', 3, 1) ;  -1.098833
+  match ; Eigenvalue  2 ; GREPFIELD(static/info, '#k =       1', 3, 2) ;  -1.095057
+  match ; Eigenvalue  4 ; GREPFIELD(static/info, '#k =       1', 3, 4) ;  -0.270703
+  match ; Eigenvalue  5 ; GREPFIELD(static/info, '#k =       1', 3, 5) ;   0.597152
+endif
+
+Input      : 09-basis_from_states.02-acbn0.inp
+if(available cuda); then
+  match ; Error match ; GREPCOUNT(err, 'Error loading LDA+U basis from states') ; 1
+else
+  Precision: 8e-5
+  
+  match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
+  
+  match ; Total k-points   ; GREPFIELD(static/info, 'Total number of k-points', 6) ; 1
+  
+  match ; Total energy       ; GREPFIELD(static/info, 'Total       =', 3) ; -39.205669085
+  match ; Ion-ion energy     ; GREPFIELD(static/info, 'Ion-ion     =', 3) ; -22.49518607
+  match ; Eigenvalues sum    ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -8.74902035
+  match ; Hartree energy     ; GREPFIELD(static/info, 'Hartree     =', 3) ; 12.12218334
+  match ; Exchange energy    ; GREPFIELD(static/info, 'Exchange    =', 3) ; -5.55372303
+  match ; Correlation energy ; GREPFIELD(static/info, 'Correlation =', 3) ; -0.565995995
+  match ; Kinetic energy     ; GREPFIELD(static/info, 'Kinetic     =', 3) ; 36.468479565
+  match ; External energy    ; GREPFIELD(static/info, 'External    =', 3) ;-59.18144213
+  match ; Hubbard energy     ; GREPFIELD(static/info, 'Hubbard     =', 3) ;  0.00000003
+  
+  match ; k-point 1 (x) ; GREPFIELD(static/info, '#k =       1', 7) ; 0.000000
+  match ; k-point 1 (y) ; GREPFIELD(static/info, '#k =       1', 8) ; 0.000000
+  match ; k-point 1 (z) ; GREPFIELD(static/info, '#k =       1', 9) ; 0.000000
+  match ; Eigenvalue  1 ; GREPFIELD(static/info, '#k =       1', 3, 1) ;  -1.4721865
+  match ; Eigenvalue  2 ; GREPFIELD(static/info, '#k =       1', 3, 2) ;  -1.46841
+  match ; Eigenvalue  4 ; GREPFIELD(static/info, '#k =       1', 3, 4) ;  -0.270704
+  match ; Eigenvalue  5 ; GREPFIELD(static/info, '#k =       1', 3, 5) ;   0.5971505
+  
+  match ; U states  ; LINEFIELD(static/effectiveU, 3, 3) ; 0.746711
+  
+  
+  match ; Occupation Ni2 up-down 3d4 ; LINEFIELD(static/occ_matrices, -2, 2) ; 2.0
+  match ; Occupation Ni2 up-down 3d5 ; LINEFIELD(static/occ_matrices, -1, 3) ; 2.0
+endif
+
+
+Input: 09-basis_from_states.03-intersite.inp
+if(available cuda); then
+  match ; Error match ; GREPCOUNT(err, 'Error loading LDA+U basis from states') ; 1
+else
+  Precision: 8e-5
+
+  match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
+
+  match ; Total k-points   ; GREPFIELD(static/info, 'Total number of k-points', 6) ; 1
+
+  Precision: 3.27e-06
+  match ;  Total energy        ; GREPFIELD(static/info, 'Total       =', 3) ; -42.529574365
+  Precision: 2.25e-14
+  match ;  Ion-ion energy      ; GREPFIELD(static/info, 'Ion-ion     =', 3) ; -22.49518607
+  Precision: 2.55e-06
+  match ;  Eigenvalues sum     ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -15.396800840000001
+  Precision: 8.53e-07
+  match ;  Hartree energy      ; GREPFIELD(static/info, 'Hartree     =', 3) ; 12.122191765
+  Precision: 1.87e-07
+  match ;  Exchange energy     ; GREPFIELD(static/info, 'Exchange    =', 3) ; -5.5537243
+  Precision: 5.50e-09
+  match ;  Correlation energy  ; GREPFIELD(static/info, 'Correlation =', 3) ; -0.565996055
+  Precision: 2.16e-06
+  match ;  Kinetic energy      ; GREPFIELD(static/info, 'Kinetic     =', 3) ; 36.46848521
+  Precision: 2.82e-06
+  match ;  External energy     ; GREPFIELD(static/info, 'External    =', 3) ; -59.18145493
+  Precision: 3.32e-15
+  match ;  Hubbard energy      ; GREPFIELD(static/info, 'Hubbard     =', 3) ; -3.32388758
+
+  Precision: 7.47e-16
+  match ;  U states   ; LINEFIELD(static/effectiveU, 3, 3) ; 0.746709
+  Precision: 9.23e-17
+  match ;  V states   ; GREPFIELD(static/info, 'Effective intersite V', 5, 3) ; 0.092318
+  match ;  V states   ; GREPFIELD(static/info, 'Effective intersite V', 5, 4) ; 0.092318
+  match ;  V states   ; GREPFIELD(static/info, 'Effective intersite V', 5, 5) ; 0.092344
+
+  Precision: 5.50e-08
+  match ;  Occupation Ni2 up-down 3d4  ; LINEFIELD(static/occ_matrices, -2, 2) ; 2.0000000399999998
+  match ;  Occupation Ni2 up-down 3d5  ; LINEFIELD(static/occ_matrices, -1, 3) ; 2.0000000399999998
+
+  Precision: 1.00e-15
+  match ;  k-point 1 (x)  ; GREPFIELD(static/info, '#k =       1', 7) ; 0.0
+  match ;  k-point 1 (y)  ; GREPFIELD(static/info, '#k =       1', 8) ; 0.0
+  match ;  k-point 1 (z)  ; GREPFIELD(static/info, '#k =       1', 9) ; 0.0
+
+  Precision: 2.58e-15
+  match ;  Eigenvalue  1  ; GREPFIELD(static/info, '#k =       1', 3, 1) ; -2.580149
+  match ;  Eigenvalue  2  ; GREPFIELD(static/info, '#k =       1', 3, 2) ; -2.576374
+  Precision: 2.71e-16
+  match ;  Eigenvalue  4  ; GREPFIELD(static/info, '#k =       1', 3, 4) ; -0.270703
+  Precision: 5.97e-16
+  match ;  Eigenvalue  5  ; GREPFIELD(static/info, '#k =       1', 3, 5) ; 0.597151
+endif

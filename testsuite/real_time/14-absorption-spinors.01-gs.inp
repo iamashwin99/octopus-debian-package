@@ -1,0 +1,21 @@
+CalculationMode = gs
+DisableAccel = yes
+
+UnitsOutput = ev_angstrom
+
+%Coordinates
+'Na'  | -1.4646408*angstrom | 0 | 0 | yes
+'Na'  |  1.4646408*angstrom | 0 | 0 | yes
+%
+
+ExcessCharge = 1
+
+FromScratch = yes
+
+Spacing = 0.32*angstrom
+Radius = 6.0*angstrom
+
+SpinComponents = spinors
+
+ConvRelDens = 1e-8
+EigensolverTolerance = 1e-9

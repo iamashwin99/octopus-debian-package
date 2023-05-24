@@ -1,0 +1,84 @@
+# -*- coding: utf-8 mode: shell-script -*-
+
+Test       : Silicon crystal with two k-point shifts
+Program    : octopus
+TestGroups : long-run, periodic_systems
+Enabled    : Yes
+
+Input      : 14-silicon_shifts.01-gs.inp
+
+match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
+
+match ; Total k-points   ; GREPFIELD(static/info, 'Total number of k-points', 6) ; 35
+match ; Space group        ; GREPFIELD(out, 'Space group', 4) ; 227
+match ; No. of symmetries  ; GREPFIELD(out, 'symmetries that can be used', 5)  ;  4
+
+match ; Total energy       ; GREPFIELD(static/info, 'Total       =', 3) ; -7.93481542
+match ; Ion-ion energy     ; GREPFIELD(static/info, 'Ion-ion     =', 3) ; -7.85780080
+match ; Eigenvalues sum    ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -0.25967301
+match ; Hartree energy     ; GREPFIELD(static/info, 'Hartree     =', 3) ;  0.54986814
+match ; Exchange energy    ; GREPFIELD(static/info, 'Exchange    =', 3) ; -2.03478256
+match ; Correlation energy ; GREPFIELD(static/info, 'Correlation =', 3) ; -0.37504829
+match ; Kinetic energy     ; GREPFIELD(static/info, 'Kinetic     =', 3) ;  3.08588162
+match ; External energy    ; GREPFIELD(static/info, 'External    =', 3) ; -1.30293351
+
+match ; k-point 1 (x) ; GREPFIELD(static/info, '#k =       1', 7) ; 0.250000
+match ; k-point 1 (y) ; GREPFIELD(static/info, '#k =       1', 8) ; 0.000000
+match ; k-point 1 (z) ; GREPFIELD(static/info, '#k =       1', 9) ; 0.000000
+match ; Eigenvalue  1 ; GREPFIELD(static/info, '#k =       1', 3, 1) ; -0.258171
+match ; Eigenvalue  2 ; GREPFIELD(static/info, '#k =       1', 3, 2) ; 0.008811
+match ; Eigenvalue  4 ; GREPFIELD(static/info, '#k =       1', 3, 4) ; 0.125632
+match ; Eigenvalue  5 ; GREPFIELD(static/info, '#k =       1', 3, 5) ; 0.227863
+
+match ; DOS E Fermi    ; LINEFIELD(static/total-dos-efermi.dat, 2, 1);   0.125632
+match ; DOS energy 2   ; LINEFIELD(static/total-dos.dat,   2, 1);       -0.379681
+match ; DOS value  2   ; LINEFIELD(static/total-dos.dat,   2, 2);        0.153051
+match ; DOS energy 442 ; LINEFIELD(static/total-dos.dat, 442, 1);        0.263176
+match ; DOS value  442 ; LINEFIELD(static/total-dos.dat, 442, 2);        1.254445
+
+
+#Checking some TD quantities
+Input      : 14-silicon_shifts.02-td.inp
+
+Precision : 6e-5
+match ; Total current [step  100] ; LINEFIELD(td.general/total_current, -1, 3) ; 1.229551207113e-02
+Precision : 2e-6
+match ; Number of excited electrons [step  100] ; LINEFIELD(td.general/n_ex, -1, 3) ; 6.162815763949e-05
+
+match ; Projections [step 100] ; LINEFIELD(td.general/projections, -1, 3) ; 9.418365783298e-01
+match ; Projections [step 100] ; LINEFIELD(td.general/projections, -1, 4) ;-3.360572452633e-01
+
+#Results here are copy pasted from the previous test as we are just changing the parallelization scheme
+#Only n_ex is not copied, as this is not implemented at the moment
+Input      : 14-silicon_shifts.03-td_parstates.inp
+
+Precision : 6e-5
+match ; Total current [step  100] ; LINEFIELD(td.general/total_current, -1, 3) ; -1.215652788234e-02
+Precision : 2e-6
+match ; Projections [step 100] ; LINEFIELD(td.general/projections, -1, 3) ; 9.420281521009e-01
+match ; Projections [step 100] ; LINEFIELD(td.general/projections, -1, 4) ;-3.355279351983e-01
+
+
+Input      : 14-silicon_shifts.04-delayed_kick.inp
+
+Precision: 5.e-06
+match ;  Total current [step  100]  ; LINEFIELD(td.general/gauge_field, -1, 3) ; 1.7120805830265
+
+
+Util : oct-dielectric-function
+Input      : 14-silicon_shifts.05-dielectric_function.inp
+
+Precision: 1.00e-15
+match ;  epsilon file  energy 0  ; LINEFIELD(td.general/dielectric_function, 2, 1) ; 0.0
+Precision: 2.44e-15
+match ;  Re epsilon xx energy 0  ; LINEFIELD(td.general/dielectric_function, 2, 2) ; 2.46879
+Precision: 1.00e-15
+match ;  Im epsilon xx energy 0  ; LINEFIELD(td.general/dielectric_function, 2, 3) ; 0.0
+Precision: 1.52e-17
+match ;  Re epsilon yy energy 0  ; LINEFIELD(td.general/dielectric_function, 2, 4) ; 2.9553499999999995e-18
+Precision: 1.00e-15
+match ;  Im epsilon yy energy 0  ; LINEFIELD(td.general/dielectric_function, 2, 5) ; 0.0
+Precision: 1.51e-17
+match ;  Re epsilon zz energy 0  ; LINEFIELD(td.general/dielectric_function, 2, 6) ; -4.1882e-18
+Precision: 1.00e-15
+match ;  Im epsilon zz energy 0  ; LINEFIELD(td.general/dielectric_function, 2, 7) ; 0.0

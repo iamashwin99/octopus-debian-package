@@ -1,0 +1,725 @@
+
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML-full"></script>
+<style>
+   BODY {background-color: white; 
+         font-size: 10pt; font-family: verdana,helvetica;}
+   A  {text-decoration: none;color: blue}
+</style>
+</head>
+<body>
+
+<a name='Mesh'</a>
+<H2>Mesh</H2>
+
+
+<p><b><a name='MeshIndexType'></a>MeshIndexType</b>
+<br/><i>Section</i>: Mesh
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: idx_cubic
+<br/><br> Determine index type. Must be the same for restarting a calculation.
+
+<br/><i>Options</i>:
+<ul>
+<li><b>idx_cubic</b>:  Cubic indices are used to map the spatial information to the grid points.
+</li>
+<li><b>idx_hilbert</b>:  A Hilbert space-filling curve is used to map the spatial information to
+ the grid points.
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='MultigridLevels'></a>MultigridLevels</b>
+<br/><i>Section</i>: Mesh
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: max_levels
+<br/><br> Number of levels in the grid hierarchy used for multigrid. Positive
+ numbers indicate an absolute number of levels, negative
+ numbers are subtracted from the maximum number of levels possible.
+
+<br/><i>Options</i>:
+<ul>
+<li><b>max_levels</b>:  Calculate the optimal number of levels for the grid.
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='PeriodicBoundaryMask'></a>PeriodicBoundaryMask</b>
+<br/><i>Section</i>: Mesh
+<br/><i>Type</i>: block
+<br/><br> (Experimental) Defines a mask for which periodic boundaries are replaced by zero boundary conditions.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='Spacing'></a>Spacing</b>
+<br/><i>Section</i>: Mesh
+<br/><i>Type</i>: float
+<br/><br> The spacing between the points in the mesh. This controls the
+ quality of the discretization: smaller spacing gives more
+ precise results but increased computational cost.
+<br><br>
+ When using curvilinear coordinates, this is a canonical spacing
+ that will be changed locally by the transformation. In periodic
+ directions, your spacing may be slightly different than what
+ you request here, since the box size must be an integer
+ multiple of the spacing.
+<br><br>
+ The default value is defined by the species if only default pseudopotentials are used
+ or by the image resolution if <tt>BoxShape = box_image</tt>. Otherwise, there is
+ no default.
+<br><br>
+ It is possible to have a different spacing in each one of the Cartesian directions
+ if we define <tt>Spacing</tt> as block of the form
+<br><br>
+ <tt>%Spacing
+ <br>&nbsp;&nbsp;spacing_x | spacing_y | spacing_z
+ <br>%</tt>
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='SpiralBoundaryCondition'></a>SpiralBoundaryCondition</b>
+<br/><i>Section</i>: Mesh
+<br/><i>Type</i>: logical
+<br/><i>Default</i>: no
+<br/><br> (Experimental) If set to yes, Octopus will apply spin-spiral boundary conditions.
+ The momentum of the spin spiral is defined by the variable
+ <tt>TDMomentumTransfer</tt>
+
+</p><hr width='30%' align='left'/>
+
+<a name='Mesh::Curvilinear'</a>
+<H2>Mesh::Curvilinear</H2>
+
+
+<p><b><a name='CurvMethod'></a>CurvMethod</b>
+<br/><i>Section</i>: Mesh::Curvilinear
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: curv_uniform
+<br/><br> The relevant functions in octopus are represented on a mesh in real space.
+ This mesh may be an evenly spaced regular rectangular grid (standard mode),
+ or else an adaptive or curvilinear grid. We have implemented
+ three kinds of adaptive meshes, although only one is currently working,
+ the one invented by F. Gygi (<tt>curv_gygi</tt>). The code will stop if any of
+ the other two is invoked. All are experimental with domain parallelization.
+
+<br/><i>Options</i>:
+<ul>
+<li><b>curv_affine</b>:  Regular, uniform rectangular grid.
+</li>
+<li><b>curv_gygi</b>:  The deformation of the grid is done according to the scheme described by
+ F. Gygi [F. Gygi and G. Galli, <i>Phys. Rev. B</i> <b>52</b>, R2229 (1995)].
+</li>
+<li><b>curv_briggs</b>:  The deformation of the grid is done according to the scheme described by
+ Briggs [E.L. Briggs, D.J. Sullivan, and J. Bernholc, <i>Phys. Rev. B</i> <b>54</b> 14362 (1996)]
+ (NOT WORKING).
+</li>
+<li><b>curv_modine</b>:  The deformation of the grid is done according to the scheme described by
+ Modine [N.A. Modine, G. Zumbach and E. Kaxiras, <i>Phys. Rev. B</i> <b>55</b>, 10289 (1997)]
+ (NOT WORKING).
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+<a name='Mesh::Curvilinear::Gygi'</a>
+<H2>Mesh::Curvilinear::Gygi</H2>
+
+
+<p><b><a name='CurvGygiA'></a>CurvGygiA</b>
+<br/><i>Section</i>: Mesh::Curvilinear::Gygi
+<br/><i>Type</i>: float
+<br/><i>Default</i>: 0.5
+<br/><br> The grid spacing is reduced locally around each atom, and the reduction is
+ given by 1/(1+<i>A</i>), where <i>A</i> is specified by this variable. So, if
+ <i>A</i>=1/2 (the default), the grid spacing is reduced to two thirds = 1/(1+1/2).
+ [This is the \(A_{\alpha}\) variable in Eq. 2 of F. Gygi and G. Galli, <i>Phys.
+ Rev. B</i> <b>52</b>, R2229 (1995)]. It must be larger than zero.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='CurvGygiAlpha'></a>CurvGygiAlpha</b>
+<br/><i>Section</i>: Mesh::Curvilinear::Gygi
+<br/><i>Type</i>: float
+<br/><i>Default</i>: 2.0 a.u.
+<br/><br> This number determines the region over which the grid is enhanced (range of
+ enhancement of the resolution). That is, the grid is enhanced on a sphere
+ around each atom, whose radius is given by this variable. [This is the \(a_{\alpha}\)
+ variable in Eq. 2 of F. Gygi and G. Galli, <i>Phys. Rev. B</i> <b>52</b>, R2229 (1995)].
+ It must be larger than zero.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='CurvGygiBeta'></a>CurvGygiBeta</b>
+<br/><i>Section</i>: Mesh::Curvilinear::Gygi
+<br/><i>Type</i>: float
+<br/><i>Default</i>: 4.0 a.u.
+<br/><br> This number determines the distance over which Euclidean coordinates are
+ recovered. [This is the \(b_{\alpha}\) variable in Eq. 2 of F. Gygi and G. Galli,
+ <i>Phys. Rev. B</i> <b>52</b>, R2229 (1995)]. It must be larger than zero.
+
+</p><hr width='30%' align='left'/>
+
+<a name='Mesh::Curvilinear::Modine'</a>
+<H2>Mesh::Curvilinear::Modine</H2>
+
+
+<p><b><a name='CurvModineJBar'></a>CurvModineJBar</b>
+<br/><i>Section</i>: Mesh::Curvilinear::Modine
+<br/><i>Type</i>: float
+<br/><i>Default</i>: 1/2
+<br/><br> Increase in density of points is inverse of this parameter.
+ See N. A. Modine, G. Zumbach, and E. Kaxiras, <i>Phys. Rev. B</i> <b>55</b>, 10289-10301 (1997).
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='CurvModineJlocal'></a>CurvModineJlocal</b>
+<br/><i>Section</i>: Mesh::Curvilinear::Modine
+<br/><i>Type</i>: float
+<br/><i>Default</i>: 0.25
+<br/><br> Local refinement around the atoms. Must be between 0 and 1.
+ See N. A. Modine, G. Zumbach, and E. Kaxiras, <i>Phys. Rev. B</i> <b>55</b>, 10289-10301 (1997).
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='CurvModineJrange'></a>CurvModineJrange</b>
+<br/><i>Section</i>: Mesh::Curvilinear::Modine
+<br/><i>Type</i>: float
+<br/><i>Default</i>: 2 b
+<br/><br> Local refinement range (a length).
+ See N. A. Modine, G. Zumbach, and E. Kaxiras, <i>Phys. Rev. B</i> <b>55</b>, 10289-10301 (1997).
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='CurvModineXBar'></a>CurvModineXBar</b>
+<br/><i>Section</i>: Mesh::Curvilinear::Modine
+<br/><i>Type</i>: float
+<br/><i>Default</i>: 1/3
+<br/><br> Size of central flat region (in units of <tt>Lsize</tt>). Must be between 0 and 1.
+ See N. A. Modine, G. Zumbach, and E. Kaxiras, <i>Phys. Rev. B</i> <b>55</b>, 10289-10301 (1997).
+
+</p><hr width='30%' align='left'/>
+
+<a name='Mesh::Derivatives'</a>
+<H2>Mesh::Derivatives</H2>
+
+
+<p><b><a name='DerivativesOrder'></a>DerivativesOrder</b>
+<br/><i>Section</i>: Mesh::Derivatives
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: 4
+<br/><br> This variable gives the discretization order for the approximation of
+ the differential operators. This means, basically, that
+ <tt>DerivativesOrder</tt> points are used in each positive/negative
+ spatial direction, <i>e.g.</i> <tt>DerivativesOrder = 1</tt> would give
+ the well-known three-point formula in 1D.
+ The number of points actually used for the Laplacian
+ depends on the stencil used. Let \(O\) = <tt>DerivativesOrder</tt>, and \(d\) = <tt>Dimensions</tt>.
+ <ul>
+ <li> <tt>stencil_star</tt>: \(2 O d + 1\)
+ <li> <tt>stencil_cube</tt>: \((2 O + 1)^d\)
+ <li> <tt>stencil_starplus</tt>: \(2 O d + 1 + n\) with <i>n</i> being 8
+ in 2D and 24 in 3D.
+ </ul>
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='DerivativesStencil'></a>DerivativesStencil</b>
+<br/><i>Section</i>: Mesh::Derivatives
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: stencil_star
+<br/><br> Decides what kind of stencil is used, <i>i.e.</i> which points, around
+ each point in the mesh, are the neighboring points used in the
+ expression of the differential operator.
+<br><br>
+ If curvilinear coordinates are to be used, then only the <tt>stencil_starplus</tt>
+ or the <tt>stencil_cube</tt> may be used. We only recommend the <tt>stencil_starplus</tt>,
+ since the cube typically needs far too much memory.
+
+<br/><i>Options</i>:
+<ul>
+<li><b>stencil_star</b>:  A star around each point (<i>i.e.</i>, only points on the axis).
+</li>
+<li><b>stencil_variational</b>:  Same as the star, but with coefficients built in a different way.
+</li>
+<li><b>stencil_cube</b>:  A cube of points around each point.
+</li>
+<li><b>stencil_starplus</b>:  The star, plus a number of off-axis points.
+</li>
+<li><b>stencil_stargeneral</b>:  The general star. Default for non-orthogonal grids.
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='MultigridDerivativesOrder'></a>MultigridDerivativesOrder</b>
+<br/><i>Section</i>: Mesh::Derivatives
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: 1
+<br/><br> This variable gives the discretization order for the approximation of
+ the differential operators on the different levels of the multigrid.
+ For more details, see the variable DerivativesOrder.
+
+</p><hr width='30%' align='left'/>
+
+<a name='Mesh::FFTs'</a>
+<H2>Mesh::FFTs</H2>
+
+
+<p><b><a name='DoubleFFTParameter'></a>DoubleFFTParameter</b>
+<br/><i>Section</i>: Mesh::FFTs
+<br/><i>Type</i>: float
+<br/><i>Default</i>: 2.0
+<br/><br> For solving the Poisson equation in Fourier space, and for applying the local potential
+ in Fourier space, an auxiliary cubic mesh is built. This mesh will be larger than
+ the circumscribed cube of the usual mesh by a factor <tt>DoubleFFTParameter</tt>. See
+ the section that refers to Poisson equation, and to the local potential for details
+ [the default value of two is typically good].
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='FFTLibrary'></a>FFTLibrary</b>
+<br/><i>Section</i>: Mesh::FFTs
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: fftw
+<br/><br> (experimental) You can select the FFT library to use.
+
+<br/><i>Options</i>:
+<ul>
+<li><b>fftw</b>:  Uses FFTW3 library.
+</li>
+<li><b>pfft</b>:  (experimental) Uses PFFT library, which has to be linked.
+</li>
+<li><b>accel</b>:  (experimental) Uses a GPU accelerated library. This only
+ works if Octopus was compiled with Cuda or OpenCL support.
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='FFTOptimize'></a>FFTOptimize</b>
+<br/><i>Section</i>: Mesh::FFTs
+<br/><i>Type</i>: logical
+<br/><i>Default</i>: yes
+<br/><br> Should <tt>octopus</tt> optimize the FFT dimensions?
+ This means that the mesh to which FFTs are applied is not taken to be as small
+ as possible: some points may be added to each direction in order to get a "good number"
+ for the performance of the FFT algorithm.
+ The best FFT grid dimensions are given by \(2^a 3^b 5^c 7^d 11^e 13^f\)
+ where \(a,b,c,d\) are arbitrary and \(e,f\) are 0 or 1.
+ (<a href=http://www.fftw.org/doc/Complex-DFTs.html>ref</a>).
+ In some cases, namely when using
+ the split-operator, or Suzuki-Trotter propagators, this option should be turned off.
+ For spatial FFTs in periodic directions, the grid is never optimized, but a warning will
+ be written if the number is not good, with a suggestion of a better one to use, so you
+ can try a different spacing if you want to get a good number.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='FFTPreparePlan'></a>FFTPreparePlan</b>
+<br/><i>Section</i>: Mesh::FFTs
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: fftw_measure
+<br/><br> The FFTs are performed in octopus with the help of <a href=http://www.fftw.org>FFTW</a> and similar packages.
+ Before doing the actual computations, this package prepares a "plan", which means that
+ the precise numerical strategy to be followed to compute the FFT is machine/compiler-dependent,
+ and therefore the software attempts to figure out which is this precise strategy (see the
+ FFTW documentation for details). This plan preparation, which has to be done for each particular
+ FFT shape, can be done exhaustively and carefully (slow), or merely estimated. Since this is
+ a rather critical numerical step, by default it is done carefully, which implies a longer initial
+ initialization, but faster subsequent computations. You can change this behaviour by changing
+ this <tt>FFTPreparePlan</tt> variable, and in this way you can force FFTW to do a fast guess or
+ estimation of which is the best way to perform the FFT.
+
+<br/><i>Options</i>:
+<ul>
+<li><b>fftw_measure</b>:  This is the default, and implies a longer initialization, but involves a more careful analysis
+ of the strategy to follow, and therefore more efficient FFTs.
+</li>
+<li><b>fftw_patient</b>:  It is like fftw_measure, but considers a wider range of algorithms and often produces a
+ "more optimal" plan (especially for large transforms), but at the expense of several times
+ longer planning time (especially for large transforms).
+</li>
+<li><b>fftw_estimate</b>:  This is the "fast initialization" scheme, in which the plan is merely guessed from "reasonable"
+ assumptions.
+</li>
+<li><b>fftw_exhaustive</b>:  It is like fftw_patient, but considers an even wider range of algorithms,
+ including many that we think are unlikely to be fast, to produce the most optimal
+  plan but with a substantially increased planning time.
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='NFFTCutoff'></a>NFFTCutoff</b>
+<br/><i>Section</i>: Mesh::FFTs
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: 6
+<br/><br> Cut-off parameter of the window function.
+ See NFFT manual for details.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='NFFTGuruInterface'></a>NFFTGuruInterface</b>
+<br/><i>Section</i>: Mesh::FFTs
+<br/><i>Type</i>: logical
+<br/><i>Default</i>: false
+<br/><br> Perform NFFT with guru interface. This permits the fine tuning of several critical parameters.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='NFFTOversampling'></a>NFFTOversampling</b>
+<br/><i>Section</i>: Mesh::FFTs
+<br/><i>Type</i>: float
+<br/><i>Default</i>: 2
+<br/><br> NFFT oversampling factor (sigma). This will rule the size of the FFT under the hood.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='NFFTPrecompute'></a>NFFTPrecompute</b>
+<br/><i>Section</i>: Mesh::FFTs
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: NFFT_PRE_PSI
+<br/><br> NFFT precomputation strategy.
+
+<br/><i>Options</i>:
+<ul>
+<li><b>NFFT_PRE_PSI</b>:  This method uses a medium amount of memory to store d*(2*m+1)*M real numbers and requires at most
+ 2(2m + 1)d extra multiplications for each node.
+ This is the default option.
+</li>
+<li><b>NFFT_PRE_FULL_PSI</b>:  Is the fastest method but requires a large amount of memory as it requires to store (2*m+1)^d*M
+ real numbers. No extra operations are needed during matrix vector multiplication.
+</li>
+<li><b>NFFT_PRE_LIN_PSI</b>:  This method implements a linear interpolation from a lookup table.
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='PNFFTCutoff'></a>PNFFTCutoff</b>
+<br/><i>Section</i>: Mesh::FFTs
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: 6
+<br/><br> Cut-off parameter of the window function.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='PNFFTOversampling'></a>PNFFTOversampling</b>
+<br/><i>Section</i>: Mesh::FFTs
+<br/><i>Type</i>: float
+<br/><i>Default</i>: 2.0
+<br/><br> PNFFT oversampling factor (sigma). This will rule the size of the FFT under the hood.
+
+</p><hr width='30%' align='left'/>
+
+<a name='Mesh::KPoints'</a>
+<H2>Mesh::KPoints</H2>
+
+
+<p><b><a name='KPoints'></a>KPoints</b>
+<br/><i>Section</i>: Mesh::KPoints
+<br/><i>Type</i>: block
+<br/><br> This block defines an explicit set of <i>k</i>-points and their weights for
+ a periodic-system calculation. The first column is the weight
+ of each <i>k</i>-point and the following are the components of the <i>k</i>-point
+ vector. You only need to specify the components for the
+ periodic directions. Note that the <i>k</i>-points should be given in
+ Cartesian coordinates (not in reduced coordinates), in the units of inverse length.
+ The weights will be renormalized so they sum to 1 (and must be rational numbers).
+<br><br>
+ For example, if you want to include only the Gamma point, you can
+ use:
+<br><br>
+ <tt>%KPoints
+ <br>&nbsp;&nbsp;1.0 | 0 | 0 | 0
+ <br>%</tt>
+<br><br>
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='KPointsGrid'></a>KPointsGrid</b>
+<br/><i>Section</i>: Mesh::KPoints
+<br/><i>Type</i>: block
+<br/><i>Default</i>: \(\Gamma\)-point only
+<br/><br> When this block is given (and the <tt>KPoints</tt> block is not present),
+ <i>k</i>-points are distributed in a uniform grid, according to a modified
+ version of the Monkhorst-Pack scheme. For the original MP scheme, see
+ James D. Pack and Hendrik J. Monkhorst,
+ <i>Phys. Rev. B</i> <b>13</b>, 5188 (1976) and <i>Phys. Rev. B</i> <b>16</b>, 1748 (1977).
+<br><br>
+ The first row of the block is a set of integers defining
+ the number of <i>k</i>-points to be used along each direction
+ in reciprocal space. The numbers refer to the whole Brillouin
+ zone, and the actual number of <i>k</i>-points is usually
+ reduced exploiting the symmetries of the system.  By default
+ the grid will always include the \(\Gamma\)-point. Optional
+ rows can be added to specify multiple shifts in the <i>k</i>-points (between 0.0 and 1.0),
+ in units of the Brillouin zone divided by the number in the first row.
+ The number of columns should be equal to <tt>Dimensions</tt>,
+ but the grid and shift numbers should be 1 and zero in finite directions.
+<br><br>
+ For example, the following input samples the BZ with 100 points in the
+ <i>xy</i>-plane of reciprocal space:
+<br><br>
+ <tt>%KPointsGrid
+ <br>&nbsp;&nbsp;10 | 10 | 1
+ <br>%</tt>
+<br><br>
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='KPointsPath'></a>KPointsPath</b>
+<br/><i>Section</i>: Mesh::KPoints
+<br/><i>Type</i>: block
+<br/><br> When this block is given, <i>k</i>-points are generated along a path
+ defined by the points of the list.
+ The points must be given in reduced coordinates.
+<br><br>
+ The first row of the block is a set of integers defining
+ the number of <i>k</i>-points for each segments of the path.
+ The number of columns should be equal to <tt>Dimensions</tt>,
+ and the k-points coordinate should be zero in finite directions.
+<br><br>
+ For example, the following input samples the BZ with 15 points:
+<br><br>
+ <tt>%KPointsPath
+ <br>&nbsp;&nbsp;10 | 5
+ <br>&nbsp;&nbsp; 0 | 0 | 0
+ <br>&nbsp;&nbsp; 0.5 | 0 | 0
+ <br>&nbsp;&nbsp; 0.5 | 0.5 | 0.5
+ <br>%</tt>
+<br><br>
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='KPointsReduced'></a>KPointsReduced</b>
+<br/><i>Section</i>: Mesh::KPoints
+<br/><i>Type</i>: block
+<br/><br> Same as the block <tt>KPoints</tt> but this time the input is given in reduced
+ coordinates, <i>i.e.</i>
+ what <tt>Octopus</tt> writes in a line in the ground-state standard output as
+<br><br>
+ <tt>#k =   1, k = (    0.154000,    0.154000,    0.154000)</tt>.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='KPointsUseSymmetries'></a>KPointsUseSymmetries</b>
+<br/><i>Section</i>: Mesh::KPoints
+<br/><i>Type</i>: logical
+<br/><i>Default</i>: no
+<br/><br> This variable defines whether symmetries are taken into account
+ or not for the choice of <i>k</i>-points. If it is set to no, the <i>k</i>-point
+ sampling will range over the full Brillouin zone.
+<br><br>
+ When a perturbation is applied to the system, the full
+ symmetries of the system cannot be used. In this case you must
+ not use symmetries or use the <tt>SymmetryBreakDir</tt> to tell
+ Octopus the direction of the perturbation (for the moment this
+ has to be done by hand by the user, in the future it will be
+ automatic).
+<br><br>
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='KPointsUseTimeReversal'></a>KPointsUseTimeReversal</b>
+<br/><i>Section</i>: Mesh::KPoints
+<br/><i>Type</i>: logical
+<br/><br> If symmetries are used to reduce the number of <i>k</i>-points,
+ this variable defines whether time-reversal symmetry is taken
+ into account or not. If it is set to no, the <i>k</i>-point
+ sampling will not be reduced according to time-reversal
+ symmetry.
+<br><br>
+ The default is yes, unless symmetries are broken in one
+ direction by the <tt>SymmetryBreakDir</tt> block.
+<br><br>
+ Warning: For time propagation runs with an external field,
+ time-reversal symmetry should not be used.
+<br><br>
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='QPointsGrid'></a>QPointsGrid</b>
+<br/><i>Section</i>: Mesh::KPoints
+<br/><i>Type</i>: block
+<br/><i>Default</i>: KPointsGrid
+<br/><br> This block allows to define a q-point grid used for the calculation of the Fock operator
+ with k-points. The <i>q</i>-points are distributed in a uniform grid, as done for the
+ <tt>KPointsGrid</tt> variable.
+ See J. Chem Phys. 124, 154709 (2006) for details
+<br><br>
+ For each dimension, the number of q point must be a divider of the number of  k point
+<br><br>
+ <tt>%QPointsGrid
+ <br>&nbsp;&nbsp;2 | 2 | 1
+ <br>%</tt>
+<br><br>
+ At the moment, this is not compatible with k-point symmetries.
+<br><br>
+
+</p><hr width='30%' align='left'/>
+
+<a name='Mesh::Simulation Box'</a>
+<H2>Mesh::Simulation Box</H2>
+
+
+<p><b><a name='BoxShape'></a>BoxShape</b>
+<br/><i>Section</i>: Mesh::Simulation Box
+<br/><i>Type</i>: integer
+<br/><br> This variable decides the shape of the simulation box.
+ The default is <tt>minimum</tt> for finite systems and <tt>parallelepiped</tt> for periodic systems.
+ Note that some incompatibilities apply:
+ <ul><li>Spherical or minimum mesh is not allowed for periodic systems.
+ <li>Cylindrical mesh is not allowed for systems that are periodic in more than one dimension.
+ <li><tt>box_image</tt> is only allowed in 2D.</ul>
+
+<br/><i>Options</i>:
+<ul>
+<li><b>sphere</b>:  The simulation box will be a sphere of radius <tt>Radius</tt>. (In 2D, this is a circle.)
+</li>
+<li><b>cylinder</b>:  The simulation box will be a cylinder with radius <tt>Radius</tt> and height (in the <i>x</i>-direction)
+ of 2 <tt>Xlength</tt>.
+</li>
+<li><b>minimum</b>:  The simulation box will be constructed by adding spheres created around each
+ atom (or user-defined potential), of radius <tt>Radius</tt>.
+</li>
+<li><b>parallelepiped</b>:  The simulation box will be a parallelepiped whose dimensions are taken from
+ the variable <tt>Lsize</tt>.
+</li>
+<li><b>box_image</b>:  The simulation box will be defined through an image, specified with <tt>BoxShapeImage</tt>.
+ White (RGB = 255,255,255) means that the point
+ is contained in the simulation box, while any other color means that the point is out.
+ The image will be scaled to fit <tt>Lsize</tt>, while its resolution will define the default <tt>Spacing</tt>.
+ The actual box may be slightly larger than <tt>Lsize</tt> to ensure one grid point = one pixel for
+ default <tt>Spacing</tt>.
+</li>
+<li><b>user_defined</b>:  The shape of the simulation box will be read from the variable <tt>BoxShapeUsDef</tt>.
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='BoxShapeImage'></a>BoxShapeImage</b>
+<br/><i>Section</i>: Mesh::Simulation Box
+<br/><i>Type</i>: string
+<br/><br> Name of the file that contains the image that defines the simulation box
+ when <tt>BoxShape = box_image</tt>. No default. Will search in current
+ directory and <tt>OCTOPUS-HOME/share/</tt>.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='BoxShapeUsDef'></a>BoxShapeUsDef</b>
+<br/><i>Section</i>: Mesh::Simulation Box
+<br/><i>Type</i>: string
+<br/><br> Boolean expression that defines the interior of the simulation box. For example,
+ <tt>BoxShapeUsDef = "(sqrt(x^2+y^2) <= 4) && z>-2 && z<2"</tt> defines a cylinder
+ with axis parallel to the <i>z</i>-axis.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='LatticeParameters'></a>LatticeParameters</b>
+<br/><i>Section</i>: Mesh::Simulation Box
+<br/><i>Type</i>: block
+<br/><br> The lattice parameters (a, b, c).
+ This variable is mandatory for periodic systems and is ignored otherwise.
+ When PeriodicDimensions = 3, a second optional line can be used to
+ define the angles between the lattice vectors. If the angles are not
+ provided, then the variable LatticeVectors must be set.
+ The number of parameters specified in the block must be at least equal
+ to the number of periodic dimensions, but it is not mandatory to
+ specify parameters for the non-periodic dimensions (in that case they
+ are set to 1).
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='LatticeVectors'></a>LatticeVectors</b>
+<br/><i>Section</i>: Mesh::Simulation Box
+<br/><i>Type</i>: block
+<br/><i>Default</i>: simple cubic
+<br/><br> Primitive lattice vectors. Vectors are stored in rows.
+ Default:
+ <br><br><tt>%LatticeVectors
+ <br>&nbsp;&nbsp;1.0 | 0.0 | 0.0
+ <br>&nbsp;&nbsp;0.0 | 1.0 | 0.0
+ <br>&nbsp;&nbsp;0.0 | 0.0 | 1.0
+ <br>%<br></tt>
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='Lsize'></a>Lsize</b>
+<br/><i>Section</i>: Mesh::Simulation Box
+<br/><i>Type</i>: block
+<br/><br> If <tt>BoxShape</tt> is <tt>parallelepiped</tt>, <tt>box_image</tt>,
+ or <tt>user_defined</tt>, this is a block of the form:
+<br><br>
+ <tt>%Lsize
+ <br>&nbsp;&nbsp;sizex | sizey | sizez | ...
+ <br>%</tt>
+<br><br>
+ where the <tt>size*</tt> are half the lengths of the box in each direction.
+<br><br>
+ The number of columns must match the dimensionality of the
+ calculation. If you want a cube you can also set <tt>Lsize</tt> as a
+ single variable.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='Radius'></a>Radius</b>
+<br/><i>Section</i>: Mesh::Simulation Box
+<br/><i>Type</i>: float
+<br/><br> Defines the radius for <tt>BoxShape</tt> = <tt>sphere</tt>,
+ <tt>cylinder</tt>, or <tt>minimum</tt>. Must be a positive
+ number.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='SymmetryBreakDir'></a>SymmetryBreakDir</b>
+<br/><i>Section</i>: Mesh::Simulation Box
+<br/><i>Type</i>: block
+<br/><br> This variable specifies a direction in which the symmetry of
+ the system will be broken. This is useful for generating <i>k</i>-point
+ grids when an external perturbation is applied.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='Xlength'></a>Xlength</b>
+<br/><i>Section</i>: Mesh::Simulation Box
+<br/><i>Type</i>: float
+<br/><i>Default</i>: <tt>Radius</tt>
+<br/><br> If <tt>BoxShape</tt> is <tt>cylinder</tt>, the total length of the cylinder is twice <tt>Xlength</tt>.
+ Note that when PeriodicDimensions = 1, then the length of the cylinder is determined from the lattice vectors.
+
+</p><hr width='30%' align='left'/>
+
+</body>
+</html>

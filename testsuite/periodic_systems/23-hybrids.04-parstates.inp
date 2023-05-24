@@ -1,0 +1,46 @@
+FromScratch=yes
+
+Debug = trace
+
+CalculationMode = gs
+
+PeriodicDimensions = 3
+
+a = 10.2
+
+BoxShape = parallelepiped
+
+%LatticeParameters
+  a | a | a
+%
+
+%LatticeVectors
+ 0.  | 0.5 | 0.5
+ 0.5 | 0.  | 0.5
+ 0.5 | 0.5 | 0.0
+%
+
+%ReducedCoordinates
+ "Si" |   0.0    | 0.0     | 0.0
+ "Si" |   1/4    | 1/4     | 1/4
+%
+
+Spacing = 0.5
+
+ExperimentalFeatures = yes
+
+%KPointsGrid
+ 3 | 3 | 3
+%
+KPointsUseSymmetries = yes
+ConvRelDens = 1e-8
+EigensolverTolerance = 1e-9
+
+XCFunctional = hyb_gga_xc_pbeh
+AdaptivelyCompressedExchange = yes
+
+StatesPack = yes
+
+ParDomains = no
+ParKPoints = no
+ParStates = auto

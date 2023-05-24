@@ -1,0 +1,24 @@
+CalculationMode = gs
+
+UnitsOutput = ev_angstrom
+
+%Coordinates
+'Na'  | -1.4646408*angstrom | 0 | 0 | yes
+'Na'  |  1.4646408*angstrom | 0 | 0 | yes
+%
+
+FromScratch = yes
+
+Spacing = 0.32*angstrom
+Radius = 6.0*angstrom
+
+ConvRelDens = 1e-8
+EigensolverTolerance = 1e-9
+
+SpinComponents = spin_polarized
+
+FilterPotentials = filter_none
+
+MixField = density
+
+PoissonSolver = isf

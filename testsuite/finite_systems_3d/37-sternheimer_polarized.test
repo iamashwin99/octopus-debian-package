@@ -1,0 +1,29 @@
+# -*- coding: utf-8 mode: shell-script -*-
+
+Test       : Sternheimer with spin-polarized systems
+Program    : octopus
+TestGroups : short-run, finite_systems_3d
+Enabled    : Yes
+
+Input: 37-sternheimer_polarized.01-gs.inp
+match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
+Precision: 1.92e-14
+match ;  Total energy      ; GREPFIELD(static/info, 'Total       =', 3) ; -19.24968875
+match ;  Exchange energy   ; GREPFIELD(static/info, 'Exchange    =', 3) ; -4.90059576
+Precision: 1.60e-15
+match ;  Eigenvalue   [1 up]  ; GREPFIELD(static/info, '1   up', 3) ; -1.600985
+match ;  Eigenvalue   [1 dn]  ; GREPFIELD(static/info, '1   dn', 3) ; -1.595656
+match ;  Eigenvalue   [4 up]  ; GREPFIELD(static/info, '4   up', 3) ; -0.930314
+match ;  Eigenvalue   [4 dn]  ; GREPFIELD(static/info, '4   dn', 3) ; -0.908347
+
+Input: 37-sternheimer_polarized.02-em_resp.inp
+
+Precision: 0.0015
+if(available libxc_fxc); then
+  match ; Polarizability xx ; LINEFIELD(em_resp/freq_0.0428/alpha, 2, 1) ; 4.330061
+  match ; Polarizability yy ; LINEFIELD(em_resp/freq_0.0428/alpha, 3, 2) ; 4.330061
+  match ; Polarizability zz ; LINEFIELD(em_resp/freq_0.0428/alpha, 4, 3) ; 5.952529
+else
+  match ; Error no libxc_fxc ; GREPCOUNT(err, 'not compiled with the fxc support') ; 1
+endif
+

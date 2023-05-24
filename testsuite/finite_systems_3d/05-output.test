@@ -1,0 +1,186 @@
+# -*- coding: utf-8 mode: shell-script -*-
+
+Test       : Output
+Program    : octopus
+TestGroups : short-run, finite_systems_3d
+Enabled    : Yes
+
+Input: 05-output.01-gs-set1.inp
+# Test files count on different output interval
+
+
+if (available cuda); then
+  match; Error CUDA ; GREPCOUNT(err, 'Wave functions in Fourier space not supported on GPUs') ; 1
+else
+  # v0.xsf vh.xsf vks.xsf vxc.xsf
+  match ; timestep 2  potential files              ; SHELL(ls -A  output_iter/scf.0002/ | wc -l) ; 4
+
+  # density.xsf
+  match ; timestep 3  density files                ; SHELL(ls -A  output_iter/scf.0003/ | wc -l) ; 1
+
+  # wf-st0001.xsf
+  match ; timestep 5  wfs files                    ; SHELL(ls -A  output_iter/scf.0005/ | wc -l) ; 1
+
+  # sqm-wf-st0001.xsf
+  match ; timestep 7  wfs_sqmod files              ; SHELL(ls -A  output_iter/scf.0007/ | wc -l) ; 1
+
+  # geometry.xsf
+  match ; timestep 11 geometry files               ; SHELL(ls -A  output_iter/scf.0011/ | wc -l) ; 1
+
+
+  match ; timestep 13 current files                ; SHELL(ls -A  output_iter/scf.0013/ | wc -l) ; 0
+
+  # elf_rs.xsf
+  match ; timestep 17 ELF files                    ; SHELL(ls -A  output_iter/scf.0017/ | wc -l) ; 1
+
+  # elf_rs_basins.info elf_rs_basins.xsf
+  match ; timestep 19 ELF_basins files             ; SHELL(ls -A  output_iter/scf.0019/ | wc -l) ; 2
+
+  # bader_basins.info bader_basins.xsf bader.xsf
+  match ; timestep 23 Bader files                  ; SHELL(ls -A  output_iter/scf.0023/ | wc -l) ; 3
+
+  # el_pressure.xsf
+  match ; timestep 29 el_pressure files            ; SHELL(ls -A  output_iter/scf.0029/ | wc -l) ; 1
+
+  # ks_me_momentum
+  match ; timestep 31 matrix_elements files        ; SHELL(ls -A  output_iter/scf.0031/ | wc -l) ; 1
+
+  # dipole_density-x.xsf dipole_density-y.xsf dipole_density-z.xsf
+  match ; timestep 37 pol_density files            ; SHELL(ls -A  output_iter/scf.0037/ | wc -l) ; 3
+
+  # mesh_r-x.xsf mesh_r-y.xsf mesh_r-z.xsf
+  match ; timestep 41 mesh_r files                 ; SHELL(ls -A  output_iter/scf.0041/ | wc -l) ; 3
+
+  # tau.xsf
+  match ; timestep 43 kinetic_energy_density files ; SHELL(ls -A  output_iter/scf.0043/ | wc -l) ; 1
+
+  # dos-0001.dat total-dos.dat total-dos-efermi.dat
+  match ; timestep 47 dos files                    ; SHELL(ls -A  output_iter/scf.0047/ | wc -l) ; 3
+
+
+  match ; timestep 53 tpa files                    ; SHELL(ls -A  output_iter/scf.0053/ | wc -l) ; 0
+
+  #  forces.xsf
+  match ; timestep 59 forces files                 ; SHELL(ls -A  output_iter/scf.0059/ | wc -l) ; 1
+
+
+  match ; timestep 61 wfs_fourier files            ; SHELL(ls -A  output_iter/scf.0061/ | wc -l) ; 0
+
+  #  nxc.xsf
+  match ; timestep 67 xc_density files             ; SHELL(ls -A  output_iter/scf.0067/ | wc -l) ; 1
+
+
+  match ; timestep 71 PES_wfs files                ; SHELL(ls -A  output_iter/scf.0071/ | wc -l) ; 0
+endif
+
+Input: 05-output.02-gs.inp
+match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
+match ; Total energy     ; GREPFIELD(static/info, 'Total       =', 3) ; -11.99584633
+
+#geometry
+Precision : 0.0001
+match ; Geometry         ; LINEFIELD(static/geometry.xyz, 3, 3) ; 0.000000
+
+# DX output
+match ; DX Origin        ; LINEFIELD(static/density.dx, 2, 2) ; -2.645886
+match ; DX Delta         ; LINEFIELD(static/density.dx, 3, 2) ; 0.264589
+
+Precision : 2e-9
+match ; DX value 1       ; LINEFIELD(static/density.dx, 1195, 1) ; 0.000166986832631
+match ; DX value 2       ; LINEFIELD(static/density.dx, 1489, 1) ; 0.001133466426887
+
+#axis output
+Precision : 0.0001
+match ; Axis pos 1       ; LINEFIELD(static/density.y\=0\,z\=0, 2, 1) ; -2.64588604295000
+match ; Axis pos 9       ; LINEFIELD(static/density.y\=0\,z\=0, 10, 1) ; -0.52917720859000
+match ; Axis pos 17      ; LINEFIELD(static/density.y\=0\,z\=0, 18, 1) ; 1.58753162577000
+
+Precision : 0.000000001
+match ; Axis value 1     ; LINEFIELD(static/density.y\=0\,z\=0, 2, 2) ; 2.911461358502725e-06
+Precision : 0.000001
+match ; Axis value 9     ; LINEFIELD(static/density.y\=0\,z\=0, 10, 2) ; 2.75939509225883E-001
+match ; Axis value 17    ; LINEFIELD(static/density.y\=0\,z\=0, 18, 2) ; 6.57093245587566E-003
+
+#plane output
+Precision : 0.0001
+match ; Plane pos  10 Y  ; LINEFIELD(static/density.x\=0,   9, 1) ; -2.38129743865500
+match ; Plane pos  10 Z  ; LINEFIELD(static/density.x\=0,   9, 2) ; -1.05835441718000
+match ; Plane pos  30 Y  ; LINEFIELD(static/density.x\=0,  29, 1) ; -2.11670883436000
+match ; Plane pos  30 Z  ; LINEFIELD(static/density.x\=0,  29, 2) ;  1.05835441718000
+match ; Plane pos 295 Y  ; LINEFIELD(static/density.x\=0, 294, 1) ;  1.58753162577000
+match ; Plane pos 295 Z  ; LINEFIELD(static/density.x\=0, 294, 2) ;  2.64588604295000E-001
+
+Precision : 0.000000001
+match ; Plane value 10   ; LINEFIELD(static/density.x\=0, 9, 3)   ; 2.23463660289829e-05
+match ; Plane value 30   ; LINEFIELD(static/density.x\=0, 29, 3)  ; 0.00018976363254441698
+Precision: 1.3e-09
+match ; Plane value 295  ; LINEFIELD(static/density.x\=0, 294, 3) ; 0.006066726226347375
+Precision : 0.000000001
+match ; Plane value 10 Grad-y v0 ; LINEFIELD(static/grad_v0-y.x\=0,   9, 3) ; -1.42667157278682E+001
+
+
+#xcrysden
+match ; XCrySDen geometry; LINEFIELD(static/geometry.xsf, 2, 3) ; 2.645886
+match ; XCrySDen wf 1    ; LINEFIELD(static/wf-st0001.xsf, 2, 3) ; 2.645886
+match ; XCrySDen wf 2    ; LINEFIELD(static/wf-st0001.xsf, 8, 1) ; 5.291772
+Precision : 0.000001
+match ; XCrySDen wf 3    ; LINEFIELD(static/wf-st0001.xsf, 8087, 1) ; 0.010543843731284
+match ; XCrySDen wf 4    ; LINEFIELD(static/wf-st0001.xsf, 8546, 1) ; 0.007238401100039
+
+#bader: only works in serial currently
+#match ; Num. Bader basins  ; GREPFIELD(static/bader_basins-sp1.info, "Number of basins =", 5) ;  6
+#match ; Basin 1 volume     ; GREPFIELD(static/bader_basins-sp1.info, "volume =",           3) ; 13.577424
+#match ; Basin 1 population ; GREPFIELD(static/bader_basins-sp1.info, "population =",       3) ;  0.227759
+
+# wfs axis_x output
+
+match ; wf-st0001 axis_x  2 coordinate ; LINEFIELD(static/wf-st0001.y\=0\,z\=0,   2, 1) ; -2.64588604295000E+000 
+match ; wf-st0001 axis_x  3 coordinate ; LINEFIELD(static/wf-st0001.y\=0\,z\=0,   3, 1) ; -2.38129743865500E+000 
+match ; wf-st0001 axis_x 11 coordinate ; LINEFIELD(static/wf-st0001.y\=0\,z\=0,  11, 1) ; -2.64588604295000E-001 
+match ; wf-st0001 axis_x 12 coordinate ; LINEFIELD(static/wf-st0001.y\=0\,z\=0,  12, 1) ;  0.00000000000000E+000 
+match ; wf-st0001 axis_x 21 coordinate ; LINEFIELD(static/wf-st0001.y\=0\,z\=0,  21, 1) ;  2.38129743865500E+000 
+match ; wf-st0001 axis_x 22 coordinate ; LINEFIELD(static/wf-st0001.y\=0\,z\=0,  22, 1) ;  2.64588604295000E+000 
+
+match ; wf-st0001 axis_x  2 value ; LINEFIELD(static/wf-st0001.y\=0\,z\=0,   2, 2) ;  1.70641900857292E-003 
+match ; wf-st0001 axis_x  3 value ; LINEFIELD(static/wf-st0001.y\=0\,z\=0,   3, 2) ;  1.19442352102221E-002 
+match ; wf-st0001 axis_x 11 value ; LINEFIELD(static/wf-st0001.y\=0\,z\=0,  11, 2) ;  8.51610286603397E-001 
+match ; wf-st0001 axis_x 12 value ; LINEFIELD(static/wf-st0001.y\=0\,z\=0,  12, 2) ;  1.04679899014083E+000 
+match ; wf-st0001 axis_x 21 value ; LINEFIELD(static/wf-st0001.y\=0\,z\=0,  21, 2) ;  1.19442352102221E-002 
+match ; wf-st0001 axis_x 22 value ; LINEFIELD(static/wf-st0001.y\=0\,z\=0,  22, 2) ;  1.70641900857292E-003 
+
+# wfs plane_x output
+
+match ; wf-st0001 plane_x   7 coordinate_x ; LINEFIELD(static/wf-st0001.x\=0,  7, 1 ) ; -2.64588604295000E+000 
+match ; wf-st0001 plane_x   9 coordinate_x ; LINEFIELD(static/wf-st0001.x\=0,  9, 1 ) ; -2.38129743865500E+000 
+match ; wf-st0001 plane_x  35 coordinate_x ; LINEFIELD(static/wf-st0001.x\=0, 35, 1 ) ; -1.85212023006500E+000 
+match ; wf-st0001 plane_x  36 coordinate_x ; LINEFIELD(static/wf-st0001.x\=0, 36, 1 ) ; -1.85212023006500E+000 
+match ; wf-st0001 plane_x  78 coordinate_x ; LINEFIELD(static/wf-st0001.x\=0, 78, 1 ) ; -1.32294302147500E+000 
+match ; wf-st0001 plane_x 328 coordinate_x ; LINEFIELD(static/wf-st0001.x\=0,328, 1 ) ;  2.11670883436000E+000 
+
+match ; wf-st0001 plane_x   7 coordinate_y ; LINEFIELD(static/wf-st0001.x\=0,  7, 2 ) ;  0.00000000000000E+000
+match ; wf-st0001 plane_x   9 coordinate_y ; LINEFIELD(static/wf-st0001.x\=0,  9, 2 ) ; -1.05835441718000E+000
+match ; wf-st0001 plane_x  35 coordinate_y ; LINEFIELD(static/wf-st0001.x\=0, 35, 2 ) ; -1.32294302147500E+000
+match ; wf-st0001 plane_x  36 coordinate_y ; LINEFIELD(static/wf-st0001.x\=0, 36, 2 ) ; -1.05835441718000E+000
+match ; wf-st0001 plane_x  78 coordinate_y ; LINEFIELD(static/wf-st0001.x\=0, 78, 2 ) ;  7.93765812885000E-001
+match ; wf-st0001 plane_x 328 coordinate_y ; LINEFIELD(static/wf-st0001.x\=0,328, 2 ) ;  7.93765812885000E-001
+
+match ; wf-st0001 plane_x   7 value ; LINEFIELD(static/wf-st0001.x\=0,  7, 3 ) ;  1.70641900857292E-003
+match ; wf-st0001 plane_x   9 value ; LINEFIELD(static/wf-st0001.x\=0,  9, 3 ) ;  4.72722234956469E-003
+match ; wf-st0001 plane_x  35 value ; LINEFIELD(static/wf-st0001.x\=0, 35, 3 ) ;  1.80632735425115E-002
+match ; wf-st0001 plane_x  36 value ; LINEFIELD(static/wf-st0001.x\=0, 36, 3 ) ;  2.66022333810161E-002
+match ; wf-st0001 plane_x  78 value ; LINEFIELD(static/wf-st0001.x\=0, 78, 3 ) ;  8.79657172129439E-002
+match ; wf-st0001 plane_x 328 value ; LINEFIELD(static/wf-st0001.x\=0,328, 3 ) ;  1.91798194418790E-002
+
+# Convert the density from obf to dx format and check it. This utility runs in parallel.
+Program : oct-convert
+Input : 05-output.03-convert.inp
+match ; Convert to dx (header)     ; GREPFIELD(restart/gs/density.dx, 'origin', 2, 0) ; -5.000000
+match ; Convert to dx (line 513)   ; LINEFIELD(restart/gs/density.dx, 671, 1) ; 0.000097681638760
+match ; Convert to dx (line 29355) ; LINEFIELD(restart/gs/density.dx, 9048, 1) ; 0.000002915649324
+
+# Convert the density from obf to dx by performing two scalar operations. This utility runs in parallel.
+Program : oct-convert
+Input : 05-output.04-convert-op.inp
+Precision: 3e-09
+match ; Convert to dx (line 513)   ; LINEFIELD(convert/density.dx, 671, 1) ; 0.000244199344403
+match ; Convert to dx (line 29355) ; LINEFIELD(convert/density.dx, 9048, 1) ; 7.279592822e-06

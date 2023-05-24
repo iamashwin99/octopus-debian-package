@@ -1,0 +1,37 @@
+# -*- coding: utf-8 mode: shell-script -*-
+
+Test       : BCC iron polarized
+Program    : octopus
+TestGroups : long-run, periodic_systems
+Enabled    : Yes
+Processors : 4
+Input      : 25-Fe_polarized.01-gs.inp
+
+match ; Total k-points   ; GREPFIELD(static/info, 'Total number of k-points', 6) ; 4
+match ; Reduced k-points ; GREPFIELD(static/info, 'Number of symmetry-reduced k-points', 6) ; 4
+match ; Space group        ; GREPFIELD(out, 'Space group', 4) ; 229
+match ; No. of symmetries  ; GREPFIELD(out, 'symmetries that can be used', 5)  ;  8
+
+match ; SCF convergence    ; GREPCOUNT(static/info, 'SCF converged') ; 1
+match ; Total energy       ; GREPFIELD(static/info, 'Total       =', 3) ; -253.54686336
+match ; Ion-ion energy     ; GREPFIELD(static/info, 'Ion-ion     =', 3) ; -156.63361293
+match ; Eigenvalues sum    ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -30.44095851
+match ; Hartree energy     ; GREPFIELD(static/info, 'Hartree     =', 3) ;  66.91363604
+match ; Exchange energy    ; GREPFIELD(static/info, 'Exchange    =', 3) ; -33.18712278
+match ; Correlation energy ; GREPFIELD(static/info, 'Correlation =', 3) ; -2.74189818
+match ; Kinetic energy     ; GREPFIELD(static/info, 'Kinetic     =', 3) ;  121.44577412
+match ; External energy    ; GREPFIELD(static/info, 'External    =', 3) ; -249.34363979
+
+MPIUtil: oct-unfold
+Input: 25-Fe_polarized.02-setup.inp
+
+Program: octopus
+Input: 25-Fe_polarized.03-unocc.inp
+
+MPIUtil: oct-unfold
+Input: 25-Fe_polarized.04-unfold.inp
+
+Precision : 0.002
+match ; AkE kpt 1 ; LINEFIELD(static/ake.dat,  4955, 3) ; 8.903142998019E-01
+match ; AkE kpt 1 ; LINEFIELD(static/ake.dat,  4956, 3) ; 8.639581878911E-01
+match ; AkE kpt 1 ; LINEFIELD(static/ake.dat,  4957, 3) ; 8.388164997222E-01

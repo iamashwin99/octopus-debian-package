@@ -1,0 +1,22 @@
+# -*- coding: utf-8 mode: shell-script -*-
+
+CalculationMode = gs
+fromScratch = yes
+DisableAccel = yes
+
+Radius = 7.0
+Spacing = 0.5
+%Coordinates
+  "Na" | 0 | 0 | 0.0
+%
+SpinComponents = non_collinear
+GuessMagnetDensity = user_defined
+%AtomsMagnetDirection
+ 1 | 1 | 0
+%
+Eigensolver = plan
+EigensolverTolerance = 1e-12
+EigensolverMaxIter = 200
+ConvEigenError = yes
+
+PseudopotentialSet = hgh_lda

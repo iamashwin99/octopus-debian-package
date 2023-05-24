@@ -1,0 +1,27 @@
+CalculationMode = gs
+
+%Coordinates 
+ 'Ca' | 0.0 | 0.0 | 0.0
+%
+
+%Species
+ 'Ca' | species_pseudo | file | '15-calcium_psp8_sic.20ca_sic.drh'
+%
+
+ExtraStates = 3
+
+ExperimentalFeatures = yes
+
+Radius = 5.0
+Spacing = 0.3
+
+Eigensolver = plan
+ConvRelDens = 1e-9
+EigensolverTolerance = 1e-10
+EigensolverMaxIter = 50
+
+FromScratch = yes
+
+SICCorrection = sic_amaldi
+
+

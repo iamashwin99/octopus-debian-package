@@ -1,0 +1,22 @@
+# -*- coding: utf-8 mode: shell-script -*-
+Debug = trace
+
+%Coordinates
+ 'H_f' | 0 | 0 | 0
+%
+ 
+%Species 
+ 'H_f' | species_full_delta
+%
+
+BoxShape = sphere
+Radius = 8.0
+Spacing = 0.4
+fromScratch = yes
+
+TheoryLevel = independent_particles
+
+ConvRelDens = 1e-10
+EigensolverTolerance = 1e-11
+
+PoissonSolver = isf

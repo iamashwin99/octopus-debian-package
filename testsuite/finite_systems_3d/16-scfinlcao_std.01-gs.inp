@@ -1,0 +1,42 @@
+# -*- coding: utf-8 mode: shell-script -*-
+#
+CalculationMode = gs
+FromScratch = yes
+UnitsOutput = ev_angstrom
+
+# Colmont et al
+rCCl  = 1.760*angstrom
+rCH   = 1.080*angstrom
+theta = 108.23 * pi / 180
+
+%Coordinates
+ "C"  |                          0 |                          0 |        0       
+ "H"  |                          0 |                          0 | rCH            
+ "Cl" |                          0 |  rCCl*sin(theta)           | rCCl*cos(theta)
+ "Cl" |  rCCl*sin(theta)*sin(pi/3) | -rCCl*sin(theta)*cos(pi/3) | rCCl*cos(theta)
+ "Cl" | -rCCl*sin(theta)*sin(pi/3) | -rCCl*sin(theta)*cos(pi/3) | rCCl*cos(theta)
+%
+
+%Species
+ 'C'  | species_pseudo | lmax | 3 | lloc | 0
+ 'H'  | species_pseudo | lmax | 3 | lloc | 0
+ 'Cl' | species_pseudo | file | "16-scfinlcao_std.Cl.psf" | lmax | 3 | lloc | 0
+%
+
+Spacing = 0.25*angstrom
+Radius = 6.0*angstrom
+
+XCFunctional = gga_x_pbe + gga_c_pbe
+
+SCFinLCAO = yes
+ExperimentalFeatures = yes
+%Output 
+ geometry | matlab + plane_z
+ density  | matlab + plane_z
+%
+
+SCFCalculatePartialCharges = yes
+
+PoissonSolver = isf
+
+ExperimentalFeatures = yes

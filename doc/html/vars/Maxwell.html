@@ -1,0 +1,200 @@
+
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML-full"></script>
+<style>
+   BODY {background-color: white; 
+         font-size: 10pt; font-family: verdana,helvetica;}
+   A  {text-decoration: none;color: blue}
+</style>
+</head>
+<body>
+
+<a name='Maxwell'</a>
+<H2>Maxwell</H2>
+
+
+<p><b><a name='CheckPointsMediumFromFile'></a>CheckPointsMediumFromFile</b>
+<br/><i>Section</i>: Maxwell
+<br/><i>Type</i>: logical
+<br/><i>Default</i>: no
+<br/><br> Whether to re-calculate the points map by artificially shrinking the coordinate system by a factor of
+ 0.99 to check if the points inside the medium surface are properly detected. This works for only one
+ medium surface which is centered in the origin of the coordinate system.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='LinearMediumBoxFile'></a>LinearMediumBoxFile</b>
+<br/><i>Section</i>: Maxwell
+<br/><i>Type</i>: string
+<br/><br> File in OFF format with the shape of the linear medium.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='LinearMediumBoxShape'></a>LinearMediumBoxShape</b>
+<br/><i>Section</i>: Maxwell
+<br/><i>Type</i>: integer
+<br/><br> This variable defines the shape of the linear medium box.
+ The default is <tt>medium_parallelepiped</tt>.
+
+<br/><i>Options</i>:
+<ul>
+<li><b>medium_parallelepiped</b>:  The medium box will be a parallelepiped whose center and dimensions are taken from
+ the variable <tt>LinearMediumBoxSize</tt>.
+</li>
+<li><b>medium_box_file</b>:  The simulation box will be read from an external file in OFF format, defined by the variable <tt>LinearMediumBoxFile</tt>.
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='LinearMediumBoxSize'></a>LinearMediumBoxSize</b>
+<br/><i>Section</i>: Maxwell
+<br/><i>Type</i>: block
+<br/><br> Defines center and size of a parallelepiped linear medium box.
+<br><br>
+ Example:
+<br><br>
+ <tt>%LinearMediumBoxSize
+ <br>&nbsp;&nbsp;   center_x | center_y | center_z | x_length | y_length | z_length
+ <br>%</tt>
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='LinearMediumEdgeProfile'></a>LinearMediumEdgeProfile</b>
+<br/><i>Section</i>: Maxwell
+<br/><i>Type</i>: integer
+<br/><br> Defines the type of numerical approximation used for the derivatives at the edges of the medium box.
+ Default is edged. When the box shape is read from file, only the edged profile is supported.
+<br><br>
+
+<br/><i>Options</i>:
+<ul>
+<li><b>edged</b>:  Medium box edges are considered steep for derivatives.
+</li>
+<li><b>smooth</b>:  Medium box edged and softened for derivatives.
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='LinearMediumProperties'></a>LinearMediumProperties</b>
+<br/><i>Section</i>: Maxwell
+<br/><i>Type</i>: block
+<br/><br> Defines electromagnetic parameters for a linear medium box.
+<br><br>
+ Example:
+<br><br>
+ <tt>%LinearMediumProperties
+ <br>&nbsp;&nbsp;   epsilon_factor | mu_factor | sigma_e | sigma_m
+ <br>%</tt>
+<br><br>
+ Permittivity factor, permeability factor, electric conductivity and magnetic conductivity of the medium box.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='MediumCurrentCoordinates'></a>MediumCurrentCoordinates</b>
+<br/><i>Section</i>: Maxwell
+<br/><i>Type</i>: block
+<br/><br>  This allows to output phasor current vectors at particular points in space.
+<br><br>
+ <tt>%MediumCurrentCoordinates
+ <br>&nbsp;&nbsp;    -1.0 | 2.0 |  4.0
+ <br>&nbsp;&nbsp;     0.0 | 1.0 | -2.0
+ <br>%</tt>
+<br><br>
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='MediumDispersionType'></a>MediumDispersionType</b>
+<br/><i>Section</i>: Maxwell
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: drude_medium
+<br/><br> Dispersion model used for the medium (only Drude model available for the moment).
+
+<br/><i>Options</i>:
+<ul>
+<li><b>drude_medium</b>:  Drude type of dispersion.
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='MediumPoleDamping'></a>MediumPoleDamping</b>
+<br/><i>Section</i>: Maxwell
+<br/><i>Type</i>: float
+<br/><i>Default</i>: 0
+<br/><br> Damping factor (inverse relaxation time) of the medium.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='MediumPoleEnergy'></a>MediumPoleEnergy</b>
+<br/><i>Section</i>: Maxwell
+<br/><i>Type</i>: float
+<br/><i>Default</i>: 0
+<br/><br> Energy of the pole.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='MediumPoleStrength'></a>MediumPoleStrength</b>
+<br/><i>Section</i>: Maxwell
+<br/><i>Type</i>: float
+<br/><i>Default</i>: 1.0
+<br/><br> Strength of the pole (unitless).
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='PlaneWavesOnOneSide'></a>PlaneWavesOnOneSide</b>
+<br/><i>Section</i>: Maxwell
+<br/><i>Type</i>: logical
+<br/><i>Default</i>: No
+<br/><br> If PlaneWaves should be fed to the box only from one side.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='PlaneWavesSide'></a>PlaneWavesSide</b>
+<br/><i>Section</i>: Maxwell
+<br/><i>Type</i>: string
+<br/><br> Side of the box in which plane waves are evaluated on the boundaries: negative would mean
+ on boundaries which are towards negative values in the selected directions (e.g. -x).
+
+<br/><i>Options</i>:
+<ul>
+<li><b>negative</b>:  Negative side.
+</li>
+<li><b>positive</b>:  Positive side.
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+<a name='Maxwell::Coordinates'</a>
+<H2>Maxwell::Coordinates</H2>
+
+
+<p><b><a name='MaxwellFieldsCoordinate'></a>MaxwellFieldsCoordinate</b>
+<br/><i>Section</i>: Maxwell::Coordinates
+<br/><i>Type</i>: block
+<br/><br>  The Maxwell MaxwellFieldsCoordinate block allows to output Maxwell fields at particular
+  points in space. For each point a new line with three columns has to be added to the block,
+  where the columns denote the x, y, and z coordinate of the point.
+<br><br>
+ <tt>%MaxwellFieldsCoordinate
+ <br>&nbsp;&nbsp;    -1.0 | 2.0 |  4.0
+ <br>&nbsp;&nbsp;     0.0 | 1.0 | -2.0
+ <br>%</tt>
+<br><br>
+
+</p><hr width='30%' align='left'/>
+
+</body>
+</html>

@@ -1,0 +1,18 @@
+# -*- coding: utf-8 mode: shell-script -*-
+
+Test       : Hartree GPU
+Program    : octopus
+TestGroups : short-run, components
+Enabled    : Yes
+
+Precision : 0.005
+Input: 11-hartree_cl.01-fft.inp
+if (available clamdfft); then
+    match ;      FFT OpenCL ;          GREPFIELD(hartree_results, 'Hartree test (abs.) =', 5) ; 0.0000004372307
+endif
+
+if (available cuda); then
+    match ;      FFT Cuda ;          GREPFIELD(hartree_results, 'Hartree test (abs.) =', 5) ; 0.0000004372307
+else
+    match ; Error cuda missing ; GREPCOUNT(err, 'ccelerated FFT') ; 1    
+endif

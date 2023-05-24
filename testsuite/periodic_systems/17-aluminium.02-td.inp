@@ -1,0 +1,54 @@
+CalculationMode = td
+
+MeshIndexType = idx_hilbert
+
+PeriodicDimensions = 3
+
+a = 7.653
+
+Spacing = a/16
+
+BoxShape = parallelepiped
+
+%LatticeParameters
+ a | a | a
+%
+
+%Coordinates
+ 'Al' | 0.0 | 0.0 | 0.0
+ 'Al' | a/2 | a/2 | 0.0
+ 'Al' | a/2 | 0.0 | a/2 
+ 'Al' | 0.0 | a/2 | a/2
+%
+
+%KPointsGrid
+  4  | 1 | 1
+ 1/2 | 0 | 0
+%
+
+PseudopotentialSet = pseudodojo_lda
+
+RestartFixedOccupations = yes
+
+ExtraStates = 2
+
+ExperimentalFeatures = yes
+
+FromScratch = yes
+
+%GaugeVectorField
+ c | 0.0 | 0.0
+%
+
+TDMaxSteps = 150
+TDEnergyUpdateIter = 5
+%TDOutput 
+ energy 
+ geometry 
+ total_current 
+ gauge_field
+%
+
+# test code path without CUDA-aware MPI for this test
+CudaAwareMPI = no
+
