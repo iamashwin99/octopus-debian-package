@@ -31,3 +31,14 @@ Description: ab initio td electronic structure
  electromagnetic fields of arbitrary intensity, shape 
  and frequency in a hopefully ever increasing range of 
  systems types.
+
+Package: octopus-doc
+Architecture: all
+Section: doc
+Depends: ${shlibs:Depends}
+Description: Documentation for octopus-code
+ octopus is a program aimed at the ab initio virtual 
+ experimentation on electron/ion dynamics in external 
+ electromagnetic fields of arbitrary intensity, shape 
+ and frequency in a hopefully ever increasing range of 
+ systems types.
