@@ -1,0 +1,45 @@
+CalculationMode = gs
+
+MeshIndexType = idx_hilbert
+
+PeriodicDimensions = 3
+
+a = 7.653
+
+Spacing = a/16
+
+BoxShape = parallelepiped
+
+%LatticeParameters
+ a | a | a
+%
+
+%Coordinates
+ 'Al' | 0.0 | 0.0 | 0.0
+ 'Al' | a/2 | a/2 | 0.0
+ 'Al' | a/2 | 0.0 | a/2 
+ 'Al' | 0.0 | a/2 | a/2
+%
+
+%KPointsGrid
+  4  | 1 | 1
+ 1/2 | 0 | 0
+%
+
+PseudopotentialSet = pseudodojo_lda
+
+SmearingFunction = fermi_dirac
+Smearing = 0.1*eV
+
+ConvRelDens = 1e-8
+EigensolverTolerance = 1e-9
+ConvEigenError = yes
+
+ExtraStates = 2
+
+ConvEigenError = yes
+
+ExperimentalFeatures = yes
+
+FromScratch = yes
+

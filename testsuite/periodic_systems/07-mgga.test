@@ -1,0 +1,188 @@
+# -*- coding: utf-8 mode: shell-script -*-
+
+Test       : MGGA functionals for solids
+Program    : octopus
+TestGroups : long-run, periodic_systems
+Enabled    : Yes
+
+# ground state
+Input      : 07-mgga.01-tb09_gs_symm.inp
+
+#The reference values for this test must be copied from the one without symmetries
+match ; Total k-points   ; GREPFIELD(static/info, 'Total number of k-points', 6) ; 27
+match ; Reduced k-points ; GREPFIELD(static/info, 'Number of symmetry-reduced k-points', 6) ; 4
+match ; Space group        ; GREPFIELD(out, 'Space group', 4) ; 227
+match ; No. of symmetries  ; GREPFIELD(out, 'symmetries that can be used', 5)  ;  24
+
+match ; SCF convergence    ; GREPCOUNT(static/info, 'SCF converged') ; 1
+match ; Total energy       ; GREPFIELD(static/info, 'Total       =', 3) ; -33.70477080
+match ; Ion-ion energy     ; GREPFIELD(static/info, 'Ion-ion     =', 3) ; -42.94217323
+match ; Eigenvalues sum    ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -3.66647784
+match ; Hartree energy     ; GREPFIELD(static/info, 'Hartree     =', 3) ; 3.86297499
+match ; Exchange energy    ; GREPFIELD(static/info, 'Exchange    =', 3) ; 0.00000000
+match ; Correlation energy ; GREPFIELD(static/info, 'Correlation =', 3) ; -1.78001693
+match ; Kinetic energy     ; GREPFIELD(static/info, 'Kinetic     =', 3) ; 33.16726427
+match ; External energy    ; GREPFIELD(static/info, 'External    =', 3) ; -26.01281994
+
+match ; Eigenvalue [  k=1, n=1   ] ; GREPFIELD(static/info, '#k =       1', 3, 2) ; -0.237687
+match ; Eigenvalue [  k=1, n=8   ] ; GREPFIELD(static/info, '#k =       1', 3, 9) ; -0.033387
+match ; Eigenvalue [  k=1, n=16  ] ; GREPFIELD(static/info, '#k =       1', 3, 17) ; 0.431539
+match ; Eigenvalue [  k=1, n=17  ] ; GREPFIELD(static/info, '#k =       1', 3, 18) ; 0.431539
+
+match ; Eigenvalue [  k=2, n=1   ] ; GREPFIELD(static/info, '#k =       2', 3, 2) ; -0.404634
+match ; Eigenvalue [  k=2, n=8   ] ; GREPFIELD(static/info, '#k =       2', 3, 9) ; -0.082183
+match ; Eigenvalue [  k=2, n=16  ] ; GREPFIELD(static/info, '#k =       2', 3, 17) ; 0.407338
+match ; Eigenvalue [  k=2, n=17  ] ; GREPFIELD(static/info, '#k =       2', 3, 18) ; 0.419124
+
+match ; Direct gap ; GREPFIELD(static/info, 'Direct gap', 7, 0) ; 0.2395
+match ; Indirect gap ; GREPFIELD(static/info, 'Indirect gap', 10, 0) ; 0.2153
+
+#No check for k-points higher than 2, as they might not belong to the IBZ
+
+Input      : 07-mgga.02-tb09_gs_nosymm.inp
+
+match ; Total k-points   ; GREPFIELD(static/info, 'Total number of k-points', 6) ; 27
+match ; Reduced k-points ; GREPFIELD(static/info, 'Number of symmetry-reduced k-points', 6) ; 27
+match ; Space group        ; GREPFIELD(out, 'Space group', 4) ; 227
+match ; No. of symmetries  ; GREPFIELD(out, 'symmetries that can be used', 5)  ;  24
+
+match ; SCF convergence    ; GREPCOUNT(static/info, 'SCF converged') ; 1
+match ; Total energy       ; GREPFIELD(static/info, 'Total       =', 3) ; -33.70477080
+match ; Ion-ion energy     ; GREPFIELD(static/info, 'Ion-ion     =', 3) ; -42.94217323
+match ; Eigenvalues sum    ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -3.66647784
+match ; Hartree energy     ; GREPFIELD(static/info, 'Hartree     =', 3) ; 3.86297499
+match ; Exchange energy    ; GREPFIELD(static/info, 'Exchange    =', 3) ; 0.00000000
+match ; Correlation energy ; GREPFIELD(static/info, 'Correlation =', 3) ; -1.78001693
+match ; Kinetic energy     ; GREPFIELD(static/info, 'Kinetic     =', 3) ; 33.16726427
+match ; External energy    ; GREPFIELD(static/info, 'External    =', 3) ; -26.01281994
+
+match ; Eigenvalue [  k=1, n=1   ] ; GREPFIELD(static/info, '#k =       1', 3, 2) ; -0.237687
+match ; Eigenvalue [  k=1, n=8   ] ; GREPFIELD(static/info, '#k =       1', 3, 9) ; -0.033387
+match ; Eigenvalue [  k=1, n=16  ] ; GREPFIELD(static/info, '#k =       1', 3, 17) ; 0.431539
+match ; Eigenvalue [  k=1, n=17  ] ; GREPFIELD(static/info, '#k =       1', 3, 18) ; 0.431539
+
+match ; Eigenvalue [  k=2, n=1   ] ; GREPFIELD(static/info, '#k =       2', 3, 2) ; -0.404634
+match ; Eigenvalue [  k=2, n=8   ] ; GREPFIELD(static/info, '#k =       2', 3, 9) ; -0.082183
+match ; Eigenvalue [  k=2, n=16  ] ; GREPFIELD(static/info, '#k =       2', 3, 17) ; 0.407338
+match ; Eigenvalue [  k=2, n=17  ] ; GREPFIELD(static/info, '#k =       2', 3, 18) ; 0.419124
+
+match ; Eigenvalue [  k=8, n=1   ] ; GREPFIELD(static/info, '#k =       8', 3, 2) ; -0.370821
+match ; Eigenvalue [  k=8, n=8   ] ; GREPFIELD(static/info, '#k =       8', 3, 9) ; -0.060897
+match ; Eigenvalue [  k=8, n=16  ] ; GREPFIELD(static/info, '#k =       8', 3, 17) ; 0.486861
+match ; Eigenvalue [  k=8, n=17  ] ; GREPFIELD(static/info, '#k =       8', 3, 18) ; 0.507452
+
+match ; Eigenvalue [  k=20,n=1   ] ; GREPFIELD(static/info, '#k =      20', 3, 2) ; -0.340194
+match ; Eigenvalue [  k=20,n=8   ] ; GREPFIELD(static/info, '#k =      20', 3, 9) ; 0.022912
+match ; Eigenvalue [  k=20,n=16  ] ; GREPFIELD(static/info, '#k =      20', 3, 17) ; 0.505459
+match ; Eigenvalue [  k=20,n=17  ] ; GREPFIELD(static/info, '#k =      20', 3, 18) ; 0.505459
+
+
+Input      : 07-mgga.03-tb09_td.inp
+
+match ; Energy           [step  1] ; LINEFIELD(td.general/energy, -21, 3) ; -3.361334127677e+01
+match ; Energy           [step  5] ; LINEFIELD(td.general/energy, -16, 3) ; -3.361381983449e+01
+match ; Energy           [step 10] ; LINEFIELD(td.general/energy, -11, 3) ; -3.361380972944e+01
+match ; Energy           [step 15] ; LINEFIELD(td.general/energy, -6, 3) ;  -3.361338647759e+01
+match ; Energy           [step 20] ; LINEFIELD(td.general/energy, -1, 3) ;  -3.361303538040e+01
+
+match ; Vector potential [step  1] ; LINEFIELD(td.general/gauge_field, -21, 3) ; 1.000000000000e+01
+match ; Vector potential [step  5] ; LINEFIELD(td.general/gauge_field, -16, 3) ; 9.930153658307e+00
+match ; Vector potential [step 10] ; LINEFIELD(td.general/gauge_field, -11, 3) ; 9.727065743565e+00
+match ; Vector potential [step 15] ; LINEFIELD(td.general/gauge_field, -6, 3) ;  9.403563896210e+00
+match ; Vector potential [step 20] ; LINEFIELD(td.general/gauge_field, -1, 3) ;  8.971144227978e+00
+
+
+
+#Not implemented for CUDA+MPI
+if(available cuda); then
+  Processors : 1
+endif
+Input  : 07-mgga.04-br89_gs.inp
+
+Precision: 2.70e-14
+match ;  Total k-points    ; GREPFIELD(static/info, 'Total number of k-points', 6) ; 27.0
+Precision: 2.70e-14
+match ;  Reduced k-points  ; GREPFIELD(static/info, 'Number of symmetry-reduced k-points', 6) ; 27.0
+Precision: 2.27e-13
+match ;  Space group         ; GREPFIELD(out, 'Space group', 4) ; 227.0
+Precision: 2.40e-14
+match ;  No. of symmetries   ; GREPFIELD(out, 'symmetries that can be used', 5) ; 24.0
+Precision: 1.00e-15
+match ;  SCF convergence     ; GREPCOUNT(static/info, 'SCF converged') ; 1.0
+Precision: 1.00e-07
+match ;  Total energy        ; GREPFIELD(static/info, 'Total       =', 3) ; -46.704750715
+Precision: 4.29e-14
+match ;  Ion-ion energy      ; GREPFIELD(static/info, 'Ion-ion     =', 3) ; -42.94217323
+Precision: 1.00e-07
+match ;  Eigenvalues sum     ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -4.42293928
+Precision: 1.10e-08
+match ;  Hartree energy      ; GREPFIELD(static/info, 'Hartree     =', 3) ; 4.24581552
+Precision: 1.30e-14
+match ;  Exchange energy     ; GREPFIELD(static/info, 'Exchange    =', 3) ; -12.97510233
+Precision: 1.78e-15
+match ;  Correlation energy  ; GREPFIELD(static/info, 'Correlation =', 3) ; -1.78461511
+Precision: 5.50e-08
+match ;  Kinetic energy      ; GREPFIELD(static/info, 'Kinetic     =', 3) ; 34.971546475
+Precision: 5.00e-8
+match ;  External energy     ; GREPFIELD(static/info, 'External    =', 3) ; -28.22022206
+Precision: 2.67e-16
+match ;  Eigenvalue [  k=1, n=1   ]  ; GREPFIELD(static/info, '#k =       1', 3, 2) ; -0.266653
+Precision: 5.16e-17
+match ;  Eigenvalue [  k=1, n=8   ]  ; GREPFIELD(static/info, '#k =       1', 3, 9) ; -0.051584
+Precision: 4.09e-16
+match ;  Eigenvalue [  k=1, n=16  ]  ; GREPFIELD(static/info, '#k =       1', 3, 17) ; 0.408788
+Precision: 4.09e-16
+match ;  Eigenvalue [  k=1, n=17  ]  ; GREPFIELD(static/info, '#k =       1', 3, 18) ; 0.408788
+Precision: 4.40e-16
+match ;  Eigenvalue [  k=2, n=1   ]  ; GREPFIELD(static/info, '#k =       2', 3, 2) ; -0.440332
+Precision: 1.03e-16
+match ;  Eigenvalue [  k=2, n=8   ]  ; GREPFIELD(static/info, '#k =       2', 3, 9) ; -0.103444
+Precision: 3.83e-16
+match ;  Eigenvalue [  k=2, n=16  ]  ; GREPFIELD(static/info, '#k =       2', 3, 17) ; 0.382906
+Precision: 3.95e-16
+match ;  Eigenvalue [  k=2, n=17  ]  ; GREPFIELD(static/info, '#k =       2', 3, 18) ; 0.395283
+Precision: 4.05e-16
+match ;  Eigenvalue [  k=8, n=1   ]  ; GREPFIELD(static/info, '#k =       8', 3, 2) ; -0.405019
+Precision: 8.19e-17
+match ;  Eigenvalue [  k=8, n=8   ]  ; GREPFIELD(static/info, '#k =       8', 3, 9) ; -0.081922
+Precision: 4.67e-16
+match ;  Eigenvalue [  k=8, n=16  ]  ; GREPFIELD(static/info, '#k =       8', 3, 17) ; 0.466501
+Precision: 4.83e-16
+match ;  Eigenvalue [  k=8, n=17  ]  ; GREPFIELD(static/info, '#k =       8', 3, 18) ; 0.483248
+Precision: 3.73e-16
+match ;  Eigenvalue [  k=20,n=1   ]  ; GREPFIELD(static/info, '#k =      20', 3, 2) ; -0.372999
+Precision: 4.34e-18
+match ;  Eigenvalue [  k=20,n=8   ]  ; GREPFIELD(static/info, '#k =      20', 3, 9) ; 0.004341
+Precision: 4.85e-16
+match ;  Eigenvalue [  k=20,n=16  ]  ; GREPFIELD(static/info, '#k =      20', 3, 17) ; 0.485364
+Precision: 4.85e-16
+match ;  Eigenvalue [  k=20,n=17  ]  ; GREPFIELD(static/info, '#k =      20', 3, 18) ; 0.485364
+
+Input: 07-mgga.05-br89_primitive.inp
+Precision: 1.0e-7
+match ; Total k-points   ; GREPFIELD(static/info, 'Total number of k-points', 6) ; 9
+match ; Reduced k-points ; GREPFIELD(static/info, 'Number of symmetry-reduced k-points', 6) ; 9
+match ; Space group        ; GREPFIELD(out, 'Space group', 4) ; 191
+match ; No. of symmetries  ; GREPFIELD(out, 'symmetries that can be used', 5)  ;  12
+
+Precision: 7.7e-08
+match ;  Total energy        ; GREPFIELD(static/info, 'Total       =', 3) ; -11.56067793
+Precision: 1.98e-14
+match ;  Ion-ion energy      ; GREPFIELD(static/info, 'Ion-ion     =', 3) ; -19.80012852
+Precision: 2.e-07
+match ;  Eigenvalues sum     ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -4.18793758
+Precision: 7.e-08
+match ;  Hartree energy      ; GREPFIELD(static/info, 'Hartree     =', 3) ; -11.227418905
+Precision: 5.50e-08
+match ;  Exchange energy     ; GREPFIELD(static/info, 'Exchange    =', 3) ; -3.18716585
+Precision: 4.39e-16
+match ;  Correlation energy  ; GREPFIELD(static/info, 'Correlation =', 3) ; -0.43904439
+Precision: 4.62e-07
+match ;  Kinetic energy      ; GREPFIELD(static/info, 'Kinetic     =', 3) ; 8.46911021
+Precision: 4.23e-07
+match ;  External energy     ; GREPFIELD(static/info, 'External    =', 3) ; 14.623969505
+
+Precision: 9.22e-16
+match ;  Eigenvalue [  k=1, n=1   ]  ; GREPFIELD(static/info, '#k =       1', 3, 1) ; -0.921921
+Precision: 8.24e-16
+match ;  Eigenvalue [  k=2, n=1   ]  ; GREPFIELD(static/info, '#k =       2', 3, 1) ; -0.824072

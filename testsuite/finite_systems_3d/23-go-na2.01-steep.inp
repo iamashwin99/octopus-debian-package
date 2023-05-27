@@ -1,0 +1,20 @@
+CalculationMode = go
+
+GOMethod = steep
+
+dist = 3.0
+
+%Coordinates
+'Na'  | 0 | 0 | -dist 
+'Na'  | 0 | 0 |  dist 
+%
+
+Spacing = 0.56692
+Radius = 13.2280
+
+FromScratch = yes
+
+
+FilterPotentials = filter_none
+
+MixField = density

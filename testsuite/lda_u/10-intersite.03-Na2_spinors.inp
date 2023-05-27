@@ -1,0 +1,40 @@
+CalculationMode = gs
+ExperimentalFeatures = yes
+FromScratch = yes
+
+#This tests does not run on GPU at the moment
+#But the second part (TD) runs well, so we simply 
+#make it run on the CPU for GPU bots
+DisableAccel = yes
+
+dist = 3.0
+
+%Species
+ "Na" | species_pseudo | set | standard | hubbard_l | 0 
+%
+
+%Coordinates
+'Na'  | 0 | 0 | -dist 
+'Na'  | 0 | 0 |  dist 
+%
+
+Radius = 7
+Spacing = 0.5
+
+ConvRelDens = 1e-8
+
+SpinComponents = spinors
+
+GuessMagnetDensity = paramagnetic
+ExtraStates = 2
+
+DFTULevel = dft_u_acbn0
+AOThreshold = 0.05
+AONormalize = no
+
+ACBN0IntersiteInteraction = yes
+ACBN0IntersiteCutoff = 7
+%Output
+  effectiveU
+%
+

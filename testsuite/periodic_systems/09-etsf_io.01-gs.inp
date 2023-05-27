@@ -1,0 +1,51 @@
+FromScratch=yes
+
+CalculationMode = gs
+
+PeriodicDimensions = 3
+
+a = 10.2
+Spacing = a/14
+
+BoxShape = parallelepiped
+%LatticeParameters
+ a | a | a
+%
+
+%ReducedCoordinates
+  "Si" |   0.0       | 0.0       | 0.0 
+  "Si" |   1/2       | 1/2       | 0.0
+  "Si" |   1/2       | 0.0       | 1/2
+  "Si" |   0.0       | 1/2       | 1/2 
+  "Si" |   1/4       | 1/4       | 1/4 
+  "Si" |   1/4 + 1/2 | 1/4 + 1/2 | 1/4
+  "Si" |   1/4 + 1/2 | 1/4       | 1/4 + 1/2
+  "Si" |   1/4       | 1/4 + 1/2 | 1/4 + 1/2 
+%
+
+%KPointsReduced
+ 1.0 | 0.0 | 0.0 | 0.0
+ 2.0 | 0.5 | 0.5 | 0.5
+%
+
+ExtraStates = 2
+ConvEigenError = yes
+
+ExperimentalFeatures = yes
+%Output 
+ wfs         | "output_format" | etsf + netcdf
+ wfs_fourier | "output_format" | etsf + netcdf
+ density     | "output_format" | etsf + netcdf
+ geometry
+%
+OutputFormat = etsf + netcdf
+OutputWfsNumber = "3-4"
+
+# ETSF_IO output is currently not compatible with k-point parallelization
+ParKpoints = no
+
+FilterPotentials = filter_none
+
+MixField = density
+
+DisableAccel = yes

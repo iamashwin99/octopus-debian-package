@@ -1,0 +1,58 @@
+#Lithium Floride (LiF) simple cubi
+
+CalculationMode = gs
+PeriodicDimensions = 3
+BoxShape = parallelepiped
+ExperimentalFeatures = yes
+DisableAccel = yes
+
+a = 7.578
+
+PseudopotentialSet = hscv_lda
+
+%LatticeParameters
+  a | a | a
+%
+
+%LatticeVectors
+ 0.  | 0.5 | 0.5
+ 0.5 | 0.  | 0.5
+ 0.5 | 0.5 | 0.0
+%
+
+%ReducedCoordinates
+ "Li" | 0.0 | 0.0 | 0.0
+ "F"  | 1/4 | 1/4 | 1/4
+%
+
+Spacing = 0.4
+
+FromScratch = yes
+
+SpinComponents = polarized
+GuessMagnetDensity = paramagnetic
+
+nk = 2
+%KPointsGrid
+nk | nk | nk
+%
+KPointsUseSymmetries = no
+
+ExtraStates = 1
+
+DFTULevel = dft_u_acbn0
+UseAllAtomicOrbitals = yes
+AOTruncation = ao_full
+AOThreshold = 0.05
+AONormalize = no
+%Output
+  occ_matrices
+  effectiveU
+  kanamoriU
+%
+ACBN0Screening = 0.5
+
+DFTUPoissonSolver = dft_u_poisson_fft
+
+ConvRelDens = 1e-9
+EigensolverTolerance = 1e-10

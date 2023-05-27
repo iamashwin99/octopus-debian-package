@@ -1,0 +1,5 @@
+UnitsOutput = ev_angstrom
+PropagationSpectrumMaxEnergy = 10.0*eV
+PropagationSpectrumEnergyStep = 0.1*eV
+PropagationSpectrumTransform = exponential
+

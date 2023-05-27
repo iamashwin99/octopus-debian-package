@@ -1,0 +1,44 @@
+CalculationMode = gs
+
+FromScratch=yes
+
+PeriodicDimensions = 3
+
+a = 6.6329387
+%LatticeParameters
+ a | a | a
+%
+Spacing = a/10
+
+%Coordinates
+  "Li" |  0.0 | 0.0 | 0.0 
+  "Li" |  a/2 | a/2 | a/2 
+%
+
+%Species
+ 'Li' | species_pseudo | lmax | 2 | lloc | 0  
+%
+
+BoxShape = parallelepiped
+
+EigensolverTolerance = 1e-7
+ConvEigenError = yes
+
+%KPointsGrid
+4 | 4 | 4
+1/2 | 1/2 | 1/2
+%
+
+KPointsUseSymmetries = no
+
+%Output 
+ density | xcrysden
+ forces  | xcrysden
+%
+
+ExtraStates = 2
+
+FilterPotentials = filter_none
+
+MixField = density
+

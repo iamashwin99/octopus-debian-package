@@ -1,0 +1,55 @@
+
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML-full"></script>
+<style>
+   BODY {background-color: white; 
+         font-size: 10pt; font-family: verdana,helvetica;}
+   A  {text-decoration: none;color: blue}
+</style>
+</head>
+<body>
+
+<a name='DFTBPlusInterface'</a>
+<H2>DFTBPlusInterface</H2>
+
+
+<p><b><a name='InitialIonicTemperature'></a>InitialIonicTemperature</b>
+<br/><i>Section</i>: DFTBPlusInterface
+<br/><i>Type</i>: float
+<br/><i>Default</i>: 0.0
+<br/><br> If this variable is present, the ions will have initial velocities
+ velocities to the atoms following a Boltzmann distribution with
+ this temperature (in Kelvin). Used only if <tt>TDDynamics = Ehrenfest</tt>
+ and  <tt>MoveIons = yes</tt>.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='MaxAngularMomentum'></a>MaxAngularMomentum</b>
+<br/><i>Section</i>: DFTBPlusInterface
+<br/><i>Type</i>: block
+<br/><br> Specifies the highest angular momentum for each atom type. All orbitals up
+ to that angular momentum will be included in the calculation.
+ Possible values for the angular momenta are s, p, d, f.
+ These are examples:
+<br><br>
+ <tt>%MaxAngularMomentum
+ <br>&nbsp;&nbsp;'O'   | 'p'
+ <br>&nbsp;&nbsp;'H'   | 's'
+ <br>%</tt>
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='SccTolerance'></a>SccTolerance</b>
+<br/><i>Section</i>: DFTBPlusInterface
+<br/><i>Type</i>: float
+<br/><br> Self-consistent-charges convergence tolerance. Once this
+ tolerance has been achieved the SCC cycle will stop.
+
+</p><hr width='30%' align='left'/>
+
+</body>
+</html>

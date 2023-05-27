@@ -1,0 +1,129 @@
+# -*- coding: utf-8 mode: shell-script -*-
+
+Test       : Solar system as system of systems
+Program    : octopus
+TestGroups : short-run, multisystem
+Enabled    : Yes
+
+Processors: 1
+
+Input: 01-nested_systems.01-two_levels.inp
+
+Precision: 2.98e-11
+match ;  Sun   pos x (t=3 days)  ; LINEFIELD(SolarSystem/Sun/td.general/coordinates, -1, 3) ; -596.776232302603
+Precision: 5.51e-12
+match ;  Sun   pos y (t=3 days)  ; LINEFIELD(SolarSystem/Sun/td.general/coordinates, -1, 4) ; -110.239846734449
+Precision: 3.30e-16
+match ;  Sun   pos z (t=3 days)  ; LINEFIELD(SolarSystem/Sun/td.general/coordinates, -1, 5) ; 0.00660286376950636
+Precision: 2.30e-16
+match ;  Sun   vel x (t=3 days)  ; LINEFIELD(SolarSystem/Sun/td.general/coordinates, -1, 6) ; -0.0045957597508336
+Precision: 4.45e-17
+match ;  Sun   vel y (t=3 days)  ; LINEFIELD(SolarSystem/Sun/td.general/coordinates, -1, 7) ; -0.000889968484955024
+Precision: 2.64e-21
+match ;  Sun   vel z (t=3 days)  ; LINEFIELD(SolarSystem/Sun/td.general/coordinates, -1, 8) ; 5.27325387303832e-08
+Precision: 7.30e-03
+match ;  Earth pos x (t=3 days)  ; LINEFIELD(SolarSystem/Earth/td.general/coordinates, -1, 3) ; -146019712106.829
+Precision: 1.61e-03
+match ;  Earth pos y (t=3 days)  ; LINEFIELD(SolarSystem/Earth/td.general/coordinates, -1, 4) ; -32217320997.2079
+Precision: 8.69e-08
+match ;  Earth pos z (t=3 days)  ; LINEFIELD(SolarSystem/Earth/td.general/coordinates, -1, 5) ; 1737739.65756458
+Precision: 2.97e-10
+match ;  Earth vel x (t=3 days)  ; LINEFIELD(SolarSystem/Earth/td.general/coordinates, -1, 6) ; 5942.68862841172
+Precision: 1.46e-09
+match ;  Earth vel y (t=3 days)  ; LINEFIELD(SolarSystem/Earth/td.general/coordinates, -1, 7) ; -29196.6016911875
+Precision: 1.49e-14
+match ;  Earth vel z (t=3 days)  ; LINEFIELD(SolarSystem/Earth/td.general/coordinates, -1, 8) ; 0.297514804682233
+Precision: 7.31e-03
+match ;  Moon  pos x (t=3 days)  ; LINEFIELD(SolarSystem/Moon/td.general/coordinates, -1, 3) ; -146145896703.363
+Precision: 1.59e-03
+match ;  Moon  pos y (t=3 days)  ; LINEFIELD(SolarSystem/Moon/td.general/coordinates, -1, 4) ; -31858226208.5172
+Precision: 5.75e+04
+match ;  Moon  pos z (t=3 days)  ; LINEFIELD(SolarSystem/Moon/td.general/coordinates, -1, 5) ; 11490000.1184493
+Precision: 2.50e-08
+match ;  Moon  vel x (t=3 days)  ; LINEFIELD(SolarSystem/Moon/td.general/coordinates, -1, 6) ; 5001.258383296
+Precision: 1.48e-09
+match ;  Moon  vel y (t=3 days)  ; LINEFIELD(SolarSystem/Moon/td.general/coordinates, -1, 7) ; -29602.3194580209
+Precision: 4.24e-12
+match ;  Moon  vel z (t=3 days)  ; LINEFIELD(SolarSystem/Moon/td.general/coordinates, -1, 8) ; 84.8457153520452
+
+
+Input: 01-nested_systems.02-three_levels.inp
+
+# The values for the following matches are the same as above, as the way how the systems are divided into subsystems is equivalent
+Precision: 2.98e-11
+match ;  Sun   pos x (t=3 days)  ; LINEFIELD(SolarSystem/Sun/td.general/coordinates, -1, 3) ; -596.776232302603
+Precision: 5.51e-12
+match ;  Sun   pos y (t=3 days)  ; LINEFIELD(SolarSystem/Sun/td.general/coordinates, -1, 4) ; -110.239846734449
+Precision: 3.30e-16
+match ;  Sun   pos z (t=3 days)  ; LINEFIELD(SolarSystem/Sun/td.general/coordinates, -1, 5) ; 0.00660286376950636
+Precision: 2.30e-16
+match ;  Sun   vel x (t=3 days)  ; LINEFIELD(SolarSystem/Sun/td.general/coordinates, -1, 6) ; -0.0045957597508336
+Precision: 4.45e-17
+match ;  Sun   vel y (t=3 days)  ; LINEFIELD(SolarSystem/Sun/td.general/coordinates, -1, 7) ; -0.000889968484955024
+Precision: 2.64e-21
+match ;  Sun   vel z (t=3 days)  ; LINEFIELD(SolarSystem/Sun/td.general/coordinates, -1, 8) ; 5.27325387303832e-08
+Precision: 7.30e-03
+match ;  Earth pos x (t=3 days)  ; LINEFIELD(SolarSystem/Earth/td.general/coordinates, -1, 3) ; -146019712106.829
+Precision: 1.61e-03
+match ;  Earth pos y (t=3 days)  ; LINEFIELD(SolarSystem/Earth/td.general/coordinates, -1, 4) ; -32217320997.2079
+Precision: 8.69e-08
+match ;  Earth pos z (t=3 days)  ; LINEFIELD(SolarSystem/Earth/td.general/coordinates, -1, 5) ; 1737739.65756458
+Precision: 2.97e-10
+match ;  Earth vel x (t=3 days)  ; LINEFIELD(SolarSystem/Earth/td.general/coordinates, -1, 6) ; 5942.68862841172
+Precision: 1.46e-09
+match ;  Earth vel y (t=3 days)  ; LINEFIELD(SolarSystem/Earth/td.general/coordinates, -1, 7) ; -29196.6016911875
+Precision: 1.49e-14
+match ;  Earth vel z (t=3 days)  ; LINEFIELD(SolarSystem/Earth/td.general/coordinates, -1, 8) ; 0.297514804682233
+Precision: 7.31e-03
+match ;  Moon  pos x (t=3 days)  ; LINEFIELD(SolarSystem/Moon/td.general/coordinates, -1, 3) ; -146145896703.363
+Precision: 1.59e-03
+match ;  Moon  pos y (t=3 days)  ; LINEFIELD(SolarSystem/Moon/td.general/coordinates, -1, 4) ; -31858226208.5172
+Precision: 5.75e+04
+match ;  Moon  pos z (t=3 days)  ; LINEFIELD(SolarSystem/Moon/td.general/coordinates, -1, 5) ; 11490000.1184493
+Precision: 2.50e-08
+match ;  Moon  vel x (t=3 days)  ; LINEFIELD(SolarSystem/Moon/td.general/coordinates, -1, 6) ; 5001.258383296
+Precision: 1.48e-09
+match ;  Moon  vel y (t=3 days)  ; LINEFIELD(SolarSystem/Moon/td.general/coordinates, -1, 7) ; -29602.3194580209
+Precision: 4.24e-12
+match ;  Moon  vel z (t=3 days)  ; LINEFIELD(SolarSystem/Moon/td.general/coordinates, -1, 8) ; 84.8457153520452
+
+
+Input: 01-nested_systems.03-four_levels.inp
+
+# The values for the following matches are the same as above, as the way how the systems are divided into subsystems is equivalent
+Precision: 2.98e-11
+match ;  Sun   pos x (t=3 days)  ; LINEFIELD(SolarSystem/Sun/td.general/coordinates, -1, 3) ; -596.776232302603
+Precision: 5.51e-12
+match ;  Sun   pos y (t=3 days)  ; LINEFIELD(SolarSystem/Sun/td.general/coordinates, -1, 4) ; -110.239846734449
+Precision: 3.30e-16
+match ;  Sun   pos z (t=3 days)  ; LINEFIELD(SolarSystem/Sun/td.general/coordinates, -1, 5) ; 0.00660286376950636
+Precision: 2.30e-16
+match ;  Sun   vel x (t=3 days)  ; LINEFIELD(SolarSystem/Sun/td.general/coordinates, -1, 6) ; -0.0045957597508336
+Precision: 4.45e-17
+match ;  Sun   vel y (t=3 days)  ; LINEFIELD(SolarSystem/Sun/td.general/coordinates, -1, 7) ; -0.000889968484955024
+Precision: 2.64e-21
+match ;  Sun   vel z (t=3 days)  ; LINEFIELD(SolarSystem/Sun/td.general/coordinates, -1, 8) ; 5.27325387303832e-08
+Precision: 7.30e-03
+match ;  Earth pos x (t=3 days)  ; LINEFIELD(SolarSystem/Earth/td.general/coordinates, -1, 3) ; -146019712106.829
+Precision: 1.61e-03
+match ;  Earth pos y (t=3 days)  ; LINEFIELD(SolarSystem/Earth/td.general/coordinates, -1, 4) ; -32217320997.2079
+Precision: 8.69e-08
+match ;  Earth pos z (t=3 days)  ; LINEFIELD(SolarSystem/Earth/td.general/coordinates, -1, 5) ; 1737739.65756458
+Precision: 2.97e-10
+match ;  Earth vel x (t=3 days)  ; LINEFIELD(SolarSystem/Earth/td.general/coordinates, -1, 6) ; 5942.68862841172
+Precision: 1.46e-09
+match ;  Earth vel y (t=3 days)  ; LINEFIELD(SolarSystem/Earth/td.general/coordinates, -1, 7) ; -29196.6016911875
+Precision: 1.49e-14
+match ;  Earth vel z (t=3 days)  ; LINEFIELD(SolarSystem/Earth/td.general/coordinates, -1, 8) ; 0.297514804682233
+Precision: 7.31e-03
+match ;  Moon  pos x (t=3 days)  ; LINEFIELD(SolarSystem/Moon/td.general/coordinates, -1, 3) ; -146145896703.363
+Precision: 1.59e-03
+match ;  Moon  pos y (t=3 days)  ; LINEFIELD(SolarSystem/Moon/td.general/coordinates, -1, 4) ; -31858226208.5172
+Precision: 5.75e+04
+match ;  Moon  pos z (t=3 days)  ; LINEFIELD(SolarSystem/Moon/td.general/coordinates, -1, 5) ; 11490000.1184493
+Precision: 2.50e-08
+match ;  Moon  vel x (t=3 days)  ; LINEFIELD(SolarSystem/Moon/td.general/coordinates, -1, 6) ; 5001.258383296
+Precision: 1.48e-09
+match ;  Moon  vel y (t=3 days)  ; LINEFIELD(SolarSystem/Moon/td.general/coordinates, -1, 7) ; -29602.3194580209
+Precision: 4.24e-12
+match ;  Moon  vel z (t=3 days)  ; LINEFIELD(SolarSystem/Moon/td.general/coordinates, -1, 8) ; 84.8457153520452

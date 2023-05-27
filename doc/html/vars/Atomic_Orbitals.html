@@ -1,0 +1,88 @@
+
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML-full"></script>
+<style>
+   BODY {background-color: white; 
+         font-size: 10pt; font-family: verdana,helvetica;}
+   A  {text-decoration: none;color: blue}
+</style>
+</head>
+<body>
+
+<a name='Atomic Orbitals'</a>
+<H2>Atomic Orbitals</H2>
+
+
+<p><b><a name='AOLoewdin'></a>AOLoewdin</b>
+<br/><i>Section</i>: Atomic Orbitals
+<br/><i>Type</i>: logical
+<br/><i>Default</i>: no
+<br/><br> This option determines if the atomic orbital basis is orthogonalized or not.
+ This is done for using the Loewdin orthogonalization scheme.
+ The default is set to no for the moment as this option is
+ not yet implemented for isolated systems, and seems to lead to important egg-box effect
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='AONormalize'></a>AONormalize</b>
+<br/><i>Section</i>: Atomic Orbitals
+<br/><i>Type</i>: logical
+<br/><i>Default</i>: yes
+<br/><br> If set to yes, Octopus will normalize the atomic orbitals individually.
+ This variable is ignored is <tt>AOLoewdin<\tt> is set to yes.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='AOSubmesh'></a>AOSubmesh</b>
+<br/><i>Section</i>: Atomic Orbitals
+<br/><i>Type</i>: logical
+<br/><br> If set to yes, Octopus will use submeshes to internally store the orbitals with
+ their phase instead of storing them on the mesh. This is usually slower for small
+ periodic systems, but becomes advantageous for large supercells.
+ Submeshes are not compatible with Loewdin orthogonalization.
+ For periodic systems, the default is set to ye, whereas it is set to no for isolated systems.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='AOThreshold'></a>AOThreshold</b>
+<br/><i>Section</i>: Atomic Orbitals
+<br/><i>Type</i>: float
+<br/><i>Default</i>: 0.01
+<br/><br> Determines the threshold used to compute the radius of the atomic orbitals for LDA+U and for Wannier90.
+ This radius is computed by making sure that the
+ absolute value of the radial part of the atomic orbital is below the specified threshold.
+ This value should be converged to be sure that results do not depend on this value.
+ However increasing this value increases the number of grid points covered by the orbitals and directly affect performances.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='AOTruncation'></a>AOTruncation</b>
+<br/><i>Section</i>: Atomic Orbitals
+<br/><i>Type</i>: flag
+<br/><i>Default</i>: ao_full
+<br/><br> This option determines how Octopus will truncate the orbitals used for LDA+U.
+ Except for the full method, the other options are only there to get a quick idea.
+
+<br/><i>Options</i>:
+<ul>
+<li><b>ao_full</b>:  The full size of the orbitals used. The radius is controled by variable AOThreshold.
+</li>
+<li><b>ao_box</b>:  The radius of the orbitals are restricted to the size of the simulation box.
+ This reduces the number of points used to discretize the orbitals.
+ This is mostly a debug option, and one should be aware that changing the size of the simulation box
+ will affect the result of the calculation. It is recommended to use ao_nlradius instead.
+</li>
+<li><b>ao_nlradius</b>:  The radius of the orbitals are restricted to the radius of the non-local part of the pseudopotential
+ of the corresponding atom.
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+</body>
+</html>

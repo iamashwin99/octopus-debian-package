@@ -1,0 +1,29 @@
+CalculationMode = gs
+
+ExperimentalFeatures = yes
+
+FromScratch = yes
+
+Radius = 3
+
+Spacing = 0.6
+
+
+LCAOAlternative = yes
+
+Eigensolver = rmmdiis
+ConvRelDens = 2e-6
+EigensolverTolerance = 1e-7
+
+ExtraStates = 20
+
+ReportMemory = yes
+
+XYZCoordinates = "10-fullerene.geometry.xyz"
+
+SCFCalculatePartialCharges = yes
+
+ExperimentalFeatures = yes
+MixField = density
+
+PoissonSolver = isf

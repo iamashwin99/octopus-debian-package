@@ -1,0 +1,108 @@
+# -*- coding: utf-8 mode: shell-script -*-
+
+Test       : Multisystem Propagation Verlet Restart
+Program    : octopus
+TestGroups : short-run, multisystem
+Enabled    : Yes
+
+Processors: 1
+
+Input: 13-restart_verlet.01-restart-run-part1.inp
+
+Precision: 2.95e-10
+match ;  Sun   pos x (t=3 days)  ; LINEFIELD(Sun/td.general/coordinates, -1, 3) ; -589.51425003546
+Precision: 5.45e-12
+match ;  Sun   pos y (t=3 days)  ; LINEFIELD(Sun/td.general/coordinates, -1, 4) ; -108.917494403455
+Precision: 3.40e-16
+match ;  Sun   pos z (t=3 days)  ; LINEFIELD(Sun/td.general/coordinates, -1, 5) ; 0.00679759379294153
+Precision: 2.27e-16
+match ;  Sun   vel x (t=3 days)  ; LINEFIELD(Sun/td.general/coordinates, -1, 6) ; -0.00453985811767866
+Precision: 4.40e-17
+match ;  Sun   vel y (t=3 days)  ; LINEFIELD(Sun/td.general/coordinates, -1, 7) ; -0.000879298122901689
+Precision: 2.64e-21
+match ;  Sun   vel z (t=3 days)  ; LINEFIELD(Sun/td.general/coordinates, -1, 8) ; 5.28757820464919e-08
+Precision: 7.30e-03
+match ;  Earth pos x (t=3 days)  ; LINEFIELD(Earth/td.general/coordinates, -1, 3) ; -146019827845.974
+Precision: 1.61e-03
+match ;  Earth pos y (t=3 days)  ; LINEFIELD(Earth/td.general/coordinates, -1, 4) ; -32218374729.6211
+Precision: 8.76e-08
+match ;  Earth pos z (t=3 days)  ; LINEFIELD(Earth/td.general/coordinates, -1, 5) ; 1751930.82640865
+Precision: 2.97e-10
+match ;  Earth vel x (t=3 days)  ; LINEFIELD(Earth/td.general/coordinates, -1, 6) ; 5942.71997853337
+Precision: 1.46e-09
+match ;  Earth vel y (t=3 days)  ; LINEFIELD(Earth/td.general/coordinates, -1, 7) ; -29204.8420370106
+Precision: 1.63e-14
+match ;  Earth vel z (t=3 days)  ; LINEFIELD(Earth/td.general/coordinates, -1, 8) ; 0.325870136475154
+
+
+Input: 13-restart_verlet.02-restart-run-part2.inp
+
+# reference values are copied from the full run below
+Precision: 1.17e-10
+match ;  Sun   pos x (t=6 days)  ; LINEFIELD(Sun/td.general/coordinates, -1, 3) ; -2348.35987096908
+Precision: 2.38e-11
+match ;  Sun   pos y (t=6 days)  ; LINEFIELD(Sun/td.general/coordinates, -1, 4) ; -475.813891920513
+Precision: 1.38e-14
+match ;  Sun   pos z (t=6 days)  ; LINEFIELD(Sun/td.general/coordinates, -1, 5) ; 0.027624355195375
+Precision: 4.51e-15
+match ;  Sun   vel x (t=6 days)  ; LINEFIELD(Sun/td.general/coordinates, -1, 6) ; -0.0090206565510704
+Precision: 9.95e-17
+match ;  Sun   vel y (t=6 days)  ; LINEFIELD(Sun/td.general/coordinates, -1, 7) ; -0.00198993780298557
+Precision: 5.41e-21
+match ;  Sun   vel z (t=6 days)  ; LINEFIELD(Sun/td.general/coordinates, -1, 8) ; 1.08223512346518e-07
+Precision: 7.21e-03
+match ;  Earth pos x (t=6 days)  ; LINEFIELD(Earth/td.general/coordinates, -1, 3) ; -144285655152.409
+Precision: 1.99e-03
+match ;  Earth pos y (t=6 days)  ; LINEFIELD(Earth/td.general/coordinates, -1, 4) ; -39741993991.6204
+Precision: 9.17e-08
+match ;  Earth pos z (t=6 days)  ; LINEFIELD(Earth/td.general/coordinates, -1, 5) ; 1834025.24542922
+Precision: 3.72e-10
+match ;  Earth vel x (t=6 days)  ; LINEFIELD(Earth/td.general/coordinates, -1, 6) ; 7434.63893243253
+Precision: 1.44e-09
+match ;  Earth vel y (t=6 days)  ; LINEFIELD(Earth/td.general/coordinates, -1, 7) ; -28835.0453508281
+Precision: 1.54e-14
+match ;  Earth vel z (t=6 days)  ; LINEFIELD(Earth/td.general/coordinates, -1, 8) ; 0.307441651148355
+Precision: 7.20e+00
+match ;  Sun   iteration (t=6 days)  ; LINEFIELD(Sun/td.general/coordinates, -1, 1) ; 144.0
+Precision: 2.59e+03
+match ;  Sun   time      (t=6 days)  ; LINEFIELD(Sun/td.general/coordinates, -1, 2) ; 518400.0
+Precision: 1.44e+01
+match ;  Earth iteration (t=6 days)  ; LINEFIELD(Earth/td.general/coordinates, -1, 1) ; 288.0
+Precision: 2.59e+03
+match ;  Earth time      (t=6 days)  ; LINEFIELD(Earth/td.general/coordinates, -1, 2) ; 518400.0
+
+
+Input: 13-restart_verlet.03-full-run.inp
+
+Precision: 1.17e-10
+match ;  Sun   pos x (t=6 days)  ; LINEFIELD(Sun/td.general/coordinates, -1, 3) ; -2348.35987096908
+Precision: 2.38e-11
+match ;  Sun   pos y (t=6 days)  ; LINEFIELD(Sun/td.general/coordinates, -1, 4) ; -475.813891920513
+Precision: 1.38e-14
+match ;  Sun   pos z (t=6 days)  ; LINEFIELD(Sun/td.general/coordinates, -1, 5) ; 0.027624355195375
+Precision: 4.51e-15
+match ;  Sun   vel x (t=6 days)  ; LINEFIELD(Sun/td.general/coordinates, -1, 6) ; -0.0090206565510704
+Precision: 9.95e-17
+match ;  Sun   vel y (t=6 days)  ; LINEFIELD(Sun/td.general/coordinates, -1, 7) ; -0.00198993780298557
+Precision: 5.41e-21
+match ;  Sun   vel z (t=6 days)  ; LINEFIELD(Sun/td.general/coordinates, -1, 8) ; 1.08223512346518e-07
+Precision: 7.21e-03
+match ;  Earth pos x (t=6 days)  ; LINEFIELD(Earth/td.general/coordinates, -1, 3) ; -144285655152.409
+Precision: 1.99e-03
+match ;  Earth pos y (t=6 days)  ; LINEFIELD(Earth/td.general/coordinates, -1, 4) ; -39741993991.6204
+Precision: 9.17e-08
+match ;  Earth pos z (t=6 days)  ; LINEFIELD(Earth/td.general/coordinates, -1, 5) ; 1834025.24542922
+Precision: 3.72e-10
+match ;  Earth vel x (t=6 days)  ; LINEFIELD(Earth/td.general/coordinates, -1, 6) ; 7434.63893243253
+Precision: 1.44e-09
+match ;  Earth vel y (t=6 days)  ; LINEFIELD(Earth/td.general/coordinates, -1, 7) ; -28835.0453508281
+Precision: 1.54e-14
+match ;  Earth vel z (t=6 days)  ; LINEFIELD(Earth/td.general/coordinates, -1, 8) ; 0.307441651148355
+Precision: 7.20e+00
+match ;  Sun   iteration (t=6 days)  ; LINEFIELD(Sun/td.general/coordinates, -1, 1) ; 144.0
+Precision: 2.59e+03
+match ;  Sun   time      (t=6 days)  ; LINEFIELD(Sun/td.general/coordinates, -1, 2) ; 518400.0
+Precision: 1.44e+01
+match ;  Earth iteration (t=6 days)  ; LINEFIELD(Earth/td.general/coordinates, -1, 1) ; 288.0
+Precision: 2.59e+03
+match ;  Earth time      (t=6 days)  ; LINEFIELD(Earth/td.general/coordinates, -1, 2) ; 518400.0

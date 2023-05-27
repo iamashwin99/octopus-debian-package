@@ -1,0 +1,82 @@
+How to build:
+  Standard ./configure; make; make install
+
+Dependencies:
+  BLAS
+  FFTW >= 3
+  GSL >= 1.9
+  LAPACK
+  libxc >= 3.0
+  perl
+  bpdn (internal)
+  ISF (internal)
+  Qshep (internal)
+  Spglib (internal)
+  yaml (internal/optional)
+  BerkeleyGW (optional)
+  clBLAS (optional)
+  clFFT (optional)
+  ELPA (optional)
+  ETSF_IO (optional)
+  FortranCL (internal/optional)
+  GD (optional)
+  libISF (internal/optional)
+  Metis (internal/optional)
+  MPI (optional)
+  NetCDF (optional)
+  Newuoa (internal/optional)
+  NFFT (optional)
+  NLopt (optional)
+  OpenCL (optional)
+  PFFT-Chemnitz (optional)
+  PNFFT (optional)
+  pspio (optional)
+  ScaLAPACK/BLACS (optional)
+  Parmetis (optional)
+  Sparskit (optional)
+  
+Website:
+  https://octopus-code.org/
+
+New releases:
+  2023/02/14 Version 12.2
+  2022/10/14 Version 12.1
+  2022/09/19 Version 12.0
+  2021/11/25 Version 11.3
+  2021/10/18 Version 11.2
+  2021/09/03 Version 11.1
+  2021/08/20 Version 11.0
+  2021/02/04 Version 10.4
+  2020/11/09 Version 10.3
+  2020/10/28 Version 10.2
+  2020/08/17 Version 10.1
+  2020/07/20 Version 10.0
+  2020/02/07 Version 9.2
+  2019/06/28 Version 9.1
+  2019/05/14 Version 9.0
+  2019/02/08 Version 8.4
+  2018/11/13 Version 8.3
+  2018/08/08 Version 8.2
+  2018/07/06 Version 8.1
+  2018/06/15 Version 8.0
+  2018-03-24 Version 7.3
+  2018-01-15 Version 7.2
+  2017-06-09 Version 7.1
+  2017/06/06 Version 7.0
+  2016/09/05 Version 6.0
+  2016/01/11 Version 5.0.1
+  2015/10/07 Version 5.0.0
+  2013/11/18 Version 4.1.2
+  2013/09/03 Version 4.1.1
+  2013/06/12 Version 4.1.0
+  2012/02/03 Version 4.0.1
+  2011/06/19 Version 4.0.0
+  2009/11/24 Version 3.2.0
+  2009/11/04 Version 3.1.1
+  2009/04/16 Version 3.1
+
+Bugs & Patches:
+  https://gitlab.com/octopus-code/octopus
+
+Git server:
+  git clone git@gitlab.com:octopus-code/octopus.git

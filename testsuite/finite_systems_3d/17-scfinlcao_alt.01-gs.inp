@@ -1,0 +1,43 @@
+# -*- coding: utf-8 mode: shell-script -*-
+#
+CalculationMode = gs
+FromScratch = yes
+UnitsOutput = ev_angstrom
+DisableAccel = yes
+
+# Colmont et al
+rCCl  = 1.760*angstrom
+rCH   = 1.080*angstrom
+theta = 108.23 * pi / 180
+
+%Coordinates
+ "C"  |                          0 |                          0 |        0       
+ "H"  |                          0 |                          0 | rCH            
+ "Cl" |                          0 |  rCCl*sin(theta)           | rCCl*cos(theta)
+ "Cl" |  rCCl*sin(theta)*sin(pi/3) | -rCCl*sin(theta)*cos(pi/3) | rCCl*cos(theta)
+ "Cl" | -rCCl*sin(theta)*sin(pi/3) | -rCCl*sin(theta)*cos(pi/3) | rCCl*cos(theta)
+%
+
+%Species
+ 'C'  | species_pseudo | lmax | 3 | lloc | 0
+ 'H'  | species_pseudo | lmax | 3 | lloc | 0
+ 'Cl' | species_pseudo | file | "17-scfinlcao_alt.Cl.psf" | lmax | 3 | lloc | 0
+%
+
+Spacing = 0.25*angstrom
+Radius = 6.0*angstrom
+
+XCFunctional = gga_x_pbe + gga_c_pbe
+
+SCFinLCAO = yes
+LCAOAlternative = yes
+ForceComplex = yes
+LCAOComplexYlms = yes
+ExperimentalFeatures = yes
+
+FilterPotentials = filter_none
+
+SCFCalculatePartialCharges = yes
+
+ExperimentalFeatures = yes
+MixField = density

@@ -1,0 +1,50 @@
+# -*- coding: utf-8 mode: shell-script -*-
+
+Test       : LDA+SIC/OEP-KLI Functional
+Program    : octopus
+TestGroups : long-run, functionals
+Enabled    : Yes
+
+# This test performs the calculation of an argon atom making
+# use of the local-density approximation (LDA) plus the self-interaction 
+# correction (SIC), treating this latter term with the Krieger-Li-Iafrate
+# approximation (KLI) to the optimized effective potential method (OEP).
+# This is the functional used in:
+# [X.-M. Tong and S.-I Chu, Phys. Rev. A 55, 3406 (1997)],
+# to the best of my knowledge for the first time.
+#
+# The calculation reproduces the result given for Ar in Table IV of this paper.
+# It is the value of the energy of the HOMO (a.k.a. ionization potential): 0.549Ha.
+#
+# The number is missed by 0.006Ha = 0.16eV. The reason is probably that we
+# use a LDA pseudopotential, whereas the results in the paper are all-electron.
+
+# this calculation seems numerically unstable!
+Input     : 07-sic.01-gs.inp
+
+match ; SCF convergence    ; GREPCOUNT(static/info, 'SCF converged') ; 1
+
+Precision: 2.76e-03
+match ;  Total energy        ; GREPFIELD(static/info, 'Total       =', 3) ; -20.800415735
+Precision: 1.00e-15
+match ;  Ion-ion energy      ; GREPFIELD(static/info, 'Ion-ion     =', 3) ; 0.0
+Precision: 1.46e-03
+match ;  Eigenvalues sum     ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -5.360026449999999
+Precision: 1.88e-03
+match ;  Hartree energy      ; GREPFIELD(static/info, 'Hartree     =', 3) ; 18.03701134
+Precision: 1.20e-03
+match ;  Int[n*v_xc]         ; GREPFIELD(static/info, 'Int\[n\*v_xc\] =', 3) ; -5.87942366
+Precision: 6.19e-04
+match ;  Exchange energy     ; GREPFIELD(static/info, 'Exchange    =', 3) ; -3.282801615
+Precision: 1.00e-15
+match ;  Correlation energy  ; GREPFIELD(static/info, 'Correlation =', 3) ; 0.0
+Precision: 1.34e-03
+match ;  Kinetic energy      ; GREPFIELD(static/info, 'Kinetic     =', 3) ; 7.81643088
+Precision: 2.89e-03
+match ;  External energy     ; GREPFIELD(static/info, 'External    =', 3) ; -43.36876787
+
+Precision: 2.07e-04
+match ;  Eigenvalue 1        ; GREPFIELD(static/info, '1   --', 3) ; -1.0517815000000001
+match ;  Eigenvalue 2        ; GREPFIELD(static/info, '2   --', 3) ; -0.542774
+match ;  Eigenvalue 3        ; GREPFIELD(static/info, '3   --', 3) ; -0.5427305
+match ;  Eigenvalue 4        ; GREPFIELD(static/info, '4   --', 3) ; -0.5427275

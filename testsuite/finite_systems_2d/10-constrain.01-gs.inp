@@ -1,0 +1,38 @@
+CalculationMode = gs
+FromScratch = yes
+Dimensions = 2
+DisableAccel = yes
+
+omega = 0.25
+
+%Species
+"qd" | species_user_defined | potential_formula | "0.5*omega^2*r^2" | valence | 1
+%
+
+%Coordinates
+"qd" | 0 | 0
+%
+
+BoxShape = sphere
+Radius = 25.0
+Spacing = 0.5
+
+DerivativesOrder = 4
+
+TheoryLevel = independent_particles
+
+SpinComponents = spinors
+
+ConvAbsDens = 1e-10
+EigensolverTolerance = 1e-11
+EigensolverMaxiter = 250
+CGEnergyChangeThreshold = 1e-4
+
+Debug = trace
+
+ExperimentalFeatures = yes
+%AtomsMagnetDirection
+ 0.0 | 0.8 | 0.6
+%
+MagneticConstrain = constrain_full
+MagneticConstrainStrength = 100

@@ -1,0 +1,112 @@
+# -*- coding: utf-8 mode: shell-script -*-
+	
+Test       : Hybrid functionals in periodic solids
+Program    : octopus
+TestGroups : short-run, periodic_systems
+Enabled    : Yes
+
+Input      : 23-hybrids.01-ace.inp
+
+match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
+
+Precision: 1e-6
+match ;  Total energy        ; GREPFIELD(static/info, 'Total       =', 3) ; -17.265832
+match ;  Ion-ion energy      ; GREPFIELD(static/info, 'Ion-ion     =', 3) ; 0.0
+match ;  Eigenvalues sum     ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -17.886958615
+match ;  Hartree energy      ; GREPFIELD(static/info, 'Hartree     =', 3) ; 0.00746504
+match ;  Kinetic energy      ; GREPFIELD(static/info, 'Kinetic     =', 3) ; 0.270111015
+match ;  External energy     ; GREPFIELD(static/info, 'External    =', 3) ; -16.9148164
+
+Precision: 1e-15
+match ;   k-point 2 (x)    ; GREPFIELD(static/info, '#k =       2', 7) ; 0.025
+match ;   Eigenvalue  1    ; GREPFIELD(static/info, '#k =       2', 3, 1) ; -9.12865
+match ;   Eigenvalue  2    ; GREPFIELD(static/info, '#k =       2', 3, 2) ; -7.118487
+match ;   Eigenvalue  3    ; GREPFIELD(static/info, '#k =       2', 3, 3) ; -6.947847
+
+
+Input: 23-hybrids.02-ace_accel.inp
+if(available cuda); then
+  Precision: 8.80e-08
+  match ;  Total energy        ; GREPFIELD(static/info, 'Total       =', 3) ; -17.26583187
+  Precision: 1.00e-15
+  match ;  Ion-ion energy      ; GREPFIELD(static/info, 'Ion-ion     =', 3) ; 0.0
+  Precision: 2.31e-07
+  match ;  Eigenvalues sum     ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -17.88695827
+  Precision: 5.50e-08
+  match ;  Hartree energy      ; GREPFIELD(static/info, 'Hartree     =', 3) ; 0.00746496
+  Precision: 1.27e-07
+  match ;  Kinetic energy      ; GREPFIELD(static/info, 'Kinetic     =', 3) ; 0.270110825
+  Precision: 6.60e-08
+  match ;  External energy     ; GREPFIELD(static/info, 'External    =', 3) ; -16.9148163
+  Precision: 1.00e-15
+  match ;  Error clfft missing  ; GREPCOUNT(err, 'Accelerated FFT') ; 1.0
+  Precision: 2.50e-17
+  match ;   k-point 2 (x)    ; GREPFIELD(static/info, '#k =       2', 7) ; 0.025
+  Precision: 9.13e-15
+  match ;   Eigenvalue  1    ; GREPFIELD(static/info, '#k =       2', 3, 1) ; -9.12865
+  Precision: 7.12e-15
+  match ;   Eigenvalue  2    ; GREPFIELD(static/info, '#k =       2', 3, 2) ; -7.118487
+  Precision: 6.95e-15
+  match ;   Eigenvalue  3    ; GREPFIELD(static/info, '#k =       2', 3, 3) ; -6.947847
+else
+  match ; Error clfft missing ; GREPCOUNT(err, 'Accelerated FFT') ; 1
+endif
+
+
+Input      : 23-hybrids.03-Si_pbe0.inp
+
+match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
+
+Precision: 7.92e-15
+match ;    Total energy          ; GREPFIELD(static/info, 'Total       =', 3) ; -7.91725658
+Precision: 7.86e-15
+match ;    Ion-ion energy        ; GREPFIELD(static/info, 'Ion-ion     =', 3) ; -7.8578008
+Precision: 5.71e-16
+match ;    Eigenvalues sum       ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -0.57149632
+Precision: 5.85e-16
+match ;    Hartree energy        ; GREPFIELD(static/info, 'Hartree     =', 3) ; 0.58529267
+Precision: 3.15e-15
+match ;    Kinetic energy        ; GREPFIELD(static/info, 'Kinetic     =', 3) ; 3.1452753
+Precision: 1.36e-15
+match ;    External energy       ; GREPFIELD(static/info, 'External    =', 3) ; -1.35824239
+Precision: 3.33e-16
+match ;    k-point 2 (x)     ; GREPFIELD(static/info, '#k =       2', 7) ; 0.333333
+Precision: 3.00e-16
+match ;    Eigenvalue  1     ; GREPFIELD(static/info, '#k =       2', 3, 1) ; -0.300324
+Precision: 8.38e-17
+match ;    Eigenvalue  2     ; GREPFIELD(static/info, '#k =       2', 3, 2) ; -0.08376
+Precision: 8.92e-17
+match ;    Eigenvalue  3     ; GREPFIELD(static/info, '#k =       2', 3, 3) ; 0.089201
+
+
+#The references values should be the same as the above test, as we only change the parallelization scheme here.
+Input      : 23-hybrids.04-parstates.inp
+
+if(available cuda); then
+  match ; Error match ; GREPCOUNT(err, 'DisableAccel') ; 1
+else
+  match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
+
+
+  Precision: 4.95e-08
+  match ;    Total energy          ; GREPFIELD(static/info, 'Total       =', 3) ; -7.917256535
+  Precision: 7.86e-15
+  match ;    Ion-ion energy        ; GREPFIELD(static/info, 'Ion-ion     =', 3) ; -7.8578008
+  Precision: 7.70e-08
+  match ;    Eigenvalues sum       ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -0.57149625
+  Precision: 3.30e-08
+  match ;    Hartree energy        ; GREPFIELD(static/info, 'Hartree     =', 3) ; 0.58529265
+  Precision: 3.85e-08
+  match ;    Kinetic energy        ; GREPFIELD(static/info, 'Kinetic     =', 3) ; 3.1452752650000004
+  Precision: 5.50e-08
+  match ;    External energy       ; GREPFIELD(static/info, 'External    =', 3) ; -1.3582423399999999
+  
+  Precision: 3.33e-16
+  match ;    k-point 2 (x)     ; GREPFIELD(static/info, '#k =       2', 7) ; 0.333333
+  Precision: 3.00e-16
+  match ;    Eigenvalue  1     ; GREPFIELD(static/info, '#k =       2', 3, 1) ; -0.300324
+  Precision: 8.38e-17
+  match ;    Eigenvalue  2     ; GREPFIELD(static/info, '#k =       2', 3, 2) ; -0.08376
+  Precision: 8.92e-17
+  match ;    Eigenvalue  3     ; GREPFIELD(static/info, '#k =       2', 3, 3) ; 0.089201
+endif

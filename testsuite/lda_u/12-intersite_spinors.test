@@ -1,0 +1,33 @@
+# -*- coding: utf-8 mode: shell-script -*-
+
+Test       : Intersite interaction with spinors
+Program    : octopus
+TestGroups : short-run, finite_systems_3d, lda_u
+Enabled    : Yes
+
+Input      : 12-intersite_spinors.01-Na2_gs.inp
+
+Precision: 1.e-04
+match ; SCF convergence    ; GREPCOUNT(static/info, 'SCF converged') ; 1
+match ; Total energy       ; GREPFIELD(static/info, 'Total       =', 3) ;  -0.33502103
+match ; Ion-ion energy     ; GREPFIELD(static/info, 'Ion-ion     =', 3) ;   0.16666667
+match ; Eigenvalues sum    ; GREPFIELD(static/info, 'Eigenvalues =', 3) ;  -0.31545509
+match ; Hartree energy     ; GREPFIELD(static/info, 'Hartree     =', 3) ;   0.41892029
+match ; Exchange energy    ; GREPFIELD(static/info, 'Exchange    =', 3) ;  -0.24297660
+match ; Correlation energy ; GREPFIELD(static/info, 'Correlation =', 3) ;  -0.03149076
+match ; Kinetic energy     ; GREPFIELD(static/info, 'Kinetic     =', 3) ;   0.23674318
+match ; External energy    ; GREPFIELD(static/info, 'External    =', 3) ;  -0.90498140
+match ; Hubbard energy     ; GREPFIELD(static/info, 'Hubbard     =', 3) ;   0.02209760
+
+match ; Ueff 3d Na1 ; LINEFIELD(static/effectiveU, -10, 4) ; 0.197391
+match ; Ueff 3d Na2 ; LINEFIELD(static/effectiveU, -9, 4) ;  0.197391
+
+match ; V Na1-Na2 ;  GREPFIELD(static/info, '1        Na  3s   2 3s', 7); 0.044543
+
+Input      : 12-intersite_spinors.02-Na2_td.inp
+
+Precision : 6e-8
+match ; Total current [step  20] ; LINEFIELD(td.general/total_current, -31, 6) ; 3.157023370350e-08
+match ; Total current [step  50] ; LINEFIELD(td.general/total_current, -1, 6) ; 2.007654737654e-08
+
+

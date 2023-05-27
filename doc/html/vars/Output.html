@@ -1,0 +1,852 @@
+
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML-full"></script>
+<style>
+   BODY {background-color: white; 
+         font-size: 10pt; font-family: verdana,helvetica;}
+   A  {text-decoration: none;color: blue}
+</style>
+</head>
+<body>
+
+<a name='Output'</a>
+<H2>Output</H2>
+
+
+<p><b><a name='BandStructureComputeProjections'></a>BandStructureComputeProjections</b>
+<br/><i>Section</i>: Output
+<br/><i>Type</i>: logical
+<br/><i>Default</i>: false
+<br/><br> Determines if projections of wavefunctions on the atomic orbitals
+ are computed or not for obtaining the orbital resolved band-structure.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='CurrentThroughPlane'></a>CurrentThroughPlane</b>
+<br/><i>Section</i>: Output
+<br/><i>Type</i>: block
+<br/><br> The code can calculate current
+ traversing a user-defined portion of a plane, as specified by this block.
+ A small plain-text file <tt>current-flow</tt> will be written containing this information.
+ Only available for 1D, 2D, or 3D.
+ In the format below, <tt>origin</tt> is a point in the plane.
+ <tt>u</tt> and <tt>v</tt> are the (dimensionless) vectors defining the plane;
+ they will be normalized. <tt>spacing</tt> is the fineness of the mesh
+ on the plane. Integers <tt>nu</tt> and <tt>mu</tt> are the length and
+ width of the portion of the plane, in units of <tt>spacing</tt>.
+ Thus, the grid points included in the plane are
+ <tt>x_ij = origin + i*spacing*u + j*spacing*v</tt>,
+ for <tt>nu <= i <= mu</tt> and <tt>nv <= j <= mv</tt>.
+ Analogously, in the 2D case, the current flow is calculated through a line;
+ in the 1D case, the current flow is calculated through a point. Note that the spacing
+ can differ from the one used in the main calculation; an interpolation will be performed.
+<br><br>
+ Example (3D):
+<br><br>
+ <tt>%CurrentThroughPlane
+ <br>&nbsp;&nbsp; 0.0 | 0.0 | 0.0  # origin
+ <br>&nbsp;&nbsp; 0.0 | 1.0 | 0.0  # u
+ <br>&nbsp;&nbsp; 0.0 | 0.0 | 1.0  # v
+ <br>&nbsp;&nbsp; 0.2              # spacing
+ <br>&nbsp;&nbsp; 0 | 50           # nu | mu
+ <br>&nbsp;&nbsp; -50 | 50         # nv | mv
+ <br>%</tt>
+<br><br>
+ Example (2D):
+<br><br>
+ <tt>%CurrentThroughPlane
+ <br>&nbsp;&nbsp; 0.0 | 0.0        # origin
+ <br>&nbsp;&nbsp; 1.0 | 0.0        # u
+ <br>&nbsp;&nbsp; 0.2              # spacing
+ <br>&nbsp;&nbsp; 0 | 50           # nu | mu
+ <br>%</tt>
+<br><br>
+ Example (1D):
+<br><br>
+ <tt>%CurrentThroughPlane
+ <br>&nbsp;&nbsp; 0.0              # origin
+ <br>%</tt>
+<br><br>
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='DOSComputePDOS'></a>DOSComputePDOS</b>
+<br/><i>Section</i>: Output
+<br/><i>Type</i>: logical
+<br/><i>Default</i>: false
+<br/><br> Determines if projected dos are computed or not.
+ At the moment, the PDOS is computed from the bare pseudo-atomic orbitals, directly taken from
+ the pseudopotentials. The orbitals are not orthonormalized, in order to preserve their
+ atomic orbitals character. As a consequence, the sum of the different PDOS does not integrate
+ to the total DOS.
+<br><br>
+ The radii of the orbitals are controled by the threshold defined by <tt>AOThreshold<\tt>,
+ and the fact that they are normalized or not by <tt>AONormalize<\tt>.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='DOSEnergyMax'></a>DOSEnergyMax</b>
+<br/><i>Section</i>: Output
+<br/><i>Type</i>: float
+<br/><br> Upper bound for the energy mesh of the DOS.
+ The default is the highest eigenvalue, plus a quarter of the total range of eigenvalues.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='DOSEnergyMin'></a>DOSEnergyMin</b>
+<br/><i>Section</i>: Output
+<br/><i>Type</i>: float
+<br/><br> Lower bound for the energy mesh of the DOS.
+ The default is the lowest eigenvalue, minus a quarter of the total range of eigenvalues.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='DOSEnergyPoints'></a>DOSEnergyPoints</b>
+<br/><i>Section</i>: Output
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: 500
+<br/><br> Determines how many energy points <tt>Octopus</tt> should use for
+ the DOS energy grid.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='DOSGamma'></a>DOSGamma</b>
+<br/><i>Section</i>: Output
+<br/><i>Type</i>: float
+<br/><i>Default</i>: 0.008 Ha
+<br/><br> Determines the width of the Lorentzian which is used for the DOS sum.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='ELFWithCurrentTerm'></a>ELFWithCurrentTerm</b>
+<br/><i>Section</i>: Output
+<br/><i>Type</i>: logical
+<br/><i>Default</i>: true
+<br/><br> The ELF, when calculated for complex wavefunctions, should contain
+ a term dependent on the current. This term is properly calculated by
+ default; however, for research purposes it may be useful not to add it.
+ If this feature proves to be useless, this option should go away.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='LinearMediumOutput'></a>LinearMediumOutput</b>
+<br/><i>Section</i>: Output
+<br/><i>Type</i>: block
+<br/><i>Default</i>: none
+<br/><br> Specifies what to print. The output files are written at the beginning of the run into the output directory for the
+ linear medium.
+ Each option must be in a separate row. Optionally individual output formats can be defined
+ for each row (VTK format is supported) or they can be read separately from <tt>OutputFormat</tt> in the input file.
+<br><br>
+ Example:
+ <br><br><tt>%LinearMediumOutput
+ <br>&nbsp;&nbsp;permittivity
+ <br>&nbsp;&nbsp;permeability
+ <br>%<br></tt>
+ This block supports all the formats of the <tt>Output</tt> block. See <tt>Output</tt>.
+
+<br/><i>Options</i>:
+<ul>
+<li><b>points</b>:  Outputs 1 if the a given point is inside the medium, and 0 otherwise. This can be used to check the grid points of the medium region.
+</li>
+<li><b>permittivity</b>:  Output of the (static) space-dependent relative permittivity
+</li>
+<li><b>permeability</b>:  Output of the (static) space-dependent relative permeability
+</li>
+<li><b>speed_of_light</b>:  Output of the speed of light in atomic units
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='LinearMediumOutputDir'></a>LinearMediumOutputDir</b>
+<br/><i>Section</i>: Output
+<br/><i>Type</i>: string
+<br/><i>Default</i>: "output_iter"
+<br/><br> The name of the directory where <tt>Octopus</tt> stores the information
+ about the linear medium system, as required by the <tt>LinearMediumOutput</tt> variable.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='LocalMagneticMomentsSphereRadius'></a>LocalMagneticMomentsSphereRadius</b>
+<br/><i>Section</i>: Output
+<br/><i>Type</i>: float
+<br/><br> The local magnetic moments are calculated by integrating the
+ magnetization density in spheres centered around each atom.
+ This variable controls the radius of the spheres.
+ The default is half the minimum distance between two atoms
+ in the input coordinates, or 100 a.u. if there is only one atom (for isolated systems).
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='MaxwellOutput'></a>MaxwellOutput</b>
+<br/><i>Section</i>: Output
+<br/><i>Type</i>: block
+<br/><i>Default</i>: none
+<br/><br> Specifies what to print. The output files are written at the end of the run into the output directory for the
+ Maxwell run.
+ Time-dependent simulations print only per iteration, including always the last. The frequency of output per iteration
+ is set by <tt>OutputInterval</tt> and the directory is set by <tt>OutputIterDir</tt>.
+ Each option must be in a separate row. Optionally individual output formats and output intervals can be defined
+ for each row or they can be read separately from <tt>OutputFormat</tt> and <tt>MaxwellOutputInterval</tt> variables
+ in the input file.
+<br><br>
+ Example:
+ <br><br><tt>%MaxwellOutput
+ <br>&nbsp;&nbsp;electric_field
+ <br>&nbsp;&nbsp;magnetic_field
+ <br>%<br></tt>
+ This block supports all the formats of the <tt>Output</tt> block.
+ See <tt>Output</tt>.
+
+<br/><i>Options</i>:
+<ul>
+<li><b>maxwell_energy_density</b>:  Output of the electromagnetic density
+</li>
+<li><b>external_current</b>:  Output of the external Maxwell current
+</li>
+<li><b>charge_density</b>:  Output of the charge density calculated by the divergence of the electric field.
+</li>
+<li><b>orbital_angular_momentum</b>:  Output of the orbital angular momentum
+</li>
+<li><b>electric_field</b>:  Output of the electric field
+</li>
+<li><b>magnetic_field</b>:  Output of the magnetic field
+</li>
+<li><b>trans_electric_field</b>:  Output of the transversal electric field
+</li>
+<li><b>trans_magnetic_field</b>:  Output of the transversal magnetic field
+</li>
+<li><b>long_electric_field</b>:  Output of the longitudinal electric field
+</li>
+<li><b>long_magnetic_field</b>:  Output of the longitudinal magnetic field
+</li>
+<li><b>div_electric_field</b>:  Output of the divergence of the electric field
+</li>
+<li><b>div_magnetic_field</b>:  Output of the divergence of the magnetic field
+</li>
+<li><b>poynting_vector</b>:  Output of the Maxwell Poynting vector
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='MaxwellOutputInterval'></a>MaxwellOutputInterval</b>
+<br/><i>Section</i>: Output
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: 50
+<br/><br> The output requested by variable <tt>MaxwellOutput</tt> is written
+ to the directory <tt>MaxwellOutputIterDir</tt>
+ when the iteration number is a multiple of the <tt>MaxwellOutputInterval</tt> variable.
+ Subdirectories are named Y.X, where Y is <tt>td</tt>, <tt>scf</tt>, or <tt>unocc</tt>, and
+ X is the iteration number. To use the working directory, specify <tt>"."</tt>
+ (Output of restart files is instead controlled by <tt>MaxwellRestartWriteInterval</tt>.)
+ Must be >= 0. If it is 0, then no output is written.
+ This variable can also be defined inside the <tt>MaxwellOutput</tt> block.
+ See <tt>MaxwellOutput</tt>.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='MaxwellOutputIterDir'></a>MaxwellOutputIterDir</b>
+<br/><i>Section</i>: Output
+<br/><i>Type</i>: string
+<br/><i>Default</i>: "output_iter"
+<br/><br> The name of the directory where <tt>Octopus</tt> stores information
+ such as the density, forces, etc. requested by variable <tt>MaxwellOutput</tt>
+ in the format specified by <tt>OutputHow</tt>.
+ This information is written while iterating <tt>CalculationMode = maxwell</tt>
+ according to <tt>OutputInterval</tt>, and has nothing to do with the restart information.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='MomentumTransfer'></a>MomentumTransfer</b>
+<br/><i>Section</i>: Output
+<br/><i>Type</i>: block
+<br/><br> Momentum-transfer vector \(\vec{q}\) to be used when calculating matrix elements
+ \(\left< f \left| e^{i \vec{q} \cdot \vec{r}} \right| i \right>\).
+ This enables the calculation of the dynamical structure factor,
+ which is closely related to generalized oscillator strengths.
+ If the vector is not given, but TPA output is requested (<tt>Output = TPA</tt>),
+ only the oscillator strengths are written in the output file.
+ For example, to use \(\vec{q}\) = (0.1, 0.2, 0.3), set
+<br><br>
+ <tt>%MomentumTransfer
+ <br>&nbsp;&nbsp; 0.1 | 0.2 | 0.3
+ <br>%</tt>
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='Output'></a>Output</b>
+<br/><i>Section</i>: Output
+<br/><i>Type</i>: block
+<br/><i>Default</i>: none
+<br/><br> Specifies what to print.
+ Each output must be in a separate row. Optionally individual output formats and output intervals can be defined
+ for each row or they can be read separately from <tt>OutputFormat</tt> and <tt>OutputInterval</tt> variables
+ in the input file.
+ The output files are written at the end of the run into the output directory for the
+ relevant kind of run (<i>e.g.</i> <tt>static</tt> for <tt>CalculationMode = gs</tt>).
+ Time-dependent simulations print only per iteration, including always the last. The frequency of output per iteration
+ (available for <tt>CalculationMode</tt> = <tt>gs</tt>, <tt>unocc</tt>,  <tt>td</tt>, and <tt>opt_control</tt>)
+ is set by <tt>OutputInterval</tt> and the directory is set by <tt>OutputIterDir</tt>.
+ For linear-response run modes, the derivatives of many quantities can be printed, as listed in
+ the options below. Indices in the filename are labelled as follows:
+ <tt>sp</tt> = spin (or spinor component), <tt>k</tt> = <i>k</i>-point, <tt>st</tt> = state/band.
+ There is no tag for directions, given as a letter. The perturbation direction is always
+ the last direction for linear-response quantities, and a following +/- indicates the sign of the frequency.
+<br><br>
+ Example (minimal):
+ <br><br><tt>%Output
+ <br>&nbsp;&nbsp;density
+ <br>&nbsp;&nbsp;potential
+ <br>%<br></tt>
+<br><br>
+ Example (with OutputFormat):
+ <br><br><tt>%Output
+ <br>&nbsp;&nbsp;density   | cube + axis_z
+ <br>&nbsp;&nbsp;potential | cube
+ <br>%<br></tt>
+<br><br>
+ Example (with OutputFormat, incomplete):
+ <br><br><tt>%Output
+ <br>&nbsp;&nbsp;density   | cube + axis_z
+ <br>&nbsp;&nbsp;potential
+ <br>%<br></tt>
+<br><br>
+ Example (tagged):
+ <br><br><tt>%Output
+ <br>&nbsp;&nbsp;density   | "output_format" | cube + axis_z | "output_interval" | 50
+ <br>&nbsp;&nbsp;potential | "output_format" | cube          | "output_interval" | 20
+ <br>%<br></tt>
+<br><br>
+ Example (tagged, incomplete):
+ <br><br><tt>%Output
+ <br>&nbsp;&nbsp;density   | "output_format"   | cube + axis_z
+ <br>&nbsp;&nbsp;potential | "output_interval" | 20
+ <br>%<br></tt>
+ Missing information for the incomplete blocks will be parsed form the out-of-block
+ definitions. It is also possible to mix the order of columns in the tagged format.
+ See <tt>OutputFormat</tt>, and <tt>OutputInterval</tt>.
+
+<br/><i>Options</i>:
+<ul>
+<li><b>el_pressure</b>:  Outputs electronic pressure. See Tao, Vignale, and Tokatly, <i>Phys Rev Lett</i> <b>100</b>, 206405 (2008).
+</li>
+<li><b>matrix_elements</b>:  Outputs a series of matrix elements of the Kohn-Sham states. What is output can
+ be controlled by the <tt>OutputMatrixElements</tt> variable.
+</li>
+<li><b>pol_density</b>:  Outputs dipole-moment density <tt>dipole_density-</tt>, or polarizability density <tt>alpha_density-</tt>
+ in linear response. If <tt>ResponseMethod = finite_differences</tt>, the hyperpolarizability density
+ <tt>beta_density-</tt> is also printed.
+</li>
+<li><b>mesh_r</b>:  Outputs values of the coordinates over the grid. Files
+ will be called <tt>mesh_r-</tt> followed by the direction.
+</li>
+<li><b>kinetic_energy_density</b>:  Outputs kinetic-energy density, defined as:
+<br><br>
+ \(\tau_\sigma(\vec{r}) = \sum_{i=1}^{N_\sigma}
+  \left| \vec{\nabla} \phi_{i\sigma}(\vec{r}) \right|^2\,. \)
+<br><br>
+ The index \(\sigma\) is the spin index for the spin-polarized case,
+ or if you are using spinors. For spin-unpolarized calculations, you
+ get the total kinetic-energy density. The previous expression assumes full
+ or null occupations. If fractional occupation numbers, each term in the sum
+ is weighted by the occupation. Also, if we are working with an infinite
+ system, all <i>k</i>-points are summed up, with their corresponding weights. The
+ files will be called <tt>tau-sp1</tt> and <tt>tau-sp2</tt>, if the spin-resolved kinetic
+ energy density is produced (runs in spin-polarized and spinors mode), or
+ only <tt>tau</tt> if the run is in spin-unpolarized mode.
+</li>
+<li><b>dos</b>:  Outputs density of states. See <tt>DOSEnergyMax</tt>, <tt>DOSEnergyMin</tt>, <tt>DOSEnergyPoints</tt>,
+ and <tt>DOSGamma</tt>.
+</li>
+<li><b>tpa</b>:  Outputs transition-potential approximation (TPA) matrix elements, using \(\vec{q}\)-vector specified
+ by <tt>MomentumTransfer</tt>.
+</li>
+<li><b>forces</b>:  Outputs file <tt>forces.xsf</tt> containing structure and forces on the atoms as
+ a vector associated with each atom, which can be visualized with XCrySDen.
+</li>
+<li><b>wfs_fourier</b>:  (Experimental) Outputs wavefunctions in Fourier space. This is
+ only implemented for the ETSF file format output. The file will
+ be called <tt>wfs-pw-etsf.nc</tt>.
+</li>
+<li><b>xc_density</b>:  Outputs the XC density, which is the charge density that
+ generates the XC potential. (This is \(-1/4\pi\) times
+ the Laplacian of the XC potential). The files are called <tt>nxc</tt>.
+</li>
+<li><b>potential</b>:  Outputs Kohn-Sham potential, separated by parts. File names are <tt>v0</tt> for
+ the local part of the ionic potential, <tt>vc</tt> for the classical potential (if it exists),
+ <tt>vh</tt> for the Hartree potential, <tt>vks</tt> for the local part of the Kohn-Sham potential, and
+ <tt>vxc-</tt> for the exchange-correlation potentials. For <tt>vks</tt> and <tt>vxc</tt>,
+ a suffix for spin is added in the spin-polarized case.
+</li>
+<li><b>PES_wfs</b>:  Outputs the photoelectron wavefunctions. The file name is <tt>pes_wfs-</tt>
+ plus the orbital number.
+</li>
+<li><b>PES_density</b>:  Outputs the photolectron density. Output file is <tt>pes_dens-</tt> plus spin species if
+ spin-polarized calculation is performed.
+</li>
+<li><b>PES</b>:  Outputs the time-dependent photoelectron spectrum.
+</li>
+<li><b>BerkeleyGW</b>:  Output for a run with <a href=http://www.berkeleygw.org>BerkeleyGW</a>.
+ See <tt>Output::BerkeleyGW</tt> for further specification.
+</li>
+<li><b>delta_perturbation</b>:  Outputs the "kick", or time-delta perturbation applied to compute optical response in real time.
+</li>
+<li><b>external_td_potential</b>:  Outputs the (scalar) time-dependent potential.
+</li>
+<li><b>mmb_wfs</b>:  Triggers the ModelMB wavefunctions to be output for each state.
+</li>
+<li><b>mmb_den</b>:  Triggers the ModelMB density matrix to be output for each state, and the particles
+ specified by the <tt>DensitytoCalc</tt> block. Calculates, and outputs, the reduced density
+ matrix. For the moment the trace is made over the second dimension, and
+ the code is limited to 2D. The idea is to model <i>N</i> particles in 1D as an
+ <i>N</i>-dimensional non-interacting problem, then to trace out <i>N</i>-1 coordinates.
+</li>
+<li><b>potential_gradient</b>:  Prints the gradient of the potential.
+</li>
+<li><b>energy_density</b>:  Outputs the total energy density to a file called
+ <tt>energy_density</tt>.
+</li>
+<li><b>density</b>:  Outputs density. The output file is called <tt>density-</tt>, or <tt>lr_density-</tt> in linear response.
+</li>
+<li><b>heat_current</b>:  Outputs the total heat current density. The output file is
+ called <tt>heat_current-</tt>.
+</li>
+<li><b>photon_correlator</b>:  Outputs the electron-photon correlation function. The output file is
+ called <tt>photon_correlator</tt>.
+</li>
+<li><b>J_flow</b>:  todo: document J_flow option!
+</li>
+<li><b>current_kpt</b>:  Outputs the current density resolved in momentum space. The output file is called <tt>current_kpt-</tt>.
+</li>
+<li><b>density_kpt</b>:  Outputs the electronic density resolved in momentum space.
+</li>
+<li><b>occ_matrices</b>:  Only for DFT+U calculations.
+ Outputs the occupation matrices of LDA+U
+</li>
+<li><b>effectiveU</b>:  Only for DFT+U calculations.
+ Outputs the value of the effectiveU for each atoms
+</li>
+<li><b>magnetization</b>:  Only for DFT+U calculations.
+ Outputs file containing structure and magnetization of the localized subspace
+ on the atoms as a vector associated with each atom, which can be visualized.
+ For the moment, it only works if a +U is added on one type of orbital per atom.
+</li>
+<li><b>local_orbitals</b>:  Only for DFT+U calculations.
+ Outputs the localized orbitals that form the correlated subspace
+</li>
+<li><b>kanamoriU</b>:  Only for DFT+U calculations.
+ Outputs the Kanamori interaction parameters U, U`, and J.
+ These parameters are not determined self-consistently, but are taken from the
+ occupation matrices and Coulomb integrals comming from a standard +U calculation.
+</li>
+<li><b>wfs</b>:  Outputs wavefunctions. Which wavefunctions are to be printed is specified
+ by the variable <tt>OutputWfsNumber</tt> -- see below. The output file is called
+ <tt>wf-</tt>, or <tt>lr_wf-</tt> in linear response.
+</li>
+<li><b>xc_torque</b>:  Outputs the exchange-correlation torque. Only for the spinor case and in the 3D case.
+</li>
+<li><b>eigenval_kpt</b>:  Outputs the eigenvalues resolved in momentum space, with one file for each band.
+</li>
+<li><b>wfs_sqmod</b>:  Outputs modulus squared of the wavefunctions.
+ The output file is called <tt>sqm-wf-</tt>. For linear response, the filename is <tt>sqm_lr_wf-</tt>.
+</li>
+<li><b>geometry</b>:  Outputs file containing the coordinates of the atoms treated within quantum mechanics.
+ If <tt>OutputFormat = xyz</tt>, the file is called <tt>geometry.xyz</tt>; a
+ file <tt>crystal.xyz</tt> is written with a supercell geometry if the system is periodic;
+ if point charges were defined in the PDB file (see <tt>PDBCoordinates</tt>), they will be output
+ in the file <tt>geometry_classical.xyz</tt>.
+ If <tt>OutputFormat = xcrysden</tt>, a file called <tt>geometry.xsf</tt> is written.
+</li>
+<li><b>current</b>:  Outputs the total current density. The output file is called <tt>current-</tt>.
+ For linear response, the filename is <tt>lr_current-</tt>.
+</li>
+<li><b>ELF</b>:  Outputs electron localization function (ELF). The output file is called <tt>elf-</tt>,
+ or <tt>lr_elf-</tt> in linear response, in which case the associated function D is also written,
+ as <tt>lr_elf_D-</tt>. Only in 2D and 3D.
+</li>
+<li><b>ELF_basins</b>:  Outputs basins of attraction of the ELF. The output file is called
+ <tt>elf_rs_basins.info</tt>. Only in 2D and 3D.
+</li>
+<li><b>Bader</b>:  Outputs Laplacian of the density which shows lone pairs, bonded charge concentrations
+ and regions subject to electrophilic or nucleophilic attack.
+ See RF Bader, <i>Atoms in Molecules: A Quantum Theory</i> (Oxford Univ. Press, Oxford, 1990).
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='OutputDuringSCF'></a>OutputDuringSCF</b>
+<br/><i>Section</i>: Output
+<br/><i>Type</i>: logical
+<br/><i>Default</i>: no
+<br/><br> During <tt>gs</tt> and <tt>unocc</tt> runs, if this variable is set to yes,
+ output will be written after every <tt>OutputInterval</tt> iterations.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='OutputFormat'></a>OutputFormat</b>
+<br/><i>Section</i>: Output
+<br/><i>Type</i>: flag
+<br/><i>Default</i>: 0
+<br/><br> Describes the format of the output files.
+ This variable can also be defined inside the <tt>Output</tt> block.
+ See <tt>Output</tt>.
+ Example: <tt>axis_x + plane_x + dx</tt>
+
+<br/><i>Options</i>:
+<ul>
+<li><b>axis_x</b>:  The values of the function on the <i>x</i> axis are printed. The string <tt>.y=0,z=0</tt> is appended
+ to previous file names.
+</li>
+<li><b>axis_y</b>:  The values of the function on the <i>y</i> axis are printed. The string <tt>.x=0,z=0</tt> is appended
+ to previous file names.
+</li>
+<li><b>matlab</b>:  In combination with <tt>plane_x</tt>, <tt>plane_y</tt> and
+ <tt>plane_z</tt>, this option produces output files which are
+ suitable for 2D Matlab functions like <tt>mesh()</tt>,
+ <tt>surf()</tt>, or <tt>waterfall()</tt>. To load these files
+ into Matlab you can use, <i>e.g.</i>
+<tt>
+   >> density = load('static/density-1.x=0.matlab.abs');
+   >> mesh(density);
+</tt>
+</li>
+<li><b>meshgrid</b>:  Outputs in Matlab mode the internal mesh in a format similar to
+<tt>
+   >> [x,y] = meshgrid(-2:.2:2,-1:.15:1)
+</tt>
+ The <i>x</i> meshgrid is contained in a file <tt>*.meshgrid.x</tt> and the <i>y</i>-grid can be found in
+ <tt>*.meshgrid.y</tt>.
+</li>
+<li><b>boundary_points</b>:  This option includes the output of the mesh enlargement. Default is without.
+ Supported only by <tt>binary</tt>, <tt>axis</tt>, <tt>plane</tt>, <tt>mesh_index</tt>,
+ and <tt>matlab</tt> formats.
+ Not all types of <tt>Output</tt> will have this information available. Not supported when parallel in domains.
+</li>
+<li><b>binary</b>:  Plain binary, new format.
+</li>
+<li><b>etsf</b>:  <a href=http://www.etsf.eu/resources/software/standardization_project>ETSF file format</a>.
+ Requires the ETSF_IO library. Applies only to <tt>Output = density</tt>, <tt>geometry</tt>,
+ <tt>wfs</tt>, and/or <tt>wfs_fourier</tt>.
+</li>
+<li><b>xyz</b>:  Geometry will be output in XYZ format. Does not affect other outputs.
+</li>
+<li><b>cube</b>:  Generates output in the <a href=http://paulbourke.net/dataformats/cube>cube file format</a>.
+ Available only in 3D. Only writes the real part of complex functions.
+</li>
+<li><b>bild</b>:  Generates output in <a href=http://plato.cgl.ucsf.edu/chimera/docs/UsersGuide/bild.html>BILD format</a>.
+</li>
+<li><b>axis_z</b>:  The values of the function on the <i>z</i> axis are printed. The string <tt>.x=0,y=0</tt> is appended
+ to previous file names.
+</li>
+<li><b>vtk</b>:  Generates output in <a href=http://www.vtk.org/VTK/img/file-formats.pdf>VTK legacy format</a>.
+</li>
+<li><b>integrate_xy</b>:  Integrates the function in the x-y plane and the result on the <i>z</i> axis is printed.
+</li>
+<li><b>integrate_xz</b>:  Integrates the function in the x-z plane and the result on the <i>y</i> axis is printed
+</li>
+<li><b>integrate_yz</b>:  Integrates the function in the y-z plane and the result on the <i>x</i> axis is printed
+</li>
+<li><b>ascii</b>:  Plain text format regardless of dimensionality. For the moment only employed by the oct-phototoelectron_spectrum
+ post-processing utility.
+</li>
+<li><b>plane_x</b>:  A plane slice at <i>x</i> = 0 is printed. The string <tt>.x=0</tt> is appended
+ to previous file names.
+</li>
+<li><b>plane_y</b>:  A plane slice at <i>y</i> = 0 is printed. The string <tt>.y=0</tt> is appended
+ to previous file names.
+</li>
+<li><b>plane_z</b>:  A plane slice at <i>z</i> = 0 is printed. The string <tt>.z=0</tt> is appended to
+ previous file names.
+</li>
+<li><b>dx</b>:  For printing three-dimensional information, the open-source program
+ visualization tool <a href=http://www.opendx.org>OpenDX</a> can be used. The string
+ <tt>.dx</tt> is appended to previous file names. Available only in 3D.
+</li>
+<li><b>netcdf</b>:  Outputs in <a href=http://www.unidata.ucar.edu/packages/netcdf>NetCDF</a> format. This file
+ can then be read, for example, by OpenDX. The string <tt>.ncdf</tt> is appended to previous file names.
+ Requires the NetCDF library. Only writes the real part of complex functions.
+</li>
+<li><b>mesh_index</b>:  Generates output files of a given quantity (density, wavefunctions, ...) which include
+ the internal numbering of mesh points. Since this mode produces large datafiles this is only
+ useful for small meshes and debugging purposes.
+ The output can also be used to display the mesh directly. A Gnuplot script for mesh visualization
+ can be found under <tt>PREFIX/share/octopus/util/display_mesh_index.gp</tt>.
+</li>
+<li><b>xcrysden</b>:  A format for printing structures and three-dimensional information, which can be visualized by
+ the free open-source program <a href=http://www.xcrysden.org>XCrySDen</a> and others. The string
+ <tt>.xsf</tt> is appended to previous file names. Note that lattice vectors and coordinates are as
+ specified by <tt>UnitsOutput</tt>. Available in 2D and 3D.
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='OutputInterval'></a>OutputInterval</b>
+<br/><i>Section</i>: Output
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: 50
+<br/><br> The output requested by variable <tt>Output</tt> is written
+ to the directory <tt>OutputIterDir</tt>
+ when the iteration number is a multiple of the <tt>OutputInterval</tt> variable.
+ Subdirectories are named Y.X, where Y is <tt>td</tt>, <tt>scf</tt>, or <tt>unocc</tt>, and
+ X is the iteration number. To use the working directory, specify <tt>"."</tt>
+ (Output of restart files is instead controlled by <tt>RestartWriteInterval</tt>.)
+ Must be >= 0. If it is 0, then no output is written. For <tt>gs</tt> and <tt>unocc</tt>
+ calculations, <tt>OutputDuringSCF</tt> must be set too for this output to be produced.
+ This variable can also be defined inside the <tt>Output</tt> block.
+ See <tt>Output</tt>.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='OutputIterDir'></a>OutputIterDir</b>
+<br/><i>Section</i>: Output
+<br/><i>Type</i>: string
+<br/><i>Default</i>: "output_iter"
+<br/><br> The name of the directory where <tt>Octopus</tt> stores information
+ such as the density, forces, etc. requested by variable <tt>Output</tt>
+ in the format specified by <tt>OutputFormat</tt>.
+ This information is written while iterating <tt>CalculationMode = gs</tt>, <tt>unocc</tt>, or <tt>td</tt>,
+ according to <tt>OutputInterval</tt>, and has nothing to do with the restart information.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='OutputMEEnd'></a>OutputMEEnd</b>
+<br/><i>Section</i>: Output
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: 1
+<br/><br> Specifies the highest state/band index used to compute the matrix element.
+ So far, this is only used for dipole matrix elements.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='OutputMEMultipoles'></a>OutputMEMultipoles</b>
+<br/><i>Section</i>: Output
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: 1
+<br/><br> This variable decides which multipole moments are printed out for
+ <tt>OutputMatrixElements = ks_multipoles</tt>:
+<br><br>
+ In 3D, if, for example, <tt>OutputMEMultipoles = 1</tt>, then the program will print three
+ files, <tt>ks_me_multipoles.x</tt> (<tt>x</tt>=1,2,3), containing
+ respectively the (1,-1), (1,0) and (1,1) multipole matrix elements
+ between Kohn-Sham states.
+<br><br>
+ In 2D, this variable is ignored: it will always print two files,
+ <tt>ks_me_multipoles.i</tt> (<tt>i</tt>=1,2), containing the \(x\) and
+ \(y\) dipole matrix elements.
+<br><br>
+ In 1D, if, for example, <tt>OutputMEMultipoles = 2</tt>, the program will print two files, containing the
+ \(x\) and \(x^2\) matrix elements between Kohn-Sham states.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='OutputMEStart'></a>OutputMEStart</b>
+<br/><i>Section</i>: Output
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: 1
+<br/><br> Specifies the state/band index for starting to compute the matrix element.
+ So far, this is only used for dipole matrix elements.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='OutputMatrixElements'></a>OutputMatrixElements</b>
+<br/><i>Section</i>: Output
+<br/><i>Type</i>: block
+<br/><i>Default</i>: none
+<br/><br> Specifies what matrix elements to print.
+ Enabled only if <tt>Output</tt> block includes <tt>matrix_elements</tt>.
+ The output files go into the <tt>static</tt> directory, except when
+ running a time-dependent simulation, when the directory <tt>td.XXXXXXX</tt> is used.
+<br><br>
+ Example:
+ <br><br><tt>%OutputMatrixElements
+ <br>&nbsp;&nbsp;momentum
+ <br>&nbsp;&nbsp;ks_multipoles
+ <br>%<br></tt>
+<br><br>
+ It is possible to specify only compute the matrix elements for some of the states
+ using the variables <tt>OutptMEStart</tt> and <tt>OutputMEEnd</tt>.
+
+<br/><i>Options</i>:
+<ul>
+<li><b>momentum</b>:  Momentum. Filename: <tt>ks_me_momentum</tt>.
+</li>
+<li><b>ang_momentum</b>:  Dimensionless angular momentum \(\vec{r} \times \vec{k}\). Filename: <tt>ks_me_angular_momentum</tt>.
+</li>
+<li><b>one_body</b>:  \(\left< i \left| \hat{T} + V_{ext} \right| j \right>\). Not available with states parallelization.
+</li>
+<li><b>two_body</b>:  \(\left< ij \left| \frac{1}{\left|\vec{r}_1-\vec{r}_2\right|} \right| kl \right>\).
+ Not available with states parallelization.
+ Not available with states parallelization. For periodic system, this is not available for k-point parallelization neither.
+</li>
+<li><b>two_body_exc_k</b>:  \(\left< n1-k1, n2-k2 \left| \frac{1}{\left|\vec{r}_1-\vec{r}_2\right|} \right| n2-k1 n1-k2 \right>\).
+ Not available with states parallelization. For periodic system, this is not available for k-point parallelization neither.
+</li>
+<li><b>ks_multipoles</b>:  See <tt>OutputMEMultipoles</tt>. Not available with states parallelization.
+</li>
+<li><b>dipole</b>:  Prints the dipole matrix elements. Not available with states parallelization.
+ For periodic systems, the intraband terms (dipole matrix elements between degenerated states)
+ are set to zero, and only the absolute value of the dipole matrix element is printed.
+ Not yet supported for spinors.
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='OutputWfsNumber'></a>OutputWfsNumber</b>
+<br/><i>Section</i>: Output
+<br/><i>Type</i>: string
+<br/><i>Default</i>: all states
+<br/><br> Which wavefunctions to print, in list form: <i>i.e.</i>, "1-5" to print the first
+ five states, "2,3" to print the second and the third state, etc.
+ If more states are specified than available, extra ones will be ignored.
+
+</p><hr width='30%' align='left'/>
+
+<a name='Output::BerkeleyGW'</a>
+<H2>Output::BerkeleyGW</H2>
+
+
+<p><b><a name='BerkeleyGW_CalcDipoleMtxels'></a>BerkeleyGW_CalcDipoleMtxels</b>
+<br/><i>Section</i>: Output::BerkeleyGW
+<br/><i>Type</i>: logical
+<br/><i>Default</i>: false
+<br/><br> Whether to calculate dipole matrix elements, to be written in <tt>vmtxel</tt>.
+ This should be done when calculating <tt>WFN_fi</tt> for Bethe-Salpeter calculations
+ with light polarization in a finite direction. In that case, a shifted grid
+ <tt>WFNq_fi</tt> cannot be calculated, but we can instead use matrix elements of
+ \(r\) in a more exact scheme. In <tt>absorption.inp</tt>, set <tt>read_vmtxel</tt>
+ and <tt>use_momentum</tt>. Specify the number of conduction and valence bands you will
+ use in BSE here with <tt>BerkeleyGW_VmtxelNumCondBands</tt> and <tt>BerkeleyGW_VmtxelNumValBands</tt>.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='BerkeleyGW_CalcExchange'></a>BerkeleyGW_CalcExchange</b>
+<br/><i>Section</i>: Output::BerkeleyGW
+<br/><i>Type</i>: logical
+<br/><i>Default</i>: false
+<br/><br> Whether to calculate exchange matrix elements, to be written in <tt>x.dat</tt>.
+ These will be calculated anyway by BerkeleyGW <tt>Sigma</tt>, so this is useful
+ mainly for comparison and testing.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='BerkeleyGW_NumberBands'></a>BerkeleyGW_NumberBands</b>
+<br/><i>Section</i>: Output::BerkeleyGW
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: all states
+<br/><br> Wavefunctions for bands up to this number will be output. Must be between <= number of states.
+ If < 1, no wavefunction file will be output.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='BerkeleyGW_VmtxelNumCondBands'></a>BerkeleyGW_VmtxelNumCondBands</b>
+<br/><i>Section</i>: Output::BerkeleyGW
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: 0
+<br/><br> Number of conduction bands for which to calculate <tt>vmtxel</tt>, if you have set
+ <tt>BerkeleyGW_CalcDipoleMtxels = yes</tt>. This should be equal to the number to be
+ used in BSE.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='BerkeleyGW_VmtxelNumValBands'></a>BerkeleyGW_VmtxelNumValBands</b>
+<br/><i>Section</i>: Output::BerkeleyGW
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: 0
+<br/><br> Number of valence bands for which to calculate <tt>vmtxel</tt>, if you have set
+ <tt>BerkeleyGW_CalcDipoleMtxels = yes</tt>. This should be equal to the number to be
+ used in BSE.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='BerkeleyGW_VmtxelPolarization'></a>BerkeleyGW_VmtxelPolarization</b>
+<br/><i>Section</i>: Output::BerkeleyGW
+<br/><i>Type</i>: block
+<br/><i>Default</i>: (1, 0, 0)
+<br/><br> Polarization, <i>i.e.</i> direction vector, for which to calculate <tt>vmtxel</tt>, if you have set
+ <tt>BerkeleyGW_CalcDipoleMtxels = yes</tt>. May not have any component in a periodic direction.
+ The vector will be normalized.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='BerkeleyGW_Vxc_diag_nmax'></a>BerkeleyGW_Vxc_diag_nmax</b>
+<br/><i>Section</i>: Output::BerkeleyGW
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: nst
+<br/><br> Highest band for which to write diagonal exchange-correlation matrix elements. Must be between <= number of states.
+ If < 1, diagonals will be skipped.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='BerkeleyGW_Vxc_diag_nmin'></a>BerkeleyGW_Vxc_diag_nmin</b>
+<br/><i>Section</i>: Output::BerkeleyGW
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: 1
+<br/><br> Lowest band for which to write diagonal exchange-correlation matrix elements. Must be <= number of states.
+ If < 1, diagonals will be skipped.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='BerkeleyGW_Vxc_offdiag_nmax'></a>BerkeleyGW_Vxc_offdiag_nmax</b>
+<br/><i>Section</i>: Output::BerkeleyGW
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: nst
+<br/><br> Highest band for which to write off-diagonal exchange-correlation matrix elements. Must be <= number of states.
+ If < 1, off-diagonals will be skipped.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='BerkeleyGW_Vxc_offdiag_nmin'></a>BerkeleyGW_Vxc_offdiag_nmin</b>
+<br/><i>Section</i>: Output::BerkeleyGW
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: 1
+<br/><br> Lowest band for which to write off-diagonal exchange-correlation matrix elements. Must be <= number of states.
+ If < 1, off-diagonals will be skipped.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='BerkeleyGW_WFN_filename'></a>BerkeleyGW_WFN_filename</b>
+<br/><i>Section</i>: Output::BerkeleyGW
+<br/><i>Type</i>: string
+<br/><i>Default</i>: WFN
+<br/><br> Filename for the wavefunctions.
+
+</p><hr width='30%' align='left'/>
+
+</body>
+</html>

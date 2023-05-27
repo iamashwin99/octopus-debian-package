@@ -1,0 +1,48 @@
+FromScratch = yes
+
+DisableAccel = yes
+
+CalculationMode = gs
+
+PeriodicDimensions = 3
+
+# Use a lattice parameter that is a bit smaller than the equilibrium one
+a = 9.2
+
+Spacing = a/14
+
+BoxShape = parallelepiped
+%LatticeParameters
+ a | a | a
+%
+
+PseudopotentialSet = pseudodojo_lda
+
+# We move the first Si atom slighly out of position to get non-zero forces
+%ReducedCoordinates
+  "Si" |   0.1       | -0.05     | 0.075
+  "Si" |   1/2       | 1/2       | 0.0
+  "Si" |   1/2       | 0.0       | 1/2
+  "Si" |   0.0       | 1/2       | 1/2 
+  "Si" |   1/4       | 1/4       | 1/4 
+  "Si" |   1/4 + 1/2 | 1/4 + 1/2 | 1/4
+  "Si" |   1/4 + 1/2 | 1/4       | 1/4 + 1/2
+  "Si" |   1/4       | 1/4 + 1/2 | 1/4 + 1/2 
+%
+
+%KPointsGrid
+ 2 | 2 | 2
+ 1/2 | 1/2 | 1/2
+%
+
+KPointsUseSymmetries = no
+ExperimentalFeatures = yes
+SymmetrizeDensity = yes
+
+ExtraStates = 1
+ConvRelDens = 1e-8
+EigensolverTolerance = 1e-9
+ConvEigenError = yes
+
+SCFCalculateStress = yes
+

@@ -1,0 +1,29 @@
+CalculationMode = gs
+FromScratch = yes
+ExperimentalFeatures = yes
+
+Spacing = 0.3
+Radius = 6
+
+%Coordinates
+'He' | 0.0 | 0.0 | 0.0
+%
+
+%Species
+'He' | species_full_delta | valence | 2
+%
+
+ExtraStates = 1
+
+DFTULevel = dft_u_acbn0
+UseAllAtomicOrbitals = yes
+SkipSOrbitals = no
+
+%Output
+  occ_matrices
+  effectiveU
+%
+
+DFTUPoissonSolver = dft_u_poisson_direct
+
+PoissonSolver = isf

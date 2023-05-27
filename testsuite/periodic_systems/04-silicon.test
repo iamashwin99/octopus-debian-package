@@ -1,0 +1,198 @@
+# -*- coding: utf-8 mode: shell-script -*-
+
+Test       : Silicon crystal
+Program    : octopus
+TestGroups : long-run, periodic_systems, symmetries
+Enabled    : Yes
+Processors : 4
+Input      : 04-silicon.01-gs.inp
+
+match ; Total k-points   ; GREPFIELD(static/info, 'Total number of k-points', 6) ; 64
+match ; Reduced k-points ; GREPFIELD(static/info, 'Number of symmetry-reduced k-points', 6) ; 4
+match ; Space group        ; GREPFIELD(out, 'Space group', 4) ; 227
+match ; No. of symmetries  ; GREPFIELD(out, 'symmetries that can be used', 5)  ;  24
+
+match ; SCF convergence    ; GREPCOUNT(static/info, 'SCF converged') ; 1
+match ; Total energy       ; GREPFIELD(static/info, 'Total       =', 3) ; -31.80434624
+match ; Ion-ion energy     ; GREPFIELD(static/info, 'Ion-ion     =', 3) ; -31.43120280
+match ; Eigenvalues sum    ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -1.12570318
+match ; Hartree energy     ; GREPFIELD(static/info, 'Hartree     =', 3) ; 2.17260804
+match ; Exchange energy    ; GREPFIELD(static/info, 'Exchange    =', 3) ; -8.12442661
+match ; Correlation energy ; GREPFIELD(static/info, 'Correlation =', 3) ; -1.49914979
+match ; Kinetic energy     ; GREPFIELD(static/info, 'Kinetic     =', 3) ; 12.41396364
+match ; External energy    ; GREPFIELD(static/info, 'External    =', 3) ; -5.33613856
+
+match ; k-point 1 (x) ; GREPFIELD(static/info, '#k =       1', 7) ; 0.125000
+match ; k-point 1 (y) ; GREPFIELD(static/info, '#k =       1', 8) ; 0.125000
+match ; k-point 1 (z) ; GREPFIELD(static/info, '#k =       1', 9) ; 0.125000
+match ; Eigenvalue  1 ; GREPFIELD(static/info, '#k =       1', 3, 1) ; -0.280439
+match ; Eigenvalue  8 ; GREPFIELD(static/info, '#k =       1', 3, 8) ; 0.022241
+match ; Eigenvalue 16 ; GREPFIELD(static/info, '#k =       1', 3, 16) ; 0.139406
+match ; Eigenvalue 17 ; GREPFIELD(static/info, '#k =       1', 3, 17) ; 0.173060
+
+match ; k-point 2 (x) ; GREPFIELD(static/info, '#k =       2', 7) ; 0.375000
+match ; k-point 2 (y) ; GREPFIELD(static/info, '#k =       2', 8) ; 0.125000
+match ; k-point 2 (z) ; GREPFIELD(static/info, '#k =       2', 9) ; 0.125000
+match ; Eigenvalue  1 ; GREPFIELD(static/info, '#k =       2', 3, 1) ; -0.260467
+match ; Eigenvalue  8 ; GREPFIELD(static/info, '#k =       2', 3, 8) ; -0.001430
+match ; Eigenvalue 16 ; GREPFIELD(static/info, '#k =       2', 3, 16) ; 0.104514
+match ; Eigenvalue 17 ; GREPFIELD(static/info, '#k =       2', 3, 17) ; 0.192430
+
+match ; k-point 3 (x) ; GREPFIELD(static/info, '#k =       3', 7) ; 0.375000
+match ; k-point 3 (y) ; GREPFIELD(static/info, '#k =       3', 8) ; 0.375000
+match ; k-point 3 (z) ; GREPFIELD(static/info, '#k =       3', 9) ; 0.125000
+match ; Eigenvalue  1 ; GREPFIELD(static/info, '#k =       3', 3, 1) ; -0.241547
+match ; Eigenvalue  8 ; GREPFIELD(static/info, '#k =       3', 3, 8) ; -0.017855
+match ; Eigenvalue 16 ; GREPFIELD(static/info, '#k =       3', 3, 16) ; 0.120700
+match ; Eigenvalue 17 ; GREPFIELD(static/info, '#k =       3', 3, 17) ; 0.207158
+
+match ; k-point 4 (x) ; GREPFIELD(static/info, '#k =       4', 7) ; 0.375000
+match ; k-point 4 (y) ; GREPFIELD(static/info, '#k =       4', 8) ; 0.375000
+match ; k-point 4 (z) ; GREPFIELD(static/info, '#k =       4', 9) ; 0.375000
+match ; Eigenvalue  1 ; GREPFIELD(static/info, '#k =       4', 3, 1) ; -0.224912
+match ; Eigenvalue  8 ; GREPFIELD(static/info, '#k =       4', 3, 8) ; -0.067345
+match ; Eigenvalue 16 ; GREPFIELD(static/info, '#k =       4', 3, 16) ; 0.109820
+match ; Eigenvalue 17 ; GREPFIELD(static/info, '#k =       4', 3, 17) ; 0.214726
+
+match ; geometry size  ; LINEFIELD(static/geometry.xyz,  1, 1) ;  8
+match ; geometry  4 1  ; LINEFIELD(static/geometry.xyz,  6, 2) ;  0.0
+match ; geometry  4 3  ; LINEFIELD(static/geometry.xyz,  6, 3) ; -2.698804
+match ; geometry  4 4  ; LINEFIELD(static/geometry.xyz,  6, 4) ; -2.698804
+match ; geometry  8 1  ; LINEFIELD(static/geometry.xyz, 10, 2) ;  1.349402
+match ; geometry  8 2  ; LINEFIELD(static/geometry.xyz, 10, 3) ; -1.349402
+match ; geometry  8 3  ; LINEFIELD(static/geometry.xyz, 10, 4) ; -1.349402
+
+match ; crystal  size  ; LINEFIELD(static/crystal.xyz,  1, 1) ;  216
+match ; crystal  14 1  ; LINEFIELD(static/crystal.xyz, 16, 2) ;  0.0
+match ; crystal  14 3  ; LINEFIELD(static/crystal.xyz, 16, 3) ;  0.0
+match ; crystal  14 4  ; LINEFIELD(static/crystal.xyz, 16, 4) ;  0.0
+match ; crystal  70 1  ; LINEFIELD(static/crystal.xyz, 72, 2) ; -5.1
+match ; crystal  70 2  ; LINEFIELD(static/crystal.xyz, 72, 3) ;  10.2
+match ; crystal  70 3  ; LINEFIELD(static/crystal.xyz, 72, 4) ; -15.3
+
+match ; DOS E Fermi    ; LINEFIELD(static/total-dos-efermi.dat, 2, 1);   0.139406
+match ;  DOS energy 2    ; LINEFIELD(static/total-dos.dat, 2, 1) ; -0.426438
+match ;  DOS value  2    ; LINEFIELD(static/total-dos.dat, 2, 2) ;  0.433252
+match ;  DOS energy 442  ; LINEFIELD(static/total-dos.dat, 442, 1) ; 0.345985
+match ;  DOS value  442  ; LINEFIELD(static/total-dos.dat, 442, 2) ; 3.246697
+
+match ; Direct gap ; GREPFIELD(static/info, 'Direct gap', 7, 0) ; 0.0337
+match ; Indirect gap ; GREPFIELD(static/info, 'Indirect gap', 10, 0) ; 0.0337
+
+Input      : 04-silicon.02-kdotp.inp
+
+match ; vg(x) k1 st1  ; LINEFIELD(kdotp/velocity, 5, 3) ; 0.06525
+match ; vg(y) k2 st10 ; LINEFIELD(kdotp/velocity, 34, 4) ; -0.1734
+match ; vg(x) k3 st17 ; LINEFIELD(kdotp/velocity, 61, 3) ; -0.06566
+match ; vg(z) k3 st17 ; LINEFIELD(kdotp/velocity, 61, 5) ; 0.03474
+Precision : 0.0005
+match ; 1/m*  k1 st1  ; GREPFIELD(kdotp/kpoint_1_1, 'Isotropic average', 3, 0) ; 0.884239
+match ; 1/mxy k1 st1  ; GREPFIELD(kdotp/kpoint_1_1, 'State #1', 2, 1)      ; -0.006748
+
+Input      : 04-silicon.03-emresp.inp
+if(available libxc_fxc); then
+  # by symmetry, all tensors below must be diagonal and isotropic
+  Precision : 0.001
+  match ; Re Epsilon XX w=0.0 ; LINEFIELD(em_resp/freq_0.0000/epsilon,  2, 1) ; 14.255349
+  match ; Re Epsilon YY w=0.0 ; LINEFIELD(em_resp/freq_0.0000/epsilon,  3, 2) ; 14.255349
+  match ; Re Epsilon ZZ w=0.0 ; LINEFIELD(em_resp/freq_0.0000/epsilon,  4, 3) ; 14.255349
+  match ; Re Epsilon XY w=0.0 ; LINEFIELD(em_resp/freq_0.0000/epsilon,  2, 2) ;  0.000000
+                                        
+  match ; Re Epsilon XX w=0.1 ; LINEFIELD(em_resp/freq_0.1000/epsilon,  2, 1) ; 29.052408
+  match ; Re Epsilon YY w=0.1 ; LINEFIELD(em_resp/freq_0.1000/epsilon,  3, 2) ; 29.052408
+  match ; Re Epsilon ZZ w=0.1 ; LINEFIELD(em_resp/freq_0.1000/epsilon,  4, 3) ; 29.052408
+  match ; Re Epsilon XY w=0.1 ; LINEFIELD(em_resp/freq_0.1000/epsilon,  2, 2) ;  0.000000
+                                        
+  match ; Im Epsilon XX w=0.1 ; LINEFIELD(em_resp/freq_0.1000/epsilon,  8, 1) ; 14.943228
+  match ; Im Epsilon YY w=0.1 ; LINEFIELD(em_resp/freq_0.1000/epsilon,  9, 2) ; 14.943228
+  match ; Im Epsilon ZZ w=0.1 ; LINEFIELD(em_resp/freq_0.1000/epsilon, 10, 3) ; 14.943228
+  match ; Im Epsilon XY w=0.1 ; LINEFIELD(em_resp/freq_0.1000/epsilon,  8, 2) ;  0.000000
+
+  match ; Born charge 1 XX w=0.0 ; GREPFIELD(em_resp/freq_0.0000/Born_charges, "Index:     1", 1,  2) ;  -0.021640
+  match ; Born charge 1 ZZ w=0.0 ; GREPFIELD(em_resp/freq_0.0000/Born_charges, "Index:     1", 3,  4) ;  -0.021640
+  match ; Born charge 1 XZ w=0.0 ; GREPFIELD(em_resp/freq_0.0000/Born_charges, "Index:     1", 1,  4) ;   0.0
+  match ; Born charge 5 XX w=0.0 ; GREPFIELD(em_resp/freq_0.0000/Born_charges, "Index:     5", 1,  2) ;  -0.052269
+  match ; Born charge diff w=0.0 ; GREPFIELD(em_resp/freq_0.0000/Born_charges, "Discrepancy",  3,  5) ;  -0.036954
+
+  match ; Born charge 1 XX w=0.1 ; GREPFIELD(em_resp/freq_0.1000/Born_charges, "Index:     1", 1,  2) ;  -2.825265
+  match ; Born charge 1 ZZ w=0.1 ; GREPFIELD(em_resp/freq_0.1000/Born_charges, "Index:     1", 3,  4) ;  -2.825265
+  match ; Born charge 1 XZ w=0.1 ; GREPFIELD(em_resp/freq_0.1000/Born_charges, "Index:     1", 1,  4) ;   0.0
+  match ; Born charge 5 XX w=0.1 ; GREPFIELD(em_resp/freq_0.1000/Born_charges, "Index:     5", 1,  2) ;  -3.092646
+  # this discrepancy is horrible!
+  match ; Born charge diff w=0.1 ; GREPFIELD(em_resp/freq_0.1000/Born_charges, "Discrepancy",  3,  5) ;  -2.958955
+  match ; Born charge diff w=0.1 ; GREPFIELD(em_resp/freq_0.1000/Born_charges, "Discrepancy",  3, 10) ;  -2.356381
+else
+  match ; Error no libxc_fxc ; GREPCOUNT(err, 'not compiled with the fxc support') ; 1
+endif
+
+Input: 04-silicon.04-emresp_mo.inp
+if(available libxc_fxc); then
+  Precision : 0.1
+  match ; Susceptibility XX          ; GREPFIELD(em_resp/freq_0.0000/susceptibility, "susceptibility", 1, 1) ; -6228.875102
+  match ; Susceptibility YY          ; GREPFIELD(em_resp/freq_0.0000/susceptibility, "susceptibility", 2, 2) ; -6228.875102
+  match ; Susceptibility ZZ          ; GREPFIELD(em_resp/freq_0.0000/susceptibility, "susceptibility", 3, 3) ; -6228.875102
+
+  Precision : 0.001
+  match ; Re epsilon XX (LRC)         ; GREPFIELD(em_resp/freq_0.1000/epsilon, "Real", 1, 1) ; 33.951164
+  match ; Re epsilon YY (LRC)         ; GREPFIELD(em_resp/freq_0.1000/epsilon, "Real", 2, 2) ; 33.951164
+  match ; Re epsilon ZZ (LRC)         ; GREPFIELD(em_resp/freq_0.1000/epsilon, "Real", 3, 3) ; 33.951164
+  match ; Im epsilon XX (LRC)         ; GREPFIELD(em_resp/freq_0.1000/epsilon, "Imaginary", 1, 1) ; 41.513974
+  match ; Im epsilon YY (LRC)         ; GREPFIELD(em_resp/freq_0.1000/epsilon, "Imaginary", 2, 2) ; 41.513974
+  match ; Im epsilon ZZ (LRC)         ; GREPFIELD(em_resp/freq_0.1000/epsilon, "Imaginary", 3, 3) ; 41.513974
+  match ; Im epsilon av (LRC)         ; GREPFIELD(em_resp/freq_0.1000/epsilon, "Imaginary", 3, 4) ; 41.513974
+
+  match ; Re eps XX (LRC, w/o G=0)   ; GREPFIELD(em_resp/freq_0.1000/epsilon, "LRC kernel", 1, 2) ; 29.133444
+  match ; Re eps YY (LRC, w/o G=0)   ; GREPFIELD(em_resp/freq_0.1000/epsilon, "LRC kernel", 2, 3) ; 29.133444
+  match ; Re eps ZZ (LRC, w/o G=0)   ; GREPFIELD(em_resp/freq_0.1000/epsilon, "LRC kernel", 3, 4) ; 29.133444
+  match ; Im eps XX (LRC, w/o G=0)   ; GREPFIELD(em_resp/freq_0.1000/epsilon, "LRC kernel", 1, 8) ; 15.038875
+  match ; Im eps YY (LRC, w/o G=0)   ; GREPFIELD(em_resp/freq_0.1000/epsilon, "LRC kernel", 2, 9) ; 15.038875
+  match ; Im eps ZZ (LRC, w/o G=0)   ; GREPFIELD(em_resp/freq_0.1000/epsilon, "LRC kernel", 3, 10) ; 15.038875
+  match ; Im eps av (LRC, w/o G=0)   ; GREPFIELD(em_resp/freq_0.1000/epsilon, "LRC kernel", 3, 11) ; 15.038875
+
+  match ; Re epsilon at k-point      ; GREPFIELD(em_resp/freq_0.1000/epsilon_k_re, "  3  ", 14) ; 0.49902411E+01
+  match ; Re epsilon at k-point      ; GREPFIELD(em_resp/freq_0.1000/epsilon_k_re, "  3  ", 10) ; 0.26638357E+02
+  match ; Re epsilon at k-point      ; GREPFIELD(em_resp/freq_0.1000/epsilon_k_re, "  3  ", 11) ; -0.13974666E+01
+  match ; Im epsilon at k-point      ; GREPFIELD(em_resp/freq_0.1000/epsilon_k_im, "  2  ", 10) ; 0.74344551E+01
+  match ; Im epsilon at k-point      ; GREPFIELD(em_resp/freq_0.1000/epsilon_k_im, "  4  ", 6) ; 0.44689075E+02
+  match ; Im epsilon at k-point      ; GREPFIELD(em_resp/freq_0.1000/epsilon_k_im, "  4  ", 7) ; -0.22049127E+02
+
+  Precision : 3
+  match ; Mag.-opt. Re alpha         ; GREPFIELD(em_resp/freq_0.1000/alpha_mo, 'Re alpha', 4) ; -0.21149804E+03
+  match ; Mag.-opt. Re alpha         ; GREPFIELD(em_resp/freq_0.1000/alpha_mo, 'Re alpha', 5) ; -0.21149804E+03
+  match ; Mag.-opt. Re alpha         ; GREPFIELD(em_resp/freq_0.1000/alpha_mo, 'Re alpha', 6) ; -0.21149804E+03
+  match ; Mag.-opt. Re alpha         ; GREPFIELD(em_resp/freq_0.1000/alpha_mo, 'Re alpha', 7) ; -0.21149804E+03
+
+  match ; MO Im alpha (w/o G=0)      ; GREPFIELD(em_resp/freq_0.1000/alpha_mo, 'LRC kernel', 4, 3) ; 0.37739851E+03
+  match ; MO Im alpha (w/o G=0)      ; GREPFIELD(em_resp/freq_0.1000/alpha_mo, 'LRC kernel', 5, 3) ; 0.37739851E+03
+  match ; MO Im alpha (w/o G=0)      ; GREPFIELD(em_resp/freq_0.1000/alpha_mo, 'LRC kernel', 6, 3) ; 0.37739851E+03
+  match ; MO Im alpha (w/o G=0)      ; GREPFIELD(em_resp/freq_0.1000/alpha_mo, 'LRC kernel', 7, 3) ; 0.37739851E+03
+
+  Precision : 0.003
+  match ; Mag.-opt. Im epsilon       ; GREPFIELD(em_resp/freq_0.1000/alpha_mo, 'Im epsilon', 7) ; 0.70069675E+01
+  match ; Mag.-opt. Im epsilon       ; GREPFIELD(em_resp/freq_0.1000/alpha_mo, 'Im epsilon', 8) ; 0.70069675E+01
+  match ; Mag.-opt. Im epsilon       ; GREPFIELD(em_resp/freq_0.1000/alpha_mo, 'Im epsilon', 9) ; 0.70069675E+01
+  match ; Mag.-opt. Im epsilon       ; GREPFIELD(em_resp/freq_0.1000/alpha_mo, 'Im epsilon', 10) ; 0.70069675E+01
+
+  Precision : 0.0005
+  match ; MO Re eps (w/o G=0)        ; GREPFIELD(em_resp/freq_0.1000/alpha_mo, 'LRC kernel', 7, 4) ; 0.31086729
+  match ; MO Re eps (w/o G=0)        ; GREPFIELD(em_resp/freq_0.1000/alpha_mo, 'LRC kernel', 8, 4) ; 0.31086729
+  match ; MO Re eps (w/o G=0)        ; GREPFIELD(em_resp/freq_0.1000/alpha_mo, 'LRC kernel', 9, 4) ; 0.31086729
+  match ; MO Re eps (w/o G=0)        ; GREPFIELD(em_resp/freq_0.1000/alpha_mo, 'LRC kernel', 10, 4) ; 0.31086729
+
+  Precision : 0.001
+  match ; Mag.-opt. Re eps at kpt    ; GREPFIELD(em_resp/freq_0.1000/epsilon_mo_k, "  4   ", 8) ; 0.78915820E+01
+  match ; Mag.-opt. Im eps at kpt    ; GREPFIELD(em_resp/freq_0.1000/epsilon_mo_k, "  2   ", 11) ; -0.31931336E+00
+  match ; Mag.-opt. Im eps at kpt    ; GREPFIELD(em_resp/freq_0.1000/epsilon_mo_k, "  2   ", 10) ; -0.32220207E+00
+else
+  match ; Error no libxc_fxc ; GREPCOUNT(err, 'not compiled with the fxc support') ; 1
+endif
+
+Input: 04-silicon.05-emresp_magn.inp
+if(available libxc_fxc); then
+  Precision : 0.3
+  match ; Susceptibility XX          ; GREPFIELD(em_resp/freq_0.0000/susceptibility, "susceptibility", 1, 1) ; -6185.012367
+  match ; Susceptibility YY          ; GREPFIELD(em_resp/freq_0.0000/susceptibility, "susceptibility", 2, 2) ; -6185.012367
+  match ; Susceptibility ZZ          ; GREPFIELD(em_resp/freq_0.0000/susceptibility, "susceptibility", 3, 3) ; -6185.012367
+else
+  match ; Error no libxc_fxc ; GREPCOUNT(err, 'not compiled with the fxc support') ; 1
+endif

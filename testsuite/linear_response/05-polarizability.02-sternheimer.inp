@@ -1,0 +1,23 @@
+CalculationMode = em_resp
+UnitsOutput = eV_Angstrom
+fromScratch = yes
+RestartFixedOccupations = no
+
+SmearingFunction = methfessel_paxton
+Smearing = 0.5*eV
+ExtraStates = 3
+
+%Coordinates
+  "Na" | -1.54*angstrom | 0 | 0
+  "Na" |  1.54*angstrom | 0 | 0
+%
+
+Spacing = 0.56692
+Radius = 13.2280
+
+%Output 
+ pol_density | xcrysden
+% 
+
+
+Debug = trace

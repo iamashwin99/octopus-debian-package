@@ -1,0 +1,43 @@
+FromScratch=yes
+
+CalculationMode = kdotp
+ExperimentalFeatures = yes
+
+PeriodicDimensions = 3
+
+a = 10.2
+
+BoxShape = parallelepiped
+%LatticeParameters
+ a | a | a
+%
+Spacing = a/14
+
+%ReducedCoordinates
+  "Si" |   0.0       | 0.0       | 0.0 
+  "Si" |   1/2       | 1/2       | 0.0
+  "Si" |   1/2       | 0.0       | 1/2
+  "Si" |   0.0       | 1/2       | 1/2 
+  "Si" |   1/4       | 1/4       | 1/4 
+  "Si" |   1/4 + 1/2 | 1/4 + 1/2 | 1/4
+  "Si" |   1/4 + 1/2 | 1/4       | 1/4 + 1/2
+  "Si" |   1/4       | 1/4 + 1/2 | 1/4 + 1/2 
+%
+
+
+%KPointsGrid
+ 4 | 4 | 4
+ 1/2 | 1/2 | 1/2
+%
+
+KPointsUseSymmetries = yes
+SymmetrizeDensity = yes
+
+
+ExtraStates = 8
+KdotPCalcSecondOrder = yes
+
+FilterPotentials = filter_none
+
+MixField = density
+

@@ -1,0 +1,18 @@
+# -*- coding: utf-8 mode: shell-script -*-
+
+CalculationMode = casida
+
+FromScratch = yes
+
+bond_length = 2.0744
+
+BoxShape = sphere
+
+Radius = 12.0
+Spacing = 0.36
+
+XCFunctional = lda_x + lda_c_vwn
+
+PoissonSolver = fft
+PoissonFFTKernel = multipole_correction
+MixField = density

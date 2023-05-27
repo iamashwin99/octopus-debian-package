@@ -1,0 +1,44 @@
+CalculationMode = td
+
+Dimensions = 1
+fromScratch = yes
+RestartWrite = no
+
+BoxShape = sphere
+Spacing = 0.5
+Radius = 100.0
+
+TheoryLevel = independent_particles
+
+%Species
+"Hydrogen1D" | species_user_defined | potential_formula | "-1/sqrt(1+(x)^2)" | valence | 1
+%
+
+%Coordinates
+"Hydrogen1D" | 0
+%
+
+AbsorbingBoundaries = cap
+ABCapHeight = -0.85
+ABWidth = 40 
+I0 = 8.00*1e13
+lam = 800 
+amp = (5.33685*1e-9)*sqrt(I0)
+om = 2*pi*(1/7.2973525664e-3)/(10*lam/0.52917725)
+T_pulse = 10*(2*pi/om)
+TDPropagationTime = T_pulse 
+TDTimeStep = 0.05 
+
+%TDExternalFields
+ electric_field | i | 0 | 0 | om | "envelope_sin2" 
+%
+
+%TDFunctions
+"envelope_sin2" | tdf_from_expr | "(amp)*sin(pi*t/T_pulse)^2*(1-step(t-T_pulse))"
+%
+
+%TDOutput
+  laser
+  multipoles
+%
+TDMultipoleLmax = 0

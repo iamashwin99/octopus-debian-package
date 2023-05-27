@@ -1,0 +1,60 @@
+# -*- coding: utf-8 mode: shell-script -*-
+
+Test       : Restart
+Program    : octopus
+TestGroups : short-run, finite_systems_3d
+Enabled    : Yes
+
+# Note: the first 4 runs should _not_ reach full SCF convergence, otherwise
+# all the final results will be identical whether or not the restart of the 
+# density, vhxc, and mixing is working properly.
+
+# First start a ground state calculation that uses the mixing of the density
+Input: 06-restart.01-gs_mixrho.inp
+Precision : 2.0e-6
+match ; SCF convergence ; GREPCOUNT(workdir/static/info, 'SCF \*not\* converged') ; 1
+match ;  Eigenvalue [up]  ; GREPFIELD(workdir/static/info, '1   up', 3) ; -0.05005
+match ;  Eigenvalue [dn]  ; GREPFIELD(workdir/static/info, '1   dn', 3) ; -0.086414
+
+# Now restart the previous calculation reading the states, the density, and the mixing
+Input: 06-restart.02-restart_gs_mixrho.inp
+match ; SCF convergence ; GREPCOUNT(workdir/static/info, 'SCF \*not\* converged') ; 1
+match ;  Eigenvalue [up]  ; GREPFIELD(workdir/static/info, '1   up', 3) ; -0.015581
+match ;  Eigenvalue [dn]  ; GREPFIELD(workdir/static/info, '1   dn', 3) ; -0.08535
+
+# Start again a ground state calculation, this time using the mixing of the potential
+Input: 06-restart.03-gs_mixvhxc.inp
+match ; SCF convergence ; GREPCOUNT(workdir/static/info, 'SCF \*not\* converged') ; 1
+match ;  Eigenvalue [up]  ; GREPFIELD(workdir/static/info, '1   up', 3) ; -0.040046
+match ;  Eigenvalue [dn]  ; GREPFIELD(workdir/static/info, '1   dn', 3) ; -0.072945
+
+# Now restart the previous calculation reading the states, the potential, and the mixing
+Input: 06-restart.04-restart_gs_mixvhxc.inp
+match ; SCF convergence ; GREPCOUNT(workdir/static/info, 'SCF \*not\* converged') ; 1
+match ;  Eigenvalue [up]  ; GREPFIELD(workdir/static/info, '1   up', 3) ; -0.013868
+match ;  Eigenvalue [dn]  ; GREPFIELD(workdir/static/info, '1   dn', 3) ; -0.085208
+
+# Restart the previous calculation reading only the states
+Input: 06-restart.05-restart_gs.inp
+match ; SCF convergence ; GREPCOUNT(workdir/static/info, 'SCF converged') ; 1
+Precision : 8.0e-6
+match ; Eigenvalue [up] ; GREPFIELD(workdir/static/info, '1   up', 3) ; -0.014047
+Precision : 2.0e-6
+match ; Eigenvalue [dn] ; GREPFIELD(workdir/static/info, '1   dn', 3) ; -0.085321
+
+
+# Start a time-dependent calculation
+Input: 06-restart.06-td_calc.inp
+match ; TD start    ; LINEFIELD(workdir/td.general/multipoles, -1, 2) ; 3.500000000000e-01
+match ; charge [up] ; LINEFIELD(workdir/td.general/multipoles, -1, 3) ; 0.000000000000e+00
+match ; charge [dn] ; LINEFIELD(workdir/td.general/multipoles, -1, 7) ; 9.999999999991e-01
+match ; <x> [dn]    ; LINEFIELD(workdir/td.general/multipoles, -1, 8) ; -3.495466780114e-03
+
+
+# Finally restart the td calculation
+Input: 06-restart.07-restart_td_calc.inp
+match ; TD start    ; LINEFIELD(workdir/td.general/multipoles, -1, 2) ; 7.000000000000e-01
+match ; charge [up] ; LINEFIELD(workdir/td.general/multipoles, -1, 3) ; 0.000000000000e+00
+match ; charge [dn] ; LINEFIELD(workdir/td.general/multipoles, -1, 7) ; 9.999999999983e-01
+match ; <x> [dn]    ; LINEFIELD(workdir/td.general/multipoles, -1, 8) ; -6.969717724775e-03
+

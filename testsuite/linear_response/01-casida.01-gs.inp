@@ -1,0 +1,33 @@
+# -*- coding: utf-8 mode: shell-script -*-
+
+CalculationMode = gs
+
+FromScratch = yes
+
+bond_length = 2.0744
+
+%Coordinates
+"N" |  -bond_length/2 |  0.0 |  0.0 
+"N" |   bond_length/2 |  0.0 |  0.0 
+%
+
+%Species
+"N" | species_pseudo | lmax | 2 | lloc | 0  
+%
+
+BoxShape = sphere
+
+Radius = 12.0
+Spacing = 0.36
+
+XCFunctional = lda_x + lda_c_vwn
+
+ConvRelDens = 1e-10
+EigenSolverTolerance = 1e-11
+
+LCAODimension = 18
+LCAOMaximumOrbitalRadius = 50
+
+PoissonSolver = fft
+PoissonFFTKernel = multipole_correction
+MixField = density

@@ -1,0 +1,14 @@
+# Name	path		Z 	Lmax 	Lloc
+ H      PSF/H.psf	1       0       0
+ D      PSF/H.psf	1       0       0
+ T      PSF/H.psf	1       0       0
+ Li     PSF/Li.psf	3       1       0
+ C      PSF/C.psf	6       1       0
+ N      PSF/N.psf	7       1       0
+ O      PSF/O.psf	8       1       0
+ Na     PSF/Na.psf	11      0       0
+ Si     PSF/Si.psf	14      2       0
+ S      PSF/S.psf	16      2       0
+ Ti     PSF/Ti.psf	22      2       0
+ Se     PSF/Se.psf	34      2       0
+ Cd     PSF/Cd.psf	48      2       0

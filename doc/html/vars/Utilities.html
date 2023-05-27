@@ -1,0 +1,1115 @@
+
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML-full"></script>
+<style>
+   BODY {background-color: white; 
+         font-size: 10pt; font-family: verdana,helvetica;}
+   A  {text-decoration: none;color: blue}
+</style>
+</head>
+<body>
+
+<a name='Utilities::'</a>
+<H2>Utilities::</H2>
+
+
+<p><b><a name='Volume'></a>Volume</b>
+<br/><i>Section</i>: Utilities::
+<br/><i>Type</i>: block
+<br/><br> Describes a volume in space defined through the addition and substraction of
+ spheres. The first field is always "+" (include points inside the volume) or "-"
+ (exclude points inside the volume)
+
+<br/><i>Options</i>:
+<ul>
+<li><b>vol_sphere</b>: <br><br>
+ <tt>%Volume
+ <br>&nbsp;&nbsp; "+"/"-" | vol_sphere | center_x | center_y | center_z | radius
+ <br>%</tt>
+</li>
+<li><b>vol_slab</b>: <br><br>
+ <tt>%Volume
+ <br>&nbsp;&nbsp; "+"/"-" | vol_slab | thickness
+ <br>%</tt>
+<br><br>
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+<a name='Utilities::oct-casida_spectrum'</a>
+<H2>Utilities::oct-casida_spectrum</H2>
+
+
+<p><b><a name='CasidaSpectrumBroadening'></a>CasidaSpectrumBroadening</b>
+<br/><i>Section</i>: Utilities::oct-casida_spectrum
+<br/><i>Type</i>: float
+<br/><i>Default</i>: 0.005 Ha
+<br/><br> Width of the Lorentzian used to broaden the excitations.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='CasidaSpectrumEnergyStep'></a>CasidaSpectrumEnergyStep</b>
+<br/><i>Section</i>: Utilities::oct-casida_spectrum
+<br/><i>Type</i>: float
+<br/><i>Default</i>: 0.001 Ha
+<br/><br> Sampling rate for the spectrum.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='CasidaSpectrumMaxEnergy'></a>CasidaSpectrumMaxEnergy</b>
+<br/><i>Section</i>: Utilities::oct-casida_spectrum
+<br/><i>Type</i>: float
+<br/><i>Default</i>: 1.0 Ha
+<br/><br> The broadening is done for energies smaller than <tt>CasidaSpectrumMaxEnergy</tt>.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='CasidaSpectrumMinEnergy'></a>CasidaSpectrumMinEnergy</b>
+<br/><i>Section</i>: Utilities::oct-casida_spectrum
+<br/><i>Type</i>: float
+<br/><i>Default</i>: 0.0
+<br/><br> The broadening is done for energies greater than <tt>CasidaSpectrumMinEnergy</tt>.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='CasidaSpectrumRotationMatrix'></a>CasidaSpectrumRotationMatrix</b>
+<br/><i>Section</i>: Utilities::oct-casida_spectrum
+<br/><i>Type</i>: block
+<br/><i>Default</i>: identity
+<br/><br> Supply a rotation matrix to apply to the transition dipoles in generating the spectrum. The rotated atomic structure
+ will also be output. Size of matrix must be <tt>Dimensions</tt>.
+
+</p><hr width='30%' align='left'/>
+
+<a name='Utilities::oct-center-geom'</a>
+<H2>Utilities::oct-center-geom</H2>
+
+
+<p><b><a name='AxisType'></a>AxisType</b>
+<br/><i>Section</i>: Utilities::oct-center-geom
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: inertia
+<br/><br> After the structure is centered, it is also aligned to a set of orthogonal axes.
+ This variable decides which set of axes to use. Only implemented for 3D, in which case
+ the default is <tt>inertia</tt>; otherwise <tt>none</tt> is default and the only legal value.
+
+<br/><i>Options</i>:
+<ul>
+<li><b>none</b>:  Do not rotate. Will still give output regarding center of mass and moment of inertia.
+</li>
+<li><b>inertia</b>:  The axis of inertia.
+</li>
+<li><b>pseudo_inertia</b>:  Pseudo-axis of inertia, calculated considering all species to have equal mass.
+</li>
+<li><b>large_axis</b>:  The larger axis of the molecule.
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='MainAxis'></a>MainAxis</b>
+<br/><i>Section</i>: Utilities::oct-center-geom
+<br/><i>Type</i>: block
+<br/><br> A vector of reals defining the axis to which the molecule
+ should be aligned. If not present, the default value will
+ be the x-axis. For example in 3D:
+ <tt>
+ <br>%MainAxis
+ <br> 1 | 0 | 0
+ <br>%</tt>
+
+</p><hr width='30%' align='left'/>
+
+<a name='Utilities::oct-conductivity_spectrum'</a>
+<H2>Utilities::oct-conductivity_spectrum</H2>
+
+
+<p><b><a name='ConductivityFromForces'></a>ConductivityFromForces</b>
+<br/><i>Section</i>: Utilities::oct-conductivity_spectrum
+<br/><i>Type</i>: logical
+<br/><i>Default</i>: no
+<br/><br> (Experimental) If enabled, Octopus will attempt to calculate the conductivity from the forces instead of the current.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='ConductivitySpectrumTimeStepFactor'></a>ConductivitySpectrumTimeStepFactor</b>
+<br/><i>Section</i>: Utilities::oct-conductivity_spectrum
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: 1
+<br/><br> In the calculation of the conductivity, it is not necessary
+ to read the velocity at every time step. This variable controls
+ the integer factor between the simulation time step and the
+ time step used to calculate the conductivity.
+
+</p><hr width='30%' align='left'/>
+
+<a name='Utilities::oct-convert'</a>
+<H2>Utilities::oct-convert</H2>
+
+
+<p><b><a name='ConvertEnd'></a>ConvertEnd</b>
+<br/><i>Section</i>: Utilities::oct-convert
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: 1
+<br/><br> The last number of the filename or folder.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='ConvertEnergyMax'></a>ConvertEnergyMax</b>
+<br/><i>Section</i>: Utilities::oct-convert
+<br/><i>Type</i>: float
+<br/><i>Default</i>: w_max
+<br/><br> Maximum energy to output from Fourier transform.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='ConvertEnergyMin'></a>ConvertEnergyMin</b>
+<br/><i>Section</i>: Utilities::oct-convert
+<br/><i>Type</i>: float
+<br/><i>Default</i>: 0.0
+<br/><br> Minimum energy to output from Fourier transform.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='ConvertEnergyStep'></a>ConvertEnergyStep</b>
+<br/><i>Section</i>: Utilities::oct-convert
+<br/><i>Type</i>: float
+<br/><i>Default</i>: \(2 \pi / T\), where \(T\) is the total propagation time
+<br/><br> Energy step to output from Fourier transform.
+ Sampling rate for the Fourier transform. If you supply a number equal or smaller than zero, then
+ the sampling rate will be \(2 \pi / T\), where \(T\) is the total propagation time.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='ConvertFTMethod'></a>ConvertFTMethod</b>
+<br/><i>Section</i>: Utilities::oct-convert
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: FAST_FOURIER
+<br/><br> Describes the method used to perform the Fourier Transform
+
+<br/><i>Options</i>:
+<ul>
+<li><b>fast_fourier</b>:  Uses Fast Fourier Transform as implemented in the external library.
+</li>
+<li><b>standard_fourier</b>:  Uses polinomial approach to the computation of discrete Fourier Transform.
+ It uses the same variable described in how to obtain spectrum from
+ a time-propagation calculation.
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='ConvertFilename'></a>ConvertFilename</b>
+<br/><i>Section</i>: Utilities::oct-convert
+<br/><i>Type</i>: string
+<br/><i>Default</i>: "density"
+<br/><br> Input filename. The original filename which is going to be converted in the format
+ specified in <tt>OutputFormat</tt>. It is going to convert various files, it should
+ only contain the beginning of the name. For instance, in the case of the restart
+ files, it should be one space ' '.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='ConvertFolder'></a>ConvertFolder</b>
+<br/><i>Section</i>: Utilities::oct-convert
+<br/><i>Type</i>: string
+<br/><br> The folder name where the input files are. The default is
+ <tt>td.</tt> if <tt>ConvertIterateFolder = true</tt>, otherwise <tt>restart</tt>.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='ConvertHow'></a>ConvertHow</b>
+<br/><i>Section</i>: Utilities::oct-convert
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: convert_format
+<br/><br> Select how the mesh function will be converted.
+
+<br/><i>Options</i>:
+<ul>
+<li><b>format</b>:  The format of the mesh function will be convert from the binary file.obf.
+ The format of the output function is set by OutputHow variable.
+</li>
+<li><b>fourier_transform</b>:  A fourier transform of the mesh function will be computed.
+ It requieres that ConvertStart and ConvertEnd have to be set.
+</li>
+<li><b>operation</b>:  Convert utility will generate a new mesh function constructed by linear
+ combination of scalar function of different mesh functions,
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='ConvertIterateFolder'></a>ConvertIterateFolder</b>
+<br/><i>Section</i>: Utilities::oct-convert
+<br/><i>Type</i>: logical
+<br/><i>Default</i>: true
+<br/><br> This variable decides if a folder is going to be iterated or the
+ filename is going to be iterated.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='ConvertOutputFilename'></a>ConvertOutputFilename</b>
+<br/><i>Section</i>: Utilities::oct-convert
+<br/><i>Type</i>: string
+<br/><i>Default</i>: "density"
+<br/><br> Output filename. The name of the file in which the converted mesh function will be
+ written in the format specified in <tt>OutputFormat</tt>.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='ConvertOutputFolder'></a>ConvertOutputFolder</b>
+<br/><i>Section</i>: Utilities::oct-convert
+<br/><i>Type</i>: string
+<br/><br> The folder name where the output files will be write. The default is
+ <tt>convert</tt>.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='ConvertReadSize'></a>ConvertReadSize</b>
+<br/><i>Section</i>: Utilities::oct-convert
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: mesh%np
+<br/><br> How many points are read at once. For the parallel run this has not been
+ yet tested, so it should be one. For the serial run, a number
+ of 100-1000 will speed-up the execution time by this factor.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='ConvertScalarOperation'></a>ConvertScalarOperation</b>
+<br/><i>Section</i>: Utilities::oct-convert
+<br/><i>Type</i>: block
+<br/><br> This variable is used to generate a new mesh function as a linear combination
+ different mesh function having the same mesh. Each row defines an operation for
+ for a single mesh function.
+ The format of the block is the following: <br>
+ 'variable name' | 'folder' | 'file' | 'operation'
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='ConvertStart'></a>ConvertStart</b>
+<br/><i>Section</i>: Utilities::oct-convert
+<br/><i>Type</i>: integer
+<br/><br> The starting number of the filename or folder.
+ Default is 0 if <tt>ConvertIterateFolder = true</tt>, otherwise 1.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='ConvertStep'></a>ConvertStep</b>
+<br/><i>Section</i>: Utilities::oct-convert
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: 1
+<br/><br> The padding between the filenames or folder.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='ConvertSubtract'></a>ConvertSubtract</b>
+<br/><i>Section</i>: Utilities::oct-convert
+<br/><i>Type</i>: logical
+<br/><i>Default</i>: false
+<br/><br> Decides if a reference file is going to be subtracted.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='ConvertSubtractFilename'></a>ConvertSubtractFilename</b>
+<br/><i>Section</i>: Utilities::oct-convert
+<br/><i>Type</i>: string
+<br/><i>Default</i>: density
+<br/><br> Input filename. The file which is going to subtracted to rest of the files.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='ConvertSubtractFolder'></a>ConvertSubtractFolder</b>
+<br/><i>Section</i>: Utilities::oct-convert
+<br/><i>Type</i>: string
+<br/><i>Default</i>: .
+<br/><br> The folder name which is going to be subtracted.
+
+</p><hr width='30%' align='left'/>
+
+<a name='Utilities::oct-local_multipoles'</a>
+<H2>Utilities::oct-local_multipoles</H2>
+
+
+<p><b><a name='LDBaderThreshold'></a>LDBaderThreshold</b>
+<br/><i>Section</i>: Utilities::oct-local_multipoles
+<br/><i>Type</i>: float
+<br/><i>Default</i>: 0.01
+<br/><br> This variable sets the threshold for the basins calculations. Recommended values:
+ 0.01 -> intramolecular volumes; 0.2 -> intermolecular volumes.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='LDEnd'></a>LDEnd</b>
+<br/><i>Section</i>: Utilities::oct-local_multipoles
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: 0
+<br/><br> The last number of the filename or folder.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='LDFilename'></a>LDFilename</b>
+<br/><i>Section</i>: Utilities::oct-local_multipoles
+<br/><i>Type</i>: string
+<br/><i>Default</i>: 'density'
+<br/><br> Input filename. The original filename for the density which is going to be
+ fragmented into domains.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='LDFolder'></a>LDFolder</b>
+<br/><i>Section</i>: Utilities::oct-local_multipoles
+<br/><i>Type</i>: string
+<br/><br> The folder name where the density used as input file is.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='LDIonicDipole'></a>LDIonicDipole</b>
+<br/><i>Section</i>: Utilities::oct-local_multipoles
+<br/><i>Type</i>: logical
+<br/><i>Default</i>: yes
+<br/><br> Describes if the ionic dipole has to be take into account
+ when computing the multipoles.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='LDIterateFolder'></a>LDIterateFolder</b>
+<br/><i>Section</i>: Utilities::oct-local_multipoles
+<br/><i>Type</i>: logical
+<br/><i>Default</i>: false
+<br/><br> This variable decides if a folder is going to be iterated.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='LDMultipoleLmax'></a>LDMultipoleLmax</b>
+<br/><i>Section</i>: Utilities::oct-local_multipoles
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: 1
+<br/><br> Maximum electric multipole of the density output to the file <tt>local.multipoles/<>domain%<>.multipoles</tt>
+ during a time-dependent simulation. Must be non-negative.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='LDOutput'></a>LDOutput</b>
+<br/><i>Section</i>: Utilities::oct-local_multipoles
+<br/><i>Type</i>: flag
+<br/><i>Default</i>: multipoles
+<br/><br> Defines what should be output during the local domains
+ simulation. Many of the options can increase the computational
+ cost of the simulation, so only use the ones that you need. In
+ most cases the default value is enough, as it is adapted to the
+ details.
+
+<br/><i>Options</i>:
+<ul>
+<li><b>multipoles</b>:  Outputs the (electric) multipole moments of the density to the file <tt>ld.general/multipoles</tt>.
+ This is required to, <i>e.g.</i>, calculate optical absorption spectra of finite systems. The
+ maximum value of \(l\) can be set with the variable <tt>LDMultipoleLmax</tt>.
+</li>
+<li><b>density</b>:  If set, <tt>octopus</tt> outputs the densities corresponding to the local domains to
+ the folder <tt>ld.general/densities</tt>.
+ The output format is set by the <tt>LDOutputFormat</tt> input variable.
+</li>
+<li><b>local_v</b>:  If set, <tt>octopus</tt> outputs the different components of the potential
+ to the folder <tt>ld.general/potential</tt>.
+ The output format is set by the <tt>LDOutputFormat</tt> input variable.
+</li>
+<li><b>energy</b>:  If set, <tt>octopus</tt> outputs the different components of the energy of the local domains
+ to the folder <tt>ld.general/energy</tt>.
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='LDOutputFormat'></a>LDOutputFormat</b>
+<br/><i>Section</i>: Utilities::oct-local_multipoles
+<br/><i>Type</i>: flag
+<br/><i>Default</i>: none
+<br/><br> Describes the format of the output files (see <tt>LDOutput</tt>).
+ It can take the same values as <tt>OutputFormat</tt> flag.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='LDOverWrite'></a>LDOverWrite</b>
+<br/><i>Section</i>: Utilities::oct-local_multipoles
+<br/><i>Type</i>: logical
+<br/><i>Default</i>: true
+<br/><br> Controls whether to over-write existing files.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='LDRadiiFile'></a>LDRadiiFile</b>
+<br/><i>Section</i>: Utilities::oct-local_multipoles
+<br/><i>Type</i>: string
+<br/><i>Default</i>: 'default'
+<br/><br> Full path for the radii file. If set, def_rsize will be reset to the new values.
+ This file should have the same format as share/PP/default.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='LDRestart'></a>LDRestart</b>
+<br/><i>Section</i>: Utilities::oct-local_multipoles
+<br/><i>Type</i>: logical
+<br/><i>Default</i>: false
+<br/><br> Restart information will be read from <tt>LDRestartFolder</tt>.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='LDRestartFolder'></a>LDRestartFolder</b>
+<br/><i>Section</i>: Utilities::oct-local_multipoles
+<br/><i>Type</i>: string
+<br/><i>Default</i>: "ld.general"
+<br/><br> The folder name where the density used as input file is.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='LDStart'></a>LDStart</b>
+<br/><i>Section</i>: Utilities::oct-local_multipoles
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: 0
+<br/><br> The starting number of the filename or folder.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='LDStep'></a>LDStep</b>
+<br/><i>Section</i>: Utilities::oct-local_multipoles
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: 1
+<br/><br> The padding between the filenames or folder.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='LDUpdate'></a>LDUpdate</b>
+<br/><i>Section</i>: Utilities::oct-local_multipoles
+<br/><i>Type</i>: logical
+<br/><i>Default</i>: false
+<br/><br> Controls if the calculation of the local domains is desired at each iteration.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='LDUseAtomicRadii'></a>LDUseAtomicRadii</b>
+<br/><i>Section</i>: Utilities::oct-local_multipoles
+<br/><i>Type</i>: logical
+<br/><i>Default</i>: false
+<br/><br> If set, atomic radii will be used to assign lone pairs to ion.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='LocalDomains'></a>LocalDomains</b>
+<br/><i>Section</i>: Utilities::oct-local_multipoles
+<br/><i>Type</i>: block
+<br/><br> The LocalDomains are by definition part of the global grid. The domains are defined by
+ selecting a type shape. The domain box will be constructed using the given parameters.
+ A local domain could be construct by addition of several box centered on the ions.
+ The grid points inside this box will belong to the local domain.
+<br><br>
+ The format of this block is the following:<br>
+ <tt> 'Label' | Shape | %< | Shape dependencies >% </tt>
+ <br>The first field is the label of the domain.
+ Label = string with the name of the new local domain.
+ The second is the shape type of the box used to define the domain.
+ Shape = SPHERE, CYLINDER, PARALLELEPIPED, MINIMUM, BADER.
+ Some types may need some parameters given in the remaining fields of the row.
+ (the valid options are detailed below).
+<br><br>
+ <tt>%LocalDomains
+ <br>case (SPHERE):         | rsize | %<dim origin coordinates>
+ <br>case (CYLINDER):       | rsize | xsize | %<origin coordinates>
+ <br>case (PARALLELEPIPED): | %<lsize> | %<origin coordinates>
+ <br>case (MINIMUM):        | rsize | 'center_list'
+ <br>case (BADER):          | 'center_list'
+ <br>%</tt>
+ <br>rsize: Radius in input length units
+ <br>xsize: the length of the cylinder in the x-direction
+ <br>origin coordinates: in input length units separated by |, where the box is centered.
+ <br>lsize: half of the length of the parallelepiped in each direction.
+ <br>center_list: string containing the list of atoms in xyz file for each domain in the form "2,16-23"
+
+</p><hr width='30%' align='left'/>
+
+<a name='Utilities::oct-photoelectron_spectrum'</a>
+<H2>Utilities::oct-photoelectron_spectrum</H2>
+
+
+<p><b><a name='PhotoelectronSpectrumOutput'></a>PhotoelectronSpectrumOutput</b>
+<br/><i>Section</i>: Utilities::oct-photoelectron_spectrum
+<br/><i>Type</i>: block
+<br/><i>Default</i>: none
+<br/><br> Specifies what to output extracting the photoelectron cross-section informations.
+ When we use polar coordinates the zenith axis is set by vec (default is the first
+ laser field polarization vector), theta is the inclination angle measured from
+ vec (from 0 to \pi), and phi is the azimuthal angle on a plane perpendicular to
+ vec (from 0 to 2\pi).
+ Each option must be in a separate row. Optionally individual output formats can be defined
+ for each row or they can be read separately from <tt>OutputFormat</tt> variable
+ in the input file.
+<br><br>
+ Example (minimal):
+ <br><br><tt>%PhotoelectronSpectrumOutput
+ <br>&nbsp;&nbsp;energy_tot
+ <br>&nbsp;&nbsp;velocity_map
+ <br>%<br></tt>
+<br><br>
+ Example (with OutputFormat):
+ <br><br><tt>%PhotoelectronSpectrumOutput
+ <br>&nbsp;&nbsp;arpes        | vtk
+ <br>&nbsp;&nbsp;velocity_map | ncdf
+ <br>%<br></tt>
+<br><br>
+
+<br/><i>Options</i>:
+<ul>
+<li><b>energy_tot</b>:  Output the energy-resolved photoelectron spectrum: E.
+</li>
+<li><b>energy_angle</b>:  Output the energy and angle resolved spectrum: (theta, E)
+ The result is integrated over phi.
+</li>
+<li><b>velocity_map_cut</b>:  Velocity map on a plane orthogonal to pvec: (px, py). The allowed cutting planes
+ (pvec) can only be parallel to the x,y,z=0 planes.
+ Space is oriented so that the z-axis is along vec. Supports the -I option.
+</li>
+<li><b>energy_xy</b>:  Angle and energy-resolved spectrum on the inclination plane: (Ex, Ey).
+ The result is integrated over ph;
+</li>
+<li><b>energy_th_ph</b>:  Ionization probability integrated on spherical cuts: (theta, phi).
+</li>
+<li><b>velocity_map</b>:  Full momentum-resolved ionization probability: (px, py, pz).
+ The output format can be controlled with <tt>OutputHow</tt> and can be vtk, ncdf or ascii.
+</li>
+<li><b>arpes</b>:  Full ARPES for semi-periodic systems (vtk).
+</li>
+<li><b>arpes_cut</b>:  ARPES cut on a plane following a zero-weight path in reciprocal space.
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='PhotoelectronSpectrumResolveStates'></a>PhotoelectronSpectrumResolveStates</b>
+<br/><i>Section</i>: Utilities::oct-photoelectron_spectrum
+<br/><i>Type</i>: block
+<br/><br> If <tt>yes</tt> calculate the photoelectron spectrum resolved in each K.S. state.
+ Optionally a range of states can be given as two slot block where the
+ first slot is the lower state index and the second is the highest one.
+ For example to calculate the spectra from state i to state j:
+<br><br>
+ <tt>%PhotoelectronSpectrumResolveStates
+ <br> i | j
+ <br>%</tt>
+
+</p><hr width='30%' align='left'/>
+
+<a name='Utilities::oct-propagation_spectrum'</a>
+<H2>Utilities::oct-propagation_spectrum</H2>
+
+
+<p><b><a name='PropagationSpectrumDampFactor'></a>PropagationSpectrumDampFactor</b>
+<br/><i>Section</i>: Utilities::oct-propagation_spectrum
+<br/><i>Type</i>: float
+<br/><i>Default</i>: -1.0
+<br/><br> If <tt>PropagationSpectrumDampMode = exponential, gaussian</tt>, the damping parameter of the exponential
+ is fixed through this variable.
+ Default value ensure that the damping function adquires a 0.0001 value at the end of the propagation time.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='PropagationSpectrumDampMode'></a>PropagationSpectrumDampMode</b>
+<br/><i>Section</i>: Utilities::oct-propagation_spectrum
+<br/><i>Type</i>: integer
+<br/><br> Decides which damping/filtering is to be applied in order to
+ calculate spectra by calculating a Fourier transform. The
+ default is polynomial damping, except when <tt>SpectrumMethod = compressed_sensing</tt>.
+ In that case the default is none.
+
+<br/><i>Options</i>:
+<ul>
+<li><b>none</b>:  No filtering at all.
+</li>
+<li><b>exponential</b>:  Exponential filtering, corresponding to a Lorentzian-shaped spectrum.
+</li>
+<li><b>polynomial</b>:  Third-order polynomial damping.
+</li>
+<li><b>gaussian</b>:  Gaussian damping.
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='PropagationSpectrumEndTime'></a>PropagationSpectrumEndTime</b>
+<br/><i>Section</i>: Utilities::oct-propagation_spectrum
+<br/><i>Type</i>: float
+<br/><i>Default</i>: -1.0 au
+<br/><br> Processing is done for the given function in a time-window that ends at the
+ value of this variable. If set to a negative value, the maximum value from
+ the corresponding multipole file will used.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='PropagationSpectrumEnergyStep'></a>PropagationSpectrumEnergyStep</b>
+<br/><i>Section</i>: Utilities::oct-propagation_spectrum
+<br/><i>Type</i>: float
+<br/><i>Default</i>: 0.01 eV
+<br/><br> Sampling rate for the spectrum. If you supply a number equal or smaller than zero, then
+ the sampling rate will be \(2 \pi / T\), where \(T\) is the total propagation time.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='PropagationSpectrumMaxEnergy'></a>PropagationSpectrumMaxEnergy</b>
+<br/><i>Section</i>: Utilities::oct-propagation_spectrum
+<br/><i>Type</i>: float
+<br/><i>Default</i>: 20 eV
+<br/><br> The Fourier transform is calculated for energies smaller than this value.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='PropagationSpectrumMinEnergy'></a>PropagationSpectrumMinEnergy</b>
+<br/><i>Section</i>: Utilities::oct-propagation_spectrum
+<br/><i>Type</i>: float
+<br/><i>Default</i>: 0
+<br/><br> The Fourier transform is calculated for energies larger than this value.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='PropagationSpectrumSigmaDiagonalization'></a>PropagationSpectrumSigmaDiagonalization</b>
+<br/><i>Section</i>: Utilities::oct-propagation_spectrum
+<br/><i>Type</i>: logical
+<br/><i>Default</i>: .false.
+<br/><br> If <tt>PropagationSpectrumSigmaDiagonalization = yes</tt>, the polarizability tensor is diagonalizied.
+ This variable is only used if the cross_section_tensor is computed.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='PropagationSpectrumStartTime'></a>PropagationSpectrumStartTime</b>
+<br/><i>Section</i>: Utilities::oct-propagation_spectrum
+<br/><i>Type</i>: float
+<br/><i>Default</i>: 0.0
+<br/><br> Processing is done for the given function in a time-window that starts at the
+ value of this variable.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='PropagationSpectrumSymmetrizeSigma'></a>PropagationSpectrumSymmetrizeSigma</b>
+<br/><i>Section</i>: Utilities::oct-propagation_spectrum
+<br/><i>Type</i>: logical
+<br/><i>Default</i>: .false.
+<br/><br> The polarizablity tensor has to be real and symmetric. Due to numerical accuracy,
+ that is not extricly conserved when computing it from different time-propations.
+ If <tt>PropagationSpectrumSymmetrizeSigma = yes</tt>, the polarizability tensor is
+ symmetrized before its diagonalizied.
+ This variable is only used if the cross_section_tensor is computed.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='PropagationSpectrumTransform'></a>PropagationSpectrumTransform</b>
+<br/><i>Section</i>: Utilities::oct-propagation_spectrum
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: sine
+<br/><br> Decides which transform to perform, if <tt>SpectrumMethod = fourier</tt>.
+
+<br/><i>Options</i>:
+<ul>
+<li><b>laplace</b>:  Real exponential transform: \(\int dt e^{-wt} f(t)\). Produces the real part of the polarizability at imaginary
+ frequencies, <i>e.g.</i> for Van der Waals \(C_6\) coefficients.
+ This is the only allowed choice for complex scaling.
+</li>
+<li><b>sine</b>:  Sine transform: \(\int dt \sin(wt) f(t)\). Produces the imaginary part of the polarizability.
+</li>
+<li><b>cosine</b>:  Cosine transform: \(\int dt \cos(wt) f(t)\). Produces the real part of the polarizability.
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='PropagationSpectrumType'></a>PropagationSpectrumType</b>
+<br/><i>Section</i>: Utilities::oct-propagation_spectrum
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: AbsorptionSpectrum
+<br/><br> Type of spectrum to calculate.
+
+<br/><i>Options</i>:
+<ul>
+<li><b>AbsorptionSpectrum</b>:  Photoabsorption spectrum.
+</li>
+<li><b>EnergyLossSpectrum</b>:  Dynamic structure factor (also known as energy-loss function or spectrum).
+</li>
+<li><b>DipolePower</b>:  Power spectrum of the dipole moment.
+</li>
+<li><b>RotatoryStrength</b>:  Rotatory strength spectrum.
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='SpectrumMethod'></a>SpectrumMethod</b>
+<br/><i>Section</i>: Utilities::oct-propagation_spectrum
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: fourier
+<br/><br> Decides which method is used to obtain the spectrum.
+
+<br/><i>Options</i>:
+<ul>
+<li><b>fourier</b>:  The standard Fourier transform. Further specified by <tt>PropagationSpectrumTransform</tt>.
+</li>
+<li><b>compressed_sensing</b>:  (Experimental) Uses the compressed sensing technique.
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='SpectrumSignalNoise'></a>SpectrumSignalNoise</b>
+<br/><i>Section</i>: Utilities::oct-propagation_spectrum
+<br/><i>Type</i>: float
+<br/><i>Default</i>: 0.0
+<br/><br> For compressed sensing, the signal to process, the
+ time-dependent dipole in this case, is assumed to have some
+ noise that is given by this dimensionless quantity.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='TransientAbsorptionReference'></a>TransientAbsorptionReference</b>
+<br/><i>Section</i>: Utilities::oct-propagation_spectrum
+<br/><i>Type</i>: string
+<br/><i>Default</i>: "."
+<br/><br> In case of delayed kick, the calculation of the transient absorption requires
+ to substract a reference calculation, containing the gauge-field without the kick
+ This reference must be computed using GaugeFieldPropagate=yes and to have
+ TDOutput = gauge_field.
+ This variables defined the directory in which the reference gauge_field field is,
+ relative to the current folder
+
+</p><hr width='30%' align='left'/>
+
+<a name='Utilities::oct-spin_susceptibility'</a>
+<H2>Utilities::oct-spin_susceptibility</H2>
+
+
+<p><b><a name='TransientMagnetizationReference'></a>TransientMagnetizationReference</b>
+<br/><i>Section</i>: Utilities::oct-spin_susceptibility
+<br/><i>Type</i>: string
+<br/><i>Default</i>: "."
+<br/><br> In case of delayed kick, the calculation of the transient spin susceptibility requires
+ to substract a reference calculation, containing dynamics of the magnetization without the kick
+ This reference must be computed having
+ TDOutput = total_magnetization.
+ This variables defined the directory in which the reference total_magnetization file is,
+ relative to the current folder
+
+</p><hr width='30%' align='left'/>
+
+<a name='Utilities::oct-tdtdm'</a>
+<H2>Utilities::oct-tdtdm</H2>
+
+
+<p><b><a name='SupercellDimensions'></a>SupercellDimensions</b>
+<br/><i>Section</i>: Utilities::oct-tdtdm
+<br/><i>Type</i>: block
+<br/><i>Default</i>: KPointsGrid
+<br/><br> This block allows to specify the size of the supercell used to plot excitonic wavefunctions.
+ If not specified, the code uses the number of k-points for defining the size of the supercell.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='TDTDMFrequencies'></a>TDTDMFrequencies</b>
+<br/><i>Section</i>: Utilities::oct-tdtdm
+<br/><i>Type</i>: block
+<br/><br> This block defines for which frequencies the analysis is performed.
+<br><br>
+ Each row of the block indicates a frequency.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='TDTDMHoleCoordinates'></a>TDTDMHoleCoordinates</b>
+<br/><i>Section</i>: Utilities::oct-tdtdm
+<br/><i>Type</i>: float
+<br/><br> The position of the hole used to compute the TDTDM,
+ in Cartesian coordinates.
+ Note that the code will use the closest grid point.
+<br><br>
+ The coordinates of the hole are specified in the following way
+ <tt>%TDTDMHoleCoordinates
+ <br>&nbsp;&nbsp;hole_x | hole_y | hole_z
+ <br>%</tt>
+<br><br>
+ If TDTDMHoleCoordinates or TDTDMHoleReducedCoordinates are not specified,
+ the code will use the coordinate of the first atom in the cell.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='TDTDMHoleReducedCoordinates'></a>TDTDMHoleReducedCoordinates</b>
+<br/><i>Section</i>: Utilities::oct-tdtdm
+<br/><i>Type</i>: float
+<br/><br> Same as TDTDMHoleCoordinates, except that coordinates are given in reduced coordinates
+
+</p><hr width='30%' align='left'/>
+
+<a name='Utilities::oct-unfold'</a>
+<H2>Utilities::oct-unfold</H2>
+
+
+<p><b><a name='UnfoldEnergyStep'></a>UnfoldEnergyStep</b>
+<br/><i>Section</i>: Utilities::oct-unfold
+<br/><i>Type</i>: float
+<br/><i>Default</i>: 0
+<br/><br> Specifies the energy resolution for the unfolded band structure.
+ If you specify 0, the resolution will be set to be 1/1000 points between <tt>UnfoldMinEnergy</tt>
+ and <tt>UnfoldMaxEnergy</tt>
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='UnfoldKPointsPath'></a>UnfoldKPointsPath</b>
+<br/><i>Section</i>: Utilities::oct-unfold
+<br/><i>Type</i>: block
+<br/><br> Specifies the k-point path for which the unfolding need to be done.
+ The syntax is identical to <tt>KPointsPath</tt>.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='UnfoldLatticeParameters'></a>UnfoldLatticeParameters</b>
+<br/><i>Section</i>: Utilities::oct-unfold
+<br/><i>Type</i>: block
+<br/><br> The lattice parameters of the primitive cell, on which unfolding is performed.
+ See the LatticeParameters variable for a more detailed description.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='UnfoldLatticeVectors'></a>UnfoldLatticeVectors</b>
+<br/><i>Section</i>: Utilities::oct-unfold
+<br/><i>Type</i>: block
+<br/><i>Default</i>: simple cubic
+<br/><br> Lattice vectors of the primitive cell on which the unfolding is performed.
+ See the LatticeVectors variable for a more detailed description.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='UnfoldMaxEnergy'></a>UnfoldMaxEnergy</b>
+<br/><i>Section</i>: Utilities::oct-unfold
+<br/><i>Type</i>: float
+<br/><br> Specifies the end of the energy range for the unfolded band structure.
+ The default value correspond to the largest eigenvalue.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='UnfoldMinEnergy'></a>UnfoldMinEnergy</b>
+<br/><i>Section</i>: Utilities::oct-unfold
+<br/><i>Type</i>: float
+<br/><br> Specifies the start of the energy range for the unfolded band structure.
+ The default value correspond to the samllest eigenvalue.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='UnfoldMode'></a>UnfoldMode</b>
+<br/><i>Section</i>: Utilities::oct-unfold
+<br/><i>Type</i>: flag
+<br/><i>Default</i>: none
+<br/><br> Specifies which stage of the unfolding tool to use
+
+<br/><i>Options</i>:
+<ul>
+<li><b>unfold_setup</b>:  Writes the list of k-points corresponding to the path specified by <tt>UnfoldKPointPath</tt>.
+ This list of k-point (unfold_kpt.dat) must be used for an unocc calculation of the supercell,
+ adding the line "include 'unfold_kpt.dat'" to the inp file and removing the KPointGrid information.
+</li>
+<li><b>unfold_run</b>:  Perform the actual unfolding, based on the states obtained from the previous unocc run.
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+<a name='Utilities::oct-vibrational_spectrum'</a>
+<H2>Utilities::oct-vibrational_spectrum</H2>
+
+
+<p><b><a name='VibrationalSpectrumTime'></a>VibrationalSpectrumTime</b>
+<br/><i>Section</i>: Utilities::oct-vibrational_spectrum
+<br/><i>Type</i>: integer
+<br/><br> This variable controls the maximum time for the calculation of
+ the velocity autocorrelation function. The default is the total
+ propagation time.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='VibrationalSpectrumTimeStepFactor'></a>VibrationalSpectrumTimeStepFactor</b>
+<br/><i>Section</i>: Utilities::oct-vibrational_spectrum
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: 10
+<br/><br> In the calculation of the vibrational spectrum, it is not necessary
+ to read the velocity at every time step. This variable controls
+ the integer factor between the simulation time step and the
+ time step used to calculate the vibrational spectrum.
+
+</p><hr width='30%' align='left'/>
+
+<a name='Utilities::oct-wannier90'</a>
+<H2>Utilities::oct-wannier90</H2>
+
+
+<p><b><a name='SCDMmu'></a>SCDMmu</b>
+<br/><i>Section</i>: Utilities::oct-wannier90
+<br/><i>Type</i>: float
+<br/><br> Energy range up to which states are considered for SCDM.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='SCDMsigma'></a>SCDMsigma</b>
+<br/><i>Section</i>: Utilities::oct-wannier90
+<br/><i>Type</i>: float
+<br/><i>Default</i>: 0.2
+<br/><br> Broadening of SCDM smearing function.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='Wannier90Files'></a>Wannier90Files</b>
+<br/><i>Section</i>: Utilities::oct-wannier90
+<br/><i>Type</i>: flag
+<br/><i>Default</i>: w90_mmn + w90_amn + w90_eig
+<br/><br> Specifies which files to generate.
+ Example: <tt>w90_mmn + w90_unk</tt>
+
+<br/><i>Options</i>:
+<ul>
+<li><b>w90_mmn</b>:  (see Wannier90 documentation)
+</li>
+<li><b>w90_unk</b>:  (see Wannier90 documentation)
+</li>
+<li><b>w90_amn</b>:  (see Wannier90 documentation)
+</li>
+<li><b>w90_eig</b>:  Eigenvalues. See Wannier90 documentation for more details.
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='Wannier90Mode'></a>Wannier90Mode</b>
+<br/><i>Section</i>: Utilities::oct-wannier90
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: 0
+<br/><br> Specifies which stage of the Wannier90 interface to use
+
+<br/><i>Options</i>:
+<ul>
+<li><b>none</b>:  Nothing is done.
+</li>
+<li><b>w90_setup</b>:  Writes parts of the wannier90 input file <tt>w90_prefix.win</tt> corresponding to
+ the octopus inp file. Importantly it generates the correct form of Monkhorst-Pack mesh
+ written to the file w90_kpoints that has to be used in a gs calculation of Octopus by
+ as <tt> include w90_kpoints </tt> instead of the <tt>%KpointsGrid</tt> block.
+</li>
+<li><b>w90_output</b>:  Generates the relevant files for a wannier90 run, specified by the variable <tt>W90_interface_files</tt>.
+ This needs files previously generated
+ by <tt>wannier90.x -pp w90 </tt>
+</li>
+<li><b>w90_wannier</b>:  Parse the output of wannier90 to generate the Wannier states on the real-space grid.
+ The states will be written in the folder wannier. By default, the states are written as
+ binary files, similar to the Kohn-Sham states.
+<br><br>
+ Not implemented for spinor states.
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='Wannier90Prefix'></a>Wannier90Prefix</b>
+<br/><i>Section</i>: Utilities::oct-wannier90
+<br/><i>Type</i>: string
+<br/><i>Default</i>: w90
+<br/><br> Prefix for wannier90 files
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='Wannier90UseSCDM'></a>Wannier90UseSCDM</b>
+<br/><i>Section</i>: Utilities::oct-wannier90
+<br/><i>Type</i>: logical
+<br/><i>Default</i>: no
+<br/><br> By default oct-wannier90 uses the projection method to generate the .amn file.
+ By setting this variable to yes, oct-wannier90 will use SCDM method instead.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='Wannier90UseTD'></a>Wannier90UseTD</b>
+<br/><i>Section</i>: Utilities::oct-wannier90
+<br/><i>Type</i>: logical
+<br/><i>Default</i>: no
+<br/><br> By default oct-wannier90 uses the ground-state states to compute the necessary information.
+ By setting this variable to yes, oct-wannier90 will use the TD states instead.
+
+</p><hr width='30%' align='left'/>
+
+<a name='Utilities::oct-xyz-anim'</a>
+<H2>Utilities::oct-xyz-anim</H2>
+
+
+<p><b><a name='AnimationMultiFiles'></a>AnimationMultiFiles</b>
+<br/><i>Section</i>: Utilities::oct-xyz-anim
+<br/><i>Type</i>: logical
+<br/><i>Default</i>: false
+<br/><br> If true, each iteration written will be in a separate file.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='AnimationSampling'></a>AnimationSampling</b>
+<br/><i>Section</i>: Utilities::oct-xyz-anim
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: 100
+<br/><br> Sampling rate of the animation. The animation will be constructed using
+ the iteration numbers that are multiples of <tt>AnimationSampling<tt>.
+
+</p><hr width='30%' align='left'/>
