@@ -21,6 +21,7 @@ Build-Depends: debhelper-compat (=13)
  , openmpi-bin
  , openmpi-common
  , libgomp1
+ , libcgal-dev
 Standards-Version: 4.6.2
 
 Package: octopus
