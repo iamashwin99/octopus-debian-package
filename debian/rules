@@ -24,7 +24,7 @@ endif
 # Default configure options
 CONFIGURE_OPTIONS = --host=$(DEB_HOST_GNU_TYPE) --build=$(DEB_BUILD_GNU_TYPE) \
 	--prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info \
-	--disable-gdlib --enable-mpi
+	--disable-gdlib --enable-mpi --enable-openmp
 
 config.status: 
 	dh_testdir
@@ -52,13 +52,6 @@ install: build
 	dh_testroot
 	dh_installdirs
 	$(MAKE) install prefix=$(CURDIR)/debian/octopus/usr
-
-binary-indep: build install
-	dh_testdir
-	dh_testroot
-	$(MAKE) install-html prefix=$(CURDIR)/debian/octopus-doc/usr
-	$(MAKE) install-man prefix=$(CURDIR)/debian/octopus-doc/usr
-	dh_installdocs
 
 binary-arch: build install
 	dh_testdir
