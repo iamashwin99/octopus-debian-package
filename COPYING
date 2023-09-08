@@ -6,10 +6,10 @@
 
 INTRODUCTION
 
-The real-space TDDFT code octopus ("octopus") is provided under the 
-GNU General Public License ("GPL"), Version 2, with exceptions for 
-external libraries that are contained solely for convenience in this 
-distribution. A copy of the exceptions and licenses follow this 
+The real-space TDDFT code octopus ("octopus") is provided under the
+GNU General Public License ("GPL"), Version 2, with exceptions for
+external libraries that are contained solely for convenience in this
+distribution. A copy of the exceptions and licenses follow this
 introduction.
 
 LICENSE EXCEPTIONS
@@ -38,8 +38,8 @@ are also contained in this document.
 
       Unless required by applicable law or agreed to in writing, software
       distributed under the License is distributed on an "AS IS" BASIS,
-      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or 
-      implied. See the License for the specific language governing 
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied. See the License for the specific language governing
       permissions and limitations under the License.
 
   2. qshep
@@ -63,17 +63,17 @@ are also contained in this document.
       Copyright (C) 2007 Ewout van den Berg and Michael P. Friedlander,
       Department of Computer Science, University of British Columbia, Canada.
       All rights reserved. E-mail: <{ewout78,mpf}@cs.ubc.ca>.
-   
+
       SPGL1 is free software; you can redistribute it and/or modify it
       under the terms of the GNU Lesser General Public License as
       published by the Free Software Foundation; either version 2.1 of the
       License, or (at your option) any later version.
-   
+
       SPGL1 is distributed in the hope that it will be useful, but WITHOUT
       ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
       or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General
       Public License for more details.
-   
+
       You should have received a copy of the GNU Lesser General Public
       License along with SPGL1; if not, write to the Free Software
       Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
@@ -82,28 +82,28 @@ are also contained in this document.
   5. FortranCL
 
       Copyright (C) 2010-2011 X. Andrade <xavier@tddft.org>
-      
+
       FortranCL is free software: you can redistribute it and/or modify
       it under the terms of the GNU Lesser General Public License as published by
       the Free Software Foundation, either version 3 of the License, or
       (at your option) any later version.
-      
+
       FortranCL is distributed in the hope that it will be useful,
       but WITHOUT ANY WARRANTY; without even the implied warranty of
       MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
       GNU Lesser General Public License for more details.
-      
+
       You should have received a copy of the GNU Lesser General Public License
       along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
   6. spglib
 
       The "New" BSD License:
-      
+
       Redistribution and use in source and binary forms, with or without
       modification, are permitted provided that the following conditions are
       met:
-      
+
       Redistributions of source code must retain the above copyright notice,
       this list of conditions and the following disclaimer.  Redistributions
       in binary form must reproduce the above copyright notice, this list of
@@ -610,7 +610,7 @@ access to copy from a designated place, then offering equivalent
 access to copy the source code from the same place counts as
 distribution of the source code, even though third parties are not
 compelled to copy the source along with the object code.
-
+
   4. You may not copy, modify, sublicense, or distribute the Program
 except as expressly provided under this License.  Any attempt
 otherwise to copy, modify, sublicense or distribute the Program is
@@ -667,7 +667,7 @@ impose that choice.
 
 This section is intended to make thoroughly clear what is believed to
 be a consequence of the rest of this License.
-
+
   8. If the distribution and/or use of the Program is restricted in
 certain countries either by patents or by copyrighted interfaces, the
 original copyright holder who places the Program under this License

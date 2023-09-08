@@ -24,7 +24,7 @@ ExperimentalFeatures = YES
 OnlyUserDefinedInitialStates = YES
 
 BoxShape = sphere
-Radius = 60  
+Radius = 60
 Spacing = 0.2
 
 TheoryLevel = independent_particles

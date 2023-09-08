@@ -17,7 +17,7 @@ BoxShape = parallelepiped
 %Coordinates
  'Al' | 0.0 | 0.0 | 0.0
  'Al' | a/2 | a/2 | 0.0
- 'Al' | a/2 | 0.0 | a/2 
+ 'Al' | a/2 | 0.0 | a/2
  'Al' | 0.0 | a/2 | a/2
 %
 
@@ -42,4 +42,3 @@ ConvEigenError = yes
 ExperimentalFeatures = yes
 
 FromScratch = yes
-

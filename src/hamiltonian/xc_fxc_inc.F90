@@ -19,7 +19,7 @@
 ! ---------------------------------------------------------
 subroutine xc_get_fxc(xcs, mesh, namespace, rho, ispin, fxc, zfxc)
   type(xc_t), target, intent(in)    :: xcs
-  type(mesh_t),       intent(in)    :: mesh
+  class(mesh_t),      intent(in)    :: mesh
   type(namespace_t),  intent(in)    :: namespace
   FLOAT, intent(in)                 :: rho(:, :)
   integer, intent(in)               :: ispin

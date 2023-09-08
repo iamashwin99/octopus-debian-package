@@ -75,7 +75,7 @@ contains
     call opt_control_state_init(qcstate, sys%st, sys%ions)
     psi => opt_control_point_qs(qcstate)
     call states_elec_deallocate_wfns(psi)
-    call states_elec_allocate_wfns(psi, sys%gr%mesh, TYPE_CMPLX)
+    call states_elec_allocate_wfns(psi, sys%gr, TYPE_CMPLX)
 
     !%Variable OCTInitialState
     !%Type integer
@@ -101,9 +101,9 @@ contains
     case (oct_is_groundstate)
       message(1) =  'Info: Using ground state for initial state.'
       call messages_info(1, namespace=sys%namespace)
-      call restart_init(restart, sys%namespace, RESTART_GS, RESTART_TYPE_LOAD, sys%mc, ierr, mesh=sys%gr%mesh, exact=.true.)
+      call restart_init(restart, sys%namespace, RESTART_GS, RESTART_TYPE_LOAD, sys%mc, ierr, mesh=sys%gr, exact=.true.)
       if (ierr == 0) then
-        call states_elec_load(restart, sys%namespace, sys%space, psi, sys%gr%mesh, sys%kpoints, ierr)
+        call states_elec_load(restart, sys%namespace, sys%space, psi, sys%gr, sys%kpoints, ierr)
       end if
       if (ierr /= 0) then
         message(1) = "Unable to read wavefunctions."
@@ -140,13 +140,13 @@ contains
         call messages_fatal(2, namespace=sys%namespace)
       end if
 
-      call restart_init(restart, sys%namespace, RESTART_GS, RESTART_TYPE_LOAD, sys%mc, ierr, mesh=sys%gr%mesh, exact=.true.)
+      call restart_init(restart, sys%namespace, RESTART_GS, RESTART_TYPE_LOAD, sys%mc, ierr, mesh=sys%gr, exact=.true.)
       if (ierr /= 0) then
         message(1) = "Could not read states for OCTInitialTransformStates."
         call messages_fatal(1, namespace=sys%namespace)
       end if
 
-      call states_elec_transform(psi, sys%namespace, sys%space, restart, sys%gr%mesh, sys%kpoints, prefix = "OCTInitial")
+      call states_elec_transform(psi, sys%namespace, sys%space, restart, sys%gr, sys%kpoints, prefix = "OCTInitial")
       call restart_end(restart)
 
     case (oct_is_userdefined)
@@ -167,7 +167,7 @@ contains
       !%End
       if (parse_block(sys%namespace, 'OCTInitialUserdefined', blk) == 0) then
 
-        SAFE_ALLOCATE(zpsi(1:sys%gr%mesh%np, 1:psi%d%dim))
+        SAFE_ALLOCATE(zpsi(1:sys%gr%np, 1:psi%d%dim))
 
         no_states = parse_block_n(blk)
         do ib = 1, no_states
@@ -190,8 +190,8 @@ contains
                 ! convert to C string
                 call conv_to_C_string(psi%user_def_states(id, is, ik))
 
-                do ip = 1, sys%gr%mesh%np
-                  xx = sys%gr%mesh%x(ip, :)
+                do ip = 1, sys%gr%np
+                  xx = sys%gr%x(ip, :)
                   rr = norm2(xx)
 
                   ! parse user-defined expressions
@@ -200,7 +200,7 @@ contains
                   ! fill state
                   zpsi(ip, id) = TOCMPLX(psi_re, psi_im)
                 end do
-                call states_elec_set_state(psi, sys%gr%mesh, id, is, ik, zpsi(:, id))
+                call states_elec_set_state(psi, sys%gr, id, is, ik, zpsi(:, id))
               end do
             end do
           end do
@@ -208,9 +208,9 @@ contains
         call parse_block_end(blk)
         do ik = 1, psi%d%nik
           do is = psi%st_start, psi%st_end
-            call states_elec_get_state(psi, sys%gr%mesh, is, ik, zpsi)
-            call zmf_normalize(sys%gr%mesh, psi%d%dim, zpsi)
-            call states_elec_set_state(psi, sys%gr%mesh, is, ik, zpsi)
+            call states_elec_get_state(psi, sys%gr, is, ik, zpsi)
+            call zmf_normalize(sys%gr, psi%d%dim, zpsi)
+            call states_elec_set_state(psi, sys%gr, is, ik, zpsi)
           end do
         end do
         SAFE_DEALLOCATE_A(zpsi)

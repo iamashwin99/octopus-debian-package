@@ -19,6 +19,6 @@ Radius = 50.0
 
 SpinComponents = spin_polarized
 
-XCFunctional = lda_x_1d + lda_c_1d_csc
+XCFunctional = lda_x_1d_soft + lda_c_1d_csc
 
 EigenSolver = cg_new

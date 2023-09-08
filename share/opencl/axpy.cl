@@ -22,6 +22,7 @@
 #include <cl_complex.h>
 #include <cl_rtype.h>
 
+//------------------------------------------------------------------------------------
 __kernel void X(axpy)(const int np,
 		      const rtype aa,
 		      const __global rtype * restrict xx, const int ldxx,
@@ -33,6 +34,7 @@ __kernel void X(axpy)(const int np,
 
 }
 
+//------------------------------------------------------------------------------------
 __kernel void X(axpy_vec)(const int np,
 			  const __constant rtype * restrict aa, 
 			  const __global rtype * restrict xx, const int ldxx,
@@ -45,6 +47,7 @@ __kernel void X(axpy_vec)(const int np,
 
 }
 
+//------------------------------------------------------------------------------------
 __kernel void X(scal_vec)(const int np,
 			  const __constant rtype * restrict aa, 
 			  __global rtype * restrict xx, const int ldxx){
@@ -56,6 +59,7 @@ __kernel void X(scal_vec)(const int np,
 
 }
 
+//------------------------------------------------------------------------------------
 __kernel void X(xpay_vec)(const int np,
 			  const __constant rtype * restrict aa, 
 			  const __global rtype * restrict xx, const int ldxx,
@@ -68,8 +72,8 @@ __kernel void X(xpay_vec)(const int np,
 
 }
 
+//------------------------------------------------------------------------------------
 /* The X(batch_axpy_function) kernels should be called on a global grid of (np, ndim, 1) */
-
 __kernel void X(batch_axpy_function)(
     const int np,  //< number of mesh points
     const int nst, //< number of states
@@ -91,6 +95,28 @@ __kernel void X(batch_axpy_function)(
      tmp += MUL(aa[ist], xx[idim + ndim*ist + (ip<<ldxx)]);
   }
   yy[ip + (idim<<ldyy)] += tmp;
+}
+
+//------------------------------------------------------------------------------------
+__kernel void X(batch_ax_function_py)(
+    const int np,  //< number of mesh points
+    const int nst, //< number of states
+    const int ndim, //< number of spin components
+    __global rtype * __restrict yy, const int ldyy,       //< batch of states
+    __global const rtype * __restrict aa,                 //< buffer of weights
+    __global const rtype * __restrict xx, const int ldxx  //< single state 
+) {
+
+  int ip   = get_global_id(0);
+  int idim = get_global_id(1);
+
+  if(ip   >= np) return;
+  if(idim >= ndim) return;
+
+  for(int ist=0; ist<nst; ist++)
+  {
+     yy[idim + ndim*ist + (ip<<ldyy)] += MUL(aa[ist], xx[ip + (idim<<ldxx)]);
+  }
 }
 
 

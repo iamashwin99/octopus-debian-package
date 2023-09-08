@@ -10,8 +10,8 @@ bondlength = 1.7/0.529177
 %
 
 %Coordinates
-"Na" | 0.0 | 0.0 |  bondlength 
-"Na" | 0.0 | 0.0 | -bondlength 
+"Na" | 0.0 | 0.0 |  bondlength
+"Na" | 0.0 | 0.0 | -bondlength
 %
 
 BoxShape = sphere
@@ -40,10 +40,10 @@ electric_field   | 0 | 0 | i | omega | "envelope_function"
 
 AbsorbingBoundaries = no
 
-%TDOutput 
- laser 
- energy 
- multipoles 
+%TDOutput
+ laser
+ energy
+ multipoles
  total_current
 %
 

@@ -57,4 +57,3 @@ match ; Eigenvalue   [2dn] ; GREPFIELD(static/info, '2   dn', 3) ; 0.140371
 match ; Occupation 1s up ; LINEFIELD(static/occ_matrices, -3, 1) ; 0.98724291
 
 match ; U  ; LINEFIELD(static/effectiveU, -4, 4) ; 0.613357
-

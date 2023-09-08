@@ -20,13 +20,16 @@
 !> This routine returns the atomic orbital basis -- provided
 !! by the pseudopotential structure in geo.
 ! ---------------------------------------------------------
-subroutine X(get_atomic_orbital) (namespace, ions, mesh, sm, iatom, ii, ll, jj, os, orbind, radius, d_dim, &
-  use_mesh, normalize)
+subroutine X(get_atomic_orbital) (namespace, space, latt, pos, spec, mesh, sm, ii, ll, jj, os, &
+  orbind, radius, d_dim, use_mesh, normalize)
   type(namespace_t),        intent(in)    :: namespace
-  type(mesh_t),             intent(in)    :: mesh
-  type(ions_t),     target, intent(in)    :: ions
+  type(space_t),            intent(in)    :: space
+  type(lattice_vectors_t),  intent(in)    :: latt
+  FLOAT,                    intent(in)    :: pos(:) !< space%dim
+  type(species_t),          intent(in)    :: spec
+  class(mesh_t),            intent(in)    :: mesh
   type(submesh_t),          intent(inout) :: sm
-  integer,                  intent(in)    :: iatom, ii, ll
+  integer,                  intent(in)    :: ii, ll
   FLOAT,                    intent(in)    :: jj
   type(orbitalset_t),       intent(inout) :: os
   integer,                  intent(in)    :: orbind
@@ -35,15 +38,12 @@ subroutine X(get_atomic_orbital) (namespace, ions, mesh, sm, iatom, ii, ll, jj, 
   logical,                  intent(in)    :: use_mesh
   logical,                  intent(in)    :: normalize
 
-  type(species_t), pointer :: spec
   FLOAT, allocatable :: tmp(:)
   R_TYPE, allocatable :: ztmp(:,:)
   integer :: mm
   FLOAT :: coeff, norm
 
   PUSH_SUB(X(get_atomic_orbital))
-
-  spec => ions%atom(iatom)%species
 
   if (sm%np == -1) then
 
@@ -63,7 +63,7 @@ subroutine X(get_atomic_orbital) (namespace, ions, mesh, sm, iatom, ii, ll, jj, 
         write(message(3),'(a,f8.5,a,i5,a)') 'The value of the radius is ', radius, ' Bohr.'
         call messages_fatal(3, namespace=namespace)
       end if
-      if (norm2(ions%pos(:, iatom) - box%center) + radius > box%radius) then
+      if (norm2(pos - box%center) + radius > box%radius) then
         message(1) = "An orbital set has points outside of the simulatio box."
         message(2) = "Increase the value of Radius or decrease the value of AOThreshold."
         write(message(3),'(a,f8.5,a,i5,a)') 'The value of the radius is ', radius, ' Bohr.'
@@ -84,13 +84,13 @@ subroutine X(get_atomic_orbital) (namespace, ions, mesh, sm, iatom, ii, ll, jj, 
         call messages_fatal(3, namespace=namespace)
       end if
 
-      if (norm2(ions%pos(2:mesh%box%dim,iatom) - box%center(2:mesh%box%dim)) + radius > box%radius) then
+      if (norm2(pos(2:mesh%box%dim) - box%center(2:mesh%box%dim)) + radius > box%radius) then
         message(1) = "An orbital set has points outside of the simulatio box."
         message(2) = "Increase the value of Radius or decrease the value of AOThreshold."
         write(message(3),'(a,f8.5,a,i5,a)') 'The value of the radius is ', radius, ' Bohr.'
         call messages_fatal(3, namespace=namespace)
       end if
-      if (abs(ions%pos(1, iatom) - box%center(1)) + radius > box%half_length) then
+      if (abs(pos(1) - box%center(1)) + radius > box%half_length) then
         message(1) = "An orbital set has points outside of the simulatio box."
         message(2) = "Increase the value of Xlength or decrease the value of AOThreshold."
         write(message(3),'(a,f8.5,a,i5,a)') 'The value of the radius is ', radius, ' Bohr.'
@@ -100,7 +100,7 @@ subroutine X(get_atomic_orbital) (namespace, ions, mesh, sm, iatom, ii, ll, jj, 
     end select
 
     !We initialise the submesh corresponding to the orbital
-    call submesh_init(sm, ions%space, mesh, ions%latt, ions%pos(:, iatom), radius)
+    call submesh_init(sm, space, mesh, latt, pos, radius)
 
   end if
 
@@ -204,13 +204,12 @@ subroutine X(atomic_orbital_get_submesh)(species, submesh, ii, ll, mm, ispin, ph
   logical,       optional, intent(in)  :: derivative !< If present and .true. returns the derivative of the orbital.
 
   integer :: ip, nn(3), idir
-  FLOAT :: sqrtw, ww
+  FLOAT :: sqrtw, ww, prefac
   R_TYPE, allocatable :: ylm(:)
   type(ps_t), pointer :: ps
   type(spline_t) :: dur
   logical :: derivative_
-
-  if (submesh%np == 0) return
+  FLOAT :: tmp(1), norm
 
   PUSH_SUB(X(atomic_orbital_get_submesh))
 
@@ -226,7 +225,7 @@ subroutine X(atomic_orbital_get_submesh)(species, submesh, ii, ll, mm, ispin, ph
       phi(ip) = submesh%r(ip)
     end do
 
-    if (species_is_ps(species)) then
+    if (species_is_ps(species) .and. submesh%np > 0) then
       if (.not. derivative_) then
         call spline_eval_vec(ps%ur(ii, ispin), submesh%np, phi)
       else
@@ -236,13 +235,36 @@ subroutine X(atomic_orbital_get_submesh)(species, submesh, ii, ll, mm, ispin, ph
         call spline_end(dur)
       end if
     else
-      ! FIXME: cache result somewhat. e.g. re-use result for each m. and use recursion relation.
-       !$omp parallel do private(ww)
-      do ip = 1, submesh%np
-        ww = species_zval(species)*submesh%r(ip) / ii
-        phi(ip) = sqrt((2*species_zval(species)/ii)**3 * factorial(ii - ll - 1) / (2*ii*factorial(ii+ll))) * &
-          exp(-ww) * (2 * ww)**ll * loct_sf_laguerre_n(ii-ll-1, TOFLOAT(2*ll + 1), 2*ww)
-      end do
+      ! For the ANC potential, we know the 1s orbital, so we use it as it is a better guess than
+      ! the hydrogenic one
+      if(species_type(species) == SPECIES_FULL_ANC .and. ii == 1) then
+        ASSERT(species_b(species) < 0) ! To be sure it was already computed
+
+        ! See Eq. 16 in [Gygi J. Chem. Theory Comput. 2023, 19, 1300−1309]
+        prefac = sqrt(species_z(species)**3/M_PI)
+        !$omp parallel do private(ww)
+        do ip = 1, submesh%np
+          ww = species_z(species)*submesh%r(ip)*species_a(species)
+          phi(ip) = -ww/species_a(species) * loct_erf(ww) + species_b(species)*exp(-ww**2)
+          phi(ip) = prefac * exp(phi(ip))
+        end do
+
+      else
+        prefac = sqrt((2*species_z(species)/ii)**3 * factorial(ii - ll - 1) / (2*ii*factorial(ii+ll)))
+        ! FIXME: cache result somewhat. e.g. re-use result for each m. and use recursion relation.
+        !$omp parallel do private(ww, tmp)
+        do ip = 1, submesh%np
+          ww = species_z(species)*submesh%r(ip) / ii
+          if(-ww < M_MIN_EXP_ARG) then
+            phi(ip) = M_ZERO
+          else
+            ! Replacement for loct_sf_laguerre_n(ii-ll-1, TOFLOAT(2*ll + 1), 2*ww) that produces overflow
+            ! TODO: vectorize this call, as the new routine supports it
+            call generalized_laguerre_polynomial(1, ii-ll-1, 2*ll + 1, (/M_TWO*ww/), tmp)
+            phi(ip) = prefac * exp(-ww) * (M_TWO * ww)**ll * tmp(1)
+          end if
+        end do
+      end if
     end if
 
     SAFE_ALLOCATE(ylm(1:submesh%np))
@@ -251,11 +273,13 @@ subroutine X(atomic_orbital_get_submesh)(species, submesh, ii, ll, mm, ispin, ph
     ! complex spherical harmonics. FIXME: vectorize
     !$omp parallel do
     do ip = 1, submesh%np
-      call ylmr_cmplx(submesh%x(ip, 1:3), ll, mm, ylm(ip))
+      call ylmr_cmplx(submesh%rel_x(1:3, ip), ll, mm, ylm(ip))
     end do
 #else
     ! real spherical harmonics
-    call loct_ylm(submesh%np, submesh%x(1, 1), submesh%x(1, 2), submesh%x(1, 3), ll, mm, ylm(1))
+    if(submesh%np > 0) then
+      call loct_ylm(submesh%np, submesh%rel_x(1,1), submesh%r(1), ll, mm, ylm(1))
+    end if
 #endif
 
     !$omp parallel do
@@ -283,10 +307,20 @@ subroutine X(atomic_orbital_get_submesh)(species, submesh, ii, ll, mm, ispin, ph
     do ip = 1, submesh%np
       phi(ip) = exp(-ww*submesh%r(ip)**2/M_TWO)
       do idir = 1, submesh%mesh%box%dim
-        phi(ip) = phi(ip) * hermite(nn(idir) - 1, submesh%x(ip, idir)*sqrtw)
+        phi(ip) = phi(ip) * hermite(nn(idir) - 1, submesh%rel_x(idir, ip)*sqrtw)
       end do
     end do
 
+  end if
+
+  if(species_is_full(species)) then
+    ! When doing the all-electron calculations with a large spacing, the 1s orbitals
+    ! will look like a delta function. However, the integral, i.e., |\phi_{1s}(0)|^2 dV
+    ! will be very large, e.g. 644 for Ag with a spacing of 0.3.
+    ! Without renormlazing this, the 1s orbitals leads to unnormalized guess density way too large
+    ! and hence a wrong LCAO
+    norm = X(sm_nrm2)(submesh, phi)
+    call lalg_scal(submesh%np, M_ONE/norm, phi)
   end if
 
   POP_SUB(X(atomic_orbital_get_submesh))
@@ -345,7 +379,7 @@ subroutine X(atomic_orbital_get_submesh_safe)(species, submesh, ii, ll, mm, ispi
     SAFE_ALLOCATE(map(1:is))
     tmp_sm%mesh => submesh%mesh
     tmp_sm%np = is
-    SAFE_ALLOCATE(tmp_sm%x(1:tmp_sm%np, 1:submesh%mesh%box%dim))
+    SAFE_ALLOCATE(tmp_sm%rel_x(1:submesh%mesh%box%dim, 1:tmp_sm%np))
     SAFE_ALLOCATE(tmp_sm%r(1:tmp_sm%np))
     SAFE_ALLOCATE(phi_tmp(1:tmp_sm%np))
     is = 0
@@ -353,7 +387,7 @@ subroutine X(atomic_orbital_get_submesh_safe)(species, submesh, ii, ll, mm, ispi
       if (submesh%r(ip) <= threshold) then
         is = is + 1
         map(is) = ip
-        tmp_sm%x(is, :) = submesh%x(ip, :)
+        tmp_sm%rel_x(:, is) = submesh%rel_x(:, ip)
         tmp_sm%r(is) = submesh%r(ip)
       end if
     end do
@@ -372,4 +406,3 @@ subroutine X(atomic_orbital_get_submesh_safe)(species, submesh, ii, ll, mm, ispi
 
   POP_SUB(X(atomic_orbital_get_submesh_safe))
 end subroutine X(atomic_orbital_get_submesh_safe)
-

@@ -116,13 +116,13 @@ contains
 
     PUSH_SUB(space_write_info)
 
-    call messages_print_stress(msg="Space", namespace=namespace)
+    call messages_print_with_emphasis(msg="Space", namespace=namespace)
 
     write(message(1), '(a,i1,a)') 'Octopus will run in ', this%dim, ' dimension(s).'
     write(message(2), '(a,i1,a)') 'Octopus will treat the system as periodic in ', this%periodic_dim, ' dimension(s).'
     call messages_info(2, namespace=namespace)
 
-    call messages_print_stress(namespace=namespace)
+    call messages_print_with_emphasis(namespace=namespace)
 
     POP_SUB(space_write_info)
   end subroutine space_write_info
@@ -145,4 +145,3 @@ end module space_oct_m
 !! mode: f90
 !! coding: utf-8
 !! End:
-

@@ -27,7 +27,6 @@ module restart_oct_m
   use index_oct_m
   use io_oct_m
   use io_binary_oct_m
-  use io_function_oct_m
   use loct_oct_m
   use mesh_oct_m
   use mesh_batch_oct_m
@@ -100,7 +99,6 @@ module restart_oct_m
     integer           :: data_type !< Type of information that the restart is supposed to read/write (GS, TD, etc)
     integer           :: type      !< Restart type: RESTART_TYPE_DUMP or RESTART_TYPE_LOAD
     logical           :: skip      !< If set to .true., no restart information should be loaded or dumped.
-    integer(i8)       :: format    !< Format used to store the restart information.
     character(len=MAX_PATH_LEN) :: dir !< Directory where the restart information is stored.
     character(len=MAX_PATH_LEN) :: pwd !< The current directory where the restart information is being loaded from or dumped to.
     !!                                    It can be either dir or a subdirectory of dir.
@@ -417,7 +415,7 @@ contains
     !!                                                       or for loading (type = RESTART_TYPE_LOAD)?
     type(multicomm_t), target,   intent(in)  :: mc        !< The multicommunicator in charge of handling this restart.
     integer,                     intent(out) :: ierr      !< Error code, if any. Required for LOAD, should not be present for DUMP.
-    type(mesh_t),      optional, intent(in)  :: mesh      !< If present, depending on the type of restart, the mesh
+    class(mesh_t),     optional, intent(in)  :: mesh      !< If present, depending on the type of restart, the mesh
     !!                                                       information is either dumped or the mesh compatibility is checked.
     character(len=*),  optional, intent(in)  :: dir       !< Directory where to find the restart data. It is mandatory if
     !!                                                       data_type=RESTART_UNDEFINED and is ignored in all the other cases.
@@ -444,7 +442,6 @@ contains
     restart%type = type
     restart%mc => mc
     call mpi_grp_init(restart%mpi_grp, mc%master_comm)
-    restart%format = io_function_fill_how("Binary")
     if (data_type < RESTART_UNDEFINED .and. data_type > RESTART_N_DATA_TYPES) then
       message(1) = "Illegal data_type in restart_init"
       call messages_fatal(1, namespace=namespace)
@@ -551,9 +548,9 @@ contains
         ierr = 1
         restart%skip = .true.
 
-        message(1) = "Could not find '"//trim(restart%pwd)//"' directory for restart."
-        message(2) = "No restart information will be read."
-        call messages_warning(2, namespace=namespace)
+        message(1) = "Info: Could not find '"//trim(restart%pwd)//"' directory for restart."
+        message(2) = "Info: No restart information will be read."
+        call messages_info(2, namespace=namespace)
 
       else
         message(1) = "Info: "//trim(tag)//" restart information will be read from '"//trim(restart%pwd)//"'."
@@ -580,11 +577,11 @@ contains
           ! Print some warnings in case the mesh is compatible, but changed.
           if (grid_changed) then
             if (grid_reordered) then
-              message(1) = "Octopus is attempting to restart from a mesh with a different order of points."
+              message(1) = "Info: Octopus is attempting to restart from a mesh with a different order of points."
             else
-              message(1) = "Octopus is attempting to restart from a different mesh."
+              message(1) = "Info: Octopus is attempting to restart from a different mesh."
             end if
-            call messages_warning(1, namespace=namespace)
+            call messages_info(1, namespace=namespace)
           end if
 
           if (present(exact)) then

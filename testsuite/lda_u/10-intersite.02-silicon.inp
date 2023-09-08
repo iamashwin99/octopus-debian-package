@@ -1,0 +1,52 @@
+CalculationMode = gs
+ExperimentalFeatures = yes
+FromScratch = yes
+
+PeriodicDimensions = 3
+BoxShape = parallelepiped
+
+PseudopotentialSet = pseudodojo_pbe
+
+a = 5.431*Angstrom
+
+Spacing = 0.7
+
+%LatticeParameters
+  a | a | a
+%
+
+%LatticeVectors
+ 0.  | 0.5 | 0.5
+ 0.5 | 0.  | 0.5
+ 0.5 | 0.5 | 0.0
+%
+
+%ReducedCoordinates
+ "Si" |   0.0    | 0.0     | 0.0
+ "Si" |   1/4    | 1/4     | 1/4
+%
+
+nk = 2
+%KpointsGrid
+ nk | nk | nk
+%
+
+EigensolverTolerance = 1e-9
+EigensolverMaxIter = 50
+ConvRelDens = 1e-7
+
+ExtraStates = 2
+
+UnitsOutput = ev_angstrom
+
+DFTULevel = dft_u_acbn0
+AOLoewdin = yes
+UseAllAtomicOrbitals = yes
+SkipSOrbitals = no
+SCFCalculateForces = no
+
+ACBN0IntersiteInteraction = yes
+ACBN0IntersiteCutoff = 7
+DFTUPoissonSolver = dft_u_poisson_fft
+
+DEbugTrapSignals = no

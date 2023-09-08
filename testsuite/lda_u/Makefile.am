@@ -53,9 +53,7 @@ dist_share_DATA =                                \
 	    09-basis_from_states.fhi             \
 	    09-basis_from_states.test            \
 	    10-intersite.01-Na2.inp              \
-            10-intersite.02-graphite.inp         \
-            10-intersite.03-Na2_spinors.inp      \
-            10-intersite.04-Na2_td.inp           \
+            10-intersite.02-silicon.inp          \
             10-intersite.test                    \
             11-full_delta.01-gs.inp              \
             11-full_delta.test                   \

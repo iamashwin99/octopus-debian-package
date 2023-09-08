@@ -18,6 +18,7 @@
 #include "global.h"
 
 module orbitalbasis_oct_m
+  use accel_oct_m
   use atomic_orbital_oct_m
   use debug_oct_m
   use distributed_oct_m
@@ -25,6 +26,7 @@ module orbitalbasis_oct_m
   use io_oct_m
   use ions_oct_m
   use lalg_basic_oct_m
+  use math_oct_m
   use messages_oct_m
   use mesh_oct_m
   use mesh_function_oct_m
@@ -35,6 +37,7 @@ module orbitalbasis_oct_m
   use profiling_oct_m
   use species_oct_m
   use submesh_oct_m
+  use types_oct_m
 
   implicit none
 
@@ -51,23 +54,23 @@ module orbitalbasis_oct_m
 
   type orbitalbasis_t
     private
-    type(orbitalset_t), allocatable, public :: orbsets(:) !> All the orbital sets of the system
+    type(orbitalset_t), allocatable, public :: orbsets(:) !< All the orbital sets of the system
 
-    integer,            public :: norbsets = 0       !> Number of orbital sets
-    integer,            public :: maxnorbs = 0       !> Maximal number of orbitals for all the atoms
-    integer,            public :: max_np   = 0       !> Max. number of points in all orbitals submesh spheres
-    integer,            public :: size     = 0       !> Size of the full basis
-    integer, allocatable, public :: global2os(:,:)     !> Mapping functions
+    integer,            public :: norbsets = 0       !< Number of orbital sets
+    integer,            public :: maxnorbs = 0       !< Maximal number of orbitals for all the atoms
+    integer,            public :: max_np   = 0       !< Max. number of points in all orbitals submesh spheres
+    integer,            public :: size     = 0       !< Size of the full basis
+    integer, allocatable, public :: global2os(:,:)     !< Mapping functions
     integer, allocatable         :: os2global(:,:)
 
-    integer(i8)                :: truncation             !> Truncation method for the orbitals
-    FLOAT                      :: threshold = CNST(0.01) !> Threshold for orbital truncation
+    integer(i8)                :: truncation             !< Truncation method for the orbitals
+    FLOAT                      :: threshold = CNST(0.01) !< Threshold for orbital truncation
 
-    logical                    :: normalize = .true.  !> Do we normalize the orbitals
-    logical,            public :: submesh   = .false. !> Do we use or not submeshes for the orbitals
-    logical,            public :: orthogonalization = .false. !> Orthogonalization of the basis
+    logical,            public :: normalize = .true.          !< Do we normalize the orbitals
+    logical,            public :: use_submesh   = .false.     !< Do we use or not submeshes for the orbitals
+    logical,            public :: orthogonalization = .false. !< Orthogonalization of the basis
 
-    character(len=256), public :: debugdir !> For debug
+    character(len=256), public :: debugdir !< For debug
   end type orbitalbasis_t
 
 contains
@@ -84,7 +87,7 @@ contains
     !%Default ao_full
     !%Section Atomic Orbitals
     !%Description
-    !% This option determines how Octopus will truncate the orbitals used for LDA+U.
+    !% This option determines how Octopus will truncate the orbitals used for DFT+U.
     !% Except for the full method, the other options are only there to get a quick idea.
     !%Option ao_full bit(0)
     !% The full size of the orbitals used. The radius is controled by variable AOThreshold.
@@ -105,7 +108,7 @@ contains
     !%Default 0.01
     !%Section Atomic Orbitals
     !%Description
-    !% Determines the threshold used to compute the radius of the atomic orbitals for LDA+U and for Wannier90.
+    !% Determines the threshold used to compute the radius of the atomic orbitals for DFT+U and for Wannier90.
     !% This radius is computed by making sure that the
     !% absolute value of the radial part of the atomic orbital is below the specified threshold.
     !% This value should be converged to be sure that results do not depend on this value.
@@ -121,7 +124,7 @@ contains
     !%Section Atomic Orbitals
     !%Description
     !% If set to yes, Octopus will normalize the atomic orbitals individually.
-    !% This variable is ignored is <tt>AOLoewdin<\tt> is set to yes.
+    !% This variable is ignored is <tt>AOLoewdin</tt> is set to yes.
     !%End
     call parse_variable(namespace, 'AONormalize', .true., this%normalize)
     call messages_print_var_value('AONormalize', this%normalize, namespace=namespace)
@@ -134,14 +137,14 @@ contains
     !% their phase instead of storing them on the mesh. This is usually slower for small
     !% periodic systems, but becomes advantageous for large supercells.
     !% Submeshes are not compatible with Loewdin orthogonalization.
-    !% For periodic systems, the default is set to ye, whereas it is set to no for isolated systems.
+    !% For periodic systems, the default is set to no, whereas it is set to yes for isolated systems.
     !%End
     if (periodic_dim > 0) then
-      call parse_variable(namespace, 'AOSubmesh', .false., this%submesh)
+      call parse_variable(namespace, 'AOSubmesh', .false., this%use_submesh)
     else
-      call parse_variable(namespace, 'AOSubmesh', .true., this%submesh)
+      call parse_variable(namespace, 'AOSubmesh', .true., this%use_submesh)
     end if
-    call messages_print_var_value('AOSubmesh', this%submesh, namespace=namespace)
+    call messages_print_var_value('AOSubmesh', this%use_submesh, namespace=namespace)
 
     !%Variable AOLoewdin
     !%Type logical
@@ -158,7 +161,7 @@ contains
     if (this%orthogonalization) call messages_experimental("AOLoewdin")
     if (this%orthogonalization) this%normalize = .false.
 
-    if (this%orthogonalization .and. this%submesh) then
+    if (this%orthogonalization .and. this%use_submesh) then
       call messages_not_implemented("AOLoewdin=yes with AOSubmesh=yes.")
     end if
 

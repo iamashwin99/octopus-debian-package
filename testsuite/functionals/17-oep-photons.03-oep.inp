@@ -14,7 +14,7 @@ spacing = 0.1
 %
 
 %Coordinates
-"Al3P" | 0 
+"Al3P" | 0
 %
 
 %RestartOptions
@@ -44,5 +44,3 @@ EnablePhotons = yes
 %PhotonModes
   1.1 | 0.06741998624 | 1
 %
-
-

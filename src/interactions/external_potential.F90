@@ -72,7 +72,6 @@ module external_potential_oct_m
     procedure :: allocate_memory => external_potential_allocate
     procedure :: deallocate_memory => external_potential_deallocate
     procedure :: update_exposed_quantities => external_potential_update_exposed_quantities
-    procedure :: update_exposed_quantity => external_potential_update_exposed_quantity
     procedure :: init_interaction_as_partner => external_potential_init_interaction_as_partner
     procedure :: copy_quantities_to_interaction => external_potential_copy_quantities_to_interaction
     final :: external_potential_finalize
@@ -80,10 +79,10 @@ module external_potential_oct_m
 
   integer, public, parameter ::  &
     EXTERNAL_POT_USDEF          = 201,           & !< user-defined function for local potential
-    EXTERNAL_POT_FROM_FILE      = 202,           &
+    EXTERNAL_POT_FROM_FILE      = 202,           & !< potential, defined in a file
     EXTERNAL_POT_CHARGE_DENSITY = 203,           & !< user-defined function for charge density
-    EXTERNAL_POT_STATIC_BFIELD  = 204,           &  !< Static magnetic field
-    EXTERNAL_POT_STATIC_EFIELD  = 205
+    EXTERNAL_POT_STATIC_BFIELD  = 204,           & !< Static magnetic field
+    EXTERNAL_POT_STATIC_EFIELD  = 205              !< Static electric field
 
 
   interface external_potential_t
@@ -125,7 +124,7 @@ contains
   ! ---------------------------------------------------------
   subroutine external_potential_allocate(this, mesh)
     class(external_potential_t), intent(inout) :: this
-    type(mesh_t),                intent(in)    :: mesh
+    class(mesh_t),               intent(in)    :: mesh
 
     PUSH_SUB(external_potential_allocate)
 
@@ -186,26 +185,6 @@ contains
   end function external_potential_update_exposed_quantities
 
   ! ---------------------------------------------------------
-  subroutine external_potential_update_exposed_quantity(partner, iq)
-    class(external_potential_t),      intent(inout) :: partner
-    integer,                          intent(in)    :: iq
-
-    PUSH_SUB(external_potential_update_exposed_quantities)
-
-    ! We are not allowed to update protected quantities!
-    ASSERT(.not. partner%quantities(iq)%protected)
-
-    select case (iq)
-    case default
-      message(1) = "Incompatible quantity."
-      call messages_fatal(1, namespace=partner%namespace)
-    end select
-
-    POP_SUB(external_potential_update_exposed_quantities)
-
-  end subroutine external_potential_update_exposed_quantity
-
-  ! ---------------------------------------------------------
   subroutine external_potential_init_interaction_as_partner(partner, interaction)
     class(external_potential_t),     intent(in)    :: partner
     class(interaction_t),            intent(inout) :: interaction
@@ -261,7 +240,7 @@ contains
   subroutine external_potential_calculate(this, namespace, mesh, poisson)
     class(external_potential_t), intent(inout) :: this
     type(namespace_t),           intent(in)    :: namespace
-    type(mesh_t),                intent(in)    :: mesh
+    class(mesh_t),               intent(in)    :: mesh
     type(poisson_t),             intent(in)    :: poisson
 
     FLOAT :: pot_re, pot_im, r, xx(mesh%box%dim)

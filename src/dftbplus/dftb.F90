@@ -61,6 +61,8 @@ module dftb_oct_m
     OUTPUT_COORDINATES = 1, &
     OUTPUT_FORCES      = 2
 
+  !> @brief class for a tight binding
+  !!
   type, extends(system_t) :: dftb_t
     integer :: n_atom
     FLOAT, allocatable :: coords(:,:), gradients(:,:)
@@ -88,7 +90,7 @@ module dftb_oct_m
   contains
     procedure :: init_interaction => dftb_init_interaction
     procedure :: initial_conditions => dftb_initial_conditions
-    procedure :: do_td_operation => dftb_do_td
+    procedure :: do_algorithmic_operation => dftb_do_algorithmic_operation
     procedure :: output_start => dftb_output_start
     procedure :: output_write => dftb_output_write
     procedure :: output_finish => dftb_output_finish
@@ -168,7 +170,7 @@ contains
 
     this%namespace = namespace
 
-    call messages_print_stress(msg="DFTB+ System", namespace=namespace)
+    call messages_print_with_emphasis(msg="DFTB+ System", namespace=namespace)
 
     call space_init(this%space, namespace)
     if (this%space%is_periodic()) then
@@ -443,7 +445,7 @@ contains
     case (EHRENFEST)
 #ifdef HAVE_DFTBPLUS_DEVEL
       call this%dftbp%getEnergy(this%energy)
-      call this%dftbp%initializeTimeProp(this%prop%dt, this%laser_field)
+      call this%dftbp%initializeTimeProp(this%algo%dt, this%laser_field)
 #endif
     end select
 
@@ -451,7 +453,7 @@ contains
   end subroutine dftb_initial_conditions
 
   ! ---------------------------------------------------------
-  subroutine dftb_do_td(this, operation)
+  logical function dftb_do_algorithmic_operation(this, operation) result(done)
     class(dftb_t),                  intent(inout) :: this
     class(algorithmic_operation_t), intent(in)    :: operation
 
@@ -460,14 +462,13 @@ contains
     CMPLX :: amp, pol(this%space%dim)
     FLOAT :: time, omega
 
-    PUSH_SUB(dftb_do_td)
+    PUSH_SUB(dftb_do_algorithmic_operation)
 
+    done = .true.
     select case (this%dynamics)
     case (BO)
       ! Born-Oppenheimer dynamics
       select case (operation%id)
-      case (SKIP)
-        ! Do nothing
       case (STORE_CURRENT_STATUS)
         ! Do nothing
 
@@ -482,8 +483,8 @@ contains
 
       case (VERLET_UPDATE_POS)
         do jj = 1, this%n_atom
-          this%coords(1:this%space%dim, jj) = this%coords(1:this%space%dim, jj) + this%prop%dt * this%vel(1:this%space%dim, jj) &
-            + M_HALF * this%prop%dt**2 * this%acc(1:this%space%dim, jj)
+          this%coords(1:this%space%dim, jj) = this%coords(1:this%space%dim, jj) + this%algo%dt * this%vel(1:this%space%dim, jj) &
+            + M_HALF * this%algo%dt**2 * this%acc(1:this%space%dim, jj)
         end do
         this%quantities(POSITION)%clock = this%quantities(POSITION)%clock + CLOCK_TICK
         call multisystem_debug_write_marker(this%namespace, event_clock_update_t("quantity", &
@@ -505,23 +506,19 @@ contains
 
       case (VERLET_COMPUTE_VEL)
         this%vel(1:this%space%dim, 1:this%n_atom) = this%vel(1:this%space%dim, 1:this%n_atom) &
-          + M_HALF * this%prop%dt * (this%prev_acc(1:this%space%dim, 1:this%n_atom, 1) + &
+          + M_HALF * this%algo%dt * (this%prev_acc(1:this%space%dim, 1:this%n_atom, 1) + &
           this%acc(1:this%space%dim, 1:this%n_atom))
         this%quantities(VELOCITY)%clock = this%quantities(VELOCITY)%clock + CLOCK_TICK
         call multisystem_debug_write_marker(this%namespace, event_clock_update_t("quantity", &
           QUANTITY_LABEL(VELOCITY), this%quantities(VELOCITY)%clock, "tick"))
 
-
       case default
-        message(1) = "Unsupported TD operation."
-        call messages_fatal(1, namespace=this%namespace)
+        done = .false.
       end select
 
     case (EHRENFEST)
       ! Ehrenfest dynamics
       select case (operation%id)
-      case (SKIP)
-        ! Do nothing
       case (STORE_CURRENT_STATUS)
         ! Do nothing
       case (VERLET_START)
@@ -551,13 +548,13 @@ contains
       case (VERLET_COMPUTE_VEL)
         !Do nothing
       case default
-        message(1) = "Unsupported TD operation."
-        call messages_fatal(1, namespace=this%namespace)
+        done = .false.
       end select
 
     end select
-    POP_SUB(dftb_do_td)
-  end subroutine dftb_do_td
+
+    POP_SUB(dftb_do_algorithmic_operation)
+  end function dftb_do_algorithmic_operation
 
   ! ---------------------------------------------------------
   logical function dftb_is_tolerance_reached(this, tol) result(converged)
@@ -582,9 +579,9 @@ contains
     ! Create output handle
     call io_mkdir('td.general', this%namespace)
     if (mpi_grp_is_root(mpi_world)) then
-      call write_iter_init(this%output_handle(OUTPUT_COORDINATES), 0, this%prop%dt, &
+      call write_iter_init(this%output_handle(OUTPUT_COORDINATES), 0, this%algo%dt, &
         trim(io_workpath("td.general/coordinates", this%namespace)))
-      call write_iter_init(this%output_handle(OUTPUT_FORCES), 0, this%prop%dt, &
+      call write_iter_init(this%output_handle(OUTPUT_FORCES), 0, this%algo%dt, &
         trim(io_workpath("td.general/forces", this%namespace)))
     end if
 
@@ -688,8 +685,8 @@ contains
 
     PUSH_SUB(dftb_update_quantity)
 
-    ! We are not allowed to update protected quantities!
-    ASSERT(.not. this%quantities(iq)%protected)
+    ! We are only allowed to update quantities that can be updated on demand
+    ASSERT(this%quantities(iq)%updated_on_demand)
 
     select case (iq)
     case default
@@ -707,8 +704,8 @@ contains
 
     PUSH_SUB(dftb_update_exposed_quantity)
 
-    ! We are not allowed to update protected quantities!
-    ASSERT(.not. partner%quantities(iq)%protected)
+    ! We are only allowed to update quantities that can be updated on demand
+    ASSERT(partner%quantities(iq)%updated_on_demand)
 
     select case (iq)
     case default

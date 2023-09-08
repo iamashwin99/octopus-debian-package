@@ -56,6 +56,7 @@ module singularity_oct_m
     integer :: coulomb_singularity = 0
     FLOAT, allocatable :: Fk(:)
     FLOAT :: FF
+    FLOAT :: energy
   end type singularity_t
 
 contains
@@ -71,6 +72,7 @@ contains
 
     PUSH_SUB(singularity_init)
 
+    this%energy = M_ZERO
 
     if (.not. allocated(this%Fk)) then
       SAFE_ALLOCATE(this%Fk(1:st%d%nik))
@@ -150,7 +152,6 @@ contains
     FLOAT :: length
     FLOAT :: kpoint(space%dim), qpoint(space%dim)
     FLOAT :: kvol_element
-    FLOAT :: energy
     type(distributed_t) :: dist_kpt
     type(profile_t), save :: prof
     integer :: default_nk, default_step
@@ -180,6 +181,7 @@ contains
 
       do ik2 = 1, kpoints%full%npoints
         qpoint = kpoint - kpoints%full%red_point(:, ik2)
+
         !We remove potential umklapp
         qpoint = qpoint - anint(qpoint + CNST(1e-5))
 
@@ -233,7 +235,7 @@ contains
       !% Also used in 1D.
       !%End
       default_step = 7
-      if(space%dim == 1) default_step = 15 
+      if(space%dim == 1) default_step = 15
       call parse_variable(namespace, 'HFSingularityNsteps', default_step, Nsteps)
 
       select case(space%dim)
@@ -313,18 +315,21 @@ contains
       this%FF = SINGUL_CNST*(kpoints%latt%rcell_volume)**(M_TWOTHIRD)/M_PI/kpoints%latt%rcell_volume
     end if
 
+
+    this%energy = M_ZERO
+    do ik = st%d%kpt%start, st%d%kpt%end
+      this%energy = this%energy + this%Fk(ik)*st%d%kweights(ik)
+    end do
+
+    if (st%d%kpt%parallel) then
+      call comm_allreduce(st%d%kpt%mpi_grp, this%energy)
+    end if
+
+    this%energy = (this%energy-this%FF)*st%qtot/st%smear%el_per_state
+
     if (debug%info) then
-      energy = M_ZERO
-      do ik = st%d%kpt%start, st%d%kpt%end
-        energy = energy + this%Fk(ik)*st%d%kweights(ik)
-      end do
-
-      if (st%d%kpt%parallel) then
-        call comm_allreduce(st%d%kpt%mpi_grp, energy)
-      end if
-
       write(message(1), '(a,f12.6,a,a,a)') 'Debug: Singularity energy ', &
-        units_from_atomic(units_out%energy, (energy-this%FF)*st%qtot/st%smear%el_per_state), &
+        units_from_atomic(units_out%energy, this%energy), &
         ' [',trim(units_abbrev(units_out%energy)),']'
       call messages_info(1, namespace=namespace)
     end if
@@ -339,7 +344,7 @@ contains
 
       FLOAT :: half_a, qq_abs(space%dim)
 
-      PUSH_SUB(singularity_correction.aux_funct)
+      ! no PUSH/POP as called too often
 
       if (this%coulomb_singularity == SINGULARITY_GENERAL) then
         select case(space%dim)
@@ -365,7 +370,6 @@ contains
           -cos(qq_abs(3)*half_a)*cos(qq_abs(2)*half_a))
       end if
 
-      POP_SUB(singularity_correction.aux_funct)
     end function aux_funct
 
   end subroutine singularity_correction

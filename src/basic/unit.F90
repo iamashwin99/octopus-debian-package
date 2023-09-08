@@ -17,7 +17,9 @@
 !!
 
 !
-!> Atomic weights should be read in "atomic mass units" (u) (not to
+!> brief This module defines the class unit_t which is used by the unit_systems_oct_m module.
+!!
+!! Atomic weights should be read in "atomic mass units" (u) (not to
 !! be confused with mass in "atomic units"), that is, it should be given
 !! the relative atomic weight). 1 u is roughly the mass of the proton,
 !! and exactly one twelfth of mass of the ^{12}C isotope. The relation of the

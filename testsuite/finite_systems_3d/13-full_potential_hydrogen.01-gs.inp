@@ -1,11 +1,9 @@
 # -*- coding: utf-8 mode: shell-script -*-
 
 %Coordinates
- 'H_f' | 0 | 0 | 0
+ 'H' | 0 | 0 | 0
 %
-%Species 
- 'H_f' | species_full_gaussian
-%
+AllElectronType = full_gaussian
 
 Radius = 8.0
 Spacing = 0.4
@@ -37,12 +35,12 @@ LCAOComplexYlms = true
 
 CalculateSelfInducedMagneticField = yes
 
-%Output 
+%Output
  matrix_elements
  potential | axis_y
 %
 %OutputMatrixElements
- momentum 
+ momentum
  ang_momentum
 %
 # + one_body + two_body + ks_multipoles

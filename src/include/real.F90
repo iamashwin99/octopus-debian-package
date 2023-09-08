@@ -26,15 +26,20 @@
 #define R_TYPE_CL   'RTYPE_DOUBLE'
 #define R_TYPE_IOBINARY TYPE_DOUBLE
 #define R_TOTYPE(x) real(x, REAL_PRECISION)
-#define R_TOPREC(x) real(x, REAL_PRECISION)
 
 #define R_CONJ(x)   (x)
 #define R_REAL(x)   (x)
 #define R_AIMAG(x)  (M_ZERO)
 
+#ifdef __GFORTRAN__
+#define X(x)        d/**/x
+#define pX(x)       pd/**/x
+#define aX(x,y)     x/**/d/**/y
+#else
 #define X(x)        d ## x
 #define pX(x)       pd ## x
 #define aX(x,y)     x ## d ## y
+#endif
 
 #define R_SIZEOF    8
 #define R_ADD       1

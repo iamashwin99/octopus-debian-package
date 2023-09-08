@@ -15,7 +15,7 @@ Eigensolver = rmmdiis
 ConvRelDens = 2e-6
 EigensolverTolerance = 1e-7
 
-ExtraStates = 20
+ExtraStatesInPercent = 17
 
 ReportMemory = yes
 

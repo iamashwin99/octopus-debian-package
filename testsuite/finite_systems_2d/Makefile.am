@@ -39,13 +39,13 @@ dist_share_DATA = \
 	05-spin_precession.test \
 	05-spin_precession.01-ground_state.inp \
 	05-spin_precession.02-time_propagation.inp \
-        08-gdlib.test \
-        08-gdlib.01-gs.inp \
-        09-user_def_box.01-gs.inp \
-        09-user_def_box.test \
-        10-constrain.01-gs.inp \
-        10-constrain.02-gs_dir.inp \
-        10-constrain.03-polarized.inp \
-        10-constrain.test
+        06-gdlib.test \
+        06-gdlib.01-gs.inp \
+        07-user_def_box.01-gs.inp \
+        07-user_def_box.test \
+        08-constrain.01-gs.inp \
+        08-constrain.02-gs_dir.inp \
+        08-constrain.03-polarized.inp \
+        08-constrain.test
 
 CLEANFILES = *~ *.bak

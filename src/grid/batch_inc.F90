@@ -155,8 +155,8 @@ subroutine X(batch_pack_copy)(this)
   bsize = hardware%X(block_size)
 
   !$omp parallel do private(ep, ist, ip)
-  do sp = 1, this%pack_size(2), bsize
-    ep = min(sp + bsize - 1, this%pack_size(2))
+  do sp = 1, int(this%pack_size(2), i4), bsize
+    ep = min(sp + bsize - 1, int(this%pack_size(2), i4))
     do ist = 1, this%nst_linear
       do ip = sp, ep
         this%X(ff_pack)(ist, ip) = this%X(ff_linear)(ip, ist)
@@ -179,7 +179,7 @@ subroutine X(batch_unpack_copy)(this)
   call profiling_in(prof_copy, TOSTRING(X(BATCH_UNPACK_COPY)))
 
   !$omp parallel do private(ist)
-  do ip = 1, this%pack_size(2)
+  do ip = 1, int(this%pack_size(2), i4)
     do ist = 1, this%nst_linear
       this%X(ff_linear)(ip, ist) = this%X(ff_pack)(ist, ip)
     end do

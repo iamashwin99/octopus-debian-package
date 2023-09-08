@@ -1,0 +1,29 @@
+CalculationMode = gs
+FromScratch = no
+
+
+PseudopotentialSet = pseudodojo_lda
+XCFunctional = lda_x + lda_c_pw
+
+%Coordinates
+ 'C' | 10 | 10 | 10
+%
+
+SpeciesProjectorSphereThreshold = 0.2
+
+Spacing = 0.3
+Radius = 10.0
+
+ExtraStates = 3
+%Occupations
+ 2/3 | 2/3 | 2/3
+%
+
+StatesBlockSize=5
+PoissonSolver=FFT
+
+OutputInterval = 1
+OutputDuringSCF = yes
+
+MaximumIter=4
+Debug = info

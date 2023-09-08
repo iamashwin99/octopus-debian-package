@@ -53,7 +53,7 @@ AC_DEFUN([ACX_GDLIB],
       GD_MAJORVERSION=`$GDLIB_CONFIG --majorversion`
       GD_MINORVERSION=`$GDLIB_CONFIG --minorversion`
       GD_REVISION=`$GDLIB_CONFIG --revision`
-      # we only use PNG, JPEG, GIF 
+      # we only use PNG, JPEG, GIF
       for f in `$GDLIB_CONFIG --features` ; do
         case $f in
         GD_XPM )

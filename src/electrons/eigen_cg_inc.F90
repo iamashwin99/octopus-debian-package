@@ -19,9 +19,9 @@
 ! ---------------------------------------------------------
 !> conjugate-gradients method.
 subroutine X(eigensolver_cg) (namespace, mesh, st, hm, xc, pre, tol, niter, converged, ik, diff, &
-    energy_change_threshold, orthogonalize_to_all, conjugate_direction, additional_terms, shift)
+  energy_change_threshold, orthogonalize_to_all, conjugate_direction, additional_terms, shift)
   type(namespace_t),        intent(in)    :: namespace
-  type(mesh_t),             intent(in)    :: mesh
+  class(mesh_t),            intent(in)    :: mesh
   type(states_elec_t),      intent(inout) :: st
   type(hamiltonian_elec_t), intent(in)    :: hm
   type(preconditioner_t),   intent(in)    :: pre
@@ -63,6 +63,8 @@ subroutine X(eigensolver_cg) (namespace, mesh, st, hm, xc, pre, tol, niter, conv
   if(fold_) then
     ASSERT(associated(shift))
   end if
+
+  residue_previous = M_HUGE
 
   ! do we add the XC term? needs derivatives of the XC functional
   add_xc_term = additional_terms
@@ -238,7 +240,7 @@ subroutine X(eigensolver_cg) (namespace, mesh, st, hm, xc, pre, tol, niter, conv
 
       ! orthogonalize against previous or all states, depending on the optional argument orthogonalize_to_all
       call X(states_elec_orthogonalize_single_batch)(st, mesh, ist - 1, ik, sd_precond, normalize = .false., &
-          against_all=orthogonalize_to_all)
+        against_all=orthogonalize_to_all)
 
       sd_norm = X(mf_nrm2)(mesh, st%d%dim, sd_precond)
       if(sd_norm < CNST(1e-150)) then
@@ -248,9 +250,9 @@ subroutine X(eigensolver_cg) (namespace, mesh, st, hm, xc, pre, tol, niter, conv
           call messages_info(1, namespace=namespace)
         end if
         exit
-      else 
+      else
         call lalg_scal(mesh%np, st%d%dim, M_ONE/sd_norm, sd_precond)
-      end if 
+      end if
 
       ! dot products needed for conjugate gradient
       sd_product = X(mf_dotp) (mesh, st%d%dim, sd_precond, sd, reduce = .false.)
@@ -309,7 +311,7 @@ subroutine X(eigensolver_cg) (namespace, mesh, st, hm, xc, pre, tol, niter, conv
             ' ist ', ist, ' iter ', iter, ' res ', residue
           call messages_info(1, namespace=namespace)
         end if
-        exit 
+        exit
       end if
 
       ! cg contains now the conjugate gradient
@@ -320,7 +322,7 @@ subroutine X(eigensolver_cg) (namespace, mesh, st, hm, xc, pre, tol, niter, conv
         ! h_psi = (H-shift)^2 psi
         do idim = 1, st%d%dim
           h_cg(1:mesh%np, idim) = psi2(1:mesh%np, idim) - M_TWO*shift(ist,ik)*h_cg(1:mesh%np, idim) &
-                                 + shift(ist,ik)**2*cg(1:mesh%np, idim)
+            + shift(ist,ik)**2*cg(1:mesh%np, idim)
         end do
       end if
 
@@ -380,7 +382,7 @@ subroutine X(eigensolver_cg) (namespace, mesh, st, hm, xc, pre, tol, niter, conv
       ! Eq. 5.37
       theta = atan(beta/alpha)*M_HALF
       ! Choose the minimum solutions.
-      ! theta is in the range [-pi/2:pi/2] and we want the solution 
+      ! theta is in the range [-pi/2:pi/2] and we want the solution
       ! which is in between 0 and pi/2
       ! The sign of theta is given by the sign of alpha
       ! However, sometimes theta is slightly positive, in this case we still want the
@@ -408,8 +410,8 @@ subroutine X(eigensolver_cg) (namespace, mesh, st, hm, xc, pre, tol, niter, conv
       st%eigenval(ist, ik) = st%eigenval(ist, ik)*ctheta**2 + stheta**2*b0 + ctheta*stheta*a0
 
       residue = X(states_elec_residue)(mesh, st%d%dim, h_psi, st%eigenval(ist, ik), psi)
-      ! We compute it analytically, as st%eigenval(ist, ik) - old_energy 
-      ! The direct evaluation can lead to numerically zero if the difference is the eigenvalues 
+      ! We compute it analytically, as st%eigenval(ist, ik) - old_energy
+      ! The direct evaluation can lead to numerically zero if the difference is the eigenvalues
       ! are very close (theta close to zero).
       ! This is avoided by computing analytically the difference
       delta_e = stheta*(-st%eigenval(ist, ik)*stheta + stheta*b0 + ctheta*a0)
@@ -424,12 +426,12 @@ subroutine X(eigensolver_cg) (namespace, mesh, st, hm, xc, pre, tol, niter, conv
       if(debug%info) then
         write(message(1), '(a,i4,a,i4,a,i4,a,i4,a,es12.5,a,es12.5,a,es12.5,a,es12.5,a,2es12.5)') &
           'Debug: CG Eigensolver - ik', ik, ' ist ', ist, &
-             ' iter ', iter, ' max ', maxter, &
-             ' deltae ', abs(delta_e)/old_energy, &
-             ' theta ', theta, &
-             ' alpha ', alpha, &
-             ' beta ', beta, &
-             ' residue ', residue
+          ' iter ', iter, ' max ', maxter, &
+          ' deltae ', abs(delta_e)/old_energy, &
+          ' theta ', theta, &
+          ' alpha ', alpha, &
+          ' beta ', beta, &
+          ' residue ', residue
         call messages_info(1)
       end if
 
@@ -507,7 +509,7 @@ end subroutine X(eigensolver_cg)
 !> The algorithm is essentially taken from Jiang et al. Phys. Rev. B 68, 165337 (2003).
 subroutine X(eigensolver_cg_jiang) (namespace, mesh, st, hm, tol, niter, converged, ik, diff)
   type(namespace_t),        intent(in)    :: namespace
-  type(mesh_t),             intent(in)    :: mesh
+  class(mesh_t),            intent(in)    :: mesh
   type(states_elec_t),      intent(inout) :: st
   type(hamiltonian_elec_t), intent(in)    :: hm
   FLOAT,                    intent(in)    :: tol

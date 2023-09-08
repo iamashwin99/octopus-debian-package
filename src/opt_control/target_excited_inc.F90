@@ -20,7 +20,7 @@
  ! ----------------------------------------------------------------------
  !>
 subroutine target_init_excited(mesh, namespace, space, tg, td, restart, kpoints)
-  type(mesh_t),      intent(in)    :: mesh
+  class(mesh_t),     intent(in)    :: mesh
   type(namespace_t), intent(in)    :: namespace
   type(space_t),     intent(in)    :: space
   type(target_t),    intent(inout) :: tg
@@ -113,7 +113,7 @@ FLOAT function target_j1_excited(tg, namespace, gr, psi) result(j1)
 
   PUSH_SUB(target_j1_excited)
 
-  j1 = abs(zstates_elec_mpdotp(namespace, gr%mesh, tg%est, psi))**2
+  j1 = abs(zstates_elec_mpdotp(namespace, gr, tg%est, psi))**2
 
   POP_SUB(target_j1_excited)
 end function target_j1_excited
@@ -138,22 +138,22 @@ subroutine target_chi_excited(tg, namespace, gr, psi_in, chi_out)
   nst = psi_in%nst
 
 
-  SAFE_ALLOCATE(zpsi(1:gr%mesh%np, 1:psi_in%d%dim))
-  SAFE_ALLOCATE(zchi(1:gr%mesh%np, 1:psi_in%d%dim))
+  SAFE_ALLOCATE(zpsi(1:gr%np, 1:psi_in%d%dim))
+  SAFE_ALLOCATE(zchi(1:gr%np, 1:psi_in%d%dim))
   SAFE_ALLOCATE(cI(1:n_pairs))
   SAFE_ALLOCATE(dI(1:n_pairs))
   SAFE_ALLOCATE(mat(1:tg%est%st%nst, 1:nst, 1:psi_in%d%nik))
   SAFE_ALLOCATE(mm(1:nst, 1:nst, 1:kpoints, 1:n_pairs))
-  SAFE_ALLOCATE(mk(1:gr%mesh%np_part, 1:psi_in%d%dim))
+  SAFE_ALLOCATE(mk(1:gr%np_part, 1:psi_in%d%dim))
   SAFE_ALLOCATE(lambda(1:n_pairs, 1:n_pairs))
 
-  call zstates_elec_matrix(tg%est%st, psi_in, gr%mesh, mat)
+  call zstates_elec_matrix(tg%est%st, psi_in, gr, mat)
 
   do ia = 1, n_pairs
     cI(ia) = tg%est%weight(ia)
     call zstates_elec_matrix_swap(mat, tg%est%pair(ia))
     mm(1:nst, 1:nst, 1:kpoints, ia) = mat(1:nst, 1:kpoints, 1:kpoints)
-    dI(ia) = zstates_elec_mpdotp(namespace, gr%mesh, tg%est%st, psi_in, mat)
+    dI(ia) = zstates_elec_mpdotp(namespace, gr, tg%est%st, psi_in, mat)
     if (abs(dI(ia)) > CNST(1.0e-12)) then
       do ik = 1, kpoints
         call lalg_inverter(nst, mm(1:nst, 1:nst, ik, ia))
@@ -179,7 +179,7 @@ subroutine target_chi_excited(tg, namespace, gr, psi_in, chi_out)
     do ik = 1, kpoints
       do ist = chi_out%st_start, chi_out%st_end
 
-        zchi(1:gr%mesh%np, 1:psi_in%d%dim) = M_z0
+        zchi(1:gr%np, 1:psi_in%d%dim) = M_z0
 
         do ia = 1, n_pairs
           if (ik /= tg%est%pair(ia)%kk) cycle
@@ -190,21 +190,21 @@ subroutine target_chi_excited(tg, namespace, gr, psi_in, chi_out)
 
             do jst = 1, nst
               if (jst == tg%est%pair(ib)%i) jj = tg%est%pair(ia)%a
-              call states_elec_get_state(tg%est%st, gr%mesh, jj, ik, zpsi)
+              call states_elec_get_state(tg%est%st, gr, jj, ik, zpsi)
 
               do idim = 1, psi_in%d%dim
-                do ip = 1, gr%mesh%np
+                do ip = 1, gr%np
                   mk(ip, idim) = mk(ip, idim) + conjg(mm(ist, jst, ik, ib))*zpsi(ip, idim)
                 end do
               end do
             end do
 
-            call lalg_axpy(gr%mesh%np_part, psi_in%d%dim, M_z1, lambda(ib, ia)*mk(:, :), zchi)
+            call lalg_axpy(gr%np_part, psi_in%d%dim, M_z1, lambda(ib, ia)*mk(:, :), zchi)
 
           end do
         end do
 
-        call states_elec_set_state(chi_out, gr%mesh, ist, ik, zchi)
+        call states_elec_set_state(chi_out, gr, ist, ik, zchi)
 
       end do
     end do
@@ -214,7 +214,7 @@ subroutine target_chi_excited(tg, namespace, gr, psi_in, chi_out)
 
     do ist = chi_out%st_start, chi_out%st_end
 
-      zchi(1:gr%mesh%np, 1:psi_in%d%dim) = M_z0
+      zchi(1:gr%np, 1:psi_in%d%dim) = M_z0
 
       do ia = 1, n_pairs
         if (abs(dI(ia)) < CNST(1.0e-12)) cycle
@@ -225,20 +225,20 @@ subroutine target_chi_excited(tg, namespace, gr, psi_in, chi_out)
           mk = M_z0
           do jst = 1, nst
             if (jst == tg%est%pair(ib)%i) jj = tg%est%pair(ia)%a
-            call states_elec_get_state(tg%est%st, gr%mesh, jj, ik, zpsi)
+            call states_elec_get_state(tg%est%st, gr, jj, ik, zpsi)
 
             do idim = 1, psi_in%d%dim
-              do ip = 1, gr%mesh%np
+              do ip = 1, gr%np
                 mk(ip, idim) = mk(ip, idim) + conjg(mm(ist, jst, 1, ib))*zpsi(ip, idim)
               end do
             end do
           end do
 
-          call lalg_axpy(gr%mesh%np_part, 2, M_z1, lambda(ib, ia)*mk(:, :), zchi)
+          call lalg_axpy(gr%np_part, 2, M_z1, lambda(ib, ia)*mk(:, :), zchi)
         end do
       end do
 
-      call states_elec_set_state(chi_out, gr%mesh, ist, ik, zchi)
+      call states_elec_set_state(chi_out, gr, ist, ik, zchi)
 
     end do
 

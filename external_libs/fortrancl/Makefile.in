@@ -99,7 +99,6 @@ host_triplet = @host@
 @COMPILE_OPENCL_TRUE@	cl_platform_low.c            \
 @COMPILE_OPENCL_TRUE@	cl_program_low.c             \
 @COMPILE_OPENCL_TRUE@	cl_event_low.c               \
-@COMPILE_OPENCL_TRUE@	clblas_low.c              \
 @COMPILE_OPENCL_TRUE@	clfft_low.c
 
 subdir = external_libs/fortrancl
@@ -154,20 +153,19 @@ libfortrancl_la_LIBADD =
 am__libfortrancl_la_SOURCES_DIST = cl_types.f90 cl_buffer.f90 \
 	cl_command_queue.f90 cl_constants.f90 cl_context.f90 \
 	cl_device.f90 cl_kernel.f90 cl_platform.f90 cl_program.f90 \
-	cl_event.f90 cl.f90 clblas.f90 clfft.f90 utils.c \
-	cl_buffer_low.c cl_command_queue_low.c cl_context_low.c \
-	cl_device_low.c cl_kernel_low.c cl_platform_low.c \
-	cl_program_low.c cl_event_low.c clblas_low.c clfft_low.c
+	cl_event.f90 cl.f90 clfft.f90 utils.c cl_buffer_low.c \
+	cl_command_queue_low.c cl_context_low.c cl_device_low.c \
+	cl_kernel_low.c cl_platform_low.c cl_program_low.c \
+	cl_event_low.c clfft_low.c
 @COMPILE_OPENCL_TRUE@am__objects_1 = utils.lo cl_buffer_low.lo \
 @COMPILE_OPENCL_TRUE@	cl_command_queue_low.lo cl_context_low.lo \
 @COMPILE_OPENCL_TRUE@	cl_device_low.lo cl_kernel_low.lo \
 @COMPILE_OPENCL_TRUE@	cl_platform_low.lo cl_program_low.lo \
-@COMPILE_OPENCL_TRUE@	cl_event_low.lo clblas_low.lo \
-@COMPILE_OPENCL_TRUE@	clfft_low.lo
+@COMPILE_OPENCL_TRUE@	cl_event_low.lo clfft_low.lo
 am_libfortrancl_la_OBJECTS = cl_types.lo cl_buffer.lo \
 	cl_command_queue.lo cl_constants.lo cl_context.lo cl_device.lo \
 	cl_kernel.lo cl_platform.lo cl_program.lo cl_event.lo cl.lo \
-	clblas.lo clfft.lo $(am__objects_1)
+	clfft.lo $(am__objects_1)
 libfortrancl_la_OBJECTS = $(am_libfortrancl_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -194,8 +192,7 @@ am__depfiles_remade = ./$(DEPDIR)/cl_buffer_low.Plo \
 	./$(DEPDIR)/cl_context_low.Plo ./$(DEPDIR)/cl_device_low.Plo \
 	./$(DEPDIR)/cl_event_low.Plo ./$(DEPDIR)/cl_kernel_low.Plo \
 	./$(DEPDIR)/cl_platform_low.Plo ./$(DEPDIR)/cl_program_low.Plo \
-	./$(DEPDIR)/clblas_low.Plo ./$(DEPDIR)/clfft_low.Plo \
-	./$(DEPDIR)/utils.Plo
+	./$(DEPDIR)/clfft_low.Plo ./$(DEPDIR)/utils.Plo
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -275,6 +272,7 @@ CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
 CFLAGS_CLBLAS = @CFLAGS_CLBLAS@
+CFLAGS_CLBLAST = @CFLAGS_CLBLAST@
 CFLAGS_CLFFT = @CFLAGS_CLFFT@
 CFLAGS_CUDA = @CFLAGS_CUDA@
 CFLAGS_FFTW = @CFLAGS_FFTW@
@@ -352,6 +350,7 @@ LIBS_BERKELEYGW = @LIBS_BERKELEYGW@
 LIBS_BLACS = @LIBS_BLACS@
 LIBS_BLAS = @LIBS_BLAS@
 LIBS_CLBLAS = @LIBS_CLBLAS@
+LIBS_CLBLAST = @LIBS_CLBLAST@
 LIBS_CLFFT = @LIBS_CLFFT@
 LIBS_CUDA = @LIBS_CUDA@
 LIBS_DFTBPLUS = @LIBS_DFTBPLUS@
@@ -477,7 +476,7 @@ AM_CFLAGS = @CFLAGS_CLBLAS@ @CFLAGS_CLFFT@ @CL_CFLAGS@
 libfortrancl_la_SOURCES = cl_types.f90 cl_buffer.f90 \
 	cl_command_queue.f90 cl_constants.f90 cl_context.f90 \
 	cl_device.f90 cl_kernel.f90 cl_platform.f90 cl_program.f90 \
-	cl_event.f90 cl.f90 clblas.f90 clfft.f90 $(am__append_1)
+	cl_event.f90 cl.f90 clfft.f90 $(am__append_1)
 noinst_HEADERS = \
 	string_f.h             \
 	localcl.h
@@ -545,7 +544,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cl_kernel_low.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cl_platform_low.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cl_program_low.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/clblas_low.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/clfft_low.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/utils.Plo@am__quote@ # am--include-marker
 
@@ -728,7 +726,6 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/cl_kernel_low.Plo
 	-rm -f ./$(DEPDIR)/cl_platform_low.Plo
 	-rm -f ./$(DEPDIR)/cl_program_low.Plo
-	-rm -f ./$(DEPDIR)/clblas_low.Plo
 	-rm -f ./$(DEPDIR)/clfft_low.Plo
 	-rm -f ./$(DEPDIR)/utils.Plo
 	-rm -f Makefile
@@ -784,7 +781,6 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/cl_kernel_low.Plo
 	-rm -f ./$(DEPDIR)/cl_platform_low.Plo
 	-rm -f ./$(DEPDIR)/cl_program_low.Plo
-	-rm -f ./$(DEPDIR)/clblas_low.Plo
 	-rm -f ./$(DEPDIR)/clfft_low.Plo
 	-rm -f ./$(DEPDIR)/utils.Plo
 	-rm -f Makefile
@@ -835,7 +831,6 @@ cl_command_queue.lo : cl_command_queue.f90 cl_types.lo
 cl_buffer.lo    : cl_buffer.f90  cl_types.lo
 cl_event.lo     : cl_event.f90  cl_types.lo
 cl.lo           : cl.f90 cl_constants.lo cl_types.lo cl_device.lo cl_kernel.lo cl_program.lo cl_platform.lo cl_context.lo cl_command_queue.lo cl_buffer.lo cl_event.lo
-clblas.lo       : clblas.f90 cl.lo
 clfft.lo        : clfft.f90 cl.lo
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.

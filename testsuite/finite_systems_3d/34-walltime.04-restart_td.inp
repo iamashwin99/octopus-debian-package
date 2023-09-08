@@ -25,7 +25,7 @@ TDMaxSteps = 50
 TDPolarizationDirection = 1
 
 %RestartOptions
- restart_td | "restart" | restart_rho 
+ restart_td | "restart" | restart_rho
 %
 
 FilterPotentials = filter_none

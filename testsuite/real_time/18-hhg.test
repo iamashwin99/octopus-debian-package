@@ -3,10 +3,10 @@
 # This tests the oct-harmonic-spectrum utility. It computes the high harmonic generation
 # of a 1D model of Hydrogen, when irradiated with a 800 nm, 10^14 W/cm^2, 8 periods laser
 # pulse. By changing a few parameters (see the input files), the computation will be
-# equal, except for few numerical differences (proagation scheme, etc), with the 
+# equal, except for few numerical differences (proagation scheme, etc), with the
 # calculation presented in S. C. Rae et al., Phys. Rev. A. 50, 1946 (1994). That was one
 # of the first HHG spectra computed, shortly after the high harmonics from atomic gases
-# were discovered. The results obtained with octopus are similar to the ones shown in 
+# were discovered. The results obtained with octopus are similar to the ones shown in
 # Fig. 2(a) of that paper.
 
 Test       : High harmonic generation

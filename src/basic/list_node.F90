@@ -18,6 +18,8 @@
 
 #include "global.h"
 
+!> @brief This module implements a node of a polymorphic linked list
+!!
 module list_node_oct_m
   use global_oct_m
   implicit none
@@ -25,32 +27,37 @@ module list_node_oct_m
   private
   public :: list_node_t
 
+  !> @brief class for a node in a polymorphic linked list
+  !!
   type :: list_node_t
     private
-    logical :: clone
-    class(*),          pointer :: value => null()
-    type(list_node_t), pointer :: next_node => null()
+    logical :: clone                                    !< indicate whether this node is a clone of another node.
+    !!                                                     In this case data is copeied, otherwise a pointer is stored.
+    class(*),          pointer :: value => null()       !< the data to be stored in the node
+    type(list_node_t), pointer :: next_node => null()   !< pointer to the next node
   contains
-    procedure :: get => list_node_get
-    procedure :: next => list_node_next
-    procedure :: set_next => list_node_set_next
-    procedure :: is_equal => list_node_is_equal
-    procedure :: copy => list_node_copy
-    final :: list_node_finalize
+    procedure :: get => list_node_get            !< @copydoc list_node_oct_m::list_node_get
+    procedure :: next => list_node_next          !< @copydoc list_node_oct_m::list_node_next
+    procedure :: set_next => list_node_set_next  !< @copydoc list_node_oct_m::list_node_set_next
+    procedure :: is_equal => list_node_is_equal  !< @copydoc list_node_oct_m::list_node_is_equal
+    procedure :: copy => list_node_copy          !< @copydoc list_node_oct_m::list_node_copy
+    final :: list_node_finalize                  !< @copydoc list_node_oct_m::list_node_finalize
   end type list_node_t
 
   interface list_node_t
-    procedure list_node_constructor
+    procedure list_node_constructor !< @copydoc list_node_oct_m::list_node_constructor
   end interface list_node_t
 
 contains
 
   ! ---------------------------------------------------------
+  !> @brief create a new node
+  !!
   function list_node_constructor(value, next, clone) result(constructor)
-    class(*),           target     :: value
-    class(list_node_t), pointer    :: next
-    logical,            intent(in) :: clone
-    class(list_node_t), pointer    :: constructor
+    class(*),           target     :: value       !< data to store in the node
+    class(list_node_t), pointer    :: next        !< pointer to the next node
+    logical,            intent(in) :: clone       !< is this node a clone?
+    class(list_node_t), pointer    :: constructor !< pointer to the new node
 
     ! No safe_allocate macro here, as its counterpart in linked_list.F90
     ! causes an internal compiler error with GCC 6.4.0
@@ -66,16 +73,19 @@ contains
   end function list_node_constructor
 
   ! ---------------------------------------------------------
+  !> @brief copy a node
+  !!
   function list_node_copy(this, next)
-    class(list_node_t), target  :: this
-    class(list_node_t), pointer :: next
-    class(list_node_t), pointer :: list_node_copy
+    class(list_node_t), target  :: this            !< the source node
+    class(list_node_t), pointer :: next            !< pointer to the next node
+    class(list_node_t), pointer :: list_node_copy  !< pointer to the new copy
 
     list_node_copy => list_node_constructor(this%value, next, this%clone)
 
   end function list_node_copy
 
   ! ---------------------------------------------------------
+  !> @brief get next node
   function list_node_next(this) result(next)
     class(list_node_t), intent(in) :: this
     class(list_node_t), pointer    :: next
@@ -94,6 +104,7 @@ contains
   end subroutine list_node_set_next
 
   ! ---------------------------------------------------------
+  !> @brief get data of node
   function list_node_get(this) result(get)
     class(list_node_t), intent(in) :: this
     class(*),           pointer :: get

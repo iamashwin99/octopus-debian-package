@@ -107,6 +107,7 @@ contains
 
     end do
 
+    call nl_operator_update_gpu_buffers(op)
     call nl_operator_output_weights(op)
 
     POP_SUB(mixing_metric_init)
@@ -152,4 +153,3 @@ contains
   end function mixing_metric_dotp
 
 end module mixing_metric_oct_m
-

@@ -22,6 +22,7 @@ module submesh_oct_m
   use accel_oct_m
   use batch_oct_m
   use boundaries_oct_m
+  use box_oct_m
   use comm_oct_m
   use debug_oct_m
   use global_oct_m
@@ -44,10 +45,10 @@ module submesh_oct_m
   public ::                      &
     submesh_t,                   &
     submesh_init,                &
+    submesh_init_box,            &
     submesh_merge,               &
     submesh_shift_center,        &
     submesh_broadcast,           &
-    submesh_copy,                &
     submesh_get_inv,             &
     submesh_build_global,        &
     submesh_end_global,          &
@@ -71,6 +72,7 @@ module submesh_oct_m
     zsubmesh_copy_from_mesh,     &
     dsubmesh_copy_from_mesh_batch,     &
     zsubmesh_copy_from_mesh_batch,     &
+    submesh_compatible,          &
     submesh_end,                 &
     submesh_get_cube_dim,        &
     submesh_init_cube_map,       &
@@ -82,15 +84,19 @@ module submesh_oct_m
     ! Components are public by default
     FLOAT, allocatable    :: center(:)
     FLOAT                 :: radius = M_ZERO
+    class(box_t), pointer :: box => NULL()  !< simulation box of box_t
     integer               :: np = -1        !< number of points inside the submesh
     integer,  allocatable :: map(:)         !< maps point inside the submesh to a point inside the underlying mesh
-    FLOAT,    allocatable :: x(:,:)         !< x(1:np_part, 1:space%dim)
+    integer               :: num_regions    !< number of injective regions of the map
+    integer,  allocatable :: regions(:)     !< offsets for regions of the map
+    type(accel_mem_t)     :: buff_map
+    FLOAT,    allocatable :: rel_x(:,:)     !< Relative position to the center (1:space%dim, 1:np_part)
     FLOAT,    allocatable :: r(:)           !< distance from centre of the submesh.
     type(mesh_t), pointer :: mesh => NULL() !< pointer to the underlying mesh
     logical               :: overlap        !< .true. if the submesh has more than one point that is mapped to a mesh point,
     !!                                         i.e. the submesh overlaps with itself (as can happen in periodic systems)
     integer               :: np_global = -1 !< total number of points in the entire mesh
-    FLOAT,    allocatable :: x_global(:,:)
+    FLOAT,    allocatable :: rel_x_global(:,:)
     integer,  allocatable :: part_v(:)
     integer,  allocatable :: global2local(:)
 
@@ -124,24 +130,77 @@ contains
 
   end function f_n
 
+  !> This subroutine creates a submesh which has the same box of the one that the user passes
+  subroutine submesh_init_box(this, space, mesh, box, center)
+    type(submesh_t),         intent(inout) :: this
+    type(space_t),           intent(in)    :: space
+    class(mesh_t), target,   intent(in)    :: mesh
+    class(box_t), target,    intent(in)    :: box   !< Simulation box of the submesh. Must be contained in the box of the mesh!
+    FLOAT,                   intent(in)    :: center(:)
+
+    integer :: original_mesh_index, submesh_index
+    logical :: submesh_points(1:mesh%np)
+    FLOAT, allocatable :: xtmp(:, :), rtmp(:)
+
+    PUSH_SUB(submesh_init_box)
+
+    ASSERT(.not. space%is_periodic())
+
+    ! Assign the mesh and the box
+    this%mesh => mesh
+    this%box => box
+
+    ! Get the total number of points inside the submesh. First of all get the number of points inside the submesh box
+    submesh_points = box%contains_points(mesh%np, mesh%x)
+    this%np = count(submesh_points)
+    ! Verify that the box of the submesh is contained into the box of the mesh
+    ASSERT(this%np <= mesh%np)
+
+    SAFE_ALLOCATE(this%map(1:this%np))
+    SAFE_ALLOCATE(xtmp(1:space%dim, 1:this%np))
+    SAFE_ALLOCATE(rtmp(1:this%np))
+    xtmp = M_ZERO
+    rtmp = M_ZERO
+
+    ! Now we generate a map between the points of the submesh and the points of the original mesh
+    submesh_index = 0
+    do original_mesh_index = 1, mesh%np
+      ! check that the point is contained in the new box
+      if (submesh_points(original_mesh_index)) then
+        submesh_index = submesh_index + 1
+        this%map(submesh_index) = original_mesh_index
+        ! Assign the coordinates to this new point
+        xtmp(:, submesh_index) = mesh%x(original_mesh_index, :) - center(:)
+        rtmp(submesh_index) = norm2(xtmp(:, submesh_index))
+      end if
+    end do
+
+    call submesh_reorder_points(this, space, xtmp, rtmp)
+
+    SAFE_DEALLOCATE_A(xtmp)
+    SAFE_DEALLOCATE_A(rtmp)
+
+    POP_SUB(submesh_init_box)
+  end subroutine submesh_init_box
+
   ! -------------------------------------------------------------
   subroutine submesh_init(this, space, mesh, latt, center, rc)
     type(submesh_t),         intent(inout)  :: this
     type(space_t),           intent(in)     :: space
-    type(mesh_t), target,    intent(in)     :: mesh
+    class(mesh_t), target,   intent(in)     :: mesh
     type(lattice_vectors_t), intent(in)     :: latt
     FLOAT,                   intent(in)     :: center(1:space%dim)
     FLOAT,                   intent(in)     :: rc
 
     FLOAT :: r2, rc2, xx(space%dim), rc_norm_n
-    FLOAT, allocatable :: center_copies(:,:), xtmp(:, :), rtmp(:)
+    FLOAT, allocatable :: center_copies(:,:), xtmp(:, :), rtmp(:), x(:,:)
     integer :: icell, is, ip, ix, iy, iz
     integer(i8) :: max_elements_count
-    type(profile_t), save :: submesh_init_prof
+    type(profile_t), save :: submesh_init_prof, prof1, prof2
     type(lattice_iterator_t) :: latt_iter
     integer, allocatable :: map_inv(:), map_temp(:)
     integer :: nmax(3), nmin(3)
-    integer, allocatable :: order(:)
+
 
     PUSH_SUB(submesh_init)
     call profiling_in(submesh_init_prof, "SUBMESH_INIT")
@@ -160,6 +219,7 @@ contains
     ! mainly for performance reasons.
     if (.not. space%is_periodic()) then
 
+      call profiling_in(prof1, "SUBMESH_INIT_MAP_INV")
       SAFE_ALLOCATE(map_inv(0:this%mesh%np))
       map_inv(0:this%mesh%np) = 0
 
@@ -191,9 +251,11 @@ contains
         end do
       end do
       this%np = is
+      call profiling_out(prof1)
 
+      call profiling_in(prof2, "SUBMESH_INIT_RTMP")
       SAFE_ALLOCATE(this%map(1:this%np))
-      SAFE_ALLOCATE(xtmp(1:this%np, 1:space%dim))
+      SAFE_ALLOCATE(xtmp(1:space%dim, 1:this%np))
       SAFE_ALLOCATE(rtmp(1:this%np))
 
       ! Generate the table and the positions
@@ -203,15 +265,16 @@ contains
             ip = mesh_local_index_from_coords(mesh, [ix, iy, iz])
             if (ip == 0 .or. ip > mesh%np) cycle
             is = map_inv(ip)
-            if (is == 0) cycle 
+            if (is == 0) cycle
             this%map(is) = ip
-            xtmp(is, :) = mesh%x(ip, :) - center
-            rtmp(is) = norm2(xtmp(is,:))
+            xtmp(:, is) = mesh%x(ip, :) - center
+            rtmp(is) = norm2(xtmp(:,is))
           end do
         end do
       end do
 
       SAFE_DEALLOCATE_A(map_inv)
+      call profiling_out(prof2)
 
       ! This is the case for a periodic system
     else
@@ -234,53 +297,79 @@ contains
       if (mesh%use_curvilinear) rc_norm_n = rc_norm_n / mesh%coord_system%min_mesh_scaling_product
       max_elements_count = 3**space%dim * int(M_PI**floor(0.5 * space%dim) * rc_norm_n * f_n(space%dim), i8)
 
+      SAFE_ALLOCATE(x(1:space%dim,1:mesh%np))
+      do ip = 1, mesh%np
+        x(:,ip) = mesh%x(ip,:)
+      end do
+      call profiling_in(prof1, "SUBMESH_INIT_PERIODIC_R")
       SAFE_ALLOCATE(map_temp(1:max_elements_count))
-      SAFE_ALLOCATE(xtmp(1:max_elements_count, 1:space%dim))
+      SAFE_ALLOCATE(xtmp(1:space%dim, 1:max_elements_count))
       SAFE_ALLOCATE(rtmp(1:max_elements_count))
 
       is = 0
       do ip = 1, mesh%np
         do icell = 1, latt_iter%n_cells
-          xx = mesh%x(ip, :) - center_copies(:, icell)
+          xx = x(:,ip) - center_copies(:, icell)
+          if(any(abs(xx)>rc)) cycle
           r2 = sum(xx**2)
           if (r2 > rc2) cycle
-          ASSERT(is < huge(is))
           is = is + 1
           map_temp(is) = ip
           rtmp(is) = sqrt(r2)
-          xtmp(is, :) = xx
+          xtmp(:, is) = xx
           ! Note that xx can be outside the unit cell
         end do
-        if (ip == mesh%np) this%np = is
       end do
+      ASSERT(is < huge(is))
+      this%np = is
 
       SAFE_ALLOCATE(this%map(1:this%np))
       this%map(1:this%np) = map_temp(1:this%np)
+      call profiling_out(prof1)
 
       SAFE_DEALLOCATE_A(map_temp)
       SAFE_DEALLOCATE_A(center_copies)
+      SAFE_DEALLOCATE_A(x)
 
     end if
 
+    call submesh_reorder_points(this, space, xtmp, rtmp)
+    call profiling_out(submesh_init_prof)
+
+    SAFE_DEALLOCATE_A(xtmp)
+    SAFE_DEALLOCATE_A(rtmp)
+
+    POP_SUB(submesh_init)
+  end subroutine submesh_init
+
+  subroutine submesh_reorder_points(this, space, xtmp, rtmp)
+    type(submesh_t), intent(inout) :: this
+    type(space_t),   intent(in)    :: space
+    FLOAT,           intent(in)    :: xtmp(:, :), rtmp(:)
+
+    integer :: ip, i_region, offset
+    integer, allocatable :: order(:), order_new(:)
+    integer, allocatable :: map_new(:)
+    integer, allocatable :: np_region(:), tmp_array(:)
+    type(profile_t), save :: profiler_1, profiler_2
+
+    PUSH_SUB(submesh_reorder_points)
+
     ! now order points for better locality
 
+    call profiling_in(profiler_1, "SUBMESH_INIT_ORDER")
     SAFE_ALLOCATE(order(1:this%np))
-    SAFE_ALLOCATE(this%x(1:this%np, 1:space%dim))
+    SAFE_ALLOCATE(this%rel_x(1:space%dim, 1:this%np))
     SAFE_ALLOCATE(this%r(1:this%np))
 
     do ip = 1, this%np
       order(ip) = ip
     end do
 
+    ! First we just reorder in order to determine overlap:
     call sort(this%map, order)
 
-    do ip = 1, this%np
-      this%x(ip, :) = xtmp(order(ip), :)
-      this%r(ip) = rtmp(order(ip))
-    end do
-
     !check whether points overlap (i.e. whetehr a submesh contains the same point more than once)
-
     this%overlap = .false.
     do ip = 1, this%np - 1
       if (this%map(ip) == this%map(ip + 1)) then
@@ -290,24 +379,103 @@ contains
       end if
     end do
 
-    SAFE_DEALLOCATE_A(order)
-    SAFE_DEALLOCATE_A(xtmp)
-    SAFE_DEALLOCATE_A(rtmp)
+    this%num_regions = 1
+    call profiling_out(profiler_1)
 
-    call profiling_out(submesh_init_prof)
-    POP_SUB(submesh_init)
-  end subroutine submesh_init
+    if(this%overlap) then
+      call profiling_in(profiler_2, "SUBMESH_INIT_OVERLAP")
+      !disentangle the map into injective regions
+
+      SAFE_ALLOCATE(tmp_array(1:this%np))
+      SAFE_ALLOCATE(order_new(1:this%np))
+      SAFE_ALLOCATE(np_region(1:this%np))
+      SAFE_ALLOCATE(map_new(  1:this%np))
+
+      np_region(1) = 1
+      tmp_array(1) = 1
+      i_region = 1
+
+      do ip = 2, this%np
+        if (this%map(ip) == this%map(ip - 1)) then
+          i_region = i_region + 1
+          if (i_region > this%num_regions) then
+            this%num_regions = i_region
+            np_region(i_region) = 0
+          end if
+        else
+          i_region = 1
+        end if
+        tmp_array(ip) = i_region                        ! which region does ip belong to
+        np_region(i_region) = np_region(i_region) + 1   ! increase number of points in i_region
+      end do
+
+      ASSERT( .not. allocated(this%regions))
+
+      ! construct array of offsets
+      SAFE_ALLOCATE(this%regions(1:this%num_regions+1))
+
+      this%regions(1) = 1
+
+      if(this%num_regions > 1) then
+        do i_region = 1, this%num_regions
+          this%regions(i_region + 1) = this%regions(i_region) + np_region(i_region)
+        end do
+      else
+        this%regions(2) = this%np + 1
+      end if
+
+      np_region(1:this%np) = 0
+      order_new(1:this%np) = -1
+      map_new(1:this%np) = -1
+
+
+      !reassemble regions into global map array
+      do ip = 1, this%np
+        i_region = tmp_array(ip)
+        np_region(i_region) = np_region(i_region) + 1
+        offset = this%regions(i_region) - 1
+        map_new(   offset + np_region(i_region) ) = this%map(ip)
+        order_new( offset + np_region(i_region) ) = order(ip)
+      end do
+
+      order(1:this%np) = order_new(1:this%np)
+      this%map(1:this%np) = map_new(1:this%np)
+
+      SAFE_DEALLOCATE_A(tmp_array)
+      SAFE_DEALLOCATE_A(order_new)
+      SAFE_DEALLOCATE_A(np_region)
+      SAFE_DEALLOCATE_A(map_new)
+      call profiling_out(profiler_2)
+
+    else
+      this%num_regions = 1
+      SAFE_ALLOCATE(this%regions(1:2))
+      this%regions(1) = 1
+      this%regions(2) = this%np + 1
+    end if
+
+    ! Lastly, reorder the points according to the new scheme
+    do ip = 1, this%np
+      this%rel_x(:, ip) = xtmp(:, order(ip))
+      this%r(ip) = rtmp(order(ip))
+    end do
+
+    SAFE_DEALLOCATE_A(order)
+
+    POP_SUB(submesh_reorder_points)
+  end subroutine submesh_reorder_points
+
 
   ! --------------------------------------------------------------
   !This routine takes two submeshes and merge them into a bigger submesh
   !The grid is centered on the first center
   subroutine submesh_merge(this, space, mesh, sm1, sm2, shift)
-    type(submesh_t),      intent(inout)  :: this !< valgrind objects to intent(out) due to the initializations above
-    type(space_t),        intent(in)     :: space
-    type(mesh_t), target, intent(in)     :: mesh
-    type(submesh_t),      intent(in)     :: sm1
-    type(submesh_t),      intent(in)     :: sm2
-    FLOAT, optional,      intent(in)     :: shift(:) !< If present, shifts the center of sm2
+    type(submesh_t),       intent(inout)  :: this !< valgrind objects to intent(out) due to the initializations above
+    type(space_t),         intent(in)     :: space
+    class(mesh_t), target, intent(in)     :: mesh
+    type(submesh_t),       intent(in)     :: sm1
+    type(submesh_t),       intent(in)     :: sm2
+    FLOAT, optional,       intent(in)     :: shift(:) !< If present, shifts the center of sm2
 
     FLOAT :: r2
     integer :: ip, is
@@ -323,16 +491,19 @@ contains
     this%center  = sm1%center
     this%radius = sm1%radius
 
+    ! This is a quick fix to prevent uninitialized variables. To properly check the self-overlap,
+    ! a similar approach as in submesh_init should be taken with respect to the merged map.
+    this%overlap = sm1%overlap .or. sm2%overlap
+
     diff_centers = sm1%center - sm2%center
     if (present(shift)) diff_centers = diff_centers - shift
 
     !As we take the union of the two submeshes, we know that we have all the points from the first one included.
     !The extra points from the second submesh are those which are not included in the first one
-    !At the moment np_part extra points are not included
     is = sm1%np
     do ip = 1, sm2%np
       !sm2%x contains points coordinates defined with respect to sm2%center
-      xx = sm2%x(ip, :) - diff_centers
+      xx = sm2%rel_x(:, ip) - diff_centers
       !If the point is not in sm1, we add it
       if (sum(xx**2) > sm1%radius**2) is = is + 1
     end do
@@ -340,22 +511,22 @@ contains
     this%np = is
 
     SAFE_ALLOCATE(this%map(1:this%np))
-    SAFE_ALLOCATE(this%x(1:this%np, 1:space%dim))
+    SAFE_ALLOCATE(this%rel_x(1:space%dim, 1:this%np))
     SAFE_ALLOCATE(this%r(1:this%np))
     this%map(1:sm1%np) = sm1%map(1:sm1%np)
-    this%x(1:sm1%np, :) = sm1%x(1:sm1%np, :)
+    this%rel_x(:, 1:sm1%np) = sm1%rel_x(:, 1:sm1%np)
     this%r(1:sm1%np) = sm1%r(1:sm1%np)
 
     !iterate again to fill the tables
     is = sm1%np
     do ip = 1, sm2%np
-      xx = sm2%x(ip, :) - diff_centers
+      xx = sm2%rel_x(:, ip) - diff_centers
       r2 = sum(xx**2)
       if (r2 > sm1%radius**2) then
         is = is + 1
         this%map(is) = sm2%map(ip)
         this%r(is) = sqrt(r2)
-        this%x(is, :) = xx
+        this%rel_x(:, is) = xx
       end if
     end do
 
@@ -383,9 +554,9 @@ contains
     diff_centers = newcenter - oldcenter
 
     do ip = 1, this%np
-      xx = this%x(ip, :) - diff_centers
+      xx = this%rel_x(:, ip) - diff_centers
       this%r(ip) = norm2(xx)
-      this%x(ip, :) = xx
+      this%rel_x(:, ip) = xx
     end do
 
     call profiling_out(prof)
@@ -402,7 +573,7 @@ contains
     integer,              intent(in)     :: root
     type(mpi_grp_t),      intent(in)     :: mpi_grp
 
-    integer :: nparray(1:2)
+    integer :: nparray(1:3)
     type(profile_t), save :: prof
 
     PUSH_SUB(submesh_broadcast)
@@ -418,26 +589,31 @@ contains
 
       if (root == mpi_grp%rank) then
         nparray(1) = this%np
+        nparray(2) = this%num_regions
         if (this%overlap) then
-          nparray(2) = 1
+          nparray(3) = 1
         else
-          nparray(2) = 0
+          nparray(3) = 0
         end if
       end if
 
       call mpi_grp%bcast(nparray, 2, MPI_INTEGER, root)
       this%np = nparray(1)
-      this%overlap = (nparray(2) == 1)
+      this%num_regions = nparray(2)
+      this%overlap = (nparray(3) == 1)
 
       if (root /= mpi_grp%rank) then
         SAFE_ALLOCATE(this%map(1:this%np))
-        SAFE_ALLOCATE(this%x(1:this%np, 1:space%dim))
+        SAFE_ALLOCATE(this%rel_x(1:space%dim, 1:this%np))
         SAFE_ALLOCATE(this%r(1:this%np))
+        SAFE_ALLOCATE(this%regions(1:this%num_regions+1))
       end if
+
+      call mpi_grp%bcast(this%regions(1), this%num_regions+1, MPI_INTEGER, root)
 
       if (this%np > 0) then
         call mpi_grp%bcast(this%map(1), this%np, MPI_INTEGER, root)
-        call mpi_grp%bcast(this%x(1, 1), this%np*space%dim, MPI_FLOAT, root)
+        call mpi_grp%bcast(this%rel_x(1, 1), this%np*space%dim, MPI_FLOAT, root)
         call mpi_grp%bcast(this%r(1), this%np, MPI_FLOAT, root)
       end if
 
@@ -446,6 +622,25 @@ contains
     call profiling_out(prof)
     POP_SUB(submesh_broadcast)
   end subroutine submesh_broadcast
+
+  ! --------------------------------------------------------------
+  logical function submesh_compatible(this, radius, center, dx) result(compatible)
+    type(submesh_t),   intent(in) :: this
+    FLOAT,             intent(in) :: radius
+    FLOAT,             intent(in) :: center(:)
+    FLOAT,             intent(in) :: dx
+
+    compatible =.false.
+    if (allocated(this%center)) then
+      !> At the moment the center check doesnt matter because everywhere submeshes are recycled at the moment,
+      !> between uses, the position doesnt change
+      if (radius <= this%radius .and. all(abs(this%center - center) < 0.25*dx)) then
+        compatible = .true.
+      end if
+    end if
+    return
+
+  end function submesh_compatible
 
   ! --------------------------------------------------------------
   subroutine submesh_end(this)
@@ -458,37 +653,20 @@ contains
       this%np = -1
       SAFE_DEALLOCATE_A(this%center)
       SAFE_DEALLOCATE_A(this%map)
-      SAFE_DEALLOCATE_A(this%x)
+      SAFE_DEALLOCATE_A(this%rel_x)
       SAFE_DEALLOCATE_A(this%r)
+      SAFE_DEALLOCATE_A(this%regions)
+    end if
+
+    if (accel_is_enabled()) then
+      call accel_release_buffer(this%buff_map)
     end if
 
     POP_SUB(submesh_end)
   end subroutine submesh_end
 
   ! --------------------------------------------------------------
-  subroutine submesh_copy(sm_in, sm_out)
-    type(submesh_t), target,  intent(in)    :: sm_in
-    type(submesh_t),          intent(inout) :: sm_out
 
-    PUSH_SUB(submesh_copy)
-
-    call submesh_end(sm_out)
-
-    sm_out%mesh => sm_in%mesh
-
-    sm_out%center = sm_in%center
-    sm_out%radius = sm_in%radius
-
-    sm_out%np = sm_in%np
-
-    SAFE_ALLOCATE_SOURCE(sm_out%map, sm_in%map)
-    SAFE_ALLOCATE_SOURCE(sm_out%x, sm_in%x)
-    SAFE_ALLOCATE_SOURCE(sm_out%r, sm_in%r)
-
-    POP_SUB(submesh_copy)
-  end subroutine submesh_copy
-
-  ! --------------------------------------------------------------
   subroutine submesh_get_inv(this, map_inv)
     type(submesh_t),      intent(in)   :: this
     integer,              intent(out)  :: map_inv(:)
@@ -571,10 +749,10 @@ contains
     call this%mesh%allreduce(part_np)
     this%np_global = sum(part_np)
 
-    SAFE_ALLOCATE(this%x_global(1:this%np_global, 1:space%dim))
+    SAFE_ALLOCATE(this%rel_x_global(1:space%dim, 1:this%np_global))
     SAFE_ALLOCATE(this%part_v(1:this%np_global))
     SAFE_ALLOCATE(this%global2local(1:this%np_global))
-    this%x_global(1:this%np_global, 1:space%dim) = M_ZERO
+    this%rel_x_global(1:space%dim, 1:this%np_global) = M_ZERO
     this%part_v(1:this%np_global) = 0
     this%global2local(1:this%np_global) = 0
 
@@ -582,7 +760,7 @@ contains
     do ipart = 1, this%mesh%pv%npart
       if (ipart == this%mesh%pv%partno) then
         do ip = 1, this%np
-          this%x_global(ind + ip, :) = this%x(ip,:)
+          this%rel_x_global(:, ind + ip) = this%rel_x(:, ip)
           this%part_v(ind + ip) = this%mesh%pv%partno
           this%global2local(ind + ip) = ip
         end do
@@ -590,7 +768,7 @@ contains
       ind = ind + part_np(ipart)
     end do
 
-    call this%mesh%allreduce(this%x_global)
+    call this%mesh%allreduce(this%rel_x_global)
     call this%mesh%allreduce(this%part_v)
     call this%mesh%allreduce(this%global2local)
 
@@ -605,7 +783,7 @@ contains
 
     PUSH_SUB(submesh_end_global)
 
-    SAFE_DEALLOCATE_A(this%x_global)
+    SAFE_DEALLOCATE_A(this%rel_x_global)
     this%np_global = -1
     SAFE_DEALLOCATE_A(this%part_v)
     SAFE_DEALLOCATE_A(this%global2local)
@@ -718,7 +896,7 @@ contains
     db = 1
 
     do ip = 1, sm%np
-      chi = sm%mesh%coord_system%from_cartesian(sm%x(ip, :))
+      chi = sm%mesh%coord_system%from_cartesian(sm%rel_x(:, ip))
       do idir = 1, space%dim
         db(idir) = max(db(idir), nint(abs(chi(idir))/sm%mesh%spacing(idir) + M_HALF))
       end do
@@ -761,14 +939,14 @@ contains
     shift = shift - sm%center
 
     do ip = 1, sm%cube_map%nmap
-      chi = sm%mesh%coord_system%from_cartesian(sm%x(ip,:) - shift)
+      chi = sm%mesh%coord_system%from_cartesian(sm%rel_x(:,ip) - shift)
       do idir = 1, space%dim
         sm%cube_map%map(idir, ip) = nint(chi(idir)/sm%mesh%spacing(idir))
       end do
     end do
 
     if (accel_is_enabled()) then
-      call accel_create_buffer(sm%cube_map%map_buffer, ACCEL_MEM_READ_ONLY, TYPE_INTEGER8, sm%cube_map%nmap*space%dim)
+      call accel_create_buffer(sm%cube_map%map_buffer, ACCEL_MEM_READ_ONLY, TYPE_INTEGER, sm%cube_map%nmap*space%dim)
       call accel_write_buffer(sm%cube_map%map_buffer, sm%cube_map%nmap*space%dim, sm%cube_map%map)
     end if
 
@@ -790,40 +968,40 @@ contains
   !! submesh (ss) and adds one of them to each of the mesh functions in
   !! other batch (mm).  Each one is multiplied by a factor given by the
   !! array factor.
-  !! In this version of the routine, the submesh batch is real 
+  !! In this version of the routine, the submesh batch is real
   !! and the mesh batch is complex
   subroutine dzsubmesh_batch_add(this, ss, mm)
     type(submesh_t),  intent(in)    :: this
     class(batch_t),   intent(in)    :: ss
     class(batch_t),   intent(inout) :: mm
-  
+
     integer :: ist, idim, jdim, is
-  
+
     PUSH_SUB(dzsubmesh_batch_add)
-  
+
     ASSERT(.not. mm%is_packed())
     ASSERT(ss%type() == TYPE_FLOAT)
     ASSERT(mm%type() == TYPE_CMPLX)
     ASSERT(ss%nst_linear == mm%nst_linear)
     ASSERT(ss%status() == mm%status())
     ASSERT(ss%dim == mm%dim)
-  
+
     ASSERT(mm%nst == ss%nst)
-  
+
     !$omp parallel do private(ist, idim, jdim, is) if(.not. this%overlap)
     do ist =  1, mm%nst
       do idim = 1, mm%dim
         jdim = min(idim, ss%dim)
-  
+
         do is = 1, this%np
           mm%zff(this%map(is), idim, ist) = &
             mm%zff(this%map(is), idim, ist) + ss%dff(is, jdim, ist)
         end do
-  
+
       end do
     end do
     !$omp end parallel do
-  
+
     POP_SUB(dzsubmesh_batch_add)
   end subroutine dzsubmesh_batch_add
 

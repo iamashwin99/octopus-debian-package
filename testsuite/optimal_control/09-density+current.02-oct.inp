@@ -1,7 +1,7 @@
 # Optimize transition from ground state to
 # excited state of asymmetric double well.
 # Final state has maximal density overlap and
-# minimal current. 
+# minimal current.
 
 Dimensions = 1
 fromScratch = yes
@@ -27,7 +27,7 @@ Radius =  10.0
 %
 
 %Coordinates
-"ADW1D" | 0 
+"ADW1D" | 0
 %
 
 TheoryLevel = independent_particles
@@ -66,7 +66,7 @@ OCTDoubleCheck = no
 
 OCTEps = 0.000001
 OCTMaxIter = 1
- 
+
 OCTPenalty = 1.0
 # predefine envelope of control field
 %OCTLaserEnvelope
@@ -91,14 +91,14 @@ electric_field | 1 | 0 | 0 | freq | "envelope_function"
 
 #-----------------------------
 # Output
-#---------------------------- 
+#----------------------------
 %Output
  wfs     | axis_x
  density | axis_x
 %
-%TDOutput 
- laser 
+%TDOutput
+ laser
  td_occup
-% 
+%
 
 DisableAccel = yes

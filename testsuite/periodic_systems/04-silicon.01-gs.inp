@@ -14,14 +14,14 @@ BoxShape = parallelepiped
 Spacing = a/14
 
 %ReducedCoordinates
-  "Si" |   0.0       | 0.0       | 0.0 
+  "Si" |   0.0       | 0.0       | 0.0
   "Si" |   1/2       | 1/2       | 0.0
   "Si" |   1/2       | 0.0       | 1/2
-  "Si" |   0.0       | 1/2       | 1/2 
-  "Si" |   1/4       | 1/4       | 1/4 
+  "Si" |   0.0       | 1/2       | 1/2
+  "Si" |   1/4       | 1/4       | 1/4
   "Si" |   1/4 + 1/2 | 1/4 + 1/2 | 1/4
   "Si" |   1/4 + 1/2 | 1/4       | 1/4 + 1/2
-  "Si" |   1/4       | 1/4 + 1/2 | 1/4 + 1/2 
+  "Si" |   1/4       | 1/4 + 1/2 | 1/4 + 1/2
 %
 
 %KPointsGrid
@@ -38,7 +38,7 @@ ConvRelDens = 1e-7
 EigensolverTolerance = 1e-7
 ConvEigenError = yes
 
-%Output 
+%Output
  geometry | xyz
  dos
 %

@@ -85,6 +85,11 @@ contains
     SAFE_ALLOCATE(x2(1:ions%space%dim))
     SAFE_ALLOCATE(to(1:ions%space%dim))
 
+    if (parse_is_defined(ions%namespace, 'BoxCenter')) then
+      call messages_not_implemented("The centergeom utitlity assumes the center of the box "// &
+        "at the origin and is not compatible with a shifted BoxCenter")
+    end if
+
     ! is there something to do
     if (ions%natoms > 1) then
 

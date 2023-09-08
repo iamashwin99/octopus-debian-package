@@ -14,8 +14,6 @@
 !! along with this program; if not, write to the Free Software
 !! Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 !! 02111-1307, USA.
-!!
-!! $Id$
 
 subroutine X(scissor_apply)(this, mesh, psib, hpsib)
   type(scissor_t),  intent(in)    :: this
@@ -62,7 +60,7 @@ end subroutine X(scissor_apply)
 
 subroutine X(scissor_commute_r)(this, mesh, ik, psi, gpsi)
   type(scissor_t), intent(in)    :: this
-  type(mesh_t),    intent(in)    :: mesh
+  class(mesh_t),   intent(in)    :: mesh
   R_TYPE,          intent(in)    :: psi(:,:)
   integer,         intent(in)    :: ik
   R_TYPE,          intent(inout) :: gpsi(:, :, :)

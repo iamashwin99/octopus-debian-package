@@ -45,19 +45,19 @@ subroutine output_states(outp, namespace, space, dir, st, gr, ions, hm, iter)
       else
         write(fname, '(a,i1)') 'density-sp', is
       end if
-      call dio_function_output(outp%how(OPTION__OUTPUT__DENSITY), dir, fname, namespace, space, gr%mesh, &
-        st%rho(:, is), fn_unit, ierr, ions = ions, grp = st%dom_st_kpt_mpi_grp)
+      call dio_function_output(outp%how(OPTION__OUTPUT__DENSITY), dir, fname, namespace, space, gr, &
+        st%rho(:, is), fn_unit, ierr, pos=ions%pos, atoms=ions%atom, grp = st%dom_st_kpt_mpi_grp)
     end do
   end if
 
   if (outp%what_now(OPTION__OUTPUT__POL_DENSITY, iter)) then
     fn_unit = units_out%length**(1 - space%dim)
-    SAFE_ALLOCATE(polarization(1:gr%mesh%np, 1:space%dim))
+    SAFE_ALLOCATE(polarization(1:gr%np, 1:space%dim))
 
     do is = 1, st%d%nspin
       do idir = 1, space%dim
-        do ip = 1, gr%mesh%np
-          polarization(ip, idir) = st%rho(ip, is)*gr%mesh%x(ip, idir)
+        do ip = 1, gr%np
+          polarization(ip, idir) = st%rho(ip, is)*gr%x(ip, idir)
         end do
       end do
 
@@ -67,8 +67,8 @@ subroutine output_states(outp, namespace, space, dir, st, gr, ions, hm, iter)
         write(fname, '(a,i1)') 'dipole_density-sp', is
       end if
       call io_function_output_vector(outp%how(OPTION__OUTPUT__POL_DENSITY),&
-        dir, fname, namespace, space, gr%mesh, polarization, fn_unit, ierr, &
-        ions = ions, grp = st%dom_st_kpt_mpi_grp)
+        dir, fname, namespace, space, gr, polarization, fn_unit, ierr, &
+        pos=ions%pos, atoms=ions%atom, grp = st%dom_st_kpt_mpi_grp)
     end do
 
     SAFE_DEALLOCATE_A(polarization)
@@ -78,9 +78,9 @@ subroutine output_states(outp, namespace, space, dir, st, gr, ions, hm, iter)
     fn_unit = sqrt(units_out%length**(-space%dim))
 
     if (states_are_real(st)) then
-      SAFE_ALLOCATE(dtmp(1:gr%mesh%np))
+      SAFE_ALLOCATE(dtmp(1:gr%np))
     else
-      SAFE_ALLOCATE(ztmp(1:gr%mesh%np))
+      SAFE_ALLOCATE(ztmp(1:gr%np))
     end if
 
     do ist = st%st_start, st%st_end
@@ -102,13 +102,13 @@ subroutine output_states(outp, namespace, space, dir, st, gr, ions, hm, iter)
             end if
 
             if (states_are_real(st)) then
-              call states_elec_get_state(st, gr%mesh, idim, ist, ik, dtmp)
-              call dio_function_output(outp%how(OPTION__OUTPUT__WFS), dir, fname, namespace, space, gr%mesh, dtmp, &
-                fn_unit, ierr, ions = ions)
+              call states_elec_get_state(st, gr, idim, ist, ik, dtmp)
+              call dio_function_output(outp%how(OPTION__OUTPUT__WFS), dir, fname, namespace, space, gr, dtmp, &
+                fn_unit, ierr, pos=ions%pos, atoms=ions%atom)
             else
-              call states_elec_get_state(st, gr%mesh, idim, ist, ik, ztmp)
-              call zio_function_output(outp%how(OPTION__OUTPUT__WFS), dir, fname, namespace, space, gr%mesh, ztmp, &
-                fn_unit, ierr, ions = ions)
+              call states_elec_get_state(st, gr, idim, ist, ik, ztmp)
+              call zio_function_output(outp%how(OPTION__OUTPUT__WFS), dir, fname, namespace, space, gr, ztmp, &
+                fn_unit, ierr, pos=ions%pos, atoms=ions%atom)
             end if
           end do
         end do
@@ -121,9 +121,9 @@ subroutine output_states(outp, namespace, space, dir, st, gr, ions, hm, iter)
 
   if (outp%what_now(OPTION__OUTPUT__WFS_SQMOD, iter)) then
     fn_unit = units_out%length**(-space%dim)
-    SAFE_ALLOCATE(dtmp(1:gr%mesh%np_part))
+    SAFE_ALLOCATE(dtmp(1:gr%np_part))
     if (states_are_complex(st)) then
-      SAFE_ALLOCATE(ztmp(1:gr%mesh%np))
+      SAFE_ALLOCATE(ztmp(1:gr%np))
     end if
     do ist = st%st_start, st%st_end
       if (loct_isinstringlist(ist, outp%wfs_list)) then
@@ -144,14 +144,14 @@ subroutine output_states(outp, namespace, space, dir, st, gr, ions, hm, iter)
             end if
 
             if (states_are_real(st)) then
-              call states_elec_get_state(st, gr%mesh, idim, ist, ik, dtmp)
-              dtmp(1:gr%mesh%np) = abs(dtmp(1:gr%mesh%np))**2
+              call states_elec_get_state(st, gr, idim, ist, ik, dtmp)
+              dtmp(1:gr%np) = abs(dtmp(1:gr%np))**2
             else
-              call states_elec_get_state(st, gr%mesh, idim, ist, ik, ztmp)
-              dtmp(1:gr%mesh%np) = abs(ztmp(1:gr%mesh%np))**2
+              call states_elec_get_state(st, gr, idim, ist, ik, ztmp)
+              dtmp(1:gr%np) = abs(ztmp(1:gr%np))**2
             end if
-            call dio_function_output(outp%how(OPTION__OUTPUT__WFS_SQMOD), dir, fname, namespace, space, gr%mesh, &
-              dtmp, fn_unit, ierr, ions = ions)
+            call dio_function_output(outp%how(OPTION__OUTPUT__WFS_SQMOD), dir, fname, namespace, space, gr, &
+              dtmp, fn_unit, ierr, pos=ions%pos, atoms=ions%atom)
           end do
         end do
       end if
@@ -162,18 +162,18 @@ subroutine output_states(outp, namespace, space, dir, st, gr, ions, hm, iter)
 
   if (outp%what_now(OPTION__OUTPUT__KINETIC_ENERGY_DENSITY, iter)) then
     fn_unit = units_out%energy * units_out%length**(-space%dim)
-    SAFE_ALLOCATE(elf(1:gr%mesh%np, 1:st%d%nspin))
-    call states_elec_calc_quantities(gr%der, st, hm%kpoints, .false., kinetic_energy_density = elf)
+    SAFE_ALLOCATE(elf(1:gr%np, 1:st%d%nspin))
+    call states_elec_calc_quantities(gr, st, hm%kpoints, .false., kinetic_energy_density = elf)
     select case (st%d%ispin)
     case (UNPOLARIZED)
       write(fname, '(a)') 'tau'
       call dio_function_output(outp%how(OPTION__OUTPUT__KINETIC_ENERGY_DENSITY), dir, trim(fname), namespace, space, &
-        gr%mesh, elf(:,1), fn_unit, ierr, ions = ions, grp = st%dom_st_kpt_mpi_grp)
+        gr, elf(:,1), fn_unit, ierr, pos=ions%pos, atoms=ions%atom, grp = st%dom_st_kpt_mpi_grp)
     case (SPIN_POLARIZED, SPINORS)
       do is = 1, st%d%nspin
         write(fname, '(a,i1)') 'tau-sp', is
         call dio_function_output(outp%how(OPTION__OUTPUT__KINETIC_ENERGY_DENSITY), dir, trim(fname), namespace, space, &
-          gr%mesh, elf(:, is), fn_unit, ierr, ions = ions, grp = st%dom_st_kpt_mpi_grp)
+          gr, elf(:, is), fn_unit, ierr, pos=ions%pos, atoms=ions%atom, grp = st%dom_st_kpt_mpi_grp)
       end do
     end select
     SAFE_DEALLOCATE_A(elf)
@@ -181,19 +181,11 @@ subroutine output_states(outp, namespace, space, dir, st, gr, ions, hm, iter)
 
   if (outp%what_now(OPTION__OUTPUT__DOS, iter)) then
     call dos_init(dos, namespace, st, hm%kpoints)
-    call dos_write_dos(dos, trim(dir), st, gr%box, ions, gr%mesh, hm, namespace)
+    call dos_write_dos(dos, trim(dir), st, gr%box, ions, gr, hm, namespace)
   end if
 
   if (outp%what_now(OPTION__OUTPUT__TPA, iter)) then
-    call states_elec_write_tpa(trim(dir), namespace, space, gr%mesh, st)
-  end if
-
-  if (outp%what_now(OPTION__OUTPUT__MMB_DEN, iter) .or. outp%what_now(OPTION__OUTPUT__MMB_WFS, iter)) then
-    if (states_are_real(st)) then
-      call doutput_modelmb(outp, namespace, space, trim(dir), gr%mesh, st, ions)
-    else
-      call zoutput_modelmb(outp, namespace, space, trim(dir), gr%mesh, st, ions)
-    end if
+    call states_elec_write_tpa(trim(dir), namespace, space, gr, st)
   end if
 
   POP_SUB(output_states)
@@ -252,22 +244,22 @@ subroutine output_current_flow(outp, namespace, space, dir, gr, st, kpoints)
   end if
 
   if (states_are_complex(st)) then
-    SAFE_ALLOCATE(j(1:gr%mesh%np, 1:space%dim, 1:st%d%nspin))
-    call states_elec_calc_quantities(gr%der, st, kpoints, .false., paramagnetic_current = j)
+    SAFE_ALLOCATE(j(1:gr%np, 1:space%dim, 1:st%d%nspin))
+    call states_elec_calc_quantities(gr, st, kpoints, .false., paramagnetic_current = j)
 
     do idir = 1, space%dim
-      do ip = 1, gr%mesh%np
+      do ip = 1, gr%np
         j(ip, idir, 1) = sum(j(ip, idir, 1:st%d%nspin))
       end do
     end do
 
     select case (space%dim)
     case (3)
-      flow = mf_surface_integral(gr%mesh, j(:, :, 1), outp%plane)
+      flow = mf_surface_integral(gr, j(:, :, 1), outp%plane)
     case (2)
-      flow = mf_line_integral(gr%mesh, j(:, :, 1), outp%line)
+      flow = mf_line_integral(gr, j(:, :, 1), outp%line)
     case (1)
-      flow = j(mesh_nearest_point(gr%mesh, outp%line%origin(1:1), dmin, rankmin), 1, 1)
+      flow = j(mesh_nearest_point(gr, outp%line%origin(1:1), dmin, rankmin), 1, 1)
     end select
 
     SAFE_DEALLOCATE_A(j)

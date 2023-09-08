@@ -210,7 +210,7 @@ contains
     end if
 
     write(message(1), '(a,i5)') 'Optimal control iteration #', iterator%ctr_iter
-    call messages_print_stress(msg=trim(message(1)), namespace=namespace)
+    call messages_print_with_emphasis(msg=trim(message(1)), namespace=namespace)
 
     write(message(1), '(6x,a,f12.5)')  " => J1       = ", j1
     write(message(2), '(6x,a,f12.5)')  " => J        = ", jfunctional
@@ -223,7 +223,7 @@ contains
     else
       call messages_info(5, namespace=namespace)
     end if
-    call messages_print_stress(namespace=namespace)
+    call messages_print_with_emphasis(namespace=namespace)
 
     bestj1 = (j1 > iterator%bestj1)
     ! store field with best J1
@@ -272,10 +272,10 @@ contains
     end if
 
     if (iterator%ctr_iter == 0) then
-      call messages_print_stress(msg='Initial-guess field', namespace=sys%namespace)
+      call messages_print_with_emphasis(msg='Initial-guess field', namespace=sys%namespace)
     else
       write(message(1), '(a,i5)') 'Function evaluation #', iterator%ctr_iter
-      call messages_print_stress(msg=trim(message(1)), namespace=sys%namespace)
+      call messages_print_with_emphasis(msg=trim(message(1)), namespace=sys%namespace)
     end if
 
     write(message(1), '(6x,a,f12.5)')    " => J1       = ", j1
@@ -287,7 +287,7 @@ contains
       write(message(1), '(6x,a,f12.5)')  " => Delta    = ", dx
       call messages_info(1, namespace=sys%namespace)
     end if
-    call messages_print_stress(namespace=sys%namespace)
+    call messages_print_with_emphasis(namespace=sys%namespace)
 
     ! store field with best J1
     if (j1 > iterator%bestJ1) then

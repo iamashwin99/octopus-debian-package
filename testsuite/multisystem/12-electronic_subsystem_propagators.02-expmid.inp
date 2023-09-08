@@ -25,13 +25,10 @@ Radius = 6
 
 MoveIons = no
 
-TDPropagator = exp_mid
-
-#TDMaxSteps = 20
 TDTimeStep = 0.1
 
 TDPropagationTime = 2
-TDSystemPropagator = exp_mid
+TDSystemPropagator = prop_expmid
 ExperimentalFeatures = yes
 
 TDDeltaStrength = 0.01

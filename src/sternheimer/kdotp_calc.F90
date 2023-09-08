@@ -30,7 +30,7 @@ module kdotp_calc_oct_m
   use messages_oct_m
   use mpi_oct_m
   use namespace_oct_m
-  use pert_oct_m
+  use perturbation_oct_m
   use profiling_oct_m
   use space_oct_m
   use states_elec_oct_m
@@ -75,7 +75,7 @@ contains
     type(grid_t),             intent(in)    :: gr
     type(states_elec_t),      intent(in)    :: st
     type(hamiltonian_elec_t), intent(inout) :: hm
-    type(pert_t),             intent(inout) :: pert
+    class(perturbation_t),    intent(inout) :: pert
     FLOAT,                    intent(out)   :: velocity(:,:,:)
 
     integer :: ik, ist, idir
@@ -86,20 +86,20 @@ contains
 
     call profiling_in(prof, "CALC_BAND_VELOCITY")
 
-    SAFE_ALLOCATE(psi(1:gr%mesh%np, 1:st%d%dim))
-    SAFE_ALLOCATE(pertpsi(1:gr%mesh%np, 1:st%d%dim))
+    SAFE_ALLOCATE(psi(1:gr%np, 1:st%d%dim))
+    SAFE_ALLOCATE(pertpsi(1:gr%np, 1:st%d%dim))
 
     velocity(:, :, :) = M_ZERO
 
     do ik = st%d%kpt%start, st%d%kpt%end
       do ist = st%st_start, st%st_end
 
-        call states_elec_get_state(st, gr%mesh, ist, ik, psi)
+        call states_elec_get_state(st, gr, ist, ik, psi)
 
         do idir = 1, space%periodic_dim
-          call pert_setup_dir(pert, idir)
-          call zpert_apply(pert, namespace, space, gr, hm, ik, psi, pertpsi)
-          velocity(idir, ist, ik) = -aimag(zmf_dotp(gr%mesh, st%d%dim, psi, pertpsi))
+          call pert%setup_dir(idir)
+          call pert%zapply(namespace, space, gr, hm, ik, psi, pertpsi)
+          velocity(idir, ist, ik) = -aimag(zmf_dotp(gr, st%d%dim, psi, pertpsi))
         end do
       end do
     end do

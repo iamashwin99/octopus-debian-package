@@ -251,7 +251,7 @@ contains
     !%End
     call parse_variable(namespace, 'PCMCalculation', .false., pcm%run_pcm)
     if (pcm%run_pcm) then
-      call messages_print_stress(msg='PCM', namespace=namespace)
+      call messages_print_with_emphasis(msg='PCM', namespace=namespace)
       if (pcm%space%dim /= PCM_DIM_SPACE) then
         message(1) = "PCM is only available for 3d calculations"
         call messages_fatal(1, namespace=namespace)
@@ -426,7 +426,7 @@ contains
     pcm%deb%eps_0 = pcm%epsilon_0
     pcm%deb%eps_d = pcm%epsilon_infty
 
-    !< re-parse TDTimeStep to propagate polarization charges
+    !> re-parse TDTimeStep to propagate polarization charges
     call parse_variable(namespace, 'TDTimeStep', M_ZERO, pcm%dt, unit = units_inp%time)
 
     !%Variable PCMDebyeRelaxTime
@@ -853,7 +853,7 @@ contains
     end if
     pcm%counter = 0
 
-    !>printing out the cavity surface
+    !> printing out the cavity surface
     if (gamess_benchmark .and. mpi_grp_is_root(mpi_world)) then
       cav_gamess_unit = io_open(PCM_DIR//'geom_cavity_gamess.out', pcm%namespace, action='write')
 
@@ -886,7 +886,7 @@ contains
       call io_close(cav_gamess_unit)
     end if
 
-    !>Generating the dynamical PCM matrix
+    !> Generating the dynamical PCM matrix
     if (gamess_benchmark) then
       SAFE_ALLOCATE(mat_gamess(1:pcm%n_tesserae, 1:pcm%n_tesserae))
       mat_gamess = M_ZERO
@@ -1006,13 +1006,13 @@ contains
       end do
 
       !default is as many neighbor to contain 1 gaussian width
-      default_nn = int(max_area*pcm%gaussian_width/minval(grid%mesh%spacing(1:pcm%space%dim)))
+      default_nn = int(max_area*pcm%gaussian_width/minval(grid%spacing(1:pcm%space%dim)))
 
       changed_default_nn = .false.
 
       do ii = default_nn, 1, -1
         pcm%tess_nn = ii
-        if (pcm_nn_in_mesh(pcm,grid%mesh)) then
+        if (pcm_nn_in_mesh(pcm,grid)) then
           exit
         else
           changed_default_nn = .true.
@@ -1046,32 +1046,32 @@ contains
       call parse_variable(namespace, 'PCMChargeSmearNN', default_nn, pcm%tess_nn)
       call messages_print_var_value("PCMChargeSmearNN", pcm%tess_nn, namespace=namespace)
 
-      call pcm_poisson_sanity_check(pcm, grid%mesh)
+      call pcm_poisson_sanity_check(pcm, grid)
 
     end if
 
-    if (pcm%run_pcm) call messages_print_stress(namespace=namespace)
+    if (pcm%run_pcm) call messages_print_with_emphasis(namespace=namespace)
 
     if (pcm%calc_method == PCM_CALC_POISSON) then
-      SAFE_ALLOCATE(pcm%rho_n(1:grid%mesh%np_part))
-      SAFE_ALLOCATE(pcm%rho_e(1:grid%mesh%np_part))
+      SAFE_ALLOCATE(pcm%rho_n(1:grid%np_part))
+      SAFE_ALLOCATE(pcm%rho_e(1:grid%np_part))
       if (pcm%localf) then
-        SAFE_ALLOCATE(pcm%rho_ext(1:grid%mesh%np_part))
-        if (pcm%kick_is_present) SAFE_ALLOCATE(pcm%rho_kick(1:grid%mesh%np_part))
+        SAFE_ALLOCATE(pcm%rho_ext(1:grid%np_part))
+        if (pcm%kick_is_present) SAFE_ALLOCATE(pcm%rho_kick(1:grid%np_part))
       end if
     end if
 
 
     SAFE_ALLOCATE(pcm%v_n(1:pcm%n_tesserae))
     SAFE_ALLOCATE(pcm%q_n(1:pcm%n_tesserae))
-    SAFE_ALLOCATE(pcm%v_n_rs(1:grid%mesh%np))
+    SAFE_ALLOCATE(pcm%v_n_rs(1:grid%np))
     pcm%v_n    = M_ZERO
     pcm%q_n    = M_ZERO
     pcm%v_n_rs = M_ZERO
 
     SAFE_ALLOCATE(pcm%v_e(1:pcm%n_tesserae))
     SAFE_ALLOCATE(pcm%q_e(1:pcm%n_tesserae))
-    SAFE_ALLOCATE(pcm%v_e_rs(1:grid%mesh%np))
+    SAFE_ALLOCATE(pcm%v_e_rs(1:grid%np))
     pcm%v_e    = M_ZERO
     pcm%q_e    = M_ZERO
     pcm%v_e_rs = M_ZERO
@@ -1083,7 +1083,7 @@ contains
     if (pcm%localf) then
       SAFE_ALLOCATE(pcm%v_ext(1:pcm%n_tesserae))
       SAFE_ALLOCATE(pcm%q_ext(1:pcm%n_tesserae))
-      SAFE_ALLOCATE(pcm%v_ext_rs(1:grid%mesh%np))
+      SAFE_ALLOCATE(pcm%v_ext_rs(1:grid%np))
       pcm%v_ext    = M_ZERO
       pcm%q_ext    = M_ZERO
       pcm%v_ext_rs = M_ZERO
@@ -1094,7 +1094,7 @@ contains
       if (pcm%kick_is_present) then
         SAFE_ALLOCATE(pcm%v_kick(1:pcm%n_tesserae))
         SAFE_ALLOCATE(pcm%q_kick(1:pcm%n_tesserae))
-        SAFE_ALLOCATE(pcm%v_kick_rs(1:grid%mesh%np))
+        SAFE_ALLOCATE(pcm%v_kick_rs(1:grid%np))
         pcm%v_ext    = M_ZERO
         pcm%q_ext    = M_ZERO
         pcm%v_ext_rs = M_ZERO
@@ -1117,7 +1117,7 @@ contains
   subroutine pcm_calc_pot_rs(pcm, mesh, psolver, ions, v_h, v_ext, kick, time_present, kick_time)
     save
     type(pcm_t),                intent(inout) :: pcm
-    type(mesh_t),               intent(in)    :: mesh
+    class(mesh_t),              intent(in)    :: mesh
     type(poisson_t),            intent(in)    :: psolver
     type(ions_t),     optional, intent(in)    :: ions
     FLOAT,            optional, intent(in)    :: v_h(:)
@@ -1412,7 +1412,7 @@ contains
   !--------------------------------------------------------------------------------
 
   !> Calculates the classical electrostatic potential geneated by the nuclei at the tesserae.
-  !! v_n_cav(ik) = \sum_{I=1}^{natoms} Z_val / |s_{ik} - R_I|
+  !! \f$ v_{n_cav(ik)} = \sum_{I=1}^{natoms} Z_val / |s_{ik} - R_I| \f$
   subroutine pcm_v_nuclei_cav(v_n_cav, ions, tess, n_tess)
     FLOAT,               intent(out) :: v_n_cav(:) !< (1:n_tess)
     type(ions_t),        intent(in)  :: ions
@@ -1443,8 +1443,8 @@ contains
   ! -----------------------------------------------------------------------------
 
   !> Calculates the solute-solvent electrostatic interaction energy
-  !! E_M-solv = \sum{ik=1}^n_tess { [VHartree(ik) + Vnuclei(ik)]*[q_e(ik) + q_n(ik)] }
-  !!            (if external potential)                                   + q_ext(ik)
+  !! \f$ E_M-solv = \sum_{ik=1}^n_tess { [VHartree(ik) + Vnuclei(ik)]*[q_e(ik) + q_n(ik)] } \f$
+  !! \f$               (if external potential)                                   + q_ext(ik) \f$
   subroutine pcm_elect_energy(ions, pcm, E_int_ee, E_int_en, E_int_ne, E_int_nn, E_int_e_ext, E_int_n_ext)
     type(ions_t),     intent(in)  :: ions
     type(pcm_t),      intent(in)  :: pcm
@@ -1545,7 +1545,7 @@ contains
 
   !> Calculates the polarization charges at each tessera by using the response matrix 'pcm_mat',
   !! provided the value of the molecular electrostatic potential at
-  !! the tesserae: q_pcm(ia) = \sum_{ib}^{n_tess} pcm_mat(ia,ib)*v_cav(ib).
+  !! the tesserae: \f$ q_pcm(ia) = \sum_{ib}^{n_tess} pcm_mat(ia,ib)*v_cav(ib) \f$.
   subroutine pcm_charges(q_pcm, q_pcm_tot, v_cav, pcm_mat, n_tess, qtot_nominal, epsilon, renorm_charges, q_tot_tol, deltaQ)
     FLOAT,             intent(out) :: q_pcm(:)     !< (1:n_tess)
     FLOAT,             intent(out) :: q_pcm_tot
@@ -1598,8 +1598,8 @@ contains
   ! -----------------------------------------------------------------------------
   !> Check wether the nearest neighbor requested are in the mesh or not
   logical function pcm_nn_in_mesh(pcm, mesh) result(in_mesh)
-    type(pcm_t),  intent(in) :: pcm
-    type(mesh_t), intent(in) :: mesh
+    type(pcm_t),   intent(in) :: pcm
+    class(mesh_t), intent(in) :: mesh
 
     integer :: ia, nm(pcm%space%dim), ipt, i1, i2, i3
     FLOAT :: posrel(pcm%space%dim)
@@ -1639,8 +1639,8 @@ contains
   ! -----------------------------------------------------------------------------
   !> Check that all the required nearest neighbors are prensent in the mesh
   subroutine pcm_poisson_sanity_check(pcm, mesh)
-    type(pcm_t),     intent(in) :: pcm
-    type(mesh_t),    intent(in) :: mesh
+    type(pcm_t),      intent(in) :: pcm
+    class(mesh_t),    intent(in) :: mesh
 
     PUSH_SUB(pcm_poisson_sanity_check)
 
@@ -1711,7 +1711,7 @@ contains
 
       ! Extrapolate the tessera point charge with a gaussian distritibution
       ! to the neighboring points
-      ! rho(r) = N exp(-|r-sk|^2/(alpha*Ak))
+      ! \f$ rho(r) = N exp(-|r-sk|^2/(alpha*Ak)) \f$
       norm = M_ZERO
       lrho = M_ZERO
       do ipt = 1, npt
@@ -1924,7 +1924,7 @@ contains
     SAFE_ALLOCATE(s_mat_act(1:n_tess, 1:n_tess))
     call s_i_matrix(n_tess, tess)
 
-    !> Defining the matrix S_E=S_I/eps
+    !> Defining the matrix \f$ S_E=S_I/eps \f$
     SAFE_ALLOCATE(Sigma(1:n_tess, 1:n_tess))
     Sigma = s_mat_act/eps
 
@@ -1953,8 +1953,8 @@ contains
 
     SAFE_ALLOCATE(iwork(1:n_tess))
 
-    !> Solving for X = S_I^-1*(2*Pi - D_I)
-    !! for local field effects ---> X = S_I^-1*(2*Pi + D_I)
+    !> Solving for \f$ X = S_I^-1*(2*Pi - D_I) \f$
+    !! for local field effects ---> \f$ X = S_I^-1*(2*Pi + D_I) \f$
     ! FIXME: use interface, or routine in lalg_adv_lapack_inc.F90
     call dgesv(n_tess, n_tess, s_mat_act, n_tess, iwork, pcm_mat, n_tess, info)
 
@@ -1962,8 +1962,8 @@ contains
 
     SAFE_DEALLOCATE_A(s_mat_act)
 
-    !> Computing -S_E*S_I^-1*(2*Pi - D_I)
-    !! for local field effects ---> -S_E*S_I^-1*(2*Pi + D_I)
+    !> Computing \f$ -S_E*S_I^-1*(2*Pi - D_I) \f$
+    !! for local field effects ---> \f$ -S_E*S_I^-1*(2*Pi + D_I) \f$
     pcm_mat = -matmul(Sigma, pcm_mat)
 
     do i = 1, n_tess
@@ -1997,8 +1997,8 @@ contains
 
     SAFE_ALLOCATE(iwork(1:n_tess))
 
-    !> Solving for [(2*pi - D_E)*S_I + S_E*(2*Pi + D_I*)]*X = [(2*Pi - D_E) - S_E*S_I^-1*(2*Pi - D_I)]
-    !! for local field ---> [(2*pi - D_E)*S_I + S_E*(2*Pi + D_I*)]*X = [(2*Pi + D_E) - S_E*S_I^-1*(2*Pi + D_I)]
+    !> Solving for \f$ [(2*pi - D_E)*S_I + S_E*(2*Pi + D_I*)]*X = [(2*Pi - D_E) - S_E*S_I^-1*(2*Pi - D_I)] \f$
+    !! for local field ---> \f$ [(2*pi - D_E)*S_I + S_E*(2*Pi + D_I*)]*X = [(2*Pi + D_E) - S_E*S_I^-1*(2*Pi + D_I)] \f$
     call dgesv(n_tess, n_tess, mat_tmp, n_tess, iwork, pcm_mat, n_tess, info)
 
     SAFE_DEALLOCATE_A(iwork)
@@ -2056,7 +2056,7 @@ contains
   ! -----------------------------------------------------------------------------
 
   !> electrostatic Green function in vacuo:
-  !! G_I(r,r^\prime) = 1 / | r - r^\prime |
+  !! \f$ G_I(r,r^\prime) = 1 / | r - r^\prime | \f$
   FLOAT function s_mat_elem_I(tessi, tessj)
     type(pcm_tessera_t), intent(in) :: tessi
     type(pcm_tessera_t), intent(in) :: tessj
@@ -2088,7 +2088,7 @@ contains
 
   ! -----------------------------------------------------------------------------
 
-  !> Gradient of the Green function in vacuo GRAD[G_I(r,r^\prime)]
+  !> Gradient of the Green function in vacuo \f$ GRAD[G_I(r,r^\prime)] \f$
   FLOAT function d_mat_elem_I(tessi, tessj)
     type(pcm_tessera_t), intent(in) :: tessi
     type(pcm_tessera_t), intent(in) :: tessj
@@ -2475,7 +2475,7 @@ contains
       end do loop_ia
     end do !> while loop
 
-    !> Calculates the cavity volume: vol = \sum_{its=1}^nts A_{its} s*n/3.
+    !> Calculates the cavity volume: \f$ vol = \sum_{its=1}^nts A_{its} s*n/3 \f$.
     vol = M_ZERO
     do its = 1, nts
       prod = dot_product(cts(its)%point, cts(its)%normal)
@@ -2751,8 +2751,8 @@ contains
 
   ! -----------------------------------------------------------------------------
 
-  !    !> Finds the point 'p4', on the arc 'p1'-'p2' developed from 'p3',
-  !    !! which is on the surface of sphere 'ns'. p4 is a linear combination
+  !> Finds the point 'p4', on the arc 'p1'-'p2' developed from 'p3',
+  !! which is on the surface of sphere 'ns'. p4 is a linear combination
   !! of p1 and p2 with the 'alpha' parameter optimized iteratively.
   subroutine inter(sfe, p1, p2, p3, p4, ns, ia)
     type(pcm_sphere_t), intent(in)  :: sfe(:) !< (1:nesf)
@@ -2827,7 +2827,7 @@ contains
 
   !> Use the Gauss-Bonnet theorem to calculate the area of the
   !! tessera with vertices 'pts(3,nv)'.
-  !! Area = R^2 [ 2pi + S(Phi(N)cosT(N)) - S(Beta(N)) ]
+  !! Area = \f$ R^2 [ 2pi + S(Phi(N)cosT(N)) - S(Beta(N)) ] \f$
   !! Phi(n): length of the arc in radians of the side 'n'.
   !! T(n): azimuthal angle for the side 'n'
   !! Beta(n): external angle respect to vertex 'n'.
@@ -3081,14 +3081,6 @@ contains
     this%iter = this%iter + 1
     update = this%iter <= 6 .or. mod(this%iter, this%update_iter) == 0
 
-    if (debug%info .and. update) then
-      call messages_write(' PCM potential updated')
-      call messages_new_line()
-      call messages_write(' PCM update iteration counter: ')
-      call messages_write(this%iter)
-      call messages_info()
-    end if
-
   end function pcm_update
 
   ! -----------------------------------------------------------------------------
@@ -3232,7 +3224,7 @@ contains
 
     ! re-parsing PCM keywords
     call parse_variable(namespace, 'PCMCalculation', .false., pcm%run_pcm)
-    call messages_print_stress(msg='PCM', namespace=namespace)
+    call messages_print_with_emphasis(msg='PCM', namespace=namespace)
     call parse_variable(namespace, 'PCMLocalField', .false., pcm%localf)
     call messages_print_var_value("PCMLocalField", pcm%localf, namespace=namespace)
     if (pcm%localf) then
@@ -3311,4 +3303,3 @@ end module pcm_oct_m
 !! mode: f90
 !! coding: utf-8
 !! End:
-

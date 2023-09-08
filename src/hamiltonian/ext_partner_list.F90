@@ -36,7 +36,7 @@ module ext_partner_list_oct_m
     list_get_lasers,                      &
     list_get_gauge_field
 
-  contains
+contains
 
   ! ---------------------------------------------------------
   logical function list_has_lasers(partners)

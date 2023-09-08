@@ -69,24 +69,24 @@ module pnfft_oct_m
     private
 
 ! Parameters
-    integer                       :: np(3)           !> Processes
-    integer(C_INTPTR_T)           :: N_local(3)     !> Number of Fourier coefficients
-    integer(C_INTPTR_T)           :: N(3)            !> Number of Fourier coefficients local
-    integer(C_INTPTR_T)           :: Nos(3)          !> FFT grid size
+    integer                       :: np(3)           !< Processes
+    integer(C_INTPTR_T)           :: N_local(3)      !< Number of Fourier coefficients
+    integer(C_INTPTR_T)           :: N(3)            !< Number of Fourier coefficients local
+    integer(C_INTPTR_T)           :: Nos(3)          !< FFT grid size
     integer(C_INTPTR_T), public   :: M(3)
     integer                       :: M_istart(3)
-    integer(C_INTPTR_T)           :: local_M         !> Local number of nodes per process
-    integer                       :: mm              !> Real space cut-off
-    FLOAT,               public   :: sigma           !> oversampling factor
-    integer                       :: flags           !> PNFFT initialization options
-    logical,             public   :: set_defaults = .false. !> set default values from the code
+    integer(C_INTPTR_T)           :: local_M         !< Local number of nodes per process
+    integer                       :: mm              !< Real space cut-off
+    FLOAT,               public   :: sigma           !< oversampling factor
+    integer                       :: flags           !< PNFFT initialization options
+    logical,             public   :: set_defaults = .false. !< set default values from the code
 
-    FLOAT,               public   :: norm       !> Normalization
+    FLOAT,               public   :: norm       !< Normalization
 
 
     integer               :: comm
 ! Data
-    type(C_PTR)           :: plan            !> pnfft plan
+    type(C_PTR)           :: plan            !< pnfft plan
 
     complex(C_DOUBLE_COMPLEX), pointer :: f_lin(:) => NULL()
     complex(C_DOUBLE_COMPLEX), pointer :: f(:,:,:) => NULL()
@@ -94,8 +94,8 @@ module pnfft_oct_m
     real(C_DOUBLE),            pointer :: x_lin(:,:) => NULL()
     real(C_DOUBLE),            pointer :: x(:,:,:,:) => NULL()
 
-    real(C_DOUBLE)        :: lower_border(3) !> contains the real-space nodes local borders
-    real(C_DOUBLE)        :: upper_border(3) !> parallelization
+    real(C_DOUBLE)        :: lower_border(3) !< contains the real-space nodes local borders
+    real(C_DOUBLE)        :: upper_border(3) !< parallelization
     FLOAT                 :: lo_global(3)
     FLOAT                 :: up_global(3)
 
@@ -136,7 +136,7 @@ contains
   subroutine pnfft_init_params(pnfft, pnfft_options, nn, optimize)
     type(pnfft_t),     intent(inout) :: pnfft
     type(pnfft_t),     intent(in)    :: pnfft_options
-    integer,           intent(in)    :: nn(3) !> pnfft bandwidths
+    integer,           intent(in)    :: nn(3) !< pnfft bandwidths
     logical, optional, intent(in)    :: optimize
 
     integer :: ii, my_nn(3)

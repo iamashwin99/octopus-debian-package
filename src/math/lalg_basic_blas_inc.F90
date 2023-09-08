@@ -28,9 +28,14 @@
 #  define TYPE2 real(r8)
 #endif
 
+#ifdef __GFORTRAN__
+#define PASTE(x) x/**/_
+#define FNAME(x) PASTE(x)TYPE
+#else
 #define FNAME(x) xFNAME(x, TYPE)
 #define xFNAME(x,y) yFNAME(x,y)
 #define yFNAME(x,y) x ## _ ## y
+#endif
 
 
 !> ------------------------------------------------------------------

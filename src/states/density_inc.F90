@@ -19,7 +19,7 @@
 !---------------------------------------------------------------------------
 subroutine X(density_accumulate_grad)(space, mesh, st, psib, grad_psib, grad_rho)
   type(space_t),       intent(in)    :: space
-  type(mesh_t),        intent(in)    :: mesh
+  class(mesh_t),       intent(in)    :: mesh
   type(states_elec_t), intent(in)    :: st
   type(wfs_elec_t),    intent(in)    :: psib
   type(wfs_elec_t),    intent(in)    :: grad_psib(:)
@@ -97,12 +97,12 @@ subroutine X(density_accumulate_grad)(space, mesh, st, psib, grad_psib, grad_rho
 
     do idir = 1, space%dim
       call accel_set_kernel_arg(ker_calc_grad_dens, 0, idir - 1)
-      call accel_set_kernel_arg(ker_calc_grad_dens, 1, psib%pack_size(1))
+      call accel_set_kernel_arg(ker_calc_grad_dens, 1, int(psib%pack_size(1), i4))
       call accel_set_kernel_arg(ker_calc_grad_dens, 2, mesh%np)
       call accel_set_kernel_arg(ker_calc_grad_dens, 3, weights_buff)
       call accel_set_kernel_arg(ker_calc_grad_dens, 4, grad_psib(idir)%ff_device)
       call accel_set_kernel_arg(ker_calc_grad_dens, 5, psib%ff_device)
-      call accel_set_kernel_arg(ker_calc_grad_dens, 6, log2(psib%pack_size(1)))
+      call accel_set_kernel_arg(ker_calc_grad_dens, 6, int(log2(psib%pack_size(1)), i4))
       call accel_set_kernel_arg(ker_calc_grad_dens, 7, grad_rho_buff)
 
       wgsize = accel_kernel_workgroup_size(ker_calc_grad_dens)

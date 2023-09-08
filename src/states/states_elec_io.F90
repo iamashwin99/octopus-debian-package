@@ -440,7 +440,7 @@ contains
     character(len=*),    intent(in) :: dir
     type(namespace_t),   intent(in) :: namespace
     type(space_t),       intent(in) :: space
-    type(mesh_t),        intent(in) :: mesh
+    class(mesh_t),       intent(in) :: mesh
     type(states_elec_t), intent(in) :: st
 
     type(block_t) :: blk
@@ -453,10 +453,12 @@ contains
     FLOAT               :: transition_energy, osc_strength, dsf
 
     FLOAT, parameter    :: M_THRESHOLD = CNST(1.0e-6)
-    logical             :: use_qvector = .false.
+    logical             :: use_qvector
     FLOAT, allocatable  :: qvector(:), psi_initial(:, :), psi_ist(:, :)
 
     PUSH_SUB(states_elec_write_tpa)
+
+    use_qvector = .false.
 
     ! find the orbital with half-occupation
     tpa_initialst = -1
@@ -644,15 +646,14 @@ contains
 
   ! ---------------------------------------------------------
 
-  subroutine states_elec_write_bandstructure(dir, namespace, nst, st, box, ions, mesh, kpoints, &
+  subroutine states_elec_write_bandstructure(dir, namespace, nst, st, ions, mesh, kpoints, &
     phase, vec_pot, vec_pot_var)
     character(len=*),             intent(in)  :: dir
     type(namespace_t),            intent(in)  :: namespace
     integer,                      intent(in)  :: nst
     type(states_elec_t),          intent(in)  :: st
-    class(box_t),                 intent(in)  :: box
     type(ions_t),     target,     intent(in)  :: ions
-    type(mesh_t),                 intent(in)  :: mesh
+    class(mesh_t),                intent(in)  :: mesh
     type(kpoints_t),              intent(in)  :: kpoints
     CMPLX,           allocatable, intent(in)  :: phase(:, :)
     FLOAT, optional, allocatable, intent(in)  :: vec_pot(:) !< (box%dim)
@@ -660,7 +661,7 @@ contains
 
     integer :: idir, ist, ik, ns, is,npath
     integer, allocatable :: iunit(:)
-    FLOAT   :: red_kpoint(box%dim)
+    FLOAT   :: red_kpoint(mesh%box%dim)
     character(len=80) :: filename
 
     logical :: projection
@@ -702,7 +703,7 @@ contains
 
         ! write header
         write(iunit(is),'(a)',advance='no') '# coord. '
-        do idir = 1, box%dim
+        do idir = 1, mesh%box%dim
           write(iunit(is),'(3a)',advance='no') 'k', index2axis(idir), ' '
         end do
         if (.not. projection) then
@@ -710,9 +711,9 @@ contains
         else
           write(iunit(is),'(a,i6,3a)',advance='no') '(red. coord.), bands:', nst, ' [', trim(units_abbrev(units_out%energy)), '] '
           do ia = 1, ions%natoms
-            work = orbitalset_utils_count(ions, ia)
+            work = orbitalset_utils_count(ions%atom(ia)%species)
             do norb = 1, work
-              work2 = orbitalset_utils_count(ions, ia, norb)
+              work2 = orbitalset_utils_count(ions%atom(ia)%species, norb)
               write(iunit(is),'(a, i3.3,a,i1.1,a)',advance='no') 'w(at=',ia,',os=',norb,') '
             end do
           end do
@@ -735,7 +736,7 @@ contains
 
       maxnorb = 0
       do ia = 1, ions%natoms
-        maxnorb = max(maxnorb, orbitalset_utils_count(ions, ia))
+        maxnorb = max(maxnorb, orbitalset_utils_count(ions%atom(ia)%species))
       end do
 
       SAFE_ALLOCATE(weight(1:st%d%nik,1:st%nst, 1:maxnorb, 1:MAX_L, 1:ions%natoms))
@@ -744,7 +745,7 @@ contains
       do ia = 1, ions%natoms
 
         !We first count how many orbital set we have
-        work = orbitalset_utils_count(ions, ia)
+        work = orbitalset_utils_count(ions%atom(ia)%species)
 
         !We loop over the orbital sets of the atom ia
         do norb = 1, work
@@ -759,25 +760,26 @@ contains
               os%ll = ll
               os%nn = nn
               os%ii = ii
-              os%radius = atomic_orbital_get_radius(ions, mesh, ia, iorb, 1, OPTION__AOTRUNCATION__AO_FULL, CNST(0.01))
+              os%radius = atomic_orbital_get_radius(ions%atom(ia)%species, mesh, iorb, 1, OPTION__AOTRUNCATION__AO_FULL, CNST(0.01))
               work2 = work2 + 1
             end if
           end do
           os%norbs = work2
           os%ndim = 1
-          os%submesh = .false.
+          os%use_submesh = .false.
           os%spec => ions%atom(ia)%species
 
           do iorb = 1, os%norbs
             ! We obtain the orbital
             if (states_are_real(st)) then
-              call dget_atomic_orbital(namespace, ions, mesh, os%sphere, ia, os%ii, os%ll, os%jj, &
-                os, iorb, os%radius, os%ndim, use_mesh=.not.os%submesh, &
+              call dget_atomic_orbital(namespace, ions%space, ions%latt, ions%pos(:,ia), &
+                ions%atom(ia)%species, mesh, os%sphere, os%ii, os%ll, os%jj, &
+                os, iorb, os%radius, os%ndim, use_mesh=.not.os%use_submesh, &
                 normalize = .true.)
             else
-              call zget_atomic_orbital(namespace, ions, mesh, os%sphere, ia, os%ii, os%ll, os%jj, &
-                os, iorb, os%radius, os%ndim, &
-                use_mesh =.not. allocated(phase) .and. .not. os%submesh, &
+              call zget_atomic_orbital(namespace, ions%space, ions%latt, ions%pos(:,ia), &
+                ions%atom(ia)%species, mesh, os%sphere, os%ii, os%ll, os%jj, &
+                os, iorb, os%radius, os%ndim, use_mesh=.not.os%use_submesh, &
                 normalize = .true.)
             end if
           end do !iorb
@@ -786,14 +788,14 @@ contains
             ! In case of complex wavefunction, we allocate the array for the phase correction
             SAFE_ALLOCATE(os%phase(1:os%sphere%np, st%d%kpt%start:st%d%kpt%end))
             os%phase(:,:) = M_ZERO
-            if (.not. os%submesh) then
+            if (.not. os%use_submesh) then
               SAFE_ALLOCATE(os%eorb_mesh(1:mesh%np, 1:os%norbs, 1:os%ndim, st%d%kpt%start:st%d%kpt%end))
               os%eorb_mesh(:,:,:,:) = M_ZERO
             else
               SAFE_ALLOCATE(os%eorb_submesh(1:os%sphere%np, 1:os%ndim, 1:os%norbs, st%d%kpt%start:st%d%kpt%end))
               os%eorb_submesh(:,:,:,:) = M_ZERO
             end if
-            call orbitalset_update_phase(os, box%dim, st%d%kpt, kpoints, (st%d%ispin==SPIN_POLARIZED), &
+            call orbitalset_update_phase(os, mesh%box%dim, st%d%kpt, kpoints, (st%d%ispin==SPIN_POLARIZED), &
               vec_pot, vec_pot_var)
           end if
 
@@ -851,7 +853,7 @@ contains
       ! output bands
       do ik = st%d%nik-npath+1, st%d%nik, ns
         do is = 0, ns - 1
-          red_kpoint(1:box%dim) = kpoints%get_point(st%d%get_kpoint_index(ik + is), absolute_coordinates=.false.)
+          red_kpoint(1:mesh%box%dim) = kpoints%get_point(st%d%get_kpoint_index(ik + is), absolute_coordinates=.false.)
           write(iunit(is),'(1x)',advance='no')
           if (st%d%nik > npath) then
             write(iunit(is),'(f14.8)',advance='no') kpoints_get_path_coord(kpoints, &
@@ -860,7 +862,7 @@ contains
             write(iunit(is),'(f14.8)',advance='no') kpoints_get_path_coord(kpoints, &
               st%d%get_kpoint_index(ik + is))
           end if
-          do idir = 1, box%dim
+          do idir = 1, mesh%box%dim
             write(iunit(is),'(f14.8)',advance='no') red_kpoint(idir)
           end do
           do ist = 1, nst
@@ -868,9 +870,9 @@ contains
           end do
           if (projection) then
             do ia = 1, ions%natoms
-              work = orbitalset_utils_count(ions, ia)
+              work = orbitalset_utils_count(ions%atom(ia)%species)
               do norb = 1, work
-                work2 = orbitalset_utils_count(ions, ia, norb)
+                work2 = orbitalset_utils_count(ions%atom(ia)%species, norb)
                 do iorb = 1, work2
                   do ist = 1, nst
                     write(iunit(is),'(es15.8)',advance='no') weight(ik+is,ist,iorb,norb,ia)

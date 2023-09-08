@@ -16,29 +16,24 @@ BoxShape = sphere
 Radius = 25.0
 Spacing = 0.5
 
-DerivativesOrder = 4
-
 TheoryLevel = independent_particles
 
 SpinComponents = spinors
-
 
 Bz = 5.0
 %StaticMagneticField
 0 | 0 | Bz
 %
 
-
 # The Larmor frequency is given by w = (e*Bz)/(m*c), where
 # e is the electronic charge (1 in a.u.), m is the electronic
 # mass (1 in a.u.) and c is the speed of light. Therefore
 # the period of the precession is (2*pi*m*c)/(e*Bz). We run
-# until 1/4 of the period, so that <Sx> goes to zero, and 
+# until 1/4 of the period, so that <Sx> goes to zero, and
 # <Sy> goes to 1/2.
 
 # P_c is the speed of light in atomic units.
 P_c = 137.036
-
 
 TDPropagationTime = (1/4) * (2*pi*P_c)/Bz
 dt = 0.50
@@ -50,14 +45,13 @@ TDTimeStep = dt
 
 %Output
  density | "output_format" | xcrysden | "output_interval" | 25
-% 
-%TDOutput 
- energy 
- multipoles 
+%
+%TDOutput
+ energy
+ multipoles
  spin
 %
 
 ExperimentalFeatures = yes
 
 Debug = trace
-

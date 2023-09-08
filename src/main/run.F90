@@ -19,11 +19,14 @@
 
 #include "global.h"
 
+!> \ingroup Fortran_Module
+!! \brief top level module for all calculation modes
 module run_oct_m
   use accel_oct_m
   use casida_oct_m
   use em_resp_oct_m
   use external_potential_oct_m
+  use external_source_oct_m
   use fft_oct_m
   use geom_opt_oct_m
   use global_oct_m
@@ -69,6 +72,7 @@ module run_oct_m
 contains
 
   ! ---------------------------------------------------------
+  !> query input file for the response mode.
   integer function get_resp_method(namespace)
     type(namespace_t),    intent(in)    :: namespace
 
@@ -106,6 +110,9 @@ contains
   end function get_resp_method
 
   ! ---------------------------------------------------------
+  !> main routine to run all calculations:
+  !! This routine parses the input file, sets up the systems and interactions, and
+  !! calls the corresponding routines for the requested run mode.
   subroutine run(namespace, calc_mode_id)
     type(namespace_t), intent(in) :: namespace
     integer,           intent(in) :: calc_mode_id
@@ -122,9 +129,9 @@ contains
 
     PUSH_SUB(run)
 
-    call messages_print_stress(msg="Calculation Mode", namespace=namespace)
+    call messages_print_with_emphasis(msg="Calculation Mode", namespace=namespace)
     call messages_print_var_option("CalculationMode", calc_mode_id, namespace=namespace)
-    call messages_print_stress(namespace=namespace)
+    call messages_print_with_emphasis(namespace=namespace)
 
     call calc_mode_init()
 
@@ -170,9 +177,10 @@ contains
     class is (multisystem_basic_t)
       ! Systems are also partners
       partners = systems%list
-
       ! Add external potentials to partners list
       call load_external_potentials(partners, namespace)
+
+      call load_external_source(partners, namespace)
 
     type is (electrons_t)
       call partners%add(systems)
@@ -207,6 +215,8 @@ contains
       !% When this variable is set to true, <tt>Octopus</tt> will perform a
       !% calculation from the beginning, without looking for restart
       !% information.
+      !% NOTE: If available, mesh partitioning information will be used for
+      !% initializing the calculation regardless of the set value for this variable.
       !%End
       call parse_variable(namespace, 'FromScratch', .false., from_scratch)
 

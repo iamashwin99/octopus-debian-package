@@ -17,8 +17,6 @@ BoxShape = sphere
 Radius = 25.0
 Spacing = 0.5
 
-DerivativesOrder = 4
-
 TheoryLevel = independent_particles
 
 SpinComponents = spinors
@@ -31,8 +29,4 @@ MaximumIter = 300
  0.5 |  0.0 |  0.0
 %
 
-
 Debug = trace
-
-
-

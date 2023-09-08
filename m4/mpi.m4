@@ -1,7 +1,7 @@
 AC_DEFUN([ACX_MPI], [
 acx_mpi_ok=no
 
-dnl Backup LIBS 
+dnl Backup LIBS
 acx_mpi_save_LIBS="$LIBS"
 LIBS="$LIBS_MPI $LIBS $FLIBS"
 
@@ -94,9 +94,9 @@ AC_MSG_RESULT([$acx_mpi2_ok])
 
 if test $acx_mpi2_ok = no; then
   AC_MSG_ERROR([
-  
+
   ******************************************************************
-  
+
   ERROR: Octopus requires an MPI implementation with MPI-2 support.
 
   ******************************************************************
@@ -104,4 +104,3 @@ if test $acx_mpi2_ok = no; then
 fi
 
 ])
-

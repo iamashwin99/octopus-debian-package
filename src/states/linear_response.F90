@@ -105,8 +105,8 @@ contains
   subroutine lr_allocate(lr, st, mesh, allocate_rho)
     type(lr_t),          intent(inout) :: lr
     type(states_elec_t), intent(in)    :: st
-    type(mesh_t),        intent(in)    :: mesh
-    logical, optional,      intent(in) :: allocate_rho
+    class(mesh_t),       intent(in)    :: mesh
+    logical, optional,   intent(in)    :: allocate_rho
 
     PUSH_SUB(lr_allocate)
 
@@ -178,7 +178,7 @@ contains
   ! ---------------------------------------------------------
   subroutine lr_copy(st, mesh, src, dest)
     type(states_elec_t), intent(in) :: st
-    type(mesh_t),        intent(in) :: mesh
+    class(mesh_t),       intent(in) :: mesh
     type(lr_t),          intent(in) :: src
     type(lr_t),       intent(inout) :: dest
 

@@ -1,0 +1,34 @@
+# -*- coding: utf-8 mode: shell-script -*-
+
+Test       : Born-Oppenheimer Molecular Dynamics
+Program    : octopus
+TestGroups : short-run, real_time
+Enabled    : Yes
+
+# ground state
+Processors : 1
+Input      : 16-bomd.01-gs.inp
+match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
+Precision: 5.30e-08
+match ;  Initial energy  ; GREPFIELD(static/info, 'Total       =', 3) ; -10.60377304
+
+Processors : 4
+Input      : 16-bomd.02-td.inp
+Precision: 1.11e-09
+match ;  Energy [step 1]  ; LINEFIELD(test_electrons/td.general/energy, -4, 3) ; -10.5817129437118
+Precision: 1.41e-09
+match ;  Energy [step 2]  ; LINEFIELD(test_electrons/td.general/energy, -3, 3) ; -10.5815623487979
+Precision: 1.63e-09
+match ;  Energy [step 3]  ; LINEFIELD(test_electrons/td.general/energy, -2, 3) ; -10.5814310017196
+Precision: 4.63e-09
+match ;  Energy [step 4]  ; LINEFIELD(test_electrons/td.general/energy, -1, 3) ; -10.5813193604013
+
+Precision: 1.19e-07
+match ;  Forces [step 1]  ; LINEFIELD(test_electrons/td.general/coordinates, -4, 15) ; -0.15385551546725
+Precision: 9.71e-08
+match ;  Forces [step 2]  ; LINEFIELD(test_electrons/td.general/coordinates, -3, 15) ; -0.17322977338304
+Precision: 1.33e-07
+match ;  Forces [step 3]  ; LINEFIELD(test_electrons/td.general/coordinates, -2, 15) ; -0.19183480579433
+Precision: 2.83e-07
+match ;  Forces [step 4]  ; LINEFIELD(test_electrons/td.general/coordinates, -1, 15) ; -0.209237134094283
+

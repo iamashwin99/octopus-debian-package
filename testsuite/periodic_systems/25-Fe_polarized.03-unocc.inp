@@ -8,7 +8,7 @@ a =  2.856*angstrom
 
 PseudopotentialSet = pseudodojo_lda
 
-Spacing = 0.45
+Spacing = 0.42
 
 %LatticeParameters
   a | a | a
@@ -38,4 +38,3 @@ include unfold_kpt.dat
 
 ExtraStates = 10
 ExtraStatesToConverge = 5
-

@@ -20,7 +20,7 @@
  ! ----------------------------------------------------------------------
  !>
 subroutine target_init_exclude(mesh, namespace, space, tg, td, restart, kpoints)
-  type(mesh_t),      intent(in)    :: mesh
+  class(mesh_t),     intent(in)    :: mesh
   type(namespace_t), intent(in)    :: namespace
   type(space_t),     intent(in)    :: space
   type(target_t),    intent(inout) :: tg
@@ -97,16 +97,16 @@ FLOAT function target_j1_exclude(gr, tg, psi) result(j1)
 
   PUSH_SUB(target_j1_local)
 
-  SAFE_ALLOCATE(zpsi(1:gr%mesh%np, 1:tg%st%d%dim))
-  SAFE_ALLOCATE(zpsi1(1:gr%mesh%np, 1:tg%st%d%dim))
+  SAFE_ALLOCATE(zpsi(1:gr%np, 1:tg%st%d%dim))
+  SAFE_ALLOCATE(zpsi1(1:gr%np, 1:tg%st%d%dim))
 
-  call states_elec_get_state(psi, gr%mesh, 1, 1, zpsi1)
+  call states_elec_get_state(psi, gr, 1, 1, zpsi1)
 
   j1 = M_ONE
   do ist = 1, tg%st%nst
     if (loct_isinstringlist(ist, tg%excluded_states_list)) then
-      call states_elec_get_state(tg%st, gr%mesh, ist, 1, zpsi)
-      j1 = j1 - abs(zmf_dotp(gr%mesh, psi%d%dim, zpsi, zpsi1))**2
+      call states_elec_get_state(tg%st, gr, ist, 1, zpsi)
+      j1 = j1 - abs(zmf_dotp(gr, psi%d%dim, zpsi, zpsi1))**2
     end if
   end do
 
@@ -131,25 +131,25 @@ subroutine target_chi_exclude(tg, gr, psi_in, chi_out)
   PUSH_SUB(target_chi_exclude)
 
   do ib = chi_out%group%block_start, chi_out%group%block_end
-    call psi_in%group%psib(ib, 1)%copy_data_to(gr%mesh%np, chi_out%group%psib(ib, 1))
+    call psi_in%group%psib(ib, 1)%copy_data_to(gr%np, chi_out%group%psib(ib, 1))
   end do
 
-  SAFE_ALLOCATE(zpsi(1:gr%mesh%np, 1:tg%st%d%dim))
-  SAFE_ALLOCATE(zst(1:gr%mesh%np, 1:tg%st%d%dim))
-  SAFE_ALLOCATE(zchi(1:gr%mesh%np, 1:tg%st%d%dim))
+  SAFE_ALLOCATE(zpsi(1:gr%np, 1:tg%st%d%dim))
+  SAFE_ALLOCATE(zst(1:gr%np, 1:tg%st%d%dim))
+  SAFE_ALLOCATE(zchi(1:gr%np, 1:tg%st%d%dim))
 
-  call states_elec_get_state(chi_out, gr%mesh, 1, 1, zchi)
+  call states_elec_get_state(chi_out, gr, 1, 1, zchi)
 
   do ist = 1, tg%st%nst
     if (loct_isinstringlist(ist, tg%excluded_states_list)) then
-      call states_elec_get_state(psi_in, gr%mesh, ist, 1, zpsi)
-      call states_elec_get_state(tg%st, gr%mesh, ist, 1, zst)
-      olap = zmf_dotp(gr%mesh, psi_in%d%dim, zst, zpsi)
-      zchi(1:gr%mesh%np, 1:tg%st%d%dim) = zchi(1:gr%mesh%np, 1:tg%st%d%dim) - olap*zst(1:gr%mesh%np, 1:tg%st%d%dim)
+      call states_elec_get_state(psi_in, gr, ist, 1, zpsi)
+      call states_elec_get_state(tg%st, gr, ist, 1, zst)
+      olap = zmf_dotp(gr, psi_in%d%dim, zst, zpsi)
+      zchi(1:gr%np, 1:tg%st%d%dim) = zchi(1:gr%np, 1:tg%st%d%dim) - olap*zst(1:gr%np, 1:tg%st%d%dim)
     end if
   end do
 
-  call states_elec_set_state(chi_out, gr%mesh, 1, 1, zchi)
+  call states_elec_set_state(chi_out, gr, 1, 1, zchi)
 
   SAFE_DEALLOCATE_A(zpsi)
   SAFE_DEALLOCATE_A(zst)

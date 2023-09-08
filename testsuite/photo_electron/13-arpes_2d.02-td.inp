@@ -17,7 +17,7 @@ LL = 120
 aa = 8.15
 
 %LatticeParameters
-aa | LL 
+aa | LL
 %
 
 %LatticeVectors
@@ -40,13 +40,13 @@ y0 = 0.0
 
 
 %KpointsGrid
-1 | 1 
+1 | 1
 %
 
 %KPointsPath
 6
--0.5| 0 
-0.5 | 0 
+-0.5| 0
+0.5 | 0
 %
 
 ## LASER ##
@@ -100,13 +100,11 @@ PES_Flux_UseMemory = no
 # OUT
 #######
 
-%TDOutput 
- multipoles 
- energy 
+%TDOutput
+ multipoles
+ energy
  laser
 %
 
 OutputInterval = 500
 RestartWriteInterval = 500
-
-

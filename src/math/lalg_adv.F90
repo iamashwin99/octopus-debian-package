@@ -60,7 +60,9 @@ module lalg_adv_oct_m
     lalg_zdni,                    &
     lalg_zduialpha,               &
     lalg_zd2ni,                   &
-    lalg_least_squares
+    lalg_least_squares,           &
+    lalg_matrix_norm2
+
 
   type(profile_t), save :: cholesky_prof, eigensolver_prof
 
@@ -130,6 +132,10 @@ module lalg_adv_oct_m
   interface lalg_least_squares
     module procedure dleast_squares_vec, zleast_squares_vec
   end interface lalg_least_squares
+
+  interface lalg_matrix_norm2
+    module procedure dmatrix_norm2, zmatrix_norm2
+  end interface lalg_matrix_norm2
 
 contains
 

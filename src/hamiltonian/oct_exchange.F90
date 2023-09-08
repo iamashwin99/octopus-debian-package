@@ -69,7 +69,7 @@ contains
   subroutine oct_exchange_set(this, st, mesh)
     type(oct_exchange_t),     intent(inout) :: this
     type(states_elec_t), target, intent(in) :: st
-    type(mesh_t),             intent(in)    :: mesh
+    class(mesh_t),            intent(in)    :: mesh
 
     integer :: np, nspin
 
@@ -98,7 +98,7 @@ contains
   ! ---------------------------------------------------------
   subroutine oct_exchange_prepare(this, mesh, psi, xc, psolver, namespace)
     type(oct_exchange_t), intent(inout) :: this
-    type(mesh_t),         intent(in)    :: mesh
+    class(mesh_t),        intent(in)    :: mesh
     CMPLX,                intent(in)    :: psi(:, :, :, :)
     type(xc_t),           intent(in)    :: xc
     type(poisson_t),      intent(in)    :: psolver
@@ -172,7 +172,7 @@ contains
   subroutine oct_exchange_operator(this, namespace, mesh, hpsi, ist, ik)
     type(oct_exchange_t), intent(in)    :: this
     type(namespace_t),    intent(in)    :: namespace
-    type(mesh_t),         intent(in)    :: mesh
+    class(mesh_t),        intent(in)    :: mesh
     CMPLX,                intent(inout) :: hpsi(:, :)
     integer,              intent(in)    :: ist
     integer,              intent(in)    :: ik

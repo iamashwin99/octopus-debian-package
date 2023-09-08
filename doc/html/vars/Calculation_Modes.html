@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML-full"></script>
 <style>
-   BODY {background-color: white; 
+   BODY {background-color: white;
          font-size: 10pt; font-family: verdana,helvetica;}
    A  {text-decoration: none;color: blue}
 </style>
@@ -1035,7 +1035,7 @@
 <li><b>oct_direct</b>:  This is a "direct" optimization scheme. This means that we do not make use of the
  "usual" QOCT equations (backward-forward propagations, etc), but we use some gradient-free
  maximization algorithm for the function that we want to optimize. In this case, the
- maximization algorithm is the Nelder-Mead algorithm as implemeted in the GSL. The function
+ maximization algorithm is the Nelder-Mead algorithm as implemented in the GSL. The function
  values are obtained by successive forward propagations.
  The seed for the random number generator can be modified by setting
  <tt>GSL_RNG_SEED</tt> environment variable.
@@ -1268,12 +1268,35 @@
 <H2>Calculation Modes::Test</H2>
 
 
+<p><b><a name='HelmholtzVisualizeBoxes'></a>HelmholtzVisualizeBoxes</b>
+<br/><i>Section</i>: Calculation Modes::Test
+<br/><i>Type</i>: logical
+<br/><i>Default</i>: no
+<br/><br> If true, output the volume points for the three boxes of the Helmholtz surface correction.
+ 1) The volume points of the system box
+ 2) The inner mask for the system box. This region has the thickness of the stencil and it is used to set to zero
+    the longitudinal or transverse field after computing the final divergence or curl (to avoid spikes)
+ 3) The surface points of the system box
+<br><br>
+
+</p><hr width='30%' align='left'/>
+
+
 <p><b><a name='InterpolationTestOrder'></a>InterpolationTestOrder</b>
 <br/><i>Section</i>: Calculation Modes::Test
 <br/><i>Type</i>: integer
 <br/><i>Default</i>: 1
 <br/><br> This variable controls the order of the grid interpolation
  used in the corresponding unit test.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='SurfaceCorrection'></a>SurfaceCorrection</b>
+<br/><i>Section</i>: Calculation Modes::Test
+<br/><i>Type</i>: logical
+<br/><i>Default</i>: no
+<br/><br> Compute the surface correction for Helmholtz decomposition?
 
 </p><hr width='30%' align='left'/>
 
@@ -1384,7 +1407,15 @@
 </li>
 <li><b>mpiwrappers</b>:  Tests for the MPI wrappers with large integer displacements.
 </li>
+<li><b>regridding</b>:  Tests the regridding between two different grids.
+</li>
+<li><b>helmholtz_decomposition</b>:  Test for the Helmholtz decomposition subroutines
+</li>
+<li><b>vecpot_analytical</b>:  Tests analytically the vector potential from B field.
+</li>
 <li><b>derivatives</b>:  Tests and benchmarks the implementation of the finite-difference operators, used to calculate derivatives.
+</li>
+<li><b>current_density</b>:  Tests the different contributions to the total electronic current density
 </li>
 <li><b>orthogonalization</b>:  Tests the implementation of the orthogonalization routines.
 </li>
@@ -1431,6 +1462,22 @@
 <li><b>real</b>:  Test for double-precision real functions.
 </li>
 <li><b>all</b>:  Tests for double-precision real and complex functions.
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='TestVectorPotentialType'></a>TestVectorPotentialType</b>
+<br/><i>Section</i>: Calculation Modes::Test
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: bounded
+<br/><br> Select whether bounded or unbounded type will be used for vector potential tests
+
+<br/><i>Options</i>:
+<ul>
+<li><b>bounded</b>:  Analytical Vector Potential formulation is bounded by spatial gaussian
+</li>
+<li><b>unbounded</b>:  Analytical Vector Potential is not bounded
 </li>
 </ul>
 </p><hr width='30%' align='left'/>

@@ -13,14 +13,14 @@ BoxShape = parallelepiped
 %
 
 %ReducedCoordinates
-  "Si" |   0.0       | 0.0       | 0.0 
+  "Si" |   0.0       | 0.0       | 0.0
   "Si" |   1/2       | 1/2       | 0.0
   "Si" |   1/2       | 0.0       | 1/2
-  "Si" |   0.0       | 1/2       | 1/2 
-  "Si" |   1/4       | 1/4       | 1/4 
+  "Si" |   0.0       | 1/2       | 1/2
+  "Si" |   1/4       | 1/4       | 1/4
   "Si" |   1/4 + 1/2 | 1/4 + 1/2 | 1/4
   "Si" |   1/4 + 1/2 | 1/4       | 1/4 + 1/2
-  "Si" |   1/4       | 1/4 + 1/2 | 1/4 + 1/2 
+  "Si" |   1/4       | 1/4 + 1/2 | 1/4 + 1/2
 %
 
 %KPointsReduced
@@ -32,7 +32,7 @@ ExtraStates = 2
 ConvEigenError = yes
 
 ExperimentalFeatures = yes
-%Output 
+%Output
  wfs         | "output_format" | etsf + netcdf
  wfs_fourier | "output_format" | etsf + netcdf
  density     | "output_format" | etsf + netcdf
@@ -47,5 +47,3 @@ ParKpoints = no
 FilterPotentials = filter_none
 
 MixField = density
-
-DisableAccel = yes

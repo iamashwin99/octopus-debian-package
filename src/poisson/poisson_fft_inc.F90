@@ -54,11 +54,7 @@ subroutine X(poisson_fft_solve)(this, mesh, cube, pot, rho, mesh_cube_map, avera
     if (cube%parallel_in_domains) then
       call X(mesh_to_cube_parallel)(mesh, rho, cube, cf, mesh_cube_map)
     else
-      if (mesh%parallel_in_domains) then
-        call X(mesh_to_cube)(mesh, rho, cube, cf, local = .true.)
-      else
-        call X(mesh_to_cube)(mesh, rho, cube, cf)
-      end if
+      call X(mesh_to_cube)(mesh, rho, cube, cf)
     end if
   end if
 
@@ -79,11 +75,7 @@ subroutine X(poisson_fft_solve)(this, mesh, cube, pot, rho, mesh_cube_map, avera
     if (cube%parallel_in_domains) then
       call X(cube_to_mesh_parallel)(cube, cf, mesh, pot, mesh_cube_map)
     else
-      if (mesh%parallel_in_domains) then
-        call X(cube_to_mesh)(cube, cf, mesh, pot, local=.true.)
-      else
-        call X(cube_to_mesh)(cube, cf, mesh, pot)
-      end if
+      call X(cube_to_mesh)(cube, cf, mesh, pot)
     end if
   end if
 

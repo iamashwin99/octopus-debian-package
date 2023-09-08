@@ -20,7 +20,9 @@
 
 #include "global.h"
 !
-!> Atomic weights should be read in "atomic mass units" (u) (not to
+!> @brief This module defines the unit system, used for input and output.
+!!
+!! Atomic weights should be read in "atomic mass units" (u) (not to
 !! be confused with mass in "atomic units"), that is, it should be given
 !! the relative atomic weight). 1 u is roughly the mass of the proton,
 !! and exactly one twelfth of mass of the ^{12}C isotope. The relation of the

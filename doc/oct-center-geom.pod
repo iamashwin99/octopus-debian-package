@@ -23,7 +23,7 @@ This program is one of the B<octopus> utilities.
 
 It reads the xyz file pointed to by the XYZCoordinates variable
 in the F<inp> file, and constructs one output xyz file,
-that will be called F<adjusted.xyz> file, that describes 
+that will be called F<adjusted.xyz> file, that describes
 the same system but in which the atomic coordiates are centered.
 
 The man pages of octopus and of the auxiliary octopus
@@ -52,4 +52,3 @@ This  is free software; see the source for copying conditions.  There is NO warr
 The largest source of documentation is the octopus website: S<http://octopus-code.org>.
 
 At the usual standard locations, you will also find an info file, F<octopus.info>.
-

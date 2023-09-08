@@ -39,4 +39,3 @@ ExtraStates = 4
 PseudopotentialSet= sg15
 VDWCorrection = vdw_ts
 VDW_ts_cutoff = 40
-

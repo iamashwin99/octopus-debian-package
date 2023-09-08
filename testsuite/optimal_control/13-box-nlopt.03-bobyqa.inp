@@ -45,7 +45,7 @@ OCTDoubleCheck = no
 ampl = 0.06
 freq = (2*pi/stime)
 %TDExternalFields
-  electric_field | 1 | 0 | 0 | freq | "envelope_function" 
+  electric_field | 1 | 0 | 0 | freq | "envelope_function"
 %
 
 %TDFunctions
@@ -53,7 +53,7 @@ freq = (2*pi/stime)
 %
 
 Dimensions = 1
-fromScratch = yes
+FromScratch = yes
 
 BoxShape = sphere
 Spacing = 0.4

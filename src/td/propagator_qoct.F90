@@ -77,23 +77,17 @@ contains
 
     if ((hm%theory_level /= INDEPENDENT_PARTICLES) .and. &
       (.not. oct_exchange_enabled(hm%oct_exchange))) then
-      !TODO: This does not support complex scaling
-      if (family_is_mgga_with_exc(hm%xc)) then
-        call potential_interpolation_interpolate(tr%vksold, 2, time, dt, time-dt/M_TWO, &
-          hm%vhxc, vtau = hm%vtau)
-      else
-        call potential_interpolation_interpolate(tr%vksold, 2, time, dt, time-dt/M_TWO, &
-          hm%vhxc)
-      end if
+      call potential_interpolation_interpolate(tr%vksold, 2, time, dt, time-dt/M_TWO, &
+        hm%vhxc, vtau = hm%vtau)
     end if
 
     !move the ions to time 'time - dt/2'
     call propagation_ops_elec_move_ions(tr%propagation_ops_elec, gr, hm, st, namespace, space, ions_dyn, ions, &
       ext_partners, time - M_HALF*dt, M_HALF*dt, save_pos = .true.)
 
-    call propagation_ops_elec_update_hamiltonian(namespace, space, st, gr%mesh, hm, ext_partners, time-dt/M_TWO)
+    call propagation_ops_elec_update_hamiltonian(namespace, space, st, gr, hm, ext_partners, time-dt/M_TWO)
 
-    call exponential_apply_all(tr%te, namespace, gr%mesh, hm, st, dt)
+    call exponential_apply_all(tr%te, namespace, gr, hm, st, dt)
 
     call density_calc(st, gr, st%rho)
 

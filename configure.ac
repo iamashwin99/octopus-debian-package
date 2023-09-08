@@ -19,7 +19,7 @@
 AC_PREREQ(2.59)
 # Note: the version string is written into ETSF_IO files, so when you update
 # this, update the results for test periodic_systems/09-etsf_io.test too.
-AC_INIT([Octopus],[12.2],[octopus-devel@tddft.org],[octopus])
+AC_INIT([Octopus],[13.0],[octopus-devel@tddft.org],[octopus])
 AC_CONFIG_SRCDIR([src/basic/global.F90])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
@@ -50,7 +50,7 @@ case $enable_mpi in
     LIBS_MPI="$enable_mpi"
     enable_mpi=yes
     ;;
-  *) 
+  *)
     LIBS_MPI="-l$enable_mpi"
     enable_mpi=yes
     ;;
@@ -135,7 +135,7 @@ fi
 
 if test x"${enable_opencl}" == x"yes" ; then
   AC_MSG_WARN([
-  
+
 	Experimental OpenCL support enabled.
   ])
   AX_CHECK_CL
@@ -143,8 +143,15 @@ if test x"${enable_opencl}" == x"yes" ; then
     AC_MSG_FAILURE([Cannot find the OpenCL library.])
   fi
   AC_DEFINE(HAVE_OPENCL, 1, [defined if opencl support is enabled])
-  ACX_CLBLAS
   ACX_CLFFT
+  ACX_CLBLAS
+  if test x"$acx_clblas_ok" = x"no"; then
+    AC_MSG_WARN([Could not find the clblas library. Checking for clBlast])
+    ACX_CLBLAST
+    if test x"$acx_clblast_ok" = x"no"; then
+      AC_MSG_FAILURE([Could not find one of the required clblas or clBast library.])
+    fi
+  fi
 fi
 
 AM_CONDITIONAL(COMPILE_OPENCL, test x"${enable_opencl}" == x"yes")
@@ -155,19 +162,11 @@ if test x"$enable_mpi" == x"yes"; then
   ACX_MPI([], AC_MSG_ERROR([cannot call MPI from C]))
 fi
 
-dnl build/install Perl bits unless --disable-perl is used
-AC_ARG_ENABLE([perl],
-	      AS_HELP_STRING([--disable-perl], [don't build/install Perl components]),
-	      [ac_cv_build_perl=$enableval],
-	      [ac_cv_build_perl=yes])
-if test "x$ac_cv_build_perl" = "xyes"; then
-  AC_PATH_PROG([PERL], [perl], [], [])
-  if test -z "$PERL" ; then
-     AC_MSG_WARN([perl not found. Disabling Perl parts])
-     ac_cv_build_perl="no"
-  fi
+AC_PATH_PROG([PERL], [perl], [], [])
+if test -z "$PERL" ; then
+ AC_MSG_ERROR([perl is required but was not found])
+ ac_cv_build_perl="no"
 fi
-AM_CONDITIONAL([ENABLE_PERL], [test x"$ac_cv_build_perl" = x"yes"])
 
 
 dnl try to find out what is the default FORTRAN 90 compiler
@@ -303,7 +302,7 @@ ACX_SPARSKIT
 
 dnl check for NLOPT
 ACX_NLOPT
-  
+
 dnl check for Fortran MPI support
 if test x"$enable_mpi" != x"no"; then
   ACX_MPI([], AC_MSG_ERROR([could not compile an MPI test program]))
@@ -403,13 +402,10 @@ AC_CONFIG_FILES([Makefile
   share/pseudopotentials/quantum-simulation.org/hscv/lda/Makefile
   share/pseudopotentials/quantum-simulation.org/hscv/pbe/Makefile
   share/pseudopotentials/quantum-simulation.org/sg15/Makefile
-  share/pseudopotentials/pseudo-dojo.org/Makefile  
+  share/pseudopotentials/pseudo-dojo.org/Makefile
   share/pseudopotentials/pseudo-dojo.org/nc-sr-04_pbe_standard/Makefile
-  share/pseudopotentials/pseudo-dojo.org/nc-sr-04_pbe_stringent/Makefile
   share/pseudopotentials/pseudo-dojo.org/nc-sr-04_pbesol_standard/Makefile
-  share/pseudopotentials/pseudo-dojo.org/nc-sr-04_pbesol_stringent/Makefile
   share/pseudopotentials/pseudo-dojo.org/nc-sr-04_pw_standard/Makefile
-  share/pseudopotentials/pseudo-dojo.org/nc-sr-04_pw_stringent/Makefile
   share/recipes/Makefile
   share/recipes/da/Makefile
   share/recipes/de/Makefile
@@ -419,14 +415,12 @@ AC_CONFIG_FILES([Makefile
   share/recipes/eu/Makefile
   share/util/Makefile
   share/opencl/Makefile
-  build/Makefile
-  build/octopus.spec
   testsuite/Makefile
   testsuite/performance/Makefile
   testsuite/performance/tests/Makefile
-  testsuite/components/Makefile 
-  testsuite/errors/Makefile 
-  testsuite/finite_systems_1d/Makefile 
+  testsuite/components/Makefile
+  testsuite/errors/Makefile
+  testsuite/finite_systems_1d/Makefile
   testsuite/finite_systems_2d/Makefile
   testsuite/finite_systems_3d/Makefile
   testsuite/functionals/Makefile

@@ -23,6 +23,7 @@ module projector_matrix_oct_m
   use global_oct_m
   use messages_oct_m
   use profiling_oct_m
+  use submesh_oct_m
 
   implicit none
 
@@ -42,6 +43,8 @@ module projector_matrix_oct_m
     FLOAT,   allocatable :: position(:, :)
     integer              :: npoints
     integer              :: nprojs
+    integer              :: nregions
+    integer, allocatable :: regions(:)
     FLOAT,   allocatable :: dmix(:, :)
     CMPLX,   allocatable :: zmix(:, :, :)
     logical              :: is_cmplx = .false.
@@ -50,28 +53,30 @@ module projector_matrix_oct_m
 contains
 
   ! -------------------------------------------------
-  subroutine projector_matrix_allocate(this, npoints, nprojs, has_mix_matrix, is_cmplx)
+  subroutine projector_matrix_allocate(this, nprojs, sphere, has_mix_matrix, is_cmplx)
     type(projector_matrix_t), intent(out) :: this
-    integer,                  intent(in)  :: npoints
     integer,                  intent(in)  :: nprojs
+    type(submesh_t),          intent(in)  :: sphere
     logical,                  intent(in)  :: has_mix_matrix
     logical, optional,        intent(in)  :: is_cmplx
 
     PUSH_SUB(projector_matrix_allocate)
 
-    this%npoints = npoints
+    this%npoints = sphere%np
     this%nprojs = nprojs
+    this%nregions = sphere%num_regions
 
     this%is_cmplx = optional_default(is_cmplx, .false.)
 
-    SAFE_ALLOCATE(this%map(1:npoints))
+    SAFE_ALLOCATE(this%map(1:this%npoints))
+    SAFE_ALLOCATE(this%regions(1:this%nregions+1))
     if (this%is_cmplx) then
-      SAFE_ALLOCATE(this%zprojectors(1:npoints, 1:nprojs))
+      SAFE_ALLOCATE(this%zprojectors(1:this%npoints, 1:nprojs))
     else
-      SAFE_ALLOCATE(this%dprojectors(1:npoints, 1:nprojs))
+      SAFE_ALLOCATE(this%dprojectors(1:this%npoints, 1:nprojs))
     end if
     SAFE_ALLOCATE(this%scal(1:nprojs))
-    SAFE_ALLOCATE(this%position(1:3, 1:npoints))
+    SAFE_ALLOCATE(this%position(1:3, 1:this%npoints))
 
     if (has_mix_matrix) then
       if (this%is_cmplx) then
@@ -92,6 +97,7 @@ contains
     PUSH_SUB(projector_matrix_deallocate)
 
     SAFE_DEALLOCATE_A(this%map)
+    SAFE_DEALLOCATE_A(this%regions)
     SAFE_DEALLOCATE_A(this%dprojectors)
     SAFE_DEALLOCATE_A(this%zprojectors)
     SAFE_DEALLOCATE_A(this%scal)

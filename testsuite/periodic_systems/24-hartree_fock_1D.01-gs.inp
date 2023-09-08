@@ -32,4 +32,3 @@ TheoryLevel = hartree_fock
 AdaptivelyCompressedExchange = yes
 
 UnitsOutput = ev_angstrom
-

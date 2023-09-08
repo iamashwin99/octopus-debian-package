@@ -8,12 +8,12 @@ FromScratch = yes
 bond_length = 2.0744
 
 %Coordinates
-"N" |  -bond_length/2 |  0.0 |  0.0 
-"N" |   bond_length/2 |  0.0 |  0.0 
+"N" |  -bond_length/2 |  0.0 |  0.0
+"N" |   bond_length/2 |  0.0 |  0.0
 %
 
 %Species
-"N" | species_pseudo | lmax | 2 | lloc | 0  
+"N" | species_pseudo | lmax | 2 | lloc | 0
 %
 
 BoxShape = sphere
@@ -25,8 +25,7 @@ XCFunctional = lda_x + lda_c_vwn
 
 LCAODimension = 18
 
-EigenSolver = cg_new
-EigenSolverTolerance = 1e-6
+EigenSolverTolerance = 1e-8
 EigenSolverMaxIter = 20
 
 PoissonSolver = fft

@@ -28,16 +28,16 @@ module current_oct_m
   use derivatives_oct_m
   use exchange_operator_oct_m
   use global_oct_m
-  use ions_oct_m
+  use grid_oct_m
   use hamiltonian_elec_base_oct_m
   use hamiltonian_elec_oct_m
   use lalg_basic_oct_m
   use lda_u_oct_m
   use math_oct_m
+  use magnetic_oct_m
   use mesh_function_oct_m
   use mesh_oct_m
   use messages_oct_m
-  use mpi_oct_m
   use namespace_oct_m
   use parser_oct_m
   use profiling_oct_m
@@ -46,9 +46,6 @@ module current_oct_m
   use space_oct_m
   use states_elec_dim_oct_m
   use states_elec_oct_m
-  use string_oct_m
-  use symmetries_oct_m
-  use symmetrizer_oct_m
   use types_oct_m
   use unit_oct_m
   use unit_system_oct_m
@@ -70,6 +67,7 @@ module current_oct_m
     current_t,                            &
     current_init,                         &
     current_calculate,                    &
+    current_calculate_mag,                &
     current_heat_calculate,               &
     current_calculate_mel
 
@@ -159,11 +157,11 @@ contains
           else
             !$omp parallel do private(c_tmp)
             do ip = 1, der%mesh%np
-              st%current(ip, idir, 1) = st%current(ip, idir, 1) + ww*aimag(conjg(psi(ip, 1))*gpsi(ip, 1))
-              st%current(ip, idir, 2) = st%current(ip, idir, 2) + ww*aimag(conjg(psi(ip, 2))*gpsi(ip, 2))
+              st%current_para(ip, idir, 1) = st%current_para(ip, idir, 1) + ww*aimag(conjg(psi(ip, 1))*gpsi(ip, 1))
+              st%current_para(ip, idir, 2) = st%current_para(ip, idir, 2) + ww*aimag(conjg(psi(ip, 2))*gpsi(ip, 2))
               c_tmp = -M_HALF*M_ZI*(conjg(psi(ip, 2))*gpsi(ip, 1) - psi(ip, 1)*conjg(gpsi(ip, 2)))
-              st%current(ip, idir, 3) = st%current(ip, idir, 3) + ww*TOFLOAT(c_tmp)
-              st%current(ip, idir, 4) = st%current(ip, idir, 4) + ww*aimag(c_tmp)
+              st%current_para(ip, idir, 3) = st%current_para(ip, idir, 3) + ww*TOFLOAT(c_tmp)
+              st%current_para(ip, idir, 4) = st%current_para(ip, idir, 4) + ww*aimag(c_tmp)
             end do
             !$omp end parallel do
           end if
@@ -192,11 +190,11 @@ contains
       call accel_set_kernel_arg(kernel, 1, der%mesh%np)
       call accel_set_kernel_arg(kernel, 2, buff_weight)
       call accel_set_kernel_arg(kernel, 3, psib%ff_device)
-      call accel_set_kernel_arg(kernel, 4, log2(psib%pack_size(1)))
+      call accel_set_kernel_arg(kernel, 4, log2(int(psib%pack_size(1), i4)))
       call accel_set_kernel_arg(kernel, 5, gpsib(1)%ff_device)
       call accel_set_kernel_arg(kernel, 6, gpsib(2)%ff_device)
       call accel_set_kernel_arg(kernel, 7, gpsib(3)%ff_device)
-      call accel_set_kernel_arg(kernel, 8, log2(gpsib(1)%pack_size(1)))
+      call accel_set_kernel_arg(kernel, 8, log2(int(gpsib(1)%pack_size(1), i4)))
       call accel_set_kernel_arg(kernel, 9, buff_current)
 
       wgsize = accel_kernel_workgroup_size(kernel)
@@ -209,11 +207,15 @@ contains
 
       call accel_read_buffer(buff_current, der%mesh%np*3, current_tmp)
 
-      do ip = 1, der%mesh%np
-        do idir = 1, der%dim
+      !$omp parallel private(ip)
+      do idir = 1, der%dim
+        !$omp do
+        do ip = 1, der%mesh%np
           st%current_kpt(ip, idir, ik) = st%current_kpt(ip, idir, ik) + current_tmp(idir, ip)
         end do
+        !$omp end do nowait
       end do
+      !$omp end parallel
 
       SAFE_DEALLOCATE_A(current_tmp)
 
@@ -226,6 +228,7 @@ contains
 
       ASSERT(psib%is_packed() .eqv. gpsib(1)%is_packed())
 
+      !$omp parallel private(ip, ist, ww, idir)
       do ii = 1, psib%nst
         ist = states_elec_block_min(st, ib) + ii - 1
         ww = st%d%kweights(ik)*st%occ(ist, ik)
@@ -233,25 +236,25 @@ contains
 
         if (psib%is_packed()) then
           do idir = 1, der%dim
-            !$omp parallel do
+            !$omp do
             do ip = 1, der%mesh%np
               st%current_kpt(ip, idir, ik) = st%current_kpt(ip, idir, ik) &
                 + ww*aimag(conjg(psib%zff_pack(ii, ip))*gpsib(idir)%zff_pack(ii, ip))
             end do
-            !$omp end parallel do
+            !$omp end do nowait
           end do
         else
           do idir = 1, der%dim
-            !$omp parallel do
+            !$omp do
             do ip = 1, der%mesh%np
               st%current_kpt(ip, idir, ik) = st%current_kpt(ip, idir, ik) &
                 + ww*aimag(conjg(psib%zff(ip, 1, ii))*gpsib(idir)%zff(ip, 1, ii))
             end do
-            !$omp end parallel do
+            !$omp end do nowait
           end do
         end if
-
       end do
+      !$omp end parallel
 
     end if
 
@@ -260,44 +263,170 @@ contains
 
   end subroutine current_batch_accumulate
 
+
   ! ---------------------------------------------------------
-  subroutine current_calculate(this, namespace, der, hm, ions, st, symm)
+  !> Compute total electronic current density.
+  subroutine current_calculate(this, namespace, gr, hm, space, st)
+    type(current_t),          intent(in)    :: this
+    type(namespace_t),        intent(in)    :: namespace
+    type(grid_t),             intent(inout) :: gr
+    type(hamiltonian_elec_t), intent(in)    :: hm
+    type(space_t),            intent(in)    :: space
+    type(states_elec_t),      intent(inout) :: st
+
+    type(profile_t), save :: prof
+
+    call profiling_in(prof, "CURRENT_TOTAL")
+    PUSH_SUB(current_calculate)
+
+    call current_calculate_para(this, namespace, gr, hm, space, st)
+    call current_calculate_dia_non_unif_vec_pot(this, namespace, gr%der, hm, st)
+
+    ! Diamagnetic current from non-uniform vector potential and magnetization
+    ! current not included by default in total current
+    st%current = st%current_para
+
+    call profiling_out(prof)
+    POP_SUB(current_calculate)
+
+  end subroutine current_calculate
+
+  ! ---------------------------------------------------------
+  !> Compute diamagnetic current density from non-uniform vector potential
+  !> (the part coming from the uniform vector potential is already included in the paramagnetic term)
+  subroutine current_calculate_dia_non_unif_vec_pot(this, namespace, der, hm, st)
     type(current_t),          intent(in)    :: this
     type(namespace_t),        intent(in)    :: namespace
     type(derivatives_t),      intent(inout) :: der
     type(hamiltonian_elec_t), intent(in)    :: hm
-    type(ions_t),             intent(in)    :: ions
     type(states_elec_t),      intent(inout) :: st
-    type(symmetries_t),       intent(in)    :: symm
+
+    type(profile_t), save :: prof
+    integer :: ispin, idir, ip
+
+    call profiling_in(prof, "CURRENT_DIA_NON_UNIF_A")
+    PUSH_SUB(current_calculate_dia_non_unif_vec_pot)
+
+    st%current_dia = M_ZERO
+
+    if(allocated(hm%hm_base%vector_potential)) then
+      do ispin = 1, st%d%nspin
+        do idir = 1, der%dim
+          !$omp parallel do
+          do ip = 1, der%mesh%np
+            ! the vector potential is assumed to be devided by c_0 already
+            st%current_dia(ip, idir, ispin) = st%current_dia(ip, idir, ispin) - &
+              st%rho(ip, ispin)*hm%hm_base%vector_potential(idir, ip)
+          end do
+          !$omp end parallel do
+        end do
+      end do
+    end if
+
+    call profiling_out(prof)
+    POP_SUB(current_calculate_dia_non_unif_vec_pot)
+
+  end subroutine current_calculate_dia_non_unif_vec_pot
+
+  ! ---------------------------------------------------------
+  !> Compute magnetization current
+  !> Note: due to the the numerical curl, the magnetization current could deviate from the analytical
+  !> one near the origin (see test for "current_density").
+  subroutine current_calculate_mag(this, namespace, der, hm, st)
+    type(current_t),          intent(in)    :: this
+    type(namespace_t),        intent(in)    :: namespace
+    type(derivatives_t),      intent(inout) :: der
+    type(hamiltonian_elec_t), intent(in)    :: hm
+    type(states_elec_t),      intent(inout) :: st
+
+    type(profile_t), save :: prof
+    integer :: idir, ip
+    FLOAT, allocatable :: magnetization_density(:, :), curl_mag(:, :)
+
+    call profiling_in(prof, "CURRENT_MAG")
+    PUSH_SUB(current_calculate_mag)
+
+    st%current_mag = M_ZERO
+
+    if (st%d%ispin /= UNPOLARIZED) then
+      SAFE_ALLOCATE(magnetization_density(1:der%mesh%np_part, 1:der%dim))
+      SAFE_ALLOCATE(curl_mag(1:der%mesh%np_part, 1:der%dim))
+
+      call magnetic_density(der%mesh, st%d, st%rho, magnetization_density)
+      call dderivatives_curl(der, magnetization_density, curl_mag)
+
+      do idir = 1, der%dim
+        !$omp parallel do
+        do ip = 1, der%mesh%np
+          st%current_mag(ip, idir, 1) = st%current_mag(ip, idir, 1) + M_HALF * curl_mag(ip, idir)
+        end do
+        !$omp end parallel do
+      end do
+
+      SAFE_DEALLOCATE_A(magnetization_density)
+      SAFE_DEALLOCATE_A(curl_mag)
+    end if
+
+    call profiling_out(prof)
+    POP_SUB(current_calculate_mag)
+
+  end subroutine current_calculate_mag
+
+  ! ---------------------------------------------------------
+  !> Compute paramagnetic current density (including full diamagnetic term if method = Hamiltonian
+  !> us used, and including diamagnetic from uniform vector potential otherwise)
+  subroutine current_calculate_para(this, namespace, gr, hm, space, st)
+    type(current_t),          intent(in)    :: this
+    type(namespace_t),        intent(in)    :: namespace
+    type(grid_t),             intent(inout) :: gr
+    type(hamiltonian_elec_t), intent(in)    :: hm
+    type(space_t),            intent(in)    :: space
+    type(states_elec_t),      intent(inout) :: st
 
     integer :: ik, ist, idir, idim, ip, ib, ii, ispin
     CMPLX, allocatable :: gpsi(:, :, :), psi(:, :), hpsi(:, :), rhpsi(:, :), rpsi(:, :), hrpsi(:, :)
-    FLOAT, allocatable :: symmcurrent(:, :)
     type(profile_t), save :: prof
-    type(symmetrizer_t) :: symmetrizer
     type(wfs_elec_t) :: hpsib, rhpsib, rpsib, hrpsib, epsib
     class(wfs_elec_t), allocatable :: commpsib(:)
     FLOAT :: ww
     CMPLX :: c_tmp
 
-    call profiling_in(prof, "CURRENT")
-    PUSH_SUB(current_calculate)
+    call profiling_in(prof, "CURRENT_PARA")
+    PUSH_SUB(current_calculate_para)
 
     ! spin not implemented or tested
-    ASSERT(all(ubound(st%current) == (/der%mesh%np_part, der%dim, st%d%nspin/)))
-    ASSERT(all(ubound(st%current_kpt) == (/der%mesh%np, der%dim, st%d%kpt%end/)))
+    ASSERT(all(ubound(st%current_para) == (/gr%np_part, gr%der%dim, st%d%nspin/)))
+    ASSERT(all(ubound(st%current_kpt) == (/gr%np, gr%der%dim, st%d%kpt%end/)))
     ASSERT(all(lbound(st%current_kpt) == (/1, 1, st%d%kpt%start/)))
 
-    SAFE_ALLOCATE(psi(1:der%mesh%np_part, 1:st%d%dim))
-    SAFE_ALLOCATE(gpsi(1:der%mesh%np, 1:der%dim, 1:st%d%dim))
-    SAFE_ALLOCATE(hpsi(1:der%mesh%np_part, 1:st%d%dim))
-    SAFE_ALLOCATE(rhpsi(1:der%mesh%np_part, 1:st%d%dim))
-    SAFE_ALLOCATE(rpsi(1:der%mesh%np_part, 1:st%d%dim))
-    SAFE_ALLOCATE(hrpsi(1:der%mesh%np_part, 1:st%d%dim))
-    SAFE_ALLOCATE_TYPE_ARRAY(wfs_elec_t, commpsib, (1:der%dim))
+    SAFE_ALLOCATE(psi(1:gr%np_part, 1:st%d%dim))
+    SAFE_ALLOCATE(gpsi(1:gr%np, 1:gr%der%dim, 1:st%d%dim))
+    SAFE_ALLOCATE(hpsi(1:gr%np_part, 1:st%d%dim))
+    SAFE_ALLOCATE(rhpsi(1:gr%np_part, 1:st%d%dim))
+    SAFE_ALLOCATE(rpsi(1:gr%np_part, 1:st%d%dim))
+    SAFE_ALLOCATE(hrpsi(1:gr%np_part, 1:st%d%dim))
+    SAFE_ALLOCATE_TYPE_ARRAY(wfs_elec_t, commpsib, (1:gr%der%dim))
 
-    st%current = M_ZERO
-    st%current_kpt = M_ZERO
+    !$omp parallel private(idir, ip, ispin)
+    do ik = st%d%kpt%start, st%d%kpt%end
+      do idir = 1, gr%der%dim
+        !$omp do
+        do ip = 1, gr%np
+          st%current_kpt(ip, idir, ik) = M_ZERO
+        end do
+        !$omp end do nowait
+      end do
+    end do
+    do ispin = 1, st%d%nspin
+      do idir = 1, gr%der%dim
+        !$omp do
+        do ip = 1, gr%np
+          st%current_para(ip, idir, ispin) = M_ZERO
+        end do
+        !$omp end do nowait
+      end do
+    end do
+    !$omp end parallel
 
     select case (this%method)
 
@@ -314,15 +443,15 @@ contains
           call st%group%psib(ib, ik)%copy_to(rpsib)
           call st%group%psib(ib, ik)%copy_to(hrpsib)
 
-          call boundaries_set(der%boundaries, der%mesh, st%group%psib(ib, ik))
-          call zhamiltonian_elec_apply_batch(hm, namespace, der%mesh, st%group%psib(ib, ik), hpsib, set_bc = .false.)
+          call boundaries_set(gr%der%boundaries, gr, st%group%psib(ib, ik))
+          call zhamiltonian_elec_apply_batch(hm, namespace, gr, st%group%psib(ib, ik), hpsib, set_bc = .false.)
 
-          do idir = 1, der%dim
+          do idir = 1, gr%der%dim
 
-            call batch_mul(der%mesh%np, der%mesh%x(:, idir), hpsib, rhpsib)
-            call batch_mul(der%mesh%np_part, der%mesh%x(:, idir), st%group%psib(ib, ik), rpsib)
+            call batch_mul(gr%np, gr%x(:, idir), hpsib, rhpsib)
+            call batch_mul(gr%np_part, gr%x(:, idir), st%group%psib(ib, ik), rpsib)
 
-            call zhamiltonian_elec_apply_batch(hm, namespace, der%mesh, rpsib, hrpsib, set_bc = .false.)
+            call zhamiltonian_elec_apply_batch(hm, namespace, gr, rpsib, hrpsib, set_bc = .false.)
 
             do ist = states_elec_block_min(st, ib), states_elec_block_max(st, ib)
               ww = st%d%kweights(ik)*st%occ(ist, ik)
@@ -330,29 +459,29 @@ contains
 
               do idim = 1, st%d%dim
                 ii = st%group%psib(ib, ik)%inv_index((/ist, idim/))
-                call batch_get_state(st%group%psib(ib, ik), ii, der%mesh%np, psi(:, idim))
-                call batch_get_state(hrpsib, ii, der%mesh%np, hrpsi(:, idim))
-                call batch_get_state(rhpsib, ii, der%mesh%np, rhpsi(:, idim))
+                call batch_get_state(st%group%psib(ib, ik), ii, gr%np, psi(:, idim))
+                call batch_get_state(hrpsib, ii, gr%np, hrpsi(:, idim))
+                call batch_get_state(rhpsib, ii, gr%np, rhpsi(:, idim))
               end do
 
               if (st%d%ispin /= SPINORS) then
                 !$omp parallel do
-                do ip = 1, der%mesh%np
+                do ip = 1, gr%np
                   st%current_kpt(ip, idir, ik) = st%current_kpt(ip, idir, ik) &
                     - ww*aimag(conjg(psi(ip, 1))*hrpsi(ip, 1) - conjg(psi(ip, 1))*rhpsi(ip, 1))
                 end do
                 !$omp end parallel do
               else
                 !$omp parallel do  private(c_tmp)
-                do ip = 1, der%mesh%np
-                  st%current(ip, idir, 1) = st%current(ip, idir, 1) + &
+                do ip = 1, gr%np
+                  st%current_para(ip, idir, 1) = st%current_para(ip, idir, 1) + &
                     ww*aimag(conjg(psi(ip, 1))*hrpsi(ip, 1) - conjg(psi(ip, 1))*rhpsi(ip, 1))
-                  st%current(ip, idir, 2) = st%current(ip, idir, 2) + &
+                  st%current_para(ip, idir, 2) = st%current_para(ip, idir, 2) + &
                     ww*aimag(conjg(psi(ip, 2))*hrpsi(ip, 2) - conjg(psi(ip, 2))*rhpsi(ip, 2))
                   c_tmp = -M_HALF*M_ZI*(conjg(psi(ip, 2))*hrpsi(ip, 1) - conjg(psi(ip, 2))*rhpsi(ip, 1) &
                     -psi(ip, 1)*conjg(hrpsi(ip, 2)) - psi(ip, 1)*conjg(rhpsi(ip, 2)))
-                  st%current(ip, idir, 3) = st%current(ip, idir, 3) + ww*TOFLOAT(c_tmp)
-                  st%current(ip, idir, 4) = st%current(ip, idir, 4) + ww*aimag(c_tmp)
+                  st%current_para(ip, idir, 3) = st%current_para(ip, idir, 3) + ww*TOFLOAT(c_tmp)
+                  st%current_para(ip, idir, 4) = st%current_para(ip, idir, 4) + ww*aimag(c_tmp)
                 end do
                 !$omp end parallel do
               end if
@@ -374,7 +503,7 @@ contains
     case (CURRENT_GRADIENT, CURRENT_GRADIENT_CORR)
 
       if (this%method == CURRENT_GRADIENT_CORR .and. .not. family_is_mgga_with_exc(hm%xc) &
-        .and. hm%lda_u_level == DFT_U_NONE .and. hm%theory_level /= HARTREE_FOCK &
+        .and. hm%theory_level /= HARTREE_FOCK &
         .and. hm%theory_level /= GENERALIZED_KOHN_SHAM_DFT &
         .and. hm%theory_level /= RDMFT) then
 
@@ -386,28 +515,29 @@ contains
 
             call st%group%psib(ib, ik)%do_pack(copy = .true.)
             call st%group%psib(ib, ik)%copy_to(epsib)
-            call boundaries_set(der%boundaries, der%mesh, st%group%psib(ib, ik))
+            call boundaries_set(gr%der%boundaries, gr, st%group%psib(ib, ik))
 
             if (allocated(hm%hm_base%phase)) then
-              call hamiltonian_elec_base_phase(hm%hm_base, der%mesh, der%mesh%np_part, &
+              call hamiltonian_elec_base_phase(hm%hm_base, gr, gr%np_part, &
                 conjugate = .false., psib = epsib, src = st%group%psib(ib, ik))
             else
-              call st%group%psib(ib, ik)%copy_data_to(der%mesh%np_part, epsib)
+              call st%group%psib(ib, ik)%copy_data_to(gr%np_part, epsib)
             end if
 
             ! this now takes non-orthogonal axis into account
-            do idir = 1, der%dim
+            do idir = 1, gr%der%dim
               call epsib%copy_to(commpsib(idir))
             end do
-            call zderivatives_batch_grad(der, epsib, commpsib, set_bc=.false.)
+            call zderivatives_batch_grad(gr%der, epsib, commpsib, set_bc=.false.)
 
-            call zhamiltonian_elec_base_nlocal_position_commutator(hm%hm_base, der%mesh, st%d, &
-              der%boundaries, epsib, commpsib)
+            call zhamiltonian_elec_base_nlocal_position_commutator(hm%hm_base, gr, st%d, &
+              gr%der%boundaries%spiral, epsib, commpsib)
 
+            call zlda_u_commute_r(hm%lda_u, gr, space, st%d, namespace, epsib, commpsib)
 
-            call current_batch_accumulate(st, der, ik, ib, epsib, commpsib)
+            call current_batch_accumulate(st, gr%der, ik, ib, epsib, commpsib)
 
-            do idir = 1, der%dim
+            do idir = 1, gr%der%dim
               call commpsib(idir)%end()
             end do
 
@@ -428,18 +558,18 @@ contains
             ww = st%d%kweights(ik)*st%occ(ist, ik)
             if (abs(ww) <= M_EPSILON) cycle
 
-            call states_elec_get_state(st, der%mesh, ist, ik, psi)
+            call states_elec_get_state(st, gr, ist, ik, psi)
 
             do idim = 1, st%d%dim
-              call boundaries_set(der%boundaries, der%mesh, psi(:, idim))
+              call boundaries_set(gr%der%boundaries, gr, psi(:, idim))
             end do
 
             if (allocated(hm%hm_base%phase)) then
-              call states_elec_set_phase(st%d, psi, hm%hm_base%phase(1:der%mesh%np_part, ik), der%mesh%np_part, .false.)
+              call states_elec_set_phase(st%d, psi, hm%hm_base%phase(1:gr%np_part, ik), gr%np_part, .false.)
             end if
 
             do idim = 1, st%d%dim
-              call zderivatives_grad(der, psi(:, idim), gpsi(:, :, idim), set_bc = .false.)
+              call zderivatives_grad(gr%der, psi(:, idim), gpsi(:, :, idim), set_bc = .false.)
             end do
 
             if (this%method == CURRENT_GRADIENT_CORR) then
@@ -447,9 +577,9 @@ contains
               !This must be done first, as this is like a position-dependent mass
               if (family_is_mgga_with_exc(hm%xc)) then
                 do idim = 1, st%d%dim
-                  do idir = 1, der%dim
+                  do idir = 1, gr%der%dim
                     !$omp parallel do
-                    do ip = 1, der%mesh%np
+                    do ip = 1, gr%np
                       gpsi(ip, idir, idim) = (M_ONE+M_TWO*hm%vtau(ip,ispin))*gpsi(ip, idir, idim)
                     end do
                     !$omp end parallel do
@@ -458,41 +588,40 @@ contains
               end if
 
               !A nonlocal contribution from the pseudopotential must be included
-              call zprojector_commute_r_allatoms_alldir(hm%ep%proj, ions, der%mesh, st%d%dim, &
-                der%boundaries, ik, psi, gpsi)
+              call zprojector_commute_r_allatoms_alldir(hm%ep%proj, hm%ions, gr, st%d%dim, &
+                gr%der%boundaries, ik, psi, gpsi)
               !A nonlocal contribution from the scissor must be included
               if (hm%scissor%apply) then
-                call scissor_commute_r(hm%scissor, der%mesh, ik, psi, gpsi)
+                call scissor_commute_r(hm%scissor, gr, ik, psi, gpsi)
               end if
 
-              if (hm%lda_u_level /= DFT_U_NONE) then
-                call zlda_u_commute_r(hm%lda_u, der%mesh, st%d, namespace, ik, psi, gpsi, allocated(hm%hm_base%phase))
-              end if
+              call zlda_u_commute_r_single(hm%lda_u, gr, space, st%d, namespace, ist, ik, &
+                psi, gpsi, allocated(hm%hm_base%phase))
 
-              call zexchange_operator_commute_r(hm%exxop, namespace, der%mesh, st%d, ik, psi, gpsi)
+              call zexchange_operator_commute_r(hm%exxop, namespace, gr, st%d, ik, psi, gpsi)
 
             end if
 
             if (st%d%ispin /= SPINORS) then
-              do idir = 1, der%dim
+              do idir = 1, gr%der%dim
                 !$omp parallel do
-                do ip = 1, der%mesh%np
+                do ip = 1, gr%np
                   st%current_kpt(ip, idir, ik) = st%current_kpt(ip, idir, ik) + &
                     ww*aimag(conjg(psi(ip, 1))*gpsi(ip, idir, 1))
                 end do
                 !$omp end parallel do
               end do
             else
-              do idir = 1, der%dim
+              do idir = 1, gr%der%dim
                 !$omp parallel do  private(c_tmp)
-                do ip = 1, der%mesh%np
-                  st%current(ip, idir, 1) = st%current(ip, idir, 1) + &
+                do ip = 1, gr%np
+                  st%current_para(ip, idir, 1) = st%current_para(ip, idir, 1) + &
                     ww*aimag(conjg(psi(ip, 1))*gpsi(ip, idir, 1))
-                  st%current(ip, idir, 2) = st%current(ip, idir, 2) + &
+                  st%current_para(ip, idir, 2) = st%current_para(ip, idir, 2) + &
                     ww*aimag(conjg(psi(ip, 2))*gpsi(ip, idir, 2))
                   c_tmp = -M_HALF*M_ZI*(conjg(psi(ip, 2))*gpsi(ip, idir, 1) - psi(ip, 1)*conjg(gpsi(ip, idir, 2)))
-                  st%current(ip, idir, 3) = st%current(ip, idir, 3) + ww*TOFLOAT(c_tmp)
-                  st%current(ip, idir, 4) = st%current(ip, idir, 4) + ww*aimag(c_tmp)
+                  st%current_para(ip, idir, 3) = st%current_para(ip, idir, 3) + ww*TOFLOAT(c_tmp)
+                  st%current_para(ip, idir, 4) = st%current_para(ip, idir, 4) + ww*aimag(c_tmp)
                 end do
                 !$omp end parallel do
               end do
@@ -513,24 +642,18 @@ contains
       !We sum the current over k-points
       do ik = st%d%kpt%start, st%d%kpt%end
         ispin = st%d%get_spin_index(ik)
-        call lalg_axpy(der%mesh%np, der%dim, M_ONE, st%current_kpt(:, :, ik), st%current(:, :, ispin))
+        call lalg_axpy(gr%np, gr%der%dim, M_ONE, st%current_kpt(:, :, ik), st%current_para(:, :, ispin))
       end do
     end if
 
     if (st%parallel_in_states .or. st%d%kpt%parallel) then
-      call comm_allreduce(st%st_kpt_mpi_grp, st%current, dim = (/der%mesh%np, der%dim, st%d%nspin/))
+      call comm_allreduce(st%st_kpt_mpi_grp, st%current_para, dim = (/gr%np, gr%der%dim, st%d%nspin/))
     end if
 
     if (st%symmetrize_density) then
-      SAFE_ALLOCATE(symmcurrent(1:der%mesh%np, 1:der%dim))
-      call symmetrizer_init(symmetrizer, der%mesh, symm)
       do ispin = 1, st%d%nspin
-        call dsymmetrizer_apply(symmetrizer, der%mesh, field_vector = st%current(:, :, ispin), &
-          symmfield_vector = symmcurrent, suppress_warning = .true.)
-        st%current(1:der%mesh%np, 1:der%dim, ispin) = symmcurrent(1:der%mesh%np, 1:der%dim)
+        call dgrid_symmetrize_vector_field(gr, st%current_para(:, :, ispin), suppress_warning = .true.)
       end do
-      call symmetrizer_end(symmetrizer)
-      SAFE_DEALLOCATE_A(symmcurrent)
     end if
 
     SAFE_DEALLOCATE_A(gpsi)
@@ -542,9 +665,9 @@ contains
     SAFE_DEALLOCATE_A(commpsib)
 
     call profiling_out(prof)
-    POP_SUB(current_calculate)
+    POP_SUB(current_calculate_para)
 
-  end subroutine current_calculate
+  end subroutine current_calculate_para
 
 
   ! ---------------------------------------------------------
@@ -553,14 +676,13 @@ contains
   ! This is used only in the floquet_observables utility and
   ! is highly experimental
 
-  subroutine current_calculate_mel(der, hm, ions, psi_i, psi_j, ik,  cmel)
-    type(derivatives_t),  intent(inout) :: der
-    type(hamiltonian_elec_t),  intent(in)    :: hm
-    type(ions_t),         intent(in)    :: ions
-    CMPLX,                intent(in)    :: psi_i(:,:)
-    CMPLX,                intent(in)    :: psi_j(:,:)
-    integer,              intent(in)    :: ik
-    CMPLX,                intent(out)   :: cmel(:,:) ! the current vector cmel(1:der%dim, 1:st%d%nspin)
+  subroutine current_calculate_mel(der, hm, psi_i, psi_j, ik,  cmel)
+    type(derivatives_t),  intent(inout)    :: der
+    type(hamiltonian_elec_t),  intent(in)  :: hm
+    CMPLX,                intent(in)       :: psi_i(:,:)
+    CMPLX,                intent(in)       :: psi_j(:,:)
+    integer,              intent(in)       :: ik
+    CMPLX,                intent(out)      :: cmel(:,:) ! the current vector cmel(1:der%dim, 1:st%d%nspin)
 
     integer ::  idir, idim, ip, ispin
     CMPLX, allocatable :: gpsi_j(:, :, :), ppsi_j(:,:),  gpsi_i(:, :, :), ppsi_i(:,:)
@@ -618,9 +740,9 @@ contains
       end do
 
       !A nonlocal contribution from the pseudopotential must be included
-      call zprojector_commute_r_allatoms_alldir(hm%ep%proj, ions, der%mesh, hm%d%dim, &
+      call zprojector_commute_r_allatoms_alldir(hm%ep%proj, hm%ions, der%mesh, hm%d%dim, &
         der%boundaries, ik, ppsi_i, gpsi_i)
-      call zprojector_commute_r_allatoms_alldir(hm%ep%proj, ions, der%mesh, hm%d%dim, &
+      call zprojector_commute_r_allatoms_alldir(hm%ep%proj, hm%ions, der%mesh, hm%d%dim, &
         der%boundaries, ik, ppsi_j, gpsi_j)
       !A nonlocal contribution from the scissor must be included
       if (hm%scissor%apply) then

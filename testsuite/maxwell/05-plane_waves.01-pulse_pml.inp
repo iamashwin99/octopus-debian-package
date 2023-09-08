@@ -4,8 +4,6 @@
  RestartWrite = no
  ExperimentalFeatures = yes
  FromScratch = yes
- DisableAccel = yes
- FromScratch = yes
 
 %Systems
   'Maxwell' | maxwell
@@ -53,8 +51,8 @@ MaxwellABPMLReflectionError    = 1e-16
 
  %MaxwellOutput
   electric_field
-  magnetic_field 
-  maxwell_energy_density 
+  magnetic_field
+  maxwell_energy_density
   trans_electric_field
  %
 
@@ -64,7 +62,7 @@ MaxwellABPMLReflectionError    = 1e-16
 
 # ----- Time step variables -----------------------------------------------------------------------
 
- TDSystemPropagator = exp_mid
+ TDSystemPropagator = prop_expmid
  TDTimeStep                        = 1/(4*c)
  TDPropagationTime                 = 20*TDTimeStep
 

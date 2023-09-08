@@ -1,4 +1,4 @@
-!! Copyright (C) 2020 Nicolas Tancogne-Dejean, Sebastian Ohlmann, Heiko Appel
+!! Copyright (C) 2023 Sebastian Ohlmann
 !!
 !! This program is free software; you can redistribute it and/or modify
 !! it under the terms of the GNU General Public License as published by
@@ -47,68 +47,39 @@ module propagator_exp_mid_oct_m
   character(len=ALGO_LABEL_LEN), public, parameter :: &
     EXPMID_START        = 'EXPMID_START',             &
     EXPMID_FINISH       = 'EXPMID_FINISH',            &
-    EXPMID_PREDICT_DT_2 = 'EXPMID_PREDICT_DT_2',      &
-    EXPMID_PREDICT_DT   = 'EXPMID_PREDICT_DT',        &
-    EXPMID_CORRECT_DT_2 = 'EXPMID_CORRECT_DT_2',      &
-    UPDATE_HAMILTONIAN  = 'UPDATE_HAMILTONIAN'
+    EXPMID_EXTRAPOLATE  = 'EXPMID_EXTRAPOLATE',      &
+    EXPMID_PROPAGATE    = 'EXPMID_PROPAGATE'
 
   ! Specific exponential mid-point propagation operations
   type(algorithmic_operation_t), public, parameter :: &
-    OP_EXPMID_START        = algorithmic_operation_t(EXPMID_START,        'Starting exponential mid-point propagation'),  &
-    OP_EXPMID_FINISH       = algorithmic_operation_t(EXPMID_FINISH,       'Finishing exponential mid-point propagation'), &
-    OP_EXPMID_PREDICT_DT_2 = algorithmic_operation_t(EXPMID_PREDICT_DT_2, 'Prediction step - Predicting state at dt/2 '), &
-    OP_EXPMID_PREDICT_DT   = algorithmic_operation_t(EXPMID_PREDICT_DT,   'Prediction step - Predicting state at dt'),    &
-    OP_EXPMID_CORRECT_DT_2 = algorithmic_operation_t(EXPMID_CORRECT_DT_2, 'Correction step - Correcting state at dt/2'),  &
-    OP_UPDATE_HAMILTONIAN  = algorithmic_operation_t(UPDATE_HAMILTONIAN,  'Updating Hamiltonian')
+    OP_EXPMID_START        = algorithmic_operation_t(EXPMID_START,        'Starting exponential midpoint'),  &
+    OP_EXPMID_FINISH       = algorithmic_operation_t(EXPMID_FINISH,       'Finishing exponential midpoint'), &
+    OP_EXPMID_EXTRAPOLATE  = algorithmic_operation_t(EXPMID_EXTRAPOLATE,  'Extrapolate to dt/2 for exponential midpoint'), &
+    OP_EXPMID_PROPAGATE    = algorithmic_operation_t(EXPMID_PROPAGATE,    'Propagation step for exponential midpoint')
   !# doc_end
 
 contains
 
   ! ---------------------------------------------------------
-  function propagator_exp_mid_constructor(dt, predictor_corrector) result(this)
-    FLOAT,                     intent(in) :: dt
-    logical,                   intent(in) :: predictor_corrector
+  function propagator_exp_mid_constructor(dt) result(this)
+    FLOAT,                  intent(in) :: dt
     type(propagator_exp_mid_t), pointer   :: this
 
     PUSH_SUB(propagator_exp_mid_constructor)
 
     SAFE_ALLOCATE(this)
 
-    this%predictor_corrector = predictor_corrector
+    this%predictor_corrector = .false.
     this%start_step = OP_EXPMID_START
     this%final_step = OP_EXPMID_FINISH
 
-    if (predictor_corrector) then
+    call this%add_operation(OP_EXPMID_EXTRAPOLATE)
+    call this%add_operation(OP_EXPMID_PROPAGATE)
+    call this%add_operation(OP_UPDATE_INTERACTIONS)
+    call this%add_operation(OP_STEP_DONE)
+    call this%add_operation(OP_REWIND_ALGORITHM)
 
-      call this%add_operation(OP_STORE_CURRENT_STATUS)
-      call this%add_operation(OP_EXPMID_PREDICT_DT_2)  ! predict: psi(t+dt/2) = 0.5*(U_H(dt) psi(t) + psi(t)) or via extrapolation
-      call this%add_operation(OP_START_SCF_LOOP)
-      call this%add_operation(OP_UPDATE_INTERACTIONS)
-      call this%add_operation(OP_UPDATE_HAMILTONIAN)   ! update: H(t+dt/2) from psi(t+dt/2)
-      call this%add_operation(OP_EXPMID_PREDICT_DT)    ! predict: psi(t+dt) = U_H(t+dt/2) psi(t)
-      call this%add_operation(OP_EXPMID_CORRECT_DT_2)  ! correct: psi(t+dt/2) = 0.5*(psi(t+dt) + psi(t))
-      call this%add_operation(OP_END_SCF_LOOP)
-      call this%add_operation(OP_FINISHED)
-
-      this%max_scf_count = 10
-      this%scf_tol = CNST(1e-6) ! At the moment arbitrary. This is system specific and should be adapted.
-
-    else
-
-      call this%add_operation(OP_STORE_CURRENT_STATUS)
-      call this%add_operation(OP_EXPMID_PREDICT_DT_2)  ! predict: psi(t+dt/2) = 0.5*(U_H(dt) psi(t) + psi(t)) or via extrapolation
-      call this%add_operation(OP_UPDATE_INTERACTIONS)
-      call this%add_operation(OP_UPDATE_HAMILTONIAN)   ! update: H(t+dt/2) from psi(t+dt/2)
-      call this%add_operation(OP_EXPMID_PREDICT_DT)    ! predict: psi(t+dt) = U_H(t+dt/2) psi(t)
-      call this%add_operation(OP_UPDATE_INTERACTIONS)
-      call this%add_operation(OP_UPDATE_HAMILTONIAN)   ! update: H(t+dt) from psi(t+dt)
-      call this%add_operation(OP_FINISHED)
-
-    end if
-
-    ! Exponential midpoint has only one algorithmic step
-    this%algo_steps = 2
-
+    this%algo_steps = 1
     this%dt = dt
 
     POP_SUB(propagator_exp_mid_constructor)

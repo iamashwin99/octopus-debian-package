@@ -23,7 +23,7 @@ ChargedParticle.ParticleCharge = 1
  0 | 0 | 0.01
 %
 
-ChargedParticle.TDSystemPropagator = exp_mid
+ChargedParticle.TDSystemPropagator = verlet
 
 
 # ----- External potential ---------------------------------------------------

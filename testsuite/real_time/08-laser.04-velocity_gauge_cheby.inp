@@ -7,8 +7,8 @@ FromScratch = yes
 bondlength = 1.7/0.529177
 
 %Coordinates
-"Na" | 0.0 | 0.0 |  bondlength 
-"Na" | 0.0 | 0.0 | -bondlength 
+"Na" | 0.0 | 0.0 |  bondlength
+"Na" | 0.0 | 0.0 | -bondlength
 %
 
 BoxShape = sphere
@@ -30,24 +30,21 @@ p_c = 137.036
 vector_amplitude = -P_c*electric_amplitude/omega
 
 %TDExternalFields
-vector_potential   | 0 | 0 | 1 | omega | "envelope1" 
+vector_potential   | 0 | 0 | 1 | omega | "envelope1"
 vector_potential   | 0 | 0 | 1 | 0     | "envelope2"
 %
 
 %TDFunctions
-"envelope1" | tdf_cw | vector_amplitude 
-"envelope2" | tdf_cw | -vector_amplitude 
+"envelope1" | tdf_cw | vector_amplitude
+"envelope2" | tdf_cw | -vector_amplitude
 %
 
 AbsorbingBoundaries = no
 
-%TDOutput 
- laser 
- energy 
+%TDOutput
+ laser
+ energy
  multipoles
 %
 
 FilterPotentials = filter_none
-
-
-

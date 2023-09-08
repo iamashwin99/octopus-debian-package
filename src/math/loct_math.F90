@@ -183,6 +183,14 @@ module loct_math_oct_m
       integer, intent(in)  :: l, m
       real(r8), intent(out) :: ylm
     end subroutine oct_ylm
+    subroutine oct_ylm_vector(n, xx, rr, l, m, ylm)
+      use kind_oct_m
+      implicit none
+      integer, intent(in)  :: n
+      real(r8), intent(in) :: xx, rr
+      integer, intent(in)  :: l, m
+      real(r8), intent(out) :: ylm
+    end subroutine oct_ylm_vector
   end interface loct_ylm
 
   ! ---------------------------------------------------------

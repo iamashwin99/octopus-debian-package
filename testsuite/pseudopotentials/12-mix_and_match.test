@@ -6,99 +6,189 @@ TestGroups : short-run, pseudopotentials
 Enabled    : Yes
 
 Input: 12-mix_and_match.01-mgo.inp
-Precision: 0.00011
 match ; SCF convergence    ;     GREPCOUNT(static/info, 'SCF converged') ; 1
-match;  Total energy       ;	 GREPFIELD(static/info, 'Total       =', 3) ;	-75.27909809
-match;  Ion-ion energy     ;	 GREPFIELD(static/info, 'Ion-ion     =', 3) ;	17.31223147
-match;  Eigenvalues sum    ;	 GREPFIELD(static/info, 'Eigenvalues =', 3) ;	-19.13984972
-match;  Hartree energy     ;	 GREPFIELD(static/info, 'Hartree     =', 3) ;	76.89237087
-match;  Int[n*v_xc]        ;	 GREPFIELD(static/info, 'Int\[n\*v_xc\] =', 3) ;	-14.40894290
-match;  Exchange energy    ;	 GREPFIELD(static/info, 'Exchange    =', 3) ;	-9.94940641
-match;  Correlation energy ;	 GREPFIELD(static/info, 'Correlation =', 3) ;	-1.01858366
-match;  Kinetic energy     ;	 GREPFIELD(static/info, 'Kinetic     =', 3) ;	43.84655523
-match ; External energy    ;     GREPFIELD(static/info, 'External    =', 3) ;   -202.362156185
-match;  Eigenvalue 1       ;	 GREPFIELD(static/info, '  1   --', 3) ;	-2.968350
-match;  Eigenvalue 2       ;	 GREPFIELD(static/info, '  2   --', 3) ;	-1.789029
-match;  Eigenvalue 3       ;	 GREPFIELD(static/info, '  3   --', 3) ;	-1.789029
-match;  Eigenvalue 4       ;	 GREPFIELD(static/info, '  4   --', 3) ;	-1.786748
-match;  Eigenvalue 5       ;	 GREPFIELD(static/info, '  5   --', 3) ;	-0.703528
-match;  Eigenvalue 6       ;	 GREPFIELD(static/info, '  6   --', 3) ;	-0.217238
-match;  Eigenvalue 7       ;	 GREPFIELD(static/info, '  7   --', 3) ;	-0.158001
-match;  Eigenvalue 8       ;	 GREPFIELD(static/info, '  8   --', 3) ;	-0.158001
-match;  Force              ;	 GREPFIELD(static/info, 'Forces on the ions', 3, 2) ;	-0.000000
+Precision: 3.76e-07
+match ;   Total energy        ; GREPFIELD(static/info, 'Total       =', 3) ; -75.28270281
+Precision: 8.66e-08
+match ;   Ion-ion energy      ; GREPFIELD(static/info, 'Ion-ion     =', 3) ; 17.31223147
+Precision: 9.57e-07
+match ;   Eigenvalues sum     ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -19.1419363
+Precision: 3.84e-08
+match ;   Hartree energy      ; GREPFIELD(static/info, 'Hartree     =', 3) ; 76.8940224
+Precision: 7.20e-08
+match ;   Int[n*v_xc]         ; GREPFIELD(static/info, 'Int\[n\*v_xc\] =', 3) ; -14.40924509
+Precision: 4.97e-07
+match ;   Exchange energy     ; GREPFIELD(static/info, 'Exchange    =', 3) ; -9.94961631
+Precision: 5.09e-08
+match ;   Correlation energy  ; GREPFIELD(static/info, 'Correlation =', 3) ; -1.01860437
+Precision: 2.19e-07
+match ;   Kinetic energy      ; GREPFIELD(static/info, 'Kinetic     =', 3) ; 43.84751397
+Precision: 1.01e-07
+match ;  External energy     ; GREPFIELD(static/info, 'External    =', 3) ; -202.36824937
+Precision: 1.48e-05
+match ;   Eigenvalue 1        ; GREPFIELD(static/info, '  1   --', 3) ; -2.968533
+Precision: 8.95e-06
+match ;   Eigenvalue 2        ; GREPFIELD(static/info, '  2   --', 3) ; -1.7892050000000002
+Precision: 8.95e-06
+match ;   Eigenvalue 3        ; GREPFIELD(static/info, '  3   --', 3) ; -1.7892050000000002
+Precision: 8.93e-06
+match ;   Eigenvalue 4        ; GREPFIELD(static/info, '  4   --', 3) ; -1.7869650000000001
+Precision: 3.52e-05
+match ;   Eigenvalue 5        ; GREPFIELD(static/info, '  5   --', 3) ; -0.703133
+Precision: 1.09e-05
+match ;   Eigenvalue 6        ; GREPFIELD(static/info, '  6   --', 3) ; -0.217404
+Precision: 7.91e-06
+match ;   Eigenvalue 7        ; GREPFIELD(static/info, '  7   --', 3) ; -0.158262
+Precision: 7.91e-06
+match ;   Eigenvalue 8        ; GREPFIELD(static/info, '  8   --', 3) ; -0.158262
+Precision: 5.75e-14
+match ;   Force               ; GREPFIELD(static/info, 'Forces on the ions', 3, 2) ; 1.91645864e-14
 
-match;  Mg mass               ;	 GREPFIELD(debug/geometry/Mg/info, 'mass ', 3)   ;	44303.48
-match;  Mg z                  ;	 GREPFIELD(debug/geometry/Mg/pseudo-info, 'z ', 3)   ;	12.000
-match;  Mg z valence          ;	 GREPFIELD(debug/geometry/Mg/pseudo-info, 'zval', 3) ;	10.000
-match;  Mg l max              ;	 GREPFIELD(debug/geometry/Mg/pseudo-info, 'lmax', 3) ;	1
-match;  Mg l loc              ;	 GREPFIELD(debug/geometry/Mg/pseudo-info, 'lloc', 3) ;	-1
-match;  Mg kbc                ;	 GREPFIELD(debug/geometry/Mg/pseudo-info, 'kbc', 3)  ;	2
-match;  Mg rcmax              ;	 GREPFIELD(debug/geometry/Mg/pseudo-info, 'rcmax', 3)  ;	2.33000
-match;  Mg potential r       2;	 LINEFIELD(debug/geometry/Mg/local, 2, 1) ;	1.00000000E-02
-match;  Mg potential value   2;	 LINEFIELD(debug/geometry/Mg/local, 2, 2) ;	-7.13028255E+00
-match;  Mg potential r      50;	 LINEFIELD(debug/geometry/Mg/local, 50, 1) ;	4.90000000E-01
-match;  Mg potential value  50;	 LINEFIELD(debug/geometry/Mg/local, 50, 2) ;	-4.56558885E+00
-match;  Mg potential r     100;	 LINEFIELD(debug/geometry/Mg/local, 100, 1) ;	9.90000000E-01
-match;  Mg potential value 100;	 LINEFIELD(debug/geometry/Mg/local, 100, 2) ;	-1.09288787E+00
-match;  Mg potential r     200;	 LINEFIELD(debug/geometry/Mg/local, 200, 1) ;	1.99000000E+00
-match;  Mg potential value 200;	 LINEFIELD(debug/geometry/Mg/local, 200, 2) ;	-8.68874071E-03
-match;  Mg potential r     300;	 LINEFIELD(debug/geometry/Mg/local, 300, 1) ;	2.99000000E+00
-match;  Mg potential value 300;	 LINEFIELD(debug/geometry/Mg/local, 300, 2) ;	-7.12217109E-05
-match;  Mg potential r     400;	 LINEFIELD(debug/geometry/Mg/local, 400, 1) ;	3.99000000E+00
-match;  Mg potential value 400;	 LINEFIELD(debug/geometry/Mg/local, 400, 2) ;	-2.70750081E-07
-match;  Mg projector r       2;	 LINEFIELD(debug/geometry/Mg/nonlocal, 2, 1) ;	1.00000000E-02
-match;  Mg projector value   2;	 LINEFIELD(debug/geometry/Mg/nonlocal, 2, 2) ;	6.46519720E+00
-match;  Mg projector value   2;	 LINEFIELD(debug/geometry/Mg/nonlocal, 2, 3) ;	1.63668977E-01
-match;  Mg projector r      50;	 LINEFIELD(debug/geometry/Mg/nonlocal, 50, 1) ;	4.90000000E-01
-match;  Mg projector value  50;	 LINEFIELD(debug/geometry/Mg/nonlocal, 50, 2) ;	4.49117359E-01
-match;  Mg projector value  50;	 LINEFIELD(debug/geometry/Mg/nonlocal, 50, 3) ;	2.82913758E+00
-match;  Mg projector r     100;	 LINEFIELD(debug/geometry/Mg/nonlocal, 100, 1) ;	9.90000000E-01
-match;  Mg projector value 100;	 LINEFIELD(debug/geometry/Mg/nonlocal, 100, 2) ;	-4.28992635E-01
-match;  Mg projector value 100;	 LINEFIELD(debug/geometry/Mg/nonlocal, 100, 3) ;	-4.27358917E-01
-match;  Mg projector r     200;	 LINEFIELD(debug/geometry/Mg/nonlocal, 200, 1) ;	1.99000000E+00
-match;  Mg projector value 200;	 LINEFIELD(debug/geometry/Mg/nonlocal, 200, 2) ;	-3.69893245E-03
-match;  Mg projector value 200;	 LINEFIELD(debug/geometry/Mg/nonlocal, 200, 3) ;	-4.30512144E-03
-match;  Mg projector r     300;	 LINEFIELD(debug/geometry/Mg/nonlocal, 300, 1) ;	2.99000000E+00
-match;  Mg projector value 300;	 LINEFIELD(debug/geometry/Mg/nonlocal, 300, 2) ;	1.07280231E-07
-match;  Mg projector value 300;	 LINEFIELD(debug/geometry/Mg/nonlocal, 300, 3) ;	-4.00263529E-06
-match;  Mg projector r     400;	 LINEFIELD(debug/geometry/Mg/nonlocal, 400, 1) ;	3.99000000E+00
-match;  Mg projector value 400;	 LINEFIELD(debug/geometry/Mg/nonlocal, 400, 2) ;	0.00000000E+00
-match;  Mg projector value 400;	 LINEFIELD(debug/geometry/Mg/nonlocal, 400, 3) ;	0.00000000E+00
-
-match;  O mass               ;	 GREPFIELD(debug/geometry/O/info, 'mass ', 3)   ;	32810.46
-match;  O z                  ;	 GREPFIELD(debug/geometry/O/pseudo-info, 'z ', 3)   ;	8.000
-match;  O z valence          ;	 GREPFIELD(debug/geometry/O/pseudo-info, 'zval', 3) ;	6.000
-match;  O l max              ;	 GREPFIELD(debug/geometry/O/pseudo-info, 'lmax', 3) ;	1
-match;  O l loc              ;	 GREPFIELD(debug/geometry/O/pseudo-info, 'lloc', 3) ;	0
-match;  O kbc                ;	 GREPFIELD(debug/geometry/O/pseudo-info, 'kbc', 3)  ;	1
-match;  O rcmax              ;	 GREPFIELD(debug/geometry/O/pseudo-info, 'rcmax', 3)  ;	1.85000
-match;  O potential r       2;	 LINEFIELD(debug/geometry/O/local, 2, 1) ;	3.89735774E-06
-match;  O potential value   2;	 LINEFIELD(debug/geometry/O/local, 2, 2) ;	1.24041031E+00
-match;  O potential r      50;	 LINEFIELD(debug/geometry/O/local, 50, 1) ;	2.61830026E-04
-match;  O potential value  50;	 LINEFIELD(debug/geometry/O/local, 50, 2) ;	1.24041135E+00
-match;  O potential r     100;	 LINEFIELD(debug/geometry/O/local, 100, 1) ;	7.58183689E-04
-match;  O potential value 100;	 LINEFIELD(debug/geometry/O/local, 100, 2) ;	1.24040969E+00
-match;  O potential r     200;	 LINEFIELD(debug/geometry/O/local, 200, 1) ;	3.41793892E-03
-match;  O potential value 200;	 LINEFIELD(debug/geometry/O/local, 200, 2) ;	1.24031857E+00
-match;  O potential r     300;	 LINEFIELD(debug/geometry/O/local, 300, 1) ;	1.27013969E-02
-match;  O potential value 300;	 LINEFIELD(debug/geometry/O/local, 300, 2) ;	1.23889606E+00
-match;  O potential r     400;	 LINEFIELD(debug/geometry/O/local, 400, 1) ;	4.51038489E-02
-match;  O potential value 400;	 LINEFIELD(debug/geometry/O/local, 400, 2) ;	1.22000149E+00
-match;  O projector r       2;	 LINEFIELD(debug/geometry/O/nonlocal, 2, 1) ;	3.89735774E-06
-match;  O projector value   2;	 LINEFIELD(debug/geometry/O/nonlocal, 2, 2) ;	0.00000000E+00
-match;  O projector value   2;	 LINEFIELD(debug/geometry/O/nonlocal, 2, 3) ;	-6.62064602E-05
-match;  O projector r      50;	 LINEFIELD(debug/geometry/O/nonlocal, 50, 1) ;	2.61830026E-04
-match;  O projector value  50;	 LINEFIELD(debug/geometry/O/nonlocal, 50, 2) ;	0.00000000E+00
-match;  O projector value  50;	 LINEFIELD(debug/geometry/O/nonlocal, 50, 3) ;	-4.44785308E-03
-match;  O projector r     100;	 LINEFIELD(debug/geometry/O/nonlocal, 100, 1) ;	7.58183689E-04
-match;  O projector value 100;	 LINEFIELD(debug/geometry/O/nonlocal, 100, 2) ;	0.00000000E+00
-match;  O projector value 100;	 LINEFIELD(debug/geometry/O/nonlocal, 100, 3) ;	-1.28797267E-02
-match;  O projector r     200;	 LINEFIELD(debug/geometry/O/nonlocal, 200, 1) ;	3.41793892E-03
-match;  O projector value 200;	 LINEFIELD(debug/geometry/O/nonlocal, 200, 2) ;	0.00000000E+00
-match;  O projector value 200;	 LINEFIELD(debug/geometry/O/nonlocal, 200, 3) ;	-5.80619676E-02
-match;  O projector r     300;	 LINEFIELD(debug/geometry/O/nonlocal, 300, 1) ;	1.27013969E-02
-match;  O projector value 300;	 LINEFIELD(debug/geometry/O/nonlocal, 300, 2) ;	0.00000000E+00
-match;  O projector value 300;	 LINEFIELD(debug/geometry/O/nonlocal, 300, 3) ;	-2.15667377E-01
-match;  O projector r     400;	 LINEFIELD(debug/geometry/O/nonlocal, 400, 1) ;	4.51038489E-02
-match;  O projector value 400;	 LINEFIELD(debug/geometry/O/nonlocal, 400, 2) ;	0.00000000E+00
-match;  O projector value 400;	 LINEFIELD(debug/geometry/O/nonlocal, 400, 3) ;	-7.60390415E-01
+Precision: 2.22e-01
+match ;   Mg mass                ; GREPFIELD(debug/geometry/Mg/info, 'mass ', 3) ; 44303.48
+Precision: 1.00e-01
+match ;   Mg z                   ; GREPFIELD(debug/geometry/Mg/pseudo-info, 'z ', 3) ; 12.0
+Precision: 1.00e-01
+match ;   Mg z valence           ; GREPFIELD(debug/geometry/Mg/pseudo-info, 'zval', 3) ; 10.0
+Precision: 1.00e-01
+match ;   Mg l max               ; GREPFIELD(debug/geometry/Mg/pseudo-info, 'lmax', 3) ; 1.0
+Precision: 1.00e-01
+match ;   Mg l loc               ; GREPFIELD(debug/geometry/Mg/pseudo-info, 'lloc', 3) ; -1.0
+Precision: 1.00e-01
+match ;   Mg kbc                 ; GREPFIELD(debug/geometry/Mg/pseudo-info, 'kbc', 3) ; 2.0
+Precision: 1.17e-01
+match ;   Mg rcmax               ; GREPFIELD(debug/geometry/Mg/pseudo-info, 'rcmax', 3) ; 2.33
+Precision: 5.00e-02
+match ;   Mg potential r       2 ; LINEFIELD(debug/geometry/Mg/local, 2, 1) ; 0.010000000000000002
+Precision: 3.57e-07
+match ;   Mg potential value   2 ; LINEFIELD(debug/geometry/Mg/local, 2, 2) ; -7.13028255
+Precision: 2.45e-01
+match ;   Mg potential r      50 ; LINEFIELD(debug/geometry/Mg/local, 50, 1) ; 0.49
+Precision: 2.28e-07
+match ;   Mg potential value  50 ; LINEFIELD(debug/geometry/Mg/local, 50, 2) ; -4.56558885
+Precision: 4.95e-01
+match ;   Mg potential r     100 ; LINEFIELD(debug/geometry/Mg/local, 100, 1) ; 0.99
+Precision: 5.46e-08
+match ;   Mg potential value 100 ; LINEFIELD(debug/geometry/Mg/local, 100, 2) ; -1.09288787
+Precision: 9.95e-02
+match ;   Mg potential r     200 ; LINEFIELD(debug/geometry/Mg/local, 200, 1) ; 1.9900000000000002
+Precision: 4.34e-10
+match ;   Mg potential value 200 ; LINEFIELD(debug/geometry/Mg/local, 200, 2) ; -0.00868874071
+Precision: 1.49e-01
+match ;   Mg potential r     300 ; LINEFIELD(debug/geometry/Mg/local, 300, 1) ; 2.9899999999999998
+Precision: 3.56e-12
+match ;   Mg potential value 300 ; LINEFIELD(debug/geometry/Mg/local, 300, 2) ; -7.12217109e-05
+Precision: 2.00e-01
+match ;   Mg potential r     400 ; LINEFIELD(debug/geometry/Mg/local, 400, 1) ; 3.99
+Precision: 1.35e-21
+match ;   Mg potential value 400 ; LINEFIELD(debug/geometry/Mg/local, 400, 2) ; -2.70750081e-07
+Precision: 5.00e-02
+match ;   Mg projector r       2 ; LINEFIELD(debug/geometry/Mg/nonlocal, 2, 1) ; 0.010000000000000002
+Precision: 3.23e-06
+match ;   Mg projector value   2 ; LINEFIELD(debug/geometry/Mg/nonlocal, 2, 2) ; 6.4651972
+Precision: 8.18e-09
+match ;   Mg projector value   2 ; LINEFIELD(debug/geometry/Mg/nonlocal, 2, 3) ; 0.163668977
+Precision: 2.45e-01
+match ;   Mg projector r      50 ; LINEFIELD(debug/geometry/Mg/nonlocal, 50, 1) ; 0.49
+Precision: 2.25e-08
+match ;   Mg projector value  50 ; LINEFIELD(debug/geometry/Mg/nonlocal, 50, 2) ; 0.449117359
+Precision: 1.41e-07
+match ;   Mg projector value  50 ; LINEFIELD(debug/geometry/Mg/nonlocal, 50, 3) ; 2.8291375800000003
+Precision: 4.95e-01
+match ;   Mg projector r     100 ; LINEFIELD(debug/geometry/Mg/nonlocal, 100, 1) ; 0.99
+Precision: 2.14e-08
+match ;   Mg projector value 100 ; LINEFIELD(debug/geometry/Mg/nonlocal, 100, 2) ; -0.428992635
+Precision: 2.14e-08
+match ;   Mg projector value 100 ; LINEFIELD(debug/geometry/Mg/nonlocal, 100, 3) ; -0.427358917
+Precision: 9.95e-02
+match ;   Mg projector r     200 ; LINEFIELD(debug/geometry/Mg/nonlocal, 200, 1) ; 1.9900000000000002
+Precision: 1.85e-10
+match ;   Mg projector value 200 ; LINEFIELD(debug/geometry/Mg/nonlocal, 200, 2) ; -0.0036989324499999998
+Precision: 2.15e-10
+match ;   Mg projector value 200 ; LINEFIELD(debug/geometry/Mg/nonlocal, 200, 3) ; -0.00430512144
+Precision: 1.49e-01
+match ;   Mg projector r     300 ; LINEFIELD(debug/geometry/Mg/nonlocal, 300, 1) ; 2.9899999999999998
+Precision: 2.10e-14
+match ;   Mg projector value 300 ; LINEFIELD(debug/geometry/Mg/nonlocal, 300, 2) ; -4.20416056e-07
+Precision: 2.00e-13
+match ;   Mg projector value 300 ; LINEFIELD(debug/geometry/Mg/nonlocal, 300, 3) ; -4.00263529e-06
+Precision: 2.00e-01
+match ;   Mg projector r     400 ; LINEFIELD(debug/geometry/Mg/nonlocal, 400, 1) ; 3.99
+Precision: 1.00e-04
+match ;   Mg projector value 400 ; LINEFIELD(debug/geometry/Mg/nonlocal, 400, 2) ; 0.0
+Precision: 1.00e-04
+match ;   Mg projector value 400 ; LINEFIELD(debug/geometry/Mg/nonlocal, 400, 3) ; 0.0
+Precision: 1.64e-01
+match ;   O mass                ; GREPFIELD(debug/geometry/O/info, 'mass ', 3) ; 32810.46
+Precision: 1.00e-01
+match ;   O z                   ; GREPFIELD(debug/geometry/O/pseudo-info, 'z ', 3) ; 8.0
+Precision: 1.00e-01
+match ;   O z valence           ; GREPFIELD(debug/geometry/O/pseudo-info, 'zval', 3) ; 6.0
+Precision: 1.00e-01
+match ;   O l max               ; GREPFIELD(debug/geometry/O/pseudo-info, 'lmax', 3) ; 1.0
+Precision: 1.00e-04
+match ;   O l loc               ; GREPFIELD(debug/geometry/O/pseudo-info, 'lloc', 3) ; 0.0
+Precision: 1.00e-01
+match ;   O kbc                 ; GREPFIELD(debug/geometry/O/pseudo-info, 'kbc', 3) ; 1.0
+Precision: 9.25e-02
+match ;   O rcmax               ; GREPFIELD(debug/geometry/O/pseudo-info, 'rcmax', 3) ; 1.85
+Precision: 1.95e-13
+match ;   O potential r       2 ; LINEFIELD(debug/geometry/O/local, 2, 1) ; 3.89735774e-06
+Precision: 6.20e-08
+match ;   O potential value   2 ; LINEFIELD(debug/geometry/O/local, 2, 2) ; 1.24041031
+Precision: 1.31e-11
+match ;   O potential r      50 ; LINEFIELD(debug/geometry/O/local, 50, 1) ; 0.000261830026
+Precision: 6.20e-08
+match ;   O potential value  50 ; LINEFIELD(debug/geometry/O/local, 50, 2) ; 1.24041135
+Precision: 3.79e-11
+match ;   O potential r     100 ; LINEFIELD(debug/geometry/O/local, 100, 1) ; 0.000758183689
+Precision: 6.20e-08
+match ;   O potential value 100 ; LINEFIELD(debug/geometry/O/local, 100, 2) ; 1.24040969
+Precision: 1.71e-10
+match ;   O potential r     200 ; LINEFIELD(debug/geometry/O/local, 200, 1) ; 0.00341793892
+Precision: 6.20e-08
+match ;   O potential value 200 ; LINEFIELD(debug/geometry/O/local, 200, 2) ; 1.24031857
+Precision: 6.35e-10
+match ;   O potential r     300 ; LINEFIELD(debug/geometry/O/local, 300, 1) ; 0.012701396900000002
+Precision: 6.19e-08
+match ;   O potential value 300 ; LINEFIELD(debug/geometry/O/local, 300, 2) ; 1.23889606
+Precision: 2.26e-09
+match ;   O potential r     400 ; LINEFIELD(debug/geometry/O/local, 400, 1) ; 0.0451038489
+Precision: 6.10e-02
+match ;   O potential value 400 ; LINEFIELD(debug/geometry/O/local, 400, 2) ; 1.22
+Precision: 1.95e-13
+match ;   O projector r       2 ; LINEFIELD(debug/geometry/O/nonlocal, 2, 1) ; 3.89735774e-06
+Precision: 1.00e-04
+match ;   O projector value   2 ; LINEFIELD(debug/geometry/O/nonlocal, 2, 2) ; 0.0
+Precision: 3.31e-18
+match ;   O projector value   2 ; LINEFIELD(debug/geometry/O/nonlocal, 2, 3) ; -6.62064602e-05
+Precision: 1.31e-11
+match ;   O projector r      50 ; LINEFIELD(debug/geometry/O/nonlocal, 50, 1) ; 0.000261830026
+Precision: 1.00e-04
+match ;   O projector value  50 ; LINEFIELD(debug/geometry/O/nonlocal, 50, 2) ; 0.0
+Precision: 2.22e-10
+match ;   O projector value  50 ; LINEFIELD(debug/geometry/O/nonlocal, 50, 3) ; -0.00444785308
+Precision: 3.79e-11
+match ;   O projector r     100 ; LINEFIELD(debug/geometry/O/nonlocal, 100, 1) ; 0.000758183689
+Precision: 1.00e-04
+match ;   O projector value 100 ; LINEFIELD(debug/geometry/O/nonlocal, 100, 2) ; 0.0
+Precision: 6.44e-10
+match ;   O projector value 100 ; LINEFIELD(debug/geometry/O/nonlocal, 100, 3) ; -0.0128797267
+Precision: 1.71e-10
+match ;   O projector r     200 ; LINEFIELD(debug/geometry/O/nonlocal, 200, 1) ; 0.00341793892
+Precision: 1.00e-04
+match ;   O projector value 200 ; LINEFIELD(debug/geometry/O/nonlocal, 200, 2) ; 0.0
+Precision: 2.90e-09
+match ;   O projector value 200 ; LINEFIELD(debug/geometry/O/nonlocal, 200, 3) ; -0.0580619676
+Precision: 6.35e-10
+match ;   O projector r     300 ; LINEFIELD(debug/geometry/O/nonlocal, 300, 1) ; 0.012701396900000002
+Precision: 1.00e-04
+match ;   O projector value 300 ; LINEFIELD(debug/geometry/O/nonlocal, 300, 2) ; 0.0
+Precision: 1.08e-08
+match ;   O projector value 300 ; LINEFIELD(debug/geometry/O/nonlocal, 300, 3) ; -0.215667377
+Precision: 2.26e-09
+match ;   O projector r     400 ; LINEFIELD(debug/geometry/O/nonlocal, 400, 1) ; 0.0451038489
+Precision: 1.00e-04
+match ;   O projector value 400 ; LINEFIELD(debug/geometry/O/nonlocal, 400, 2) ; 0.0
+Precision: 3.80e-08
+match ;   O projector value 400 ; LINEFIELD(debug/geometry/O/nonlocal, 400, 3) ; -0.760390415

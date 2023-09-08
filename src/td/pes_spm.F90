@@ -448,7 +448,7 @@ contains
   ! ---------------------------------------------------------
   subroutine pes_spm_output(this, mesh, st, namespace, iter, dt)
     type(pes_spm_t),     intent(in) :: this
-    type(mesh_t),        intent(in) :: mesh
+    class(mesh_t),       intent(in) :: mesh
     type(states_elec_t), intent(in) :: st
     type(namespace_t),   intent(in) :: namespace
     integer,             intent(in) :: iter

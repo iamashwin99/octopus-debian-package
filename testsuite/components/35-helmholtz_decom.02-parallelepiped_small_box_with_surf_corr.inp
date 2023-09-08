@@ -1,0 +1,13 @@
+CalculationMode = test
+testmode = helmholtz_decomposition
+
+%Coordinates
+"Na" | 0.0 | 0.0 |  0.0	
+%
+
+BoxShape = parallelepiped
+Lsize = 0.5
+Spacing = 0.05
+
+PoissonSolver = isf
+SurfaceCorrection = yes

@@ -14,4 +14,3 @@ FailingInput: 01-run_mode.01-one_shot.inp
 # These are marked by having the word error in their name
 
 match ; Error message ; GREPCOUNT(err, 'one_shot is obsolete') ; 1
-

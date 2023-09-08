@@ -17,7 +17,6 @@
 ## Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 ## 02110-1301, USA.
 ##
-## $Id$
 
 if COMPILE_OPENCL
   noinst_LTLIBRARIES = libfortrancl.la
@@ -37,7 +36,6 @@ libfortrancl_la_SOURCES =       \
 	cl_program.f90         \
 	cl_event.f90           \
 	cl.f90                 \
-	clblas.f90          \
 	clfft.f90
 
 if COMPILE_OPENCL
@@ -51,7 +49,6 @@ if COMPILE_OPENCL
 	cl_platform_low.c            \
 	cl_program_low.c             \
 	cl_event_low.c               \
-	clblas_low.c              \
 	clfft_low.c
 endif
 
@@ -70,7 +67,6 @@ cl_command_queue.lo : cl_command_queue.f90 cl_types.lo
 cl_buffer.lo    : cl_buffer.f90  cl_types.lo
 cl_event.lo     : cl_event.f90  cl_types.lo
 cl.lo           : cl.f90 cl_constants.lo cl_types.lo cl_device.lo cl_kernel.lo cl_program.lo cl_platform.lo cl_context.lo cl_command_queue.lo cl_buffer.lo cl_event.lo
-clblas.lo       : clblas.f90 cl.lo
 clfft.lo        : clfft.f90 cl.lo
 
 CLEANFILES = *~ *.bak *.mod *.MOD *.il *.d *.pc* ifc*

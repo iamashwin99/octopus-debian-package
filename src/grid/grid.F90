@@ -19,6 +19,7 @@
 
 #include "global.h"
 
+!> \ingroup Fortran_Module
 module grid_oct_m
   use affine_coordinates_oct_m
   use box_oct_m
@@ -38,7 +39,6 @@ module grid_oct_m
   use messages_oct_m
   use mpi_oct_m
   use multicomm_oct_m
-  use multigrid_oct_m
   use namespace_oct_m
   use nl_operator_oct_m
   use parser_oct_m
@@ -47,6 +47,7 @@ module grid_oct_m
   use stencil_oct_m
   use stencil_cube_oct_m
   use symmetries_oct_m
+  use symmetrizer_oct_m
   use unit_oct_m
   use unit_system_oct_m
   use varinfo_oct_m
@@ -54,22 +55,28 @@ module grid_oct_m
   implicit none
 
   private
-  public ::                &
-    grid_t,                &
-    grid_init_stage_1,     &
-    grid_init_stage_2,     &
-    grid_end,              &
-    grid_write_info
+  public ::                        &
+    grid_t,                        &
+    grid_init_stage_1,             &
+    grid_init_from_grid_stage_1,   &
+    grid_init_stage_2,             &
+    grid_end,                      &
+    grid_write_info,               &
+    dgrid_symmetrize_scalar_field, &
+    zgrid_symmetrize_scalar_field, &
+    dgrid_symmetrize_vector_field, &
+    zgrid_symmetrize_vector_field, &
+    dgrid_symmetrize_single,       &
+    zgrid_symmetrize_single
 
-  type grid_t
+  !> \ingroup Fortran_Class
+  !! @brief Description of the grid, containing information on derivatives, stencil, and symmetries
+  type, extends(mesh_t) :: grid_t
     ! Components are public by default
-    class(box_t), pointer       :: box
-    type(mesh_t)                :: mesh
     type(derivatives_t)         :: der
-    class(coordinate_system_t), pointer :: coord_system
     type(stencil_t)             :: stencil
-
     type(symmetries_t)          :: symm
+    type(symmetrizer_t)         :: symmetrizer
   end type grid_t
 
   integer, parameter :: &
@@ -93,7 +100,7 @@ contains
     type(stencil_t) :: cube
     integer :: enlarge(1:MAX_DIM)
     type(block_t) :: blk
-    integer :: idir, cv_method
+    integer :: idir
     FLOAT :: grid_spacing(1:MAX_DIM)
 
     PUSH_SUB(grid_init_stage_1)
@@ -170,14 +177,107 @@ contains
     !% (Experimental) Defines a mask for which periodic boundaries are replaced by zero boundary conditions.
     !%End
     if (parse_block(namespace, 'PeriodicBoundaryMask', blk) < 0) then
-      gr%mesh%masked_periodic_boundaries = .false.
+      gr%masked_periodic_boundaries = .false.
     else
-      gr%mesh%masked_periodic_boundaries = .true.
-      call parse_block_string(blk, 0, 0, gr%mesh%periodic_boundary_mask)
+      gr%masked_periodic_boundaries = .true.
+      call parse_block_string(blk, 0, 0, gr%periodic_boundary_mask)
       call messages_experimental('PeriodicBoundaryMask')
     end if
 
     ! Initialize coordinate system
+    call initialize_coordinate_system(gr, namespace, space, latt, n_sites, site_position)
+
+    ! initialize derivatives
+    call derivatives_init(gr%der, namespace, space, gr%coord_system)
+    ! the stencil used to generate the grid is a union of a cube (for
+    ! multigrid) and the Laplacian
+    call stencil_cube_get_lapl(cube, space%dim, order = 2)
+    call stencil_union(space%dim, cube, gr%der%lapl%stencil, gr%stencil)
+    call stencil_end(cube)
+
+    enlarge = 0
+    enlarge(1:space%dim) = 2
+    enlarge = max(enlarge, gr%der%n_ghost)
+
+    call mesh_init_stage_1(gr, namespace, space, gr%box, gr%coord_system, grid_spacing, enlarge)
+    call mesh_init_stage_2(gr, namespace, space, gr%box, gr%stencil)
+
+    POP_SUB(grid_init_stage_1)
+  end subroutine grid_init_stage_1
+
+  !--------------------------------------------------------------------
+  !> this subroutine allows to create a grid from an existing grid
+  subroutine grid_init_from_grid_stage_1(gr, original_gr, namespace, space, box, spacing_prefactor, latt, n_sites, site_position)
+    type(grid_t),                      intent(inout) :: gr !< The grid to initialize
+    type(grid_t),                      intent(in)    :: original_gr !< The original grid from where to copy the data
+    type(namespace_t),                 intent(in)    :: namespace
+    type(space_t),                     intent(in)    :: space
+    class(box_t), target,    optional, intent(in)    :: box !< the box that contains the grid
+    FLOAT,                   optional, intent(in)    :: spacing_prefactor(:)
+    type(lattice_vectors_t), optional, intent(in)    :: latt
+    integer,                 optional, intent(in)    :: n_sites
+    FLOAT,                   optional, intent(in)    :: site_position(:,:)
+
+    type(stencil_t) :: cube
+    integer :: enlarge(1:MAX_DIM)
+
+    PUSH_SUB(grid_init_from_grid_stage_1)
+
+    ! First of all, create and associate the box that contains the grid
+    if (.not. present(box)) then
+      gr%box => box_factory_create(namespace, space)
+    else
+      gr%box => box
+    end if
+
+    !!! Copy all data !!!
+    ! Symmetries
+    gr%symm = original_gr%symm
+    ! Spacing
+    if (present(spacing_prefactor)) then
+      gr%spacing(:) = spacing_prefactor(:) * original_gr%spacing(:)
+      if (any(gr%spacing /= M_ONE)) then
+        write(message(1), '(a)') "The two grids have different spacings, it will not be possible to establish a map between them"
+        call messages_warning(1)
+      end if
+    else
+      gr%spacing(:) = original_gr%spacing(:)
+    end if
+    ! Periodic boundaries
+    gr%masked_periodic_boundaries = original_gr%masked_periodic_boundaries
+    if (gr%masked_periodic_boundaries) gr%periodic_boundary_mask = original_gr%periodic_boundary_mask
+    ! Coordinate System
+    call initialize_coordinate_system(gr, namespace, space, latt, n_sites, site_position)
+
+    ! initialize derivatives
+    call derivatives_init(gr%der, namespace, space, gr%coord_system)
+    ! the stencil used to generate the grid is a union of a cube (for
+    ! multigrid) and the Laplacian
+    call stencil_cube_get_lapl(cube, space%dim, order = 2)
+    call stencil_union(space%dim, cube, gr%der%lapl%stencil, gr%stencil)
+    call stencil_end(cube)
+
+    enlarge = 0
+    enlarge(1:space%dim) = 2
+    enlarge = max(enlarge, gr%der%n_ghost)
+
+    call mesh_init_stage_1(gr, namespace, space, gr%box, gr%coord_system, gr%spacing, enlarge)
+    call mesh_init_stage_2(gr, namespace, space, gr%box, gr%stencil)
+
+    POP_SUB(grid_init_from_grid_stage_1)
+  end subroutine grid_init_from_grid_stage_1
+
+  subroutine initialize_coordinate_system(gr, namespace, space, latt, n_sites, site_position)
+    type(grid_t),                      intent(inout) :: gr
+    type(namespace_t),                 intent(in)    :: namespace
+    type(space_t),                     intent(in)    :: space
+    type(lattice_vectors_t), optional, intent(in)    :: latt
+    integer,                 optional, intent(in)    :: n_sites
+    FLOAT,                   optional, intent(in)    :: site_position(:,:)
+
+    integer :: cv_method
+
+    PUSH_SUB(initialize_coordinate_system)
 
     !%Variable CurvMethod
     !%Type integer
@@ -221,7 +321,7 @@ contains
     select case (cv_method)
     case (CURV_BRIGGS)
       gr%coord_system => curv_briggs_t(namespace, space%dim, &
-        gr%box%bounding_box_l(1:space%dim), grid_spacing(1:space%dim))
+        gr%box%bounding_box_l(1:space%dim), gr%spacing(1:space%dim))
     case (CURV_GYGI)
       if (present(site_position) .and. present(n_sites)) then
         gr%coord_system => curv_gygi_t(namespace, space%dim, n_sites, site_position)
@@ -232,7 +332,7 @@ contains
     case (CURV_MODINE)
       if (present(site_position) .and. present(n_sites)) then
         gr%coord_system => curv_modine_t(namespace, space%dim, n_sites, site_position, &
-          gr%box%bounding_box_l(1:space%dim), grid_spacing(1:space%dim))
+          gr%box%bounding_box_l(1:space%dim), gr%spacing(1:space%dim))
       else
         message(1) = "Option CurvMethod = curv_modine is not currently implemented without ions present."
         call messages_fatal(1, namespace=namespace)
@@ -249,23 +349,8 @@ contains
       end if
     end select
 
-    ! initialize derivatives
-    call derivatives_init(gr%der, namespace, space, gr%coord_system)
-    ! the stencil used to generate the grid is a union of a cube (for
-    ! multigrid) and the Laplacian
-    call stencil_cube_get_lapl(cube, space%dim, order = 2)
-    call stencil_union(space%dim, cube, gr%der%lapl%stencil, gr%stencil)
-    call stencil_end(cube)
-
-    enlarge = 0
-    enlarge(1:space%dim) = 2
-    enlarge = max(enlarge, gr%der%n_ghost)
-
-    call mesh_init_stage_1(gr%mesh, namespace, space, gr%box, gr%coord_system, grid_spacing, enlarge)
-    call mesh_init_stage_2(gr%mesh, namespace, space, gr%box, gr%stencil)
-
-    POP_SUB(grid_init_stage_1)
-  end subroutine grid_init_stage_1
+    POP_SUB(initialize_coordinate_system)
+  end subroutine initialize_coordinate_system
 
 
   !-------------------------------------------------------------------
@@ -278,13 +363,17 @@ contains
 
     PUSH_SUB(grid_init_stage_2)
 
-    call mesh_init_stage_3(gr%mesh, namespace, space, gr%stencil, mc)
+    call mesh_init_stage_3(gr, namespace, space, gr%stencil, mc)
 
     call nl_operator_global_init(namespace)
-    call derivatives_build(gr%der, namespace, space, gr%mesh, qvector)
+    call derivatives_build(gr%der, namespace, space, gr, qvector)
 
     ! print info concerning the grid
     call grid_write_info(gr, namespace=namespace)
+
+    if(space%dim == 3) then
+      call symmetrizer_init(gr%symmetrizer, gr, gr%symm)
+    end if
 
     POP_SUB(grid_init_stage_2)
   end subroutine grid_init_stage_2
@@ -309,9 +398,11 @@ contains
     box => gr%box
     SAFE_DEALLOCATE_P(box)
 
-    call mesh_end(gr%mesh)
+    call mesh_end(gr)
 
     call stencil_end(gr%stencil)
+
+    call symmetrizer_end(gr%symmetrizer)
 
     POP_SUB(grid_end)
   end subroutine grid_end
@@ -325,7 +416,7 @@ contains
 
     PUSH_SUB(grid_write_info)
 
-    call messages_print_stress(msg="Grid", iunit=iunit, namespace=namespace)
+    call messages_print_with_emphasis(msg="Grid", iunit=iunit, namespace=namespace)
 
     message(1) = 'Simulation Box:'
     call messages_info(1, iunit=iunit, namespace=namespace)
@@ -333,16 +424,24 @@ contains
 
     message(1) = "Main mesh:"
     call messages_info(1, iunit=iunit, namespace=namespace)
-    call mesh_write_info(gr%mesh, iunit, namespace)
+    call mesh_write_info(gr, iunit, namespace)
 
-    if (gr%mesh%use_curvilinear) then
+    if (gr%use_curvilinear) then
       call gr%coord_system%write_info(iunit, namespace)
     end if
 
-    call messages_print_stress(iunit=iunit, namespace=namespace)
+    call messages_print_with_emphasis(iunit=iunit, namespace=namespace)
 
     POP_SUB(grid_write_info)
   end subroutine grid_write_info
+
+#include "undef.F90"
+#include "real.F90"
+#include "grid_inc.F90"
+
+#include "undef.F90"
+#include "complex.F90"
+#include "grid_inc.F90"
 
 end module grid_oct_m
 

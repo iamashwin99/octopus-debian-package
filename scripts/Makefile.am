@@ -19,3 +19,16 @@
 ##
 
 dist_bin_SCRIPTS = oct-analyze_projections oct-vdW_c6 oct-check_deallocs
+
+EXTRA_DIST =                   \
+	mk_varinfo.pl          \
+	mk_functionals_list.pl \
+	mk_kfunctionals_list.pl \
+	preprocess.pl          \
+	var2html.pl            \
+	git_commit_hash.sh     \
+	true_compiler.sh       \
+	octopus.spec.in
+
+DISTCLEANFILES = \
+	octopus.spec

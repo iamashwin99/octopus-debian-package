@@ -8,19 +8,36 @@ Enabled    : Yes
 ExtraFile : 03-nlcc.F.UPF
 Input      : 03-nlcc.01-Fatom.inp
 match ; SCF convergence    ; GREPCOUNT(static/info, 'SCF converged') ; 1
-match ; Total energy       ; GREPFIELD(static/info, 'Total       =', 3) ; -26.97584803
-match ; Eigenvalues sum    ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -4.20331421
-match ; Hartree energy     ; GREPFIELD(static/info, 'Hartree     =', 3) ; 21.24593966
-match ; Exchange energy    ; GREPFIELD(static/info, 'Exchange    =', 3) ; -6.94955566
-match ; Correlation energy ; GREPFIELD(static/info, 'Correlation =', 3) ; -0.57417836
-match ; Kinetic energy     ; GREPFIELD(static/info, 'Kinetic     =', 3) ; 18.50619540
-match ; External energy    ; GREPFIELD(static/info, 'External    =', 3) ; -59.20424397
-match ; Eigenvalue 1 up    ; GREPFIELD(static/info, ' 1   up', 3) ; -1.097592
-match ; Eigenvalue 1 dn    ; GREPFIELD(static/info, ' 1   dn', 3) ; -1.038910
-match ; Eigenvalue 2 up    ; GREPFIELD(static/info, ' 2   up', 3) ; -0.435956
-match ; Eigenvalue 2 dn    ; GREPFIELD(static/info, ' 2   dn', 3) ; -0.379473
-match ; Eigenvalue 3 up    ; GREPFIELD(static/info, ' 3   up', 3) ; -0.435956
-match ; Eigenvalue 3 dn    ; GREPFIELD(static/info, ' 3   dn', 3) ; -0.379473
-match ; Eigenvalue 4 up    ; GREPFIELD(static/info, ' 4   up', 3) ; -0.435956
-match ; Eigenvalue 4 dn    ; GREPFIELD(static/info, ' 4   dn', 3) ; -0.379473
-match ; Force              ; GREPFIELD(static/info, 'Forces on the ions', 3, 2) ; -0.000000
+
+Precision: 1.35e-07
+match ;  Total energy        ; GREPFIELD(static/info, 'Total       =', 3) ; -26.975824659999997
+Precision: 2.10e-14
+match ;  Eigenvalues sum     ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -4.2032386100000005
+Precision: 1.06e-06
+match ;  Hartree energy      ; GREPFIELD(static/info, 'Hartree     =', 3) ; 21.2459963
+Precision: 3.47e-07
+match ;  Exchange energy     ; GREPFIELD(static/info, 'Exchange    =', 3) ; -6.9495656100000005
+Precision: 2.87e-07
+match ;  Correlation energy  ; GREPFIELD(static/info, 'Correlation =', 3) ; -0.57417882
+Precision: 9.25e-07
+match ;  Kinetic energy      ; GREPFIELD(static/info, 'Kinetic     =', 3) ; 18.5062586
+Precision: 2.96e-07
+match ;  External energy     ; GREPFIELD(static/info, 'External    =', 3) ; -59.204341250000006
+Precision: 5.49e-06
+match ;  Eigenvalue 1 up     ; GREPFIELD(static/info, ' 1   up', 3) ; -1.097582
+Precision: 5.19e-04
+match ;  Eigenvalue 1 dn     ; GREPFIELD(static/info, ' 1   dn', 3) ; -1.0389
+Precision: 2.18e-05
+match ;  Eigenvalue 2 up     ; GREPFIELD(static/info, ' 2   up', 3) ; -0.435944
+Precision: 1.90e-05
+match ;  Eigenvalue 2 dn     ; GREPFIELD(static/info, ' 2   dn', 3) ; -0.379462
+Precision: 2.18e-05
+match ;  Eigenvalue 3 up     ; GREPFIELD(static/info, ' 3   up', 3) ; -0.435944
+Precision: 1.90e-05
+match ;  Eigenvalue 3 dn     ; GREPFIELD(static/info, ' 3   dn', 3) ; -0.379462
+Precision: 2.18e-05
+match ;  Eigenvalue 4 up     ; GREPFIELD(static/info, ' 4   up', 3) ; -0.435944
+Precision: 1.90e-05
+match ;  Eigenvalue 4 dn     ; GREPFIELD(static/info, ' 4   dn', 3) ; -0.379462
+Precision: 4.65e-14
+match ;  Force               ; GREPFIELD(static/info, 'Forces on the ions', 3, 2) ; -5.516677049999999e-15

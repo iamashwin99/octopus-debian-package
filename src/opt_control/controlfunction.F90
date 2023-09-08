@@ -105,28 +105,28 @@ module controlfunction_oct_m
   type controlfunction_common_t
     private
     integer :: representation      = 0                             !< The "representation" may be any one of the {ctr_internal,
-    !                                                              !! ctr_rt, ctr_fourier_series_h, ctr_zero_fourier_series_h,
-    !                                                              !! ctr_fourier_series, ctr_zero_fourier_series} set. If it is
-    !                                                              !! zero, then it is not initialized. This is set by the
-    !                                                              !! OCTControlFunctionRepresentation.
+    !!                                                                ctr_rt, ctr_fourier_series_h, ctr_zero_fourier_series_h,
+    !!                                                                ctr_fourier_series, ctr_zero_fourier_series} set. If it is
+    !!                                                                zero, then it is not initialized. This is set by the
+    !!                                                                OCTControlFunctionRepresentation.
     FLOAT   :: omegamax            = M_ZERO                        !< The representations based on Fourier expansions (all the
-    !                                                              !! "parametrized" ones) contain Fourier expansion coefficients
-    !                                                              !! corresponding to frequencies up to this cut-off frequency.
+    !!                                                                "parametrized" ones) contain Fourier expansion coefficients
+    !!                                                                corresponding to frequencies up to this cut-off frequency.
     FLOAT   :: targetfluence       = M_ZERO                        !< This is the fluence that should be conserved when doing
-    !                                                              !! optimization in fixed fluence mode.
-    !                                                              !! It is determined by the input variable OCTFixFluenceTo.
+    !!                                                                optimization in fixed fluence mode.
+    !!                                                                It is determined by the input variable OCTFixFluenceTo.
     logical :: fix_initial_fluence = .false.                       !< This determines whether or not to scale the initial guess
-    !                                                              !! field to have the fixed fluence given by targetfluence.
+    !!                                                                field to have the fixed fluence given by targetfluence.
     integer :: mode                = controlfunction_mode_none     !< This may be one of {controlfunction_mode_epsilon,
-    !                                                              !! controlfunction_mode_f, controlfunction_mode_phi}, and is set
-    !                                                              !! by the OCTControlFunctionType input variable.
-    !                                                              !! It determines whether the full time-dependent function is to
-    !                                                              !! be controlled, or only the "envelope" or "phase" components.
+    !!                                                                controlfunction_mode_f, controlfunction_mode_phi}, and is set
+    !!                                                                by the OCTControlFunctionType input variable.
+    !!                                                                It determines whether the full time-dependent function is to
+    !!                                                                be controlled, or only the "envelope" or "phase" components.
     FLOAT   :: w0                  = M_ZERO                        !< The carrier frequency, in case the mode is set to control the
-    !                                                              !! "envelope" or the "phase".
+    !!                                                                "envelope" or the "phase".
     integer :: no_controlfunctions = 0                             !! The number of control functions to be optimized.
     FLOAT,       allocatable :: alpha(:)                           !< A factor that determines the "penalty", for each of the
-    !                                                              !! control functions.
+    !!                                                                control functions.
     type(tdf_t), allocatable :: td_penalty(:)                      !< The penalties, if these are time-dependent.
   end type controlfunction_common_t
 
@@ -135,14 +135,14 @@ module controlfunction_oct_m
   type controlfunction_t
     private
     integer :: no_controlfunctions = 0           !< In fact, not only one control function may be used
-    !! to control the propagation, but several. This is the variable that holds
-    !! this number.
+    !!                                              to control the propagation, but several. This is the variable that holds
+    !!                                              this number.
     integer :: dim           = 0                 !< If the control function is not represented directly in real time, but through
-    !! a number of control functions, it will actually be expanded in a basis set.
-    !! This is the dimension of the basis set. However, this does not mean necessarily
-    !! that the parameters are the coefficients of the basis set.
+    !!                                              a number of control functions, it will actually be expanded in a basis set.
+    !!                                              This is the dimension of the basis set. However, this does not mean necessarily
+    !!                                              that the parameters are the coefficients of the basis set.
     integer :: dof           = 0                 !< This is the number of degrees of freedom, or number of parameters, used to
-    !! represent a control function (this may be different -- smaller -- than "dim").
+    !!                                              represent a control function (this may be different -- smaller -- than "dim").
     type(tdf_t), allocatable :: f(:)
     FLOAT, allocatable :: alpha(:)
 
@@ -192,7 +192,7 @@ contains
       call messages_fatal(1, namespace=namespace)
     end if
 
-    call messages_print_stress(msg="OCT: Info about control functions", namespace=namespace)
+    call messages_print_with_emphasis(msg="OCT: Info about control functions", namespace=namespace)
 
     !%Variable OCTControlFunctionRepresentation
     !%Type integer
@@ -503,7 +503,7 @@ contains
       end do
     end if
 
-    call messages_print_stress(namespace=namespace)
+    call messages_print_with_emphasis(namespace=namespace)
 
     POP_SUB(controlfunction_mod_init)
   end subroutine controlfunction_mod_init

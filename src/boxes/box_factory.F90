@@ -24,6 +24,7 @@
 !> could be generalized into a box_factory_t class
 module box_factory_oct_m
   use box_oct_m
+  use box_cgal_oct_m
   use box_cylinder_oct_m
   use box_image_oct_m
   use box_minimum_oct_m
@@ -53,6 +54,7 @@ module box_factory_oct_m
     MINIMUM        = 3,         &
     PARALLELEPIPED = 4,         &
     BOX_IMAGE      = 5,         &
+    BOX_CGAL       = 6,         &
     BOX_USDEF      = 77
 
 contains
@@ -71,8 +73,8 @@ contains
     type(block_t) :: blk
     integer       :: default_boxshape, idir, box_shape
     FLOAT         :: center(space%dim), axes(space%dim, space%dim), rsize, xsize, lsize(space%dim)
-    character(len=200)      :: filename
-    character(len=1024)     :: user_def
+    character(len=1024) :: filename
+    character(len=1024) :: user_def
 
     PUSH_SUB(box_factory_create)
 
@@ -107,6 +109,10 @@ contains
     !% The image will be scaled to fit <tt>Lsize</tt>, while its resolution will define the default <tt>Spacing</tt>.
     !% The actual box may be slightly larger than <tt>Lsize</tt> to ensure one grid point = one pixel for
     !% default <tt>Spacing</tt>.
+    !%Option box_cgal 6
+    !% The simulation box will be defined by a file read using the CGAL library.
+    !% The file name needs to be specified with <tt>BoxCgalFile</tt>.
+    !% <tt>Lsize</tt> needs to be large enough to contain the shape defined in the file.
     !%Option user_defined 77
     !% The shape of the simulation box will be read from the variable <tt>BoxShapeUsDef</tt>.
     !%End
@@ -192,7 +198,8 @@ contains
     end if
 
     lsize = M_ZERO
-    if (box_shape == PARALLELEPIPED .or. box_shape == BOX_IMAGE .or. box_shape == BOX_USDEF) then
+    if (box_shape == PARALLELEPIPED .or. box_shape == BOX_IMAGE .or. &
+      box_shape == BOX_USDEF .or. box_shape == BOX_CGAL) then
 
       !%Variable Lsize
       !%Type block
@@ -310,10 +317,45 @@ contains
       call parse_variable(namespace, 'BoxShapeUsDef', 'x^2+y^2+z^2 < 4', user_def)
     end if
 
+    ! get filename for cgal boxes
+    if (box_shape == BOX_CGAL) then
+#ifndef HAVE_CGAL
+      message(1) = "To use 'BoxShape = box_cgal', you have to compile Octopus"
+      message(2) = "with CGAL library support."
+      call messages_fatal(2, namespace=namespace)
+#endif
+      !%Variable BoxCgalFile
+      !%Type string
+      !%Section Mesh::Simulation Box
+      !%Description
+      !% Filename to be read in by the cgal library. It should describe a shape that
+      !% is used for the simulation box
+      !%End
+      if (.not. parse_is_defined(namespace, 'BoxCgalFile')) then
+        message(1) = "Must specify BoxCgalFile if BoxShape = box_cgal."
+        call messages_fatal(1, namespace=namespace)
+      end if
+      call parse_variable(namespace, 'BoxCgalFile', '', filename)
+    end if
+
     call messages_obsolete_variable(namespace, 'BoxOffset')
 
-    ! Box center and axes
-    center = M_ZERO  ! Currently all the boxes are centered at the origin.
+    !%Variable BoxCenter
+    !%Type float
+    !%Section Mesh::Simulation Box
+    !%Description
+    !% This block defines the coordinate center of the simulation box
+    !%End
+    if(parse_block(namespace, 'BoxCenter', blk) == 0) then
+      if(parse_block_cols(blk, 0) < space%dim) call messages_input_error(namespace, 'BoxCenter')
+      do idir = 1, space%dim
+        call parse_block_float(blk, 0, idir - 1, center(idir), units_inp%length)
+      end do
+      call parse_block_end(blk)
+    else
+      center = M_ZERO  ! In case no BoxCenter is explicitly defined in the input file the default is the origin
+    end if
+
     if (present(latt)) then
       ! Use the lattice vectors
       axes = latt%rlattice
@@ -327,12 +369,14 @@ contains
     case (SPHERE)
       box => box_sphere_t(space%dim, center, rsize, namespace)
     case (CYLINDER)
-      box => box_cylinder_t(space%dim, center, axes, rsize, M_TWO*xsize, namespace, periodic_boundaries=space%is_periodic())
+      box => box_cylinder_t(space%dim, center, axes, rsize, M_TWO * xsize, namespace, periodic_boundaries=space%is_periodic())
     case (PARALLELEPIPED)
-      box => box_parallelepiped_t(space%dim, center, axes, M_TWO*lsize(1:space%dim), namespace, &
+      box => box_parallelepiped_t(space%dim, center, axes, M_TWO * lsize(1:space%dim), namespace, &
         n_periodic_boundaries=space%periodic_dim)
     case (BOX_USDEF)
       box => box_user_defined_t(space%dim, center, axes, user_def, M_TWO*lsize(1:space%dim), namespace)
+    case (BOX_CGAL)
+      box => box_cgal_t(space%dim, center, filename, M_TWO*lsize(1:space%dim), namespace)
     case (MINIMUM)
       box => box_minimum_t(space%dim, rsize, n_sites, site_position, namespace)
     case (BOX_IMAGE)

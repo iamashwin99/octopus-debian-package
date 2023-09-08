@@ -24,7 +24,7 @@
 !! WARNING!!!!: periodic systems are not considered in these expressions.
 R_TYPE function X(states_elec_mpdotp_x)(namespace, mesh, excited_state, st, mat) result(dotp)
   type(namespace_t),      intent(in)  :: namespace
-  type(mesh_t),           intent(in) :: mesh
+  class(mesh_t),          intent(in) :: mesh
   type(excited_states_t), intent(in) :: excited_state
   type(states_elec_t),    intent(in) :: st
   R_TYPE,       optional, intent(in) :: mat(:, :, :)
@@ -104,7 +104,7 @@ end subroutine X(states_elec_matrix_swap)
 !! Phys. Rev. 97, 1474; Eq. 49].
 R_TYPE function X(states_elec_mpmatrixelement_g)(namespace, mesh, st1, st2, opst2) result(st1opst2)
   type(namespace_t),     intent(in) :: namespace
-  type(mesh_t),          intent(in) :: mesh
+  class(mesh_t),         intent(in) :: mesh
   type(states_elec_t),   intent(in) :: st1, st2, opst2
 
   integer :: ispin, nik, nst, ik, i1, j1, k1, i2, j2, k2, ii, jj
@@ -271,7 +271,7 @@ end function X(states_elec_mpmatrixelement_g)
 ! -------------------------------------------------------------
 R_TYPE function X(states_elec_mpdotp_g)(namespace, mesh, st1, st2, mat) result(dotp)
   type(namespace_t),   intent(in) :: namespace
-  type(mesh_t),        intent(in) :: mesh
+  class(mesh_t),       intent(in) :: mesh
   type(states_elec_t), intent(in) :: st1, st2
   R_TYPE, optional,    intent(in) :: mat(:, :, :)
 

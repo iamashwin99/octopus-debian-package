@@ -13,7 +13,7 @@
 CalculationMode = gs
 
 Dimensions = 1
-fromScratch = yes
+FromScratch = yes
 
 ProfilingMode = prof_memory_full
 
@@ -30,5 +30,3 @@ TheoryLevel = independent_particles
 %Coordinates
 "Hydrogen1D" | 0
 %
-
-EigenSolverTolerance = 1e-5

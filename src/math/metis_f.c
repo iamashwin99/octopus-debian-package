@@ -18,7 +18,6 @@
 
 */
 
-
 #include <config.h>
 
 #include <stdlib.h>
@@ -27,63 +26,56 @@
 #include <metis.h>
 #endif
 #if defined(HAVE_PARMETIS)
-#include <parmetis.h>
 #include <mpi.h>
+#include <parmetis.h>
 #endif
-
 
 #ifdef HAVE_METIS
 
 #if defined(METIS_USE_DOUBLEPRECISION) || REALTYPEWIDTH == 64
-  #error METIS must be compiled in single precision for Octopus.
+#error METIS must be compiled in single precision for Octopus.
 #endif
 
-void FC_FUNC_(oct_metis_setdefaultoptions, OCT_METIS_SETDEFAULTOPTIONS)
-     (idx_t *options)
-{
+void FC_FUNC_(oct_metis_setdefaultoptions,
+              OCT_METIS_SETDEFAULTOPTIONS)(idx_t *options) {
   METIS_SetDefaultOptions(options);
 }
 
+int FC_FUNC_(oct_metis_partgraphrecursive, OCT_METIS_PARTGRAPHRECURSIVE)(
+    idx_t *nvtxs, idx_t *ncon, idx_t *xadj, idx_t *adjncy, idx_t *nparts,
+    real_t *tpwgts, real_t *ubvec, idx_t *options, idx_t *objval, idx_t *part) {
 
-int FC_FUNC_(oct_metis_partgraphrecursive, OCT_METIS_PARTGRAPHRECURSIVE)
-     (idx_t *nvtxs, idx_t *ncon, idx_t *xadj, idx_t *adjncy, idx_t *nparts, 
-      real_t *tpwgts, real_t *ubvec, idx_t *options, idx_t *objval, idx_t *part)
-{
-
-  return METIS_PartGraphRecursive(nvtxs, ncon, xadj, adjncy, NULL, NULL, NULL, nparts, 
-			   tpwgts, ubvec, options, objval, part);
+  return METIS_PartGraphRecursive(nvtxs, ncon, xadj, adjncy, NULL, NULL, NULL,
+                                  nparts, tpwgts, ubvec, options, objval, part);
 }
 
+int FC_FUNC_(oct_metis_partgraphkway, OCT_METIS_PARTGRAPHKWAY)(
+    idx_t *nvtxs, idx_t *ncon, idx_t *xadj, idx_t *adjncy, idx_t *nparts,
+    real_t *tpwgts, real_t *ubvec, idx_t *options, idx_t *objval, idx_t *part) {
 
-int FC_FUNC_(oct_metis_partgraphkway, OCT_METIS_PARTGRAPHKWAY)
-     (idx_t *nvtxs, idx_t *ncon, idx_t *xadj, idx_t *adjncy, idx_t *nparts, 
-      real_t *tpwgts, real_t *ubvec, idx_t *options, idx_t *objval, idx_t *part)
-{
-
-  return METIS_PartGraphKway(nvtxs, ncon, xadj, adjncy, NULL, NULL, NULL, nparts, 
-		      tpwgts, ubvec, options, objval, part);
-  
+  return METIS_PartGraphKway(nvtxs, ncon, xadj, adjncy, NULL, NULL, NULL,
+                             nparts, tpwgts, ubvec, options, objval, part);
 }
 
 #endif
 
-
-
 #ifdef HAVE_PARMETIS
 
-void FC_FUNC_(oct_parmetis_v3_partkway, OCT_PARMETIS_PARTKWAY)
-     (idx_t *vtxdist, idx_t *xadj, idx_t *adjncy, idx_t *ncon, 
-      idx_t *nparts, real_t *tpwgts, real_t *ubvec, idx_t *options, 
-      idx_t *edgecut, idx_t *part, MPI_Fint *fcomm)
-{
+void FC_FUNC_(oct_parmetis_v3_partkway,
+              OCT_PARMETIS_PARTKWAY)(idx_t *vtxdist, idx_t *xadj, idx_t *adjncy,
+                                     idx_t *ncon, idx_t *nparts, real_t *tpwgts,
+                                     real_t *ubvec, idx_t *options,
+                                     idx_t *edgecut, idx_t *part,
+                                     MPI_Fint *fcomm) {
   idx_t wgtflag = 0, numflag = 1;
 
   MPI_Comm comm;
 
   comm = MPI_Comm_f2c(*fcomm);
 
-  ParMETIS_V3_PartKway(vtxdist, xadj, adjncy, NULL, NULL, &wgtflag, &numflag, 
-		       ncon, nparts, tpwgts, ubvec, options, edgecut, part, &comm);
+  ParMETIS_V3_PartKway(vtxdist, xadj, adjncy, NULL, NULL, &wgtflag, &numflag,
+                       ncon, nparts, tpwgts, ubvec, options, edgecut, part,
+                       &comm);
 }
 
 #endif

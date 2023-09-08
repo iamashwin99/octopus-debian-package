@@ -85,7 +85,7 @@ contains
     ! build initial guess for the potential
     wk(1:der%mesh%np) = pot(1:der%mesh%np)
     call poisson_boundary_conditions(corrector, der%mesh, rho, wk)
-    call dderivatives_lapl(der, wk, lwk, .true.)
+    call dderivatives_lapl(der, wk, lwk, ghost_update = .true., set_bc = .false.)
 
     zk(1:der%mesh%np) = -M_FOUR*M_PI*rho(1:der%mesh%np) - lwk(1:der%mesh%np)
     SAFE_DEALLOCATE_A(wk)
@@ -93,7 +93,8 @@ contains
 
     der_pointer  => der
     mesh_pointer => der%mesh
-    pk = zk
+    call lalg_copy(der%mesh%np, zk, pk)
+    pk(der%mesh%np + 1:) = M_ZERO
     iter = maxiter
     call dconjugate_gradients(der%mesh%np, pk, zk, internal_laplacian_op, internal_dotp, iter, res, threshold)
     if (res >= threshold) then

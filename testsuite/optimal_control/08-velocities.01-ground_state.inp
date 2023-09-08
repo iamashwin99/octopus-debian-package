@@ -33,7 +33,7 @@ TheoryLevel = independent_particles
 
 a = 0.758
 %Species
-"atom1" | species_soft_coulomb | softening | a | valence | 1 
+"atom1" | species_soft_coulomb | softening | a | valence | 1
 %
 
 %Coordinates
@@ -68,11 +68,11 @@ stime  = 100.0
 TDPropagationTime = stime
 TDPropagator = crank_nicolson
 
-%TDOutput 
- multipoles 
- laser 
+%TDOutput
+ multipoles
+ laser
  geometry
-% 
+%
 
 # --------------
 # OCT parameters

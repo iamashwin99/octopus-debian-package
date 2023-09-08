@@ -25,6 +25,7 @@ module xc_oct_m
   use derivatives_oct_m
   use exchange_operator_oct_m
   use global_oct_m
+  use grid_oct_m
   use io_oct_m
   use io_function_oct_m
   use iso_c_binding
@@ -66,7 +67,7 @@ module xc_oct_m
 
   ! A Structure that contains the quantities needed to compute the functionals
   type internal_quantities_t
-    FLOAT, pointer     :: rho(:,:)       ! A pointer to the full density 
+    FLOAT, pointer     :: rho(:,:)       ! A pointer to the full density
 
     FLOAT, allocatable :: dens(:,:)      ! Density (in the local frame of the magnetization)
     FLOAT, allocatable :: gdens(:,:,:)   ! Gradient of the density
@@ -81,7 +82,7 @@ module xc_oct_m
     integer,               public :: flags               !<flags of the xc functional
     integer,               public :: kernel_family
     type(xc_functional_t), public :: functional(2,2)     !< (FUNC_X,:) => exchange,    (FUNC_C,:) => correlation
-    !                                                    !! (:,1) => unpolarized, (:,2) => polarized
+    !!                                                      (:,1) => unpolarized, (:,2) => polarized
 
     type(xc_functional_t), public :: kernel(2,2)
     FLOAT,                 public :: kernel_lrc_alpha  !< long-range correction alpha parameter for kernel in solids
@@ -153,10 +154,18 @@ contains
     integer,           intent(in)  :: ck_id
     logical,           intent(in)  :: hartree_fock
 
-    integer :: isp
+    integer :: isp, xc_major, xc_minor, xc_micro
     logical :: ll
 
     PUSH_SUB(xc_init)
+
+    call xc_f03_version(xc_major, xc_minor, xc_micro)
+
+    if (xc_major == 4) then
+      message(1) = "The versions 4.* of the libxc library are deprecated"
+      message(2) = "and the support for them will be removed in the next major release of Octopus."
+      call messages_warning(2, namespace=namespace)
+    endif
 
     xcs%family = 0
     xcs%flags  = 0
@@ -395,6 +404,19 @@ contains
 
     POP_SUB(xc_is_orbital_dependent)
   end function xc_is_orbital_dependent
+
+  pure logical function family_is_gga(family)
+    integer, intent(in) :: family
+
+    family_is_gga = bitand(family, XC_FAMILY_GGA + XC_FAMILY_HYB_GGA + &
+      XC_FAMILY_MGGA + XC_FAMILY_HYB_MGGA + XC_FAMILY_LIBVDWXC) /= 0
+  end function  family_is_gga
+
+  pure logical function family_is_mgga(family)
+    integer, intent(in) :: family
+
+    family_is_mgga = bitand(family, XC_FAMILY_MGGA + XC_FAMILY_HYB_MGGA) /= 0
+  end function family_is_mgga
 
   logical function family_is_mgga_with_exc(xcs)
     type(xc_t), intent(in) :: xcs

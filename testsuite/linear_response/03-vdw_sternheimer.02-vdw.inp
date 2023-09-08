@@ -6,7 +6,7 @@ RestartFixedOccupations = no
 PseudopotentialSet = hgh_lda
 
 %Coordinates
-  "He" | 0 | 0 | 0 
+  "He" | 0 | 0 | 0
 %
 
 Radius  = 7.0
@@ -14,7 +14,7 @@ Spacing = 0.24
 
 LRConvAbsDens = 1.0e-3
 
-# Using the bicgstab solver because the default is much 
+# Using the bicgstab solver because the default is much
 # slower for vdw calculations
 LinearSolver = bicgstab
 LinearSolverTol = 1.0e-4

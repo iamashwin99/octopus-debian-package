@@ -363,7 +363,7 @@ contains
     end if
 
     write(message(1),'(a)') ' '
-    write(message(2),'(a)') ' index |    weight    |             coordinates              |'
+    write(message(2),'(a)') '   index |      weight  |             coordinates              |'
     call messages_info(2, namespace=namespace)
 
     do ik = 1, this%reduced%npoints
@@ -1363,7 +1363,7 @@ contains
 
     PUSH_SUB(kpoints_write_info)
 
-    call messages_print_stress('Brillouin zone sampling', iunit, namespace)
+    call messages_print_with_emphasis('Brillouin zone sampling', iunit, namespace)
 
     if (this%method == KPOINTS_MONKH_PACK) then
 
@@ -1431,7 +1431,7 @@ contains
 
     call messages_info(iunit=iunit, namespace=namespace)
 
-    call messages_print_stress(iunit=iunit, namespace=namespace)
+    call messages_print_with_emphasis(iunit=iunit, namespace=namespace)
 
     POP_SUB(kpoints_write_info)
   end subroutine kpoints_write_info

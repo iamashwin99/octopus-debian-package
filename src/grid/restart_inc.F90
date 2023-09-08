@@ -22,7 +22,7 @@ subroutine X(restart_write_mesh_function)(restart, space, filename, mesh, ff, ie
   type(restart_t),   intent(in)  :: restart
   type(space_t),     intent(in)  :: space
   character(len=*),  intent(in)  :: filename
-  type(mesh_t),      intent(in)  :: mesh
+  class(mesh_t),     intent(in)  :: mesh
   R_TYPE,  target,   intent(in)  :: ff(:)
   integer,           intent(out) :: ierr
   integer, optional, intent(in)  :: root(:) !< which process is going to write the data
@@ -30,6 +30,7 @@ subroutine X(restart_write_mesh_function)(restart, space, filename, mesh, ff, ie
   logical :: i_am_root, in_line
   integer :: root_(1:P_STRATEGY_MAX)
   R_TYPE, pointer :: ff_global(:)
+  character(len=MAX_PATH_LEN) :: workdir
 
   PUSH_SUB(X(restart_write_mesh_function))
 
@@ -71,9 +72,9 @@ subroutine X(restart_write_mesh_function)(restart, space, filename, mesh, ff, ie
   end if
 
   if (i_am_root) then
-    call X(io_function_output_global)(restart%format, restart%pwd, filename, restart%namespace, &
-      space, mesh, ff_global, unit_one, ierr)
     ! all restart files are in atomic units
+    workdir = io_workpath(restart%pwd, restart%namespace)
+    call io_binary_write(trim(workdir)//'/'//trim(filename)//'.obf', mesh%np_global, ff_global, ierr)
 
     if (mesh%parallel_in_domains) then
       SAFE_DEALLOCATE_P(ff_global)
@@ -102,12 +103,13 @@ subroutine X(restart_read_mesh_function)(restart, space, filename, mesh, ff, ier
   type(restart_t),            intent(in)    :: restart
   type(space_t),              intent(in)    :: space
   character(len=*),           intent(in)    :: filename
-  type(mesh_t),               intent(in)    :: mesh
+  class(mesh_t),              intent(in)    :: mesh
   R_TYPE, target, contiguous, intent(inout) :: ff(:)
   integer,                    intent(out)   :: ierr
 
-  integer(i8) :: ip, np, offset, file_size
+  integer(i8) :: ip, np, file_size
   R_TYPE, pointer :: read_ff(:)
+  R_TYPE, allocatable :: ff_reordered(:)
   type(profile_t), save :: prof_io
   type(batch_t) :: ffb
   type(profile_t), save :: prof_comm
@@ -122,15 +124,6 @@ subroutine X(restart_read_mesh_function)(restart, space, filename, mesh, ff, ier
   nullify(read_ff)
   full_filename = trim(restart%pwd)//'/'//trim(filename)//'.obf'
 
-  if (restart_has_map(restart) .and. mesh%parallel_in_domains) then
-    ! for the moment we do not do this directly
-    call X(io_function_input) (full_filename, restart%namespace, space, mesh, ff(1:mesh%np), ierr, &
-      map = restart%map)
-
-    POP_SUB(X(restart_read_mesh_function))
-    return
-  end if
-
   if (restart_has_map(restart)) then
     call io_binary_get_info(io_workpath(full_filename, restart%namespace), np, file_size, ierr)
 
@@ -139,60 +132,59 @@ subroutine X(restart_read_mesh_function)(restart, space, filename, mesh, ff, ier
       return
     end if
 
+    ! if the mesh is parallel in domains, np is mesh%np_global
     ASSERT(np > 0)
     SAFE_ALLOCATE(read_ff(1:np))
+    if (mesh%parallel_in_domains) then
+      SAFE_ALLOCATE(ff_reordered(1:np))
+    else
+      SAFE_ALLOCATE(ff_reordered(1:mesh%np))
+    end if
   else
     np = mesh%np
     read_ff => ff
-  end if
-
-  offset = 0
-  !in the parallel case, each node reads a part of the file
-  if (mesh%parallel_in_domains) then
-    offset = mesh%pv%xlocal - 1
   end if
 
   ASSERT(associated(read_ff))
 
   call profiling_in(prof_io, TOSTRING(X(RESTART_READ_IO)))
 
-#ifdef HAVE_MPI
-  if (mesh%parallel_in_domains) then
+  if (mesh%parallel_in_domains .and. .not. restart_has_map(restart)) then
     ! Ensure that xlocal has a proper value
     ASSERT(mesh%pv%xlocal >= 0 .and. mesh%pv%xlocal <= mesh%np_part_global)
     ASSERT(np <= huge(0_i4))
     call io_binary_read_parallel(io_workpath(full_filename, restart%namespace), &
-      mesh%mpi_grp%comm, mesh%pv%xlocal, i8_to_i4(np), read_ff, ierr)
-  else
-#endif
-    call io_binary_read(io_workpath(full_filename, restart%namespace), np, &
-      read_ff, ierr, offset = offset)
-#ifdef HAVE_MPI
-  end if
-#endif
-  call profiling_count_transfers(np, read_ff(1))
-  call profiling_out(prof_io)
+      mesh%mpi_grp%comm, mesh%pv%xlocal, i8_to_i4(np), ff, ierr)
 
-  if (mesh%parallel_in_domains) then
     call profiling_in(prof_comm, TOSTRING(X(RESTART_READ_COMM)))
     ! this is the global index of the points we read
-
-    ff(1:mesh%np) = read_ff(1:mesh%np)
 
     call batch_init(ffb, ff)
     call X(mesh_batch_exchange_points)(mesh, ffb, backward_map = .true.)
     call ffb%end()
 
     call profiling_out(prof_comm)
+  else
+    call io_binary_read(io_workpath(full_filename, restart%namespace), np, &
+      read_ff, ierr)
   end if
+  call profiling_count_transfers(np, read_ff(1))
+  call profiling_out(prof_io)
 
   if (restart_has_map(restart)) then
-    ff(1:mesh%np_global) = M_ZERO
+    ff_reordered = M_ZERO
     do ip = 1, min(np, ubound(restart%map, dim=1, kind=i8))
-      if (restart%map(ip) > 0) ff(restart%map(ip)) = read_ff(ip)
+      if (restart%map(ip) > 0) ff_reordered(restart%map(ip)) = read_ff(ip)
     end do
 
+    if (mesh%parallel_in_domains) then
+      call par_vec_scatter(mesh%pv, 0, ff, ff_reordered)
+    else
+      ff = ff_reordered
+    end if
+
     SAFE_DEALLOCATE_P(read_ff)
+    SAFE_DEALLOCATE_A(ff_reordered)
   end if
 
   if (ierr /= 0) then

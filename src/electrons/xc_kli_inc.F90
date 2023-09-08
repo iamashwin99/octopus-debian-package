@@ -1,5 +1,6 @@
 !! Copyright (C) 2002-2006 M. Marques, A. Castro, A. Rubio, G. Bertsch
 !! Copyright (C) 2012-2013 M. Gruning, P. Melo, M. Oliveira
+!! Copyright (C) 2021 N. Tancogne-Dejean
 !!
 !! This program is free software; you can redistribute it and/or modify
 !! it under the terms of the GNU General Public License as published by
@@ -18,152 +19,242 @@
 !!
 
 ! ---------------------------------------------------------
-subroutine X(xc_KLI_solve) (mesh, st, is, oep, first)
-  type(mesh_t),             intent(in)    :: mesh
+subroutine X(xc_KLI_solve) (space, mesh, st, oep, rcell_volume)
+  type(space_t),            intent(in)    :: space
+  class(mesh_t),            intent(in)    :: mesh
   type(states_elec_t),      intent(in)    :: st
-  integer,                  intent(in)    :: is
   type(xc_oep_t),           intent(inout) :: oep
-  logical,                  intent(in)    :: first
+  FLOAT,                    intent(in)    :: rcell_volume
 
-  integer :: ist, ip, jst, eigen_n, kssi, kssj, proc
-  FLOAT, allocatable :: rho_sigma(:), v_bar_S(:), sqphi(:, :, :), dd(:)
-  FLOAT, allocatable :: Ma(:,:), xx(:,:), yy(:,:)
-  R_TYPE, allocatable :: psi(:, :), bb(:,:)
-  R_TYPE, allocatable :: phi1(:,:,:)
+  integer :: ist, ip, jst, eigen_n, kssi, kssj, ispin, ik
+  FLOAT, allocatable :: rho_sigma(:,:), v_bar_S(:), sqphi(:, :, :), dd(:)
+  FLOAT, allocatable :: Ma(:,:), xx(:,:), yy(:,:), kli(:,:)
+  R_TYPE, allocatable :: psi(:, :)
+  FLOAT :: cnst(st%d%nspin)
 
-  ASSERT(.not. oep%has_photons)
+  PUSH_SUB(X(xc_KLI_solve))
+
+  ASSERT(oep%type /= OEP_TYPE_PHOTONS)
+  ASSERT(st%d%ispin /= SPINORS)
 
   call profiling_in(C_PROFILING_XC_KLI, TOSTRING(X(XC_KLI)))
 
-  PUSH_SUB(X(xc_KLI_solve))
+  oep%vxc = M_ZERO
+
   ! some intermediate quantities
   ! vxc contains the Slater part!
-  SAFE_ALLOCATE(rho_sigma(1:mesh%np))
-  SAFE_ALLOCATE(sqphi(1:mesh%np, 1:st%d%dim, 1:st%nst))
+  SAFE_ALLOCATE(rho_sigma(1:mesh%np, 1:st%d%spin_channels))
+  rho_sigma = M_ZERO
+
+  SAFE_ALLOCATE(sqphi(1:mesh%np, 1:st%nst, st%d%kpt%start:st%d%kpt%end))
   SAFE_ALLOCATE(psi(1:mesh%np, 1:st%d%dim))
 
-  do ist = st%st_start, st%st_end
-    call states_elec_get_state(st, mesh, ist, is, psi)
-    sqphi(1:mesh%np, 1:st%d%dim, ist) = abs(psi(1:mesh%np, 1:st%d%dim))**2
+  do ik = st%d%kpt%start, st%d%kpt%end
+    ispin = st%d%get_spin_index(ik)
+
+    do ist = st%st_start, st%st_end
+      call states_elec_get_state(st, mesh, ist, ik, psi)
+      sqphi(1:mesh%np, ist, ik) = R_REAL(R_CONJ(psi(1:mesh%np, 1))*psi(1:mesh%np, 1))
+    end do
+
+    do ip = 1, mesh%np
+      rho_sigma(ip, ispin) = rho_sigma(ip, ispin) + st%d%kweights(ik) &
+        * sum(oep%socc * st%occ(st%st_start:st%st_end, ik) * sqphi(ip, st%st_start:st%st_end, ik))
+    end do
   end do
 
-  do ip = 1, mesh%np
-    rho_sigma(ip) = max(sum(oep%socc * st%occ(st%st_start:st%st_end, is) * sqphi(ip, 1, st%st_start:st%st_end)), CNST(1e-20))
-  end do
-
-  if (st%parallel_in_states) then
-    SAFE_ALLOCATE(dd(1:mesh%np))
-    call st%mpi_grp%allreduce(rho_sigma(1), dd(1), mesh%np, MPI_FLOAT, MPI_SUM)
-    rho_sigma(1:mesh%np) = dd(1:mesh%np)
+  ! Comparing to KLI paper 1990, oep%vxc corresponds to V_{x \sigma}^S in Eq. 8
+  ! The n_{i \sigma} in Eq. 8 is partitioned in this code into \psi^{*} (included in lxc) and \psi (explicitly below)
+  if (st%parallel_in_states .or. st%d%kpt%parallel) then
+    call comm_allreduce(st%st_kpt_mpi_grp, rho_sigma)
   end if
+
+  ! Add a lower bound to the density to avoid numerical issues
+  do ispin = 1, st%d%spin_channels
+    do ip = 1, mesh%np
+      rho_sigma(ip, ispin) = max(rho_sigma(ip, ispin), CNST(1e-20))
+    end do
+  end do
 
   ! Comparing to KLI paper 1990, oep%vxc corresponds to V_{x \sigma}^S in Eq. 8
   ! The n_{i \sigma} in Eq. 8 is partitioned in this code into \psi^{*} (included in lxc) and \psi (explicitly below)
 
-  oep%vxc(1:mesh%np, is) = CNST(0.0)
-
-  do ist = st%st_start, st%st_end
-    call states_elec_get_state(st, mesh, ist, is, psi)
-    do ip = 1, mesh%np
-      oep%vxc(ip, is) = oep%vxc(ip, is) + oep%socc*st%occ(ist, is)*R_REAL(oep%X(lxc)(ip, ist, is)*psi(ip, 1))
+  do ik = st%d%kpt%start, st%d%kpt%end
+    ispin = st%d%get_spin_index(ik)
+    do ist = st%st_start, st%st_end
+      call states_elec_get_state(st, mesh, ist, ik, psi)
+      do ip = 1, mesh%np
+        oep%vxc(ip, ispin) = oep%vxc(ip, ispin) + oep%socc * st%occ(ist, ik) * st%d%kweights(ik) &
+          * R_REAL(oep%X(lxc)(ip, 1, ist, ik)*psi(ip, 1))
+      end do
     end do
   end do
-
-  do ip = 1, mesh%np
-    oep%vxc(ip, is) = oep%vxc(ip, is)/rho_sigma(ip)
-  end do
-
   SAFE_DEALLOCATE_A(psi)
 
-  if (st%parallel_in_states) then
-    call st%mpi_grp%allreduce(oep%vxc(1,is), dd(1), mesh%np, MPI_FLOAT, MPI_SUM)
-    oep%vxc(1:mesh%np,is) = dd(1:mesh%np)
-    SAFE_DEALLOCATE_A(dd)
+  if(st%parallel_in_states .or. st%d%kpt%parallel) then
+    call comm_allreduce(st%st_kpt_mpi_grp, oep%vxc)
   end if
 
-  eigen_n = oep%eigen_n
 
-  SAFE_ALLOCATE(v_bar_S(1:st%nst))
-  v_bar_S = M_ZERO
-  do ist = st%st_start, st%st_end
-    if (st%occ(ist, is) > M_EPSILON) then
-      v_bar_S(ist) = dmf_dotp(mesh, sqphi(:, 1, ist) , oep%vxc(:,is), reduce = .false.)
-    end if
+  do ispin = 1, st%d%spin_channels
+    do ip = 1, mesh%np
+      oep%vxc(ip, ispin) = oep%vxc(ip, ispin)/rho_sigma(ip, ispin)
+    end do
   end do
-  if (mesh%parallel_in_domains) call mesh%allreduce(v_bar_S, dim = st%st_end)
 
-  if (st%parallel_in_states) then
-    ! Broadcast the vector v_bar_S  and sqphi to all processors
-    do ist = 1, st%nst
-      call st%mpi_grp%bcast(v_bar_S(ist), 1, MPI_FLOAT, st%node(ist))
-    end do
-    do ist = 1, eigen_n
-      kssi = oep%eigen_index(ist)
-      call st%mpi_grp%bcast(sqphi(1, 1, kssi), mesh%np, MPI_FLOAT, st%node(kssi))
-    end do
-  end if
-  ! If there is more than one state, then solve linear equation.
-  linear_equation: if (eigen_n > 0) then
-    SAFE_ALLOCATE(dd(1:mesh%np))
-    SAFE_ALLOCATE(xx(1:eigen_n, 1))
-    SAFE_ALLOCATE(Ma(1:eigen_n, 1:eigen_n))
-    SAFE_ALLOCATE(yy(1:eigen_n, 1))
-    xx = M_ZERO
-    yy = M_ZERO
-    Ma = M_ZERO
-    dd = M_ZERO
-    proc = st%mpi_grp%rank
+  ! We have now computed the Slater part. We are adding the explicit KLI part now
 
-    i_loop: do ist = 1, eigen_n
-      kssi = oep%eigen_index(ist)
-      if (proc == st%node(kssi)) then
-        dd(1:mesh%np) = sqphi(1:mesh%np, 1, kssi) / rho_sigma(1:mesh%np)
-        j_loop: do jst = ist, eigen_n
-          kssj = oep%eigen_index(jst)
-          Ma(ist, jst) = - dmf_dotp(mesh, dd, sqphi(:, 1, kssj))
-        end do j_loop
-        Ma(ist, ist) = M_ONE + Ma(ist, ist)
-        yy(ist, 1) = v_bar_S(kssi) - oep%uxc_bar(kssi, is)
+
+  SAFE_ALLOCATE(kli(1:mesh%np, 1:st%d%nspin))
+  kli = M_ZERO
+
+  do ik = st%d%kpt%start, st%d%kpt%end
+    ispin = st%d%get_spin_index(ik)
+
+    ! In the case of isolated system, the OEP equation is simply solved for N-1 electrons
+    ! whereas for solids we remove a constant, as given in PRB 93, 205205 (2016)
+    if(space%is_periodic()) then
+      eigen_n = st%nst
+    else
+      call xc_oep_AnalyzeEigen(oep, st, ik)
+      eigen_n = oep%eigen_n
+    end if
+
+    SAFE_ALLOCATE(v_bar_S(1:st%nst))
+    v_bar_S = M_ZERO
+    do ist = st%st_start, st%st_end
+      if (st%occ(ist, ik) > M_EPSILON) then
+        v_bar_S(ist) = dmf_dotp(mesh, sqphi(:, ist, ik), oep%vxc(:,ispin), reduce = .false.)
       end if
-    end do i_loop
+    end do
+    if (mesh%parallel_in_domains) call mesh%allreduce(v_bar_S, dim = st%st_end)
 
     if (st%parallel_in_states) then
+      ! Broadcast the vector v_bar_S  and sqphi to all processors
+      do ist = 1, st%nst
+        call st%mpi_grp%bcast(v_bar_S(ist), 1, MPI_FLOAT, st%node(ist))
+      end do
       do ist = 1, eigen_n
         kssi = oep%eigen_index(ist)
-        call st%mpi_grp%bcast(yy(ist, 1), 1, MPI_FLOAT, st%node(kssi))
-        do jst = 1, eigen_n
-          call st%mpi_grp%bcast(Ma(ist, jst), 1, MPI_FLOAT, st%node(kssi))
+        call st%mpi_grp%bcast(sqphi(1, kssi, ik), mesh%np, MPI_FLOAT, st%node(kssi))
+      end do
+    end if
+
+    ! If there is more than one state, then solve linear equation.
+    if (eigen_n > 0) then
+      SAFE_ALLOCATE(dd(1:mesh%np))
+      SAFE_ALLOCATE(xx(1:eigen_n, 1))
+      SAFE_ALLOCATE(Ma(1:eigen_n, 1:eigen_n))
+      SAFE_ALLOCATE(yy(1:eigen_n, 1))
+      xx = M_ZERO
+      yy = M_ZERO
+      Ma = M_ZERO
+      dd = M_ZERO
+
+      i_loop: do ist = 1, eigen_n
+        if(space%is_periodic()) then
+          kssi = ist
+        else
+          kssi = oep%eigen_index(ist)
+        end if
+        if (st%mpi_grp%rank == st%node(kssi)) then
+          dd(1:mesh%np) = sqphi(1:mesh%np, kssi, ik) / rho_sigma(1:mesh%np, ispin)
+
+          j_loop: do jst = ist, eigen_n
+            if(space%is_periodic()) then
+              kssj = jst
+            else
+              kssj = oep%eigen_index(jst)
+            end if
+            Ma(ist, jst) = - dmf_dotp(mesh, dd, sqphi(:, kssj, ik))
+          end do j_loop
+          Ma(ist, ist) = M_ONE + Ma(ist, ist)
+
+          yy(ist, 1) = v_bar_S(kssi) - oep%uxc_bar(1, kssi, ik)
+
+        end if
+      end do i_loop
+
+#if defined(HAVE_MPI)
+      if (st%parallel_in_states) then
+        do ist = 1, eigen_n
+          if(space%is_periodic()) then
+            kssi = ist
+          else
+            kssi = oep%eigen_index(ist)
+          end if
+          call  st%mpi_grp%bcast(yy(ist, 1), 1, MPI_FLOAT, st%node(kssi))
+          do jst = 1, eigen_n
+            call st%mpi_grp%bcast(Ma(ist, jst), 1, MPI_FLOAT, st%node(kssi))
+          end do
+        end do
+      end if
+#endif
+
+      do ist = 1, eigen_n
+        do jst = ist+1, eigen_n
+          Ma(jst, ist) = Ma(ist, jst)
         end do
       end do
-    end if
 
-    do ist = 1, eigen_n
-      do jst = ist, eigen_n
-        Ma(jst, ist) = Ma(ist, jst)
+      call lalg_linsyssolve(eigen_n, 1, Ma, yy, xx)
+
+      do ist = 1, eigen_n
+        if(space%is_periodic()) then
+          kssi = ist
+        else
+          kssi = oep%eigen_index(ist)
+        end if
+
+        kli(1:mesh%np,ispin) = kli(1:mesh%np,ispin) + st%d%kweights(ik) * &
+          oep%socc * st%occ(kssi, ik) * xx(ist, 1) * sqphi(1:mesh%np, kssi, ik) / rho_sigma(1:mesh%np, ispin)
+      end do
+
+      SAFE_DEALLOCATE_A(dd)
+      SAFE_DEALLOCATE_A(xx)
+      SAFE_DEALLOCATE_A(Ma)
+      SAFE_DEALLOCATE_A(yy)
+
+    end if
+    ! The previous stuff is only needed if eigen_n>0.
+    SAFE_DEALLOCATE_A(v_bar_S)
+
+  end do
+
+  if(st%d%kpt%parallel) then
+    call comm_allreduce(st%d%kpt%mpi_grp, kli)
+  end if
+
+  !Adding the KLI part
+  call lalg_axpy(mesh%np, st%d%nspin, M_ONE, kli, oep%vxc)
+  SAFE_DEALLOCATE_A(kli)
+
+  ! Substracting the constant, see PRB 93, 205205 (2016)
+  if(space%is_periodic()) then
+    SAFE_ALLOCATE(dd(1:mesh%np))
+    cnst = M_ZERO
+    do ik = st%d%kpt%start, st%d%kpt%end
+      ispin = st%d%get_spin_index(ik)
+      do ist = st%st_start, st%st_end
+        if (st%occ(ist, ik) > M_EPSILON) then
+          dd(:) = sqphi(:, ist, ik) / rho_sigma(:, ispin)
+          cnst(ispin) = cnst(ispin) + oep%socc * st%occ(ist, ik) * st%d%kweights(ik) &
+            * dmf_dotp(mesh, sqphi(:, ist, ik), oep%vxc(:,ispin)) * dmf_integrate(mesh, dd)
+        end if
       end do
     end do
 
-    call lalg_linsyssolve(eigen_n, 1, Ma, yy, xx)
-
-    do ist = 1, eigen_n
-      kssi = oep%eigen_index(ist)
-      oep%vxc(1:mesh%np,is) = oep%vxc(1:mesh%np,is) + &
-        oep%socc * st%occ(kssi, is) * xx(ist, 1) * sqphi(1:mesh%np, 1, kssi) / rho_sigma(1:mesh%np)
-    end do
-
-    SAFE_DEALLOCATE_A(dd)
-    SAFE_DEALLOCATE_A(xx)
-    SAFE_DEALLOCATE_A(Ma)
-    SAFE_DEALLOCATE_A(yy)
-    if (oep%has_photons) then
-      SAFE_DEALLOCATE_A(phi1)
-      SAFE_DEALLOCATE_A(bb)
+    if (st%parallel_in_states .or. st%d%kpt%parallel) then
+      call comm_allreduce(st%st_kpt_mpi_grp, cnst)
     end if
 
-  end if linear_equation
-  ! The previous stuff is only needed if eigen_n>0.
+    do ispin = 1, st%d%spin_channels
+      oep%vxc(:, ispin) = oep%vxc(:, ispin) - cnst(ispin)/rcell_volume
+    end do
+    SAFE_DEALLOCATE_A(dd)
+  end if
 
-  SAFE_DEALLOCATE_A(v_bar_S)
+
   SAFE_DEALLOCATE_A(rho_sigma)
   SAFE_DEALLOCATE_A(sqphi)
   POP_SUB(X(xc_KLI_solve))
@@ -173,7 +264,7 @@ end subroutine X(xc_KLI_solve)
 ! ---------------------------------------------------------
 subroutine X(xc_KLI_solve_photon) (namespace, mesh, hm, st, is, oep, first)
   type(namespace_t),        intent(in)    :: namespace
-  type(mesh_t),             intent(in)    :: mesh
+  class(mesh_t),            intent(in)    :: mesh
   type(hamiltonian_elec_t), intent(in)    :: hm
   type(states_elec_t),      intent(in)    :: st
   integer,                  intent(in)    :: is
@@ -188,7 +279,7 @@ subroutine X(xc_KLI_solve_photon) (namespace, mesh, hm, st, is, oep, first)
 
   call profiling_in(C_PROFILING_XC_KLI, TOSTRING(X(XC_KLI_PHOTON)))
 
-  ASSERT(oep%has_photons)
+  ASSERT(oep%type == OEP_TYPE_PHOTONS)
   if (st%parallel_in_states) call messages_not_implemented("Photonic KLI not parallel in states")
 
   PUSH_SUB(X(xc_KLI_solve_photon))
@@ -245,8 +336,8 @@ subroutine X(xc_KLI_solve_photon) (namespace, mesh, hm, st, is, oep, first)
     call states_elec_get_state(st, mesh, ist, is, psi)
 #ifdef R_TREAL
     if (ist>(oep%eigen_n + 1)) exit ! included to guarantee that the photonic KLI finishes correctly but the parallel in states feature of the normal KLI works still
-    bb(:,1) = oep%X(lxc)(1:mesh%np, ist, is)
-    if (ist /= oep%eigen_n + 1) bb(:,1) = bb(:,1) - oep%uxc_bar(ist, is)*R_CONJ(psi(:, 1))
+    bb(:,1) = oep%X(lxc)(1:mesh%np, 1, ist, is)
+    if (ist /= oep%eigen_n + 1) bb(:,1) = bb(:,1) - oep%uxc_bar(1, ist, is)*R_CONJ(psi(:, 1))
     if (.not. first) then
       call xc_oep_pt_rhs(mesh, st, is, oep, phi1, ist, bb)
     end if
@@ -349,10 +440,8 @@ subroutine X(xc_KLI_solve_photon) (namespace, mesh, hm, st, is, oep, first)
     SAFE_DEALLOCATE_A(xx)
     SAFE_DEALLOCATE_A(Ma)
     SAFE_DEALLOCATE_A(yy)
-    if (oep%has_photons) then
-      SAFE_DEALLOCATE_A(phi1)
-      SAFE_DEALLOCATE_A(bb)
-    end if
+    SAFE_DEALLOCATE_A(phi1)
+    SAFE_DEALLOCATE_A(bb)
 
   end if linear_equation
   ! The previous stuff is only needed if eigen_n>0.
@@ -369,4 +458,3 @@ end subroutine X(xc_KLI_solve_photon)
 !! mode: f90
 !! coding: utf-8
 !! End:
-

@@ -1,5 +1,4 @@
 CalculationMode = gs
-DisableAccel = yes
 
 PeriodicDimensions = 3
 
@@ -47,8 +46,8 @@ GuessMagnetDensity = user_defined
 %AtomsMagnetDirection
  8.0 | 0.0 | 0.0
 -8.0 | 0.0 | 0.0
- 0.0 | 0.0 | 0.0 
- 0.0 | 0.0 | 0.0 
+ 0.0 | 0.0 | 0.0
+ 0.0 | 0.0 | 0.0
 %
 
 %KPointsGrid

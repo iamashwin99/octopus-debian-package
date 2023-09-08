@@ -1,0 +1,25 @@
+# -*- coding: utf-8 mode: shell-script -*-
+
+Test       : Multisystem Lennard Jones
+Program    : octopus
+TestGroups : short-run, multisystem
+Enabled    : Yes
+
+Processors: 1
+
+Input: 14-lennard-jones.01-classical-particles-N2.inp
+
+Precision: 1e-10
+match ; Classical  Particle 1   pos x (t=10)  ; LINEFIELD(H1/td.general/coordinates, 16, 3) ;  2.7158754040711663e-01 
+match ; Classical  Particle 1   pos x (t=34)  ; LINEFIELD(H1/td.general/coordinates, 40, 3) ;  1.7754615189611797e-01
+Precision: 1e-9 
+match ; Classical  Particle 1   pos z (t=10)  ; LINEFIELD(H1/td.general/coordinates, 16, 5) ;  0.0000000000000000e+00
+Precision: 1e-10 
+match ; Classical  Particle 1   vel x (t=50)  ; LINEFIELD(H1/td.general/coordinates, 56, 6) ;  8.5997241036920251e-05 
+Precision: 1e-10
+match ; Classical  Particle 2   pos x (t=10)  ; LINEFIELD(H2/td.general/coordinates, 16, 3) ;  6.8463875610841010e+00 
+match ; Classical  Particle 2   pos x (t=50)  ; LINEFIELD(H2/td.general/coordinates, 56, 3) ;  6.8550989470270283e+00
+Precision: 1e-9 
+match ; Classical  Particle 2   pos z (t=40)  ; LINEFIELD(H2/td.general/coordinates, 46, 5) ;  0.0000000000000000e+00 
+Precision: 1e-10 
+match ; Classical  Particle 2   vel x (t=25)  ; LINEFIELD(H2/td.general/coordinates, 31, 6) ;  8.5403397200519609e-05

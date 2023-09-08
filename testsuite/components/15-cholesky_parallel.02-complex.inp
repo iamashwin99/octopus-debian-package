@@ -15,8 +15,3 @@ ExtraStates = 8
 StatesOrthogonalization = cholesky_parallel
 
 TestType = complex
-
-
-
-
-

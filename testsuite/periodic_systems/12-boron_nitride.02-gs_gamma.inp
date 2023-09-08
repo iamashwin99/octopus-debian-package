@@ -20,7 +20,7 @@ lz = 4.0*angstrom
 
 %LatticeParameters
   lx | ly | 2*lz
-% 
+%
 
 %Spacing
  lx/16 | ly/8 | lx/16
@@ -45,7 +45,3 @@ SmearingFunction = fermi_dirac
 Smearing = 0.01*eV
 
 FilterPotentials = filter_none
-
-
-
-

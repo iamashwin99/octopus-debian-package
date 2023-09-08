@@ -32,9 +32,13 @@ match ; Force SCF    ; LINEFIELD(static/forces, 2, 26) ; -0.160875E-07
 Input      : 05-forces.02-Na2_go.inp
 
 match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
-match ; Total energy ; GREPFIELD(static/info, 'Total       =', 3) ; -0.35992289
-match ; Force    [1] ; GREPFIELD(static/info, 'Forces on the ions', 5, 2) ;-0.000039
-match ; Force    [2] ; GREPFIELD(static/info, 'Forces on the ions', 5, 3) ;0.000039
-match ; Geometry [1] ; LINEFIELD(min.xyz, 3, 4) ; -1.385281
-match ; Geometry [2] ; LINEFIELD(min.xyz, 4, 4) ;  1.385281
-
+Precision: 1.80e-07
+match ;  Total energy  ; GREPFIELD(static/info, 'Total       =', 3) ; -0.35979967
+Precision: 8.29e-09
+match ;  Force    [1]  ; GREPFIELD(static/info, 'Forces on the ions', 5, 2) ; -2.7082582e-05
+Precision: 8.29e-09
+match ;  Force    [2]  ; GREPFIELD(static/info, 'Forces on the ions', 5, 3) ; 2.7082582e-05
+Precision: 6.93e-06
+match ;  Geometry [1]  ; LINEFIELD(min.xyz, 3, 4) ; -1.3855490000000001
+Precision: 6.93e-06
+match ;  Geometry [2]  ; LINEFIELD(min.xyz, 4, 4) ; 1.3855490000000001

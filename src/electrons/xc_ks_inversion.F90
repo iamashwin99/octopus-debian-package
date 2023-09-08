@@ -83,7 +83,7 @@ module xc_ks_inversion_oct_m
   type xc_ks_inversion_t
     private
     integer,             public :: method
-    integer                     :: level
+    integer                     :: level = XC_KS_INVERSION_NONE
     integer,             public :: asymp
     FLOAT, allocatable          :: vhxc_previous_step(:,:)
     type(states_elec_t), public :: aux_st
@@ -176,13 +176,13 @@ contains
       call states_elec_copy(ks_inv%aux_st, st, exclude_wfns = .true.)
 
       ! initialize auxiliary random wavefunctions
-      call states_elec_allocate_wfns(ks_inv%aux_st, gr%mesh)
-      call states_elec_generate_random(ks_inv%aux_st, gr%mesh, kpoints)
+      call states_elec_allocate_wfns(ks_inv%aux_st, gr)
+      call states_elec_generate_random(ks_inv%aux_st, gr, kpoints)
 
       ! initialize densities, hamiltonian and eigensolver
       call states_elec_densities_init(ks_inv%aux_st, gr)
 
-      lasers => lasers_t(namespace, gr%mesh, space, ions%latt)
+      lasers => lasers_t(namespace, gr, space, ions%latt)
       if(lasers%no_lasers > 0) then
         call ks_inv%ext_partners%add(lasers)
         call lasers_check_symmetries(lasers, kpoints)
@@ -264,11 +264,11 @@ contains
 
     PUSH_SUB(invertks_2part)
 
-    np = gr%mesh%np
+    np = gr%np
 
-    SAFE_ALLOCATE(sqrtrho(1:gr%mesh%np_part, 1:nspin))
+    SAFE_ALLOCATE(sqrtrho(1:gr%np_part, 1:nspin))
     SAFE_ALLOCATE(vks(1:np, 1:nspin))
-    SAFE_ALLOCATE(laplace(1:gr%mesh%np, 1:nspin))
+    SAFE_ALLOCATE(laplace(1:gr%np, 1:nspin))
 
     sqrtrho = M_ZERO
     smalldensity = 5d-6
@@ -279,7 +279,7 @@ contains
     end if
 
     do jj = 1, nspin
-      do ii = 1, gr%mesh%np
+      do ii = 1, gr%np
         sqrtrho(ii, jj) = sqrt(target_rho(ii, jj))
         !if (sqrtrho(ii, jj) < CNST(2.5e-6)) sqrtrho(ii, jj) = CNST(2.5e-6)
       end do
@@ -314,24 +314,24 @@ contains
     if (asymptotics == XC_ASYMPTOTICS_SC) then
       do ii = 1, nspin
         do jj = 1, asym1
-          call mesh_r(gr%mesh, jj, rr)
+          call mesh_r(gr, jj, rr)
           aux_hm%vxc(jj, ii) = -M_ONE/sqrt(rr**2 + M_ONE)
         end do
 
         ! calculate constant shift for correct asymptotics and shift accordingly
-        call mesh_r(gr%mesh, asym1+1, rr)
+        call mesh_r(gr, asym1+1, rr)
         shift  = aux_hm%vxc(asym1+1, ii) + M_ONE/sqrt(rr**2 + M_ONE)
         do jj = asym1+1, asym2-1
           aux_hm%vxc(jj,ii) = aux_hm%vxc(jj, ii) - shift
         end do
 
-        call mesh_r(gr%mesh, asym2-1, rr)
+        call mesh_r(gr, asym2-1, rr)
         shift  = aux_hm%vxc(asym2-1, ii) + M_ONE/sqrt(rr**2 + M_ONE)
         do jj = 1, asym2-1
           aux_hm%vxc(jj,ii) = aux_hm%vxc(jj, ii) - shift
         end do
         do jj = asym2, np
-          call mesh_r(gr%mesh, jj, rr)
+          call mesh_r(gr, jj, rr)
           aux_hm%vxc(jj, ii) = -M_ONE/sqrt(rr**2 + M_ONE)
         end do
       end do
@@ -357,8 +357,8 @@ contains
       aux_hm%vhxc(:,ii) = aux_hm%vxc(:,ii) + aux_hm%vhartree(1:np)
     end do
 
-    call hamiltonian_elec_update(aux_hm, gr%mesh, namespace, space, ext_partners)
-    call eigensolver_run(eigensolver, namespace, gr, st, aux_hm, 1)
+    call aux_hm%update(gr, namespace, space, ext_partners)
+    call eigensolver%run(namespace, gr, st, aux_hm, 1)
     call density_calc(st, gr, st%rho)
 
     SAFE_DEALLOCATE_A(sqrtrho)
@@ -384,7 +384,7 @@ contains
     type(eigensolver_t),      intent(inout) :: eigensolver
     integer,                  intent(in)    :: nspin
     integer,                  intent(in)    :: method
-    FLOAT,                    intent(in)    :: target_rho(1:gr%mesh%np, 1:nspin)
+    FLOAT,                    intent(in)    :: target_rho(1:gr%np, 1:nspin)
     integer,                  intent(in)    :: asymptotics
 
     integer :: ii, jj, ierr, asym1, asym2
@@ -401,7 +401,7 @@ contains
 
     PUSH_SUB(invertks_iter)
 
-    np = gr%mesh%np
+    np = gr%np
 
     !%Variable InvertKSConvAbsDens
     !%Type float
@@ -501,13 +501,13 @@ contains
       if (verbosity == 2) then
         write(fname,'(i6.6)') counter
         call dio_function_output(io_function_fill_how("AxisX"), ".", "vhxc"//fname, namespace, space, &
-          gr%mesh, aux_hm%vhxc(:,1), units_out%energy, ierr)
+          gr, aux_hm%vhxc(:,1), units_out%energy, ierr)
         call dio_function_output(io_function_fill_how("AxisX"), ".", "rho"//fname, namespace, space, &
-          gr%mesh, st%rho(:,1), units_out%length**(-space%dim), ierr)
+          gr, st%rho(:,1), units_out%length**(-space%dim), ierr)
       end if
 
-      call hamiltonian_elec_update(aux_hm, gr%mesh, namespace, space, ext_partners)
-      call eigensolver_run(eigensolver, namespace, gr, st, aux_hm, 1)
+      call aux_hm%update(gr, namespace, space, ext_partners)
+      call eigensolver%run(namespace, gr, st, aux_hm, 1)
       call density_calc(st, gr, st%rho)
 
       ! Iterative inversion with fixed parameters in Stella Verstraete method
@@ -591,7 +591,7 @@ contains
 !TODO: parallelize these loops over np
         do jj = 1, int(np/2)
           if (target_rho(jj,ii) < convdensity*CNST(10.0)) then
-            call mesh_r(gr%mesh, jj, rr)
+            call mesh_r(gr, jj, rr)
             vhxc(jj, ii) = (st%qtot-M_ONE)/sqrt(rr**2 + M_ONE)
             asym1 = jj
           end if
@@ -601,21 +601,21 @@ contains
         end do
 
         ! calculate constant shift for correct asymptotics and shift accordingly
-        call mesh_r(gr%mesh, asym1+1, rr)
+        call mesh_r(gr, asym1+1, rr)
         shift  = vhxc(asym1+1, ii) - (st%qtot-M_ONE)/sqrt(rr**2 + M_ONE)
 !TODO: parallelize these loops over np
         do jj = asym1+1, asym2-1
           vhxc(jj,ii) = vhxc(jj, ii) - shift
         end do
 
-        call mesh_r(gr%mesh, asym2-1, rr)
+        call mesh_r(gr, asym2-1, rr)
         shift  = vhxc(asym2-1, ii) - (st%qtot-M_ONE)/sqrt(rr**2 + M_ONE)
 !TODO: parallelize these loops over np
         do jj = 1, asym2-1
           vhxc(jj,ii) = vhxc(jj, ii) - shift
         end do
         do jj = asym2, np
-          call mesh_r(gr%mesh, jj, rr)
+          call mesh_r(gr, jj, rr)
           vhxc(jj, ii) = (st%qtot-M_ONE)/sqrt(rr**2 + M_ONE)
         end do
       end do
@@ -632,8 +632,8 @@ contains
 
     !calculate final density
 
-    call hamiltonian_elec_update(aux_hm, gr%mesh, namespace, space, ext_partners)
-    call eigensolver_run(eigensolver, namespace, gr, st, aux_hm, 1)
+    call aux_hm%update(gr, namespace, space, ext_partners)
+    call eigensolver%run(namespace, gr, st, aux_hm, 1)
     call density_calc(st, gr, st%rho)
 
     write(message(1),'(a,I8)') "Iterative KS inversion, iterations needed:", counter
@@ -656,7 +656,7 @@ contains
     type(hamiltonian_elec_t), intent(in)    :: hm
     type(partner_list_t),     intent(in)    :: ext_partners
     type(states_elec_t),      intent(inout) :: st
-    FLOAT,                    intent(inout) :: vxc(:,:) !< vxc(gr%mesh%np, st%d%nspin)
+    FLOAT,                    intent(inout) :: vxc(:,:) !< vxc(gr%np, st%d%nspin)
     FLOAT, optional,          intent(in)    :: time
 
     integer :: ii
@@ -666,7 +666,7 @@ contains
 
     PUSH_SUB(X(xc_ks_inversion_calc))
 
-    np = gr%mesh%np
+    np = gr%np
 
     call density_calc(st, gr, st%rho)
 

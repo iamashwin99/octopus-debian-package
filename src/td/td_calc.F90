@@ -19,6 +19,7 @@
 #include "global.h"
 
 module td_calc_oct_m
+  use comm_oct_m
   use debug_oct_m
   use derivatives_oct_m
   use ext_partner_list_oct_m
@@ -36,7 +37,6 @@ module td_calc_oct_m
   use mesh_function_oct_m
   use mesh_oct_m
   use messages_oct_m
-  use mpi_oct_m
   use namespace_oct_m
   use profiling_oct_m
   use space_oct_m
@@ -79,7 +79,6 @@ contains
     FLOAT :: field(space%dim), x(space%dim)
     CMPLX, allocatable :: zpsi(:, :), hzpsi(:,:), hhzpsi(:,:), xzpsi(:,:,:), vnl_xzpsi(:,:)
     integer  :: j, k, ik, ist, idim
-    FLOAT   :: y(space%dim)
     type(lasers_t), pointer :: lasers
 
     PUSH_SUB(td_calc_tacc)
@@ -107,48 +106,48 @@ contains
 
     ! And now, i<[H,[V_nl,x]]>
     x = M_ZERO
-    SAFE_ALLOCATE(zpsi(1:gr%mesh%np_part, 1:st%d%dim))
-    SAFE_ALLOCATE(hzpsi (1:gr%mesh%np_part, 1:st%d%dim))
-    SAFE_ALLOCATE(hhzpsi(1:3, 1:gr%mesh%np_part))
+    SAFE_ALLOCATE(zpsi(1:gr%np_part, 1:st%d%dim))
+    SAFE_ALLOCATE(hzpsi (1:gr%np_part, 1:st%d%dim))
+    SAFE_ALLOCATE(hhzpsi(1:3, 1:gr%np_part))
 
     do ik = st%d%kpt%start, st%d%kpt%end
       do ist = st%st_start, st%st_end
 
-        call states_elec_get_state(st, gr%mesh, ist, ik, zpsi)
+        call states_elec_get_state(st, gr, ist, ik, zpsi)
 
-        call zhamiltonian_elec_apply_single(hm, namespace, gr%mesh, zpsi, hzpsi, ist, ik)
+        call zhamiltonian_elec_apply_single(hm, namespace, gr, zpsi, hzpsi, ist, ik)
 
-        SAFE_ALLOCATE(xzpsi    (1:gr%mesh%np_part, 1:st%d%dim, 1:3))
-        SAFE_ALLOCATE(vnl_xzpsi(1:gr%mesh%np_part, 1:st%d%dim))
+        SAFE_ALLOCATE(xzpsi    (1:gr%np_part, 1:st%d%dim, 1:3))
+        SAFE_ALLOCATE(vnl_xzpsi(1:gr%np_part, 1:st%d%dim))
         xzpsi = M_z0
-        do k = 1, gr%mesh%np
+        do k = 1, gr%np
           do j = 1, space%dim
-            xzpsi(k, 1:st%d%dim, j) = gr%mesh%x(k, j)*zpsi(k, 1:st%d%dim)
+            xzpsi(k, 1:st%d%dim, j) = gr%x(k, j)*zpsi(k, 1:st%d%dim)
           end do
         end do
 
         do j = 1, space%dim
-          call zhamiltonian_elec_apply_single(hm, namespace, gr%mesh, xzpsi(:, :, j), vnl_xzpsi, ist, ik, &
+          call zhamiltonian_elec_apply_single(hm, namespace, gr, xzpsi(:, :, j), vnl_xzpsi, ist, ik, &
             terms = TERM_NON_LOCAL_POTENTIAL)
 
           do idim = 1, st%d%dim
-            x(j) = x(j) - 2*st%occ(ist, ik)*TOFLOAT(zmf_dotp(gr%mesh, hzpsi(1:gr%mesh%np, idim), vnl_xzpsi(:, idim)))
+            x(j) = x(j) - 2*st%occ(ist, ik)*TOFLOAT(zmf_dotp(gr, hzpsi(1:gr%np, idim), vnl_xzpsi(:, idim)))
           end do
         end do
 
         xzpsi = M_z0
-        do k = 1, gr%mesh%np
+        do k = 1, gr%np
           do j = 1, space%dim
-            xzpsi(k, 1:st%d%dim, j) = gr%mesh%x(k, j)*hzpsi(k, 1:st%d%dim)
+            xzpsi(k, 1:st%d%dim, j) = gr%x(k, j)*hzpsi(k, 1:st%d%dim)
           end do
         end do
 
         do j = 1, space%dim
-          call zhamiltonian_elec_apply_single(hm, namespace, gr%mesh, xzpsi(:, :, j), vnl_xzpsi, ist, ik, &
+          call zhamiltonian_elec_apply_single(hm, namespace, gr, xzpsi(:, :, j), vnl_xzpsi, ist, ik, &
             terms = TERM_NON_LOCAL_POTENTIAL)
 
           do idim = 1, st%d%dim
-            x(j) = x(j) + 2*st%occ(ist, ik)*TOFLOAT(zmf_dotp(gr%mesh, zpsi(:, idim), vnl_xzpsi(:, idim)))
+            x(j) = x(j) + 2*st%occ(ist, ik)*TOFLOAT(zmf_dotp(gr, zpsi(:, idim), vnl_xzpsi(:, idim)))
           end do
         end do
         SAFE_DEALLOCATE_A(xzpsi)
@@ -160,8 +159,7 @@ contains
     SAFE_DEALLOCATE_A(hhzpsi)
 
     if (st%parallel_in_states) then
-      call st%mpi_grp%allreduce(x(1), y(1), space%dim, MPI_FLOAT, MPI_SUM)
-      x = y
+      call comm_allreduce(st%mpi_grp, x)
     end if
     acc = acc + x
 
@@ -217,7 +215,6 @@ contains
     integer :: next
     type(c_ptr) :: c
     integer, allocatable :: idx0(:), idx(:), idxref(:)
-    FLOAT, allocatable :: Nbuf(:)
 
     PUSH_SUB(td_calc_ionch)
 
@@ -248,16 +245,8 @@ contains
     end do
 
     if (st%parallel_in_states) then
-      SAFE_ALLOCATE(Nbuf(1: Nch))
-      Nbuf(:) = M_ZERO
-      call st%mpi_grp%allreduce(N(1), Nbuf(1), Nch, MPI_FLOAT, MPI_SUM)
-      N(:) = Nbuf(:)
-
-      Nbuf(:) = M_ZERO
-      call st%mpi_grp%allreduce(Nnot(1), Nbuf(1), Nch, MPI_FLOAT, MPI_SUM)
-      Nnot(:) = Nbuf(:)
-
-      SAFE_DEALLOCATE_A(Nbuf)
+      call comm_allreduce(st%mpi_grp, N)
+      call comm_allreduce(st%mpi_grp, Nnot)
     end if
 
 ! print * ,mpi_world%rank, "N    =", N(:)

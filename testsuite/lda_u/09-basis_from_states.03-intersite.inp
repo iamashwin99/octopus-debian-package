@@ -5,7 +5,7 @@ ExperimentalFeatures = yes
 
 a = 4.0485*angstrom
 %Species
- 'Al' | species_pseudo | file | '09-basis_from_states.fhi' | lmax | 2 | lloc | 0 |hubbard_l | 1 
+ 'Al' | species_pseudo | file | '09-basis_from_states.fhi' | lmax | 2 | lloc | 0 |hubbard_l | 1
 %
 
 DFTULevel = dft_u_acbn0
@@ -16,9 +16,10 @@ ACBN0IntersiteCutoff = 6
 %
 DFTUBasisFromStates = yes
 %DFTUBasisStates
-  1
-  2
-  3
+  1 
+  1 | 1 
+  2 | 1 
+  3 | 1
 %
 
 
@@ -38,7 +39,7 @@ DFTUBasisFromStates = yes
 %
 
 Spacing = 0.4
-Smearing = 0.1
+Smearing = 0.1*eV
 SmearingFunction = fermi_dirac
 
 FromScratch = yes

@@ -5,16 +5,16 @@ UnitsOutput = ev_angstrom
 Dimensions = 3
 PeriodicDimensions = 1
 
-CalculationMode = unocc                     
+CalculationMode = unocc
 
 FromScratch = yes
 
 %Species
-  "Na" | species_pseudo | lmax | 2 | lloc | 2  
+  "Na" | species_pseudo | lmax | 2 | lloc | 2
 %
 
 %Coordinates
-  "Na" |   0.0 | 0.0 | 0.0 
+  "Na" |   0.0 | 0.0 | 0.0
 %
 
 BoxShape = parallelepiped
@@ -47,4 +47,3 @@ ExperimentalFeatures = yes
 FilterPotentials = filter_none
 
 MixField = density
-

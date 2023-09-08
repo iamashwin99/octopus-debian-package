@@ -230,6 +230,7 @@ CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
 CFLAGS_CLBLAS = @CFLAGS_CLBLAS@
+CFLAGS_CLBLAST = @CFLAGS_CLBLAST@
 CFLAGS_CLFFT = @CFLAGS_CLFFT@
 CFLAGS_CUDA = @CFLAGS_CUDA@
 CFLAGS_FFTW = @CFLAGS_FFTW@
@@ -307,6 +308,7 @@ LIBS_BERKELEYGW = @LIBS_BERKELEYGW@
 LIBS_BLACS = @LIBS_BLACS@
 LIBS_BLAS = @LIBS_BLAS@
 LIBS_CLBLAS = @LIBS_CLBLAS@
+LIBS_CLBLAST = @LIBS_CLBLAST@
 LIBS_CLFFT = @LIBS_CLFFT@
 LIBS_CUDA = @LIBS_CUDA@
 LIBS_DFTBPLUS = @LIBS_DFTBPLUS@
@@ -429,11 +431,8 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 SUBDIRS = \
 	nc-sr-04_pbesol_standard         \
-	nc-sr-04_pbesol_stringent        \
 	nc-sr-04_pbe_standard            \
-	nc-sr-04_pbe_stringent           \
-	nc-sr-04_pw_standard             \
-	nc-sr-04_pw_stringent     
+	nc-sr-04_pw_standard
 
 all: all-recursive
 

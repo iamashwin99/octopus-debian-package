@@ -131,6 +131,7 @@ subroutine X(io_function_input_global)(filename, namespace, space, mesh, ff, ier
       ierr = 2
     else
       call cube_init(cube, mesh%idx%ll, namespace, space, mesh%spacing, mesh%coord_system)
+      call cube_init_cube_map(cube, mesh)
       call X(cube_function_alloc_RS)(cube, cf)
 #if defined(R_TCOMPLEX)
       call dcube_function_alloc_RS(cube, re)
@@ -184,6 +185,7 @@ subroutine X(io_function_input_global)(filename, namespace, space, mesh, ff, ier
     end select
 
     call cube_init(cube, mesh%idx%ll, namespace, space, mesh%spacing, mesh%coord_system)
+    call cube_init_cube_map(cube, mesh)
     call X(cube_function_alloc_RS)(cube, cf)
 
     call io_csv_get_info(io_workpath(filename, namespace), dims, ierr)
@@ -431,134 +433,57 @@ end subroutine X(io_function_input_global)
 
 ! ---------------------------------------------------------
 subroutine X(io_function_output_vector)(how, dir, fname, namespace, space, mesh, ff, unit, ierr, &
-  ions, grp, root, is_global)
+  pos, atoms, grp, root)
   integer(i8),                intent(in)  :: how
   character(len=*),           intent(in)  :: dir
   character(len=*),           intent(in)  :: fname
   type(namespace_t),          intent(in)  :: namespace
   type(space_t),              intent(in)  :: space
-  type(mesh_t),               intent(in)  :: mesh
+  class(mesh_t),              intent(in)  :: mesh
   R_TYPE,           target,   intent(in)  :: ff(:, :)
   type(unit_t),               intent(in)  :: unit
   integer,                    intent(out) :: ierr
-  type(ions_t),     optional, intent(in)  :: ions
+  FLOAT,            optional, intent(in)  :: pos(:,:)
+  type(atom_t),     optional, intent(in)  :: atoms(:)
   type(mpi_grp_t),  optional, intent(in)  :: grp !< the group that shares the same data, must contain the domains group
   integer,          optional, intent(in)  :: root !< which process is going to write the data
-  logical,          optional, intent(in)  :: is_global !< Input data is mesh%np_global? And, thus, it has not be gathered
 
   integer :: ivd
   integer(i8) :: how_seq
   character(len=MAX_PATH_LEN) :: full_fname
-  R_TYPE, pointer :: ff_global(:, :)
-  logical :: i_am_root, is_global_
-  integer :: root_
-  type(mpi_grp_t) :: grp_
+  type(cube_t) :: cube
+  type(cube_function_t), allocatable :: cf(:)
+  character(len=MAX_PATH_LEN) :: filename
+  FLOAT :: dk(3)
 
   PUSH_SUB(X(io_function_output_vector))
 
   ASSERT(space%dim < 10)
 
-  ierr = 0
-  is_global_ = optional_default(is_global, .false.)
+  how_seq = bitand(how, not(OPTION__OUTPUTFORMAT__VTK)) ! first do everything except VTK
 
-  if (is_global_) then
-    ASSERT(ubound(ff, dim=1, kind=i8) == mesh%np_global .or. ubound(ff, dim=1, kind=i8) == mesh%np_part_global)
-  else
-    ASSERT(ubound(ff, dim = 1) == mesh%np .or. ubound(ff, dim = 1) == mesh%np_part)
-  end if
+  ! everything except VTK
+  do ivd = 1, space%dim
+    full_fname = trim(fname)//'-'//index2axis(ivd)
+    call X(io_function_output)(how_seq, dir, full_fname, namespace, space, mesh, &
+      ff(:, ivd), unit, ierr, pos=pos, atoms=atoms, grp=grp, root=root)
+  end do
 
-  i_am_root = .true.
-  call mpi_grp_init(grp_, -1)
-  root_ = optional_default(root, 0)
-
-  if (mesh%parallel_in_domains) then
-    call mpi_grp_copy(grp_, mesh%mpi_grp)
-
-    i_am_root = (mesh%mpi_grp%rank == root_)
-
-    if (.not. is_global_) then
-      if (bitand(how, OPTION__OUTPUTFORMAT__BOUNDARY_POINTS) /= 0) then
-        call messages_not_implemented("OutputFormat = boundary_points with domain parallelization", namespace=namespace)
-        SAFE_ALLOCATE(ff_global(1:mesh%np_part_global, 1:space%dim))
-        ! FIXME: needs version of vec_gather that includes boundary points. See ticket #127
-      else
-        SAFE_ALLOCATE(ff_global(1:mesh%np_global, 1:space%dim))
-      end if
-
-      !note: here we are gathering data that we won`t write if grp is
-      !present, but to avoid it we will have to find out all if the
-      !processes are members of the domain line where the root of grp
-      !lives
-
-      do ivd = 1, space%dim
-        call par_vec_gather(mesh%pv, root_, ff(:, ivd), ff_global(:, ivd))
-      end do
-
-    else
-      ff_global => ff
-    end if
-  else
-    ff_global => ff
-  end if
-
-  if (present(grp)) then
-    i_am_root = i_am_root .and. (grp%rank == root_)
-    call mpi_grp_copy(grp_, grp)
-  end if
-
-  if (i_am_root) then
-
-    how_seq = how
-
-    if (bitand(how, OPTION__OUTPUTFORMAT__VTK) /= 0) call out_vtk()
-    how_seq = bitand(how_seq, not(OPTION__OUTPUTFORMAT__VTK)) ! remove from the list of formats
-
-    if (how_seq /= 0) then !perhaps there is nothing left to do
-      do ivd = 1, space%dim
-        full_fname = trim(fname)//'-'//index2axis(ivd)
-
-        call X(io_function_output_global)(how_seq, dir, full_fname, namespace, space, mesh, &
-          ff_global(:, ivd), unit, ierr, ions)
-      end do
-    end if
-
-  end if
-
-  ! I have to broadcast the error code
-  if (.not. is_global_) call grp_%bcast(ierr, 1, MPI_INTEGER, 0)
-
-  if (mesh%parallel_in_domains .and. .not. is_global_) then
-    SAFE_DEALLOCATE_P(ff_global)
-  else
-    nullify(ff_global)
-  end if
-
-  POP_SUB(X(io_function_output_vector))
-
-contains
-
-  subroutine out_vtk()
-    type(cube_t) :: cube
-    type(cube_function_t), allocatable :: cf(:)
-    character(len=MAX_PATH_LEN) :: filename
-    FLOAT :: dk(3)
-    integer :: ii
-
-    PUSH_SUB(X(io_function_output_vector).out_vtk)
-
+  if (bitand(how, OPTION__OUTPUTFORMAT__VTK) /= 0) then
+    ! now the VTK output
     call cube_init(cube, mesh%idx%ll, namespace, space, mesh%spacing, mesh%coord_system)
-
+    call cube_init_cube_map(cube, mesh)
     SAFE_ALLOCATE(cf(1:space%dim))
 
+    ! get global cube function for each dimension
     do ivd = 1, space%dim
-      call X(cube_function_alloc_RS)(cube, cf(ivd))
-      call X(mesh_to_cube)(mesh, ff_global(:, ivd), cube, cf(ivd))
+      call X(cube_function_alloc_RS) (cube, cf(ivd))
+      call X(mesh_to_cube) (mesh, ff(:, ivd), cube, cf(ivd))
     end do
 
     filename = trim(dir)//'/'//trim(fname)//".vtk"
-
-    do ii = 1, 3
-      dk(ii)= units_from_atomic(units_out%length, mesh%spacing(ii))
+    do ivd = 1, space%dim
+      dk(ivd)= units_from_atomic(units_out%length, mesh%spacing(ivd))
     end do
 
     call X(vtk_out_cf_vector)(filename, namespace, fname, ierr, cf, space%dim, cube, dk, unit)
@@ -566,14 +491,10 @@ contains
     do ivd = 1, space%dim
       call X(cube_function_free_RS)(cube, cf(ivd))
     end do
-
     call cube_end(cube)
+  end if
 
-    SAFE_DEALLOCATE_A(cf)
-
-    POP_SUB(X(io_function_output_vector).out_vtk)
-  end subroutine out_vtk
-
+  POP_SUB(X(io_function_output_vector))
 end subroutine X(io_function_output_vector)
 
 ! ---------------------------------------------------------
@@ -653,43 +574,76 @@ end subroutine X(io_function_output_vector_BZ)
 
 
 ! ---------------------------------------------------------
-subroutine X(io_function_output) (how, dir, fname, namespace, space, mesh, ff, unit, ierr, ions, grp, root, is_global)
+subroutine X(io_function_output) (how, dir, fname, namespace, space, mesh, ff, unit, ierr, pos, atoms, grp, root)
   integer(i8),                intent(in)  :: how
   character(len=*),           intent(in)  :: dir
   character(len=*),           intent(in)  :: fname
   type(namespace_t),          intent(in)  :: namespace
   type(space_t),              intent(in)  :: space
-  type(mesh_t),               intent(in)  :: mesh
+  class(mesh_t),              intent(in)  :: mesh
   R_TYPE,           target,   intent(in)  :: ff(:)
   type(unit_t),               intent(in)  :: unit
   integer,                    intent(out) :: ierr
-  type(ions_t),     optional, intent(in)  :: ions
+  FLOAT,            optional, intent(in)  :: pos(:,:)
+  type(atom_t),     optional, intent(in)  :: atoms(:)
   type(mpi_grp_t),  optional, intent(in)  :: grp !< the group that shares the same data, must contain the domains group
   integer,          optional, intent(in)  :: root !< which process is going to write the data
-  logical,          optional, intent(in)  :: is_global !< Input data is mesh%np_global? And, thus, it has not be gathered
 
-  logical :: is_global_
   logical :: i_am_root
   integer :: root_
   R_TYPE, pointer :: ff_global(:)
   type(mpi_grp_t) :: grp_
+  logical :: need_global_cube, need_global_mesh
+  type(cube_t) :: cube
+  type(cube_function_t) :: cf
 
   PUSH_SUB(X(io_function_output))
-  ierr = 0
-  is_global_ = optional_default(is_global, .false.)
-  if (is_global_) then
-    ASSERT(ubound(ff, dim=1, kind=i8) == mesh%np_global .or. ubound(ff, dim=1, kind=i8) == mesh%np_part_global)
-  else
-    ASSERT(ubound(ff, dim = 1) == mesh%np .or. ubound(ff, dim = 1) == mesh%np_part)
+
+  ASSERT(present(pos) .eqv. present(atoms))
+
+  ! first check if we need a global cube or global mesh function
+  need_global_cube = (bitand(how, OPTION__OUTPUTFORMAT__DX) /= 0) .or. &
+    (bitand(how, OPTION__OUTPUTFORMAT__XCRYSDEN) /= 0) .or. &
+    (bitand(how, OPTION__OUTPUTFORMAT__CUBE) /= 0) .or. &
+    (bitand(how, OPTION__OUTPUTFORMAT__VTK) /= 0) .or. &
+    (bitand(how, OPTION__OUTPUTFORMAT__NETCDF) /= 0)
+
+  need_global_mesh = (bitand(how, OPTION__OUTPUTFORMAT__BINARY) /= 0) .or. &
+    (bitand(how, OPTION__OUTPUTFORMAT__AXIS_X) /= 0) .or. &
+    (bitand(how, OPTION__OUTPUTFORMAT__AXIS_Y) /= 0) .or. &
+    (bitand(how, OPTION__OUTPUTFORMAT__AXIS_Z) /= 0) .or. &
+    (bitand(how, OPTION__OUTPUTFORMAT__PLANE_X) /= 0) .or. &
+    (bitand(how, OPTION__OUTPUTFORMAT__PLANE_Y) /= 0) .or. &
+    (bitand(how, OPTION__OUTPUTFORMAT__PLANE_Z) /= 0) .or. &
+    (bitand(how, OPTION__OUTPUTFORMAT__INTEGRATE_XY) /= 0) .or. &
+    (bitand(how, OPTION__OUTPUTFORMAT__INTEGRATE_XZ) /= 0) .or. &
+    (bitand(how, OPTION__OUTPUTFORMAT__INTEGRATE_YZ) /= 0) .or. &
+    (bitand(how, OPTION__OUTPUTFORMAT__MESH_INDEX) /= 0) .or. &
+    (bitand(how, OPTION__OUTPUTFORMAT__MATLAB) /= 0)
+
+  if (need_global_cube) then
+    ! get global cube function
+    call cube_init(cube, mesh%idx%ll, namespace, space, mesh%spacing, mesh%coord_system)
+    call cube_init_cube_map(cube, mesh)
+    call X(cube_function_alloc_RS) (cube, cf)
+    call X(mesh_to_cube) (mesh, ff, cube, cf)
+    call X(io_cf_output_global)(how, dir, fname, namespace, space, mesh, cube, cf, unit, ierr, &
+      pos=pos, atoms=atoms)
+    call X(cube_function_free_RS)(cube, cf)
+    call cube_end(cube)
   end if
 
-  i_am_root = .true.
-  call mpi_grp_init(grp_, -1)
-  root_ = optional_default(root, 0)
-  if (mesh%parallel_in_domains) then
-    call mpi_grp_copy(grp_, mesh%mpi_grp)
-    i_am_root = (mesh%mpi_grp%rank == root_)
-    if (.not. is_global_) then
+  if (need_global_mesh) then
+    ! get global mesh function
+    ierr = 0
+    ASSERT(ubound(ff, dim = 1) == mesh%np .or. ubound(ff, dim = 1) == mesh%np_part)
+
+    i_am_root = .true.
+    call mpi_grp_init(grp_, -1)
+    root_ = optional_default(root, 0)
+    if (mesh%parallel_in_domains) then
+      call mpi_grp_copy(grp_, mesh%mpi_grp)
+      i_am_root = (mesh%mpi_grp%rank == root_)
       if (bitand(how, OPTION__OUTPUTFORMAT__BOUNDARY_POINTS) /= 0) then
         call messages_not_implemented("OutputFormat = boundary_points with domain parallelization", namespace=namespace)
         SAFE_ALLOCATE(ff_global(1:mesh%np_part_global))
@@ -706,33 +660,28 @@ subroutine X(io_function_output) (how, dir, fname, namespace, space, mesh, ff, u
     else
       ff_global => ff
     end if
-  else
-    ff_global => ff
-  end if
 
-  if (present(grp)) then
-    i_am_root = i_am_root .and. (grp%rank == root_)
-    call mpi_grp_copy(grp_, grp)
-  end if
+    if (present(grp)) then
+      i_am_root = i_am_root .and. (grp%rank == root_)
+      call mpi_grp_copy(grp_, grp)
+    end if
 
-  if (i_am_root) then
-    call X(io_function_output_global)(how, dir, fname, namespace, space, mesh, ff_global, unit, ierr, ions = ions)
-  end if
-  ! I have to broadcast the error code
-  if (.not. is_global_) call grp_%bcast(ierr, 1, MPI_INTEGER, 0)
+    if (i_am_root) then
+      call X(io_function_output_global)(how, dir, fname, namespace, space, mesh, ff_global, unit, ierr)
+    end if
 
-  if (mesh%parallel_in_domains .and. .not. is_global_) then
-    SAFE_DEALLOCATE_P(ff_global)
-  else
-    nullify(ff_global)
+    if (mesh%parallel_in_domains) then
+      SAFE_DEALLOCATE_P(ff_global)
+    else
+      nullify(ff_global)
+    end if
   end if
 
   POP_SUB(X(io_function_output))
 end subroutine X(io_function_output)
 
-
 ! ---------------------------------------------------------
-subroutine X(io_function_output_global) (how, dir, fname, namespace, space, mesh, ff, unit, ierr, ions)
+subroutine X(io_function_output_global) (how, dir, fname, namespace, space, mesh, ff, unit, ierr)
   integer(i8),                intent(in)  :: how
   character(len=*),           intent(in)  :: dir, fname
   type(namespace_t),          intent(in)  :: namespace
@@ -741,11 +690,10 @@ subroutine X(io_function_output_global) (how, dir, fname, namespace, space, mesh
   R_TYPE,                     intent(in)  :: ff(:)  !< (mesh%np_global or mesh%np_part_global)
   type(unit_t),               intent(in)  :: unit
   integer,                    intent(out) :: ierr
-  type(ions_t),     optional, intent(in)  :: ions
 
   character(len=512) :: filename
   character(len=20)  :: mformat, mformat2, mfmtheader
-  integer            :: iunit, idir, jj
+  integer            :: iunit, jj
   integer(i8)        :: np_max, ip
   FLOAT              :: x0
 
@@ -784,14 +732,6 @@ subroutine X(io_function_output_global) (how, dir, fname, namespace, space, mesh
   if (bitand(how, OPTION__OUTPUTFORMAT__INTEGRATE_XZ)    /= 0) call out_integrate_plane(1, 3, 2) ! \int dx dz; y;
   if (bitand(how, OPTION__OUTPUTFORMAT__INTEGRATE_YZ)    /= 0) call out_integrate_plane(2, 3, 1) ! \int dy dz; x;
   if (bitand(how, OPTION__OUTPUTFORMAT__MESH_INDEX) /= 0) call out_mesh_index()
-  if (bitand(how, OPTION__OUTPUTFORMAT__DX)         /= 0) call out_dx()
-  if (bitand(how, OPTION__OUTPUTFORMAT__XCRYSDEN)   /= 0) then
-    call out_xcrysden(.true.)
-#ifdef R_TCOMPLEX
-    call out_xcrysden(.false.)
-#endif
-  end if
-  if (bitand(how, OPTION__OUTPUTFORMAT__CUBE)       /= 0) call out_cube()
 
   if (bitand(how, OPTION__OUTPUTFORMAT__MATLAB) /= 0) then
 #if defined(R_TCOMPLEX)
@@ -811,11 +751,6 @@ subroutine X(io_function_output_global) (how, dir, fname, namespace, space, mesh
       end do
     end if
   end if
-
-#if defined(HAVE_NETCDF)
-  if (bitand(how, OPTION__OUTPUTFORMAT__NETCDF)     /= 0) call out_netcdf(namespace)
-#endif
-  if (bitand(how, OPTION__OUTPUTFORMAT__VTK) /= 0) call out_vtk()
 
   POP_SUB(X(io_function_output_global))
   call profiling_out(write_prof)
@@ -1106,6 +1041,55 @@ contains
     POP_SUB(X(io_function_output_global).out_mesh_index)
   end subroutine out_mesh_index
 
+end subroutine X(io_function_output_global)
+
+! ---------------------------------------------------------
+subroutine X(io_cf_output_global) (how, dir, fname, namespace, space, mesh, cube, cf, unit, ierr, pos, atoms)
+  integer(i8),                intent(in)  :: how
+  character(len=*),           intent(in)  :: dir, fname
+  type(namespace_t),          intent(in)  :: namespace
+  type(space_t),              intent(in)  :: space
+  type(mesh_t),               intent(in)  :: mesh
+  type(cube_t),               intent(in)  :: cube
+  type(cube_function_t),      intent(in)  :: cf
+  type(unit_t),               intent(in)  :: unit
+  integer,                    intent(out) :: ierr
+  FLOAT,            optional, intent(in)  :: pos(:,:)
+  type(atom_t),     optional, intent(in)  :: atoms(:)
+
+  character(len=512) :: filename
+  character(len=20)  :: mformat, mformat2, mfmtheader
+  integer            :: iunit
+
+  call profiling_in(write_prof, TOSTRING(X(DISK_WRITE)))
+  PUSH_SUB(X(io_cf_output_global))
+
+  ASSERT(present(pos) .eqv. present(atoms))
+
+  call io_mkdir(dir, namespace)
+
+! Define the format
+  mformat    = '(99es23.14E3)'
+  mformat2   = '(i12,99es34.24E3)'
+  mfmtheader = '(a,a10,5a23)'
+
+  if (bitand(how, OPTION__OUTPUTFORMAT__DX)         /= 0) call out_dx()
+  if (bitand(how, OPTION__OUTPUTFORMAT__XCRYSDEN)   /= 0) then
+    call out_xcrysden(.true.)
+#ifdef R_TCOMPLEX
+    call out_xcrysden(.false.)
+#endif
+  end if
+  if (bitand(how, OPTION__OUTPUTFORMAT__CUBE)       /= 0) call out_cube()
+#if defined(HAVE_NETCDF)
+  if (bitand(how, OPTION__OUTPUTFORMAT__NETCDF)     /= 0) call out_netcdf(namespace)
+#endif
+  if (bitand(how, OPTION__OUTPUTFORMAT__VTK) /= 0) call out_vtk()
+
+  POP_SUB(X(io_cf_output_global))
+  call profiling_out(write_prof)
+
+contains
 
   ! ---------------------------------------------------------
   !> Writes real and imaginary parts
@@ -1113,15 +1097,8 @@ contains
     integer :: ix, iy, iz, idir
     FLOAT   :: offset(3)
     character(len=40) :: nitems
-    type(cube_t) :: cube
-    type(cube_function_t) :: cf
 
-    PUSH_SUB(X(io_function_output_global).out_dx)
-
-    ! put values in a nice cube
-    call cube_init(cube, mesh%idx%ll, namespace, space, mesh%spacing, mesh%coord_system)
-    call X(cube_function_alloc_RS) (cube, cf)
-    call X(mesh_to_cube) (mesh, ff, cube, cf)
+    PUSH_SUB(X(io_cf_output_global).out_dx)
 
     ! Along periodic dimensions the offset is -1/2 in reduced coordinates, as
     ! our origin is at the center of the cell instead of being at the corner.
@@ -1166,10 +1143,7 @@ contains
 
     call io_close(iunit)
 
-    call X(cube_function_free_RS)(cube, cf)
-    call cube_end(cube)
-
-    POP_SUB(X(io_function_output_global).out_dx)
+    POP_SUB(X(io_cf_output_global).out_dx)
   end subroutine out_dx
 
 
@@ -1180,16 +1154,9 @@ contains
 
     integer :: ix, iy, iz, idir, idir2, iatom
     FLOAT   :: offset(3)
-    type(cube_t) :: cube
-    type(cube_function_t) :: cf
     character(len=20) :: fmt
 
-    PUSH_SUB(X(io_function_output_global).out_cube)
-
-    ! put values in a nice cube
-    call cube_init(cube, mesh%idx%ll, namespace, space, mesh%spacing, mesh%coord_system)
-    call X(cube_function_alloc_RS) (cube, cf)
-    call X(mesh_to_cube) (mesh, ff, cube, cf)
+    PUSH_SUB(X(io_cf_output_global).out_cube)
 
     ! Along periodic dimensions the offset is -1/2 in reduced coordinates, as
     ! our origin is at the center of the cell instead of being at the corner.
@@ -1201,9 +1168,9 @@ contains
     iunit = io_open(trim(dir)//'/'//trim(fname)//".cube", namespace, action='write')
 
     write(iunit, '(2a)') 'Generated by octopus ', trim(conf%version)
-    write(iunit, '(4a)') 'git: ', trim(conf%git_commit), " build: ",  trim(conf%build_time)
-    if (present(ions)) then
-      write(iunit, '(i5,3f12.6)') ions%natoms, offset(1:3)
+    write(iunit, '(4a)') 'git: ', trim(conf%git_commit), " configuration: ",  trim(conf%config_time)
+    if (present(pos)) then
+      write(iunit, '(i5,3f12.6)') size(pos, dim=2), offset(1:3)
     else
       write(iunit, '(i5,3f12.6)') 0, offset(1:3)
     end if
@@ -1215,9 +1182,9 @@ contains
       write(iunit, '(i5,3f12.6)') cube%rs_n_global(idir), &
         (cube%spacing(idir)*cube%latt%rlattice_primitive(idir2, idir), idir2 = 1, 3)
     end do
-    if (present(ions)) then
-      do iatom = 1, ions%natoms
-        write(iunit, '(i5,4f12.6)') int(species_z(ions%atom(iatom)%species)),  M_ZERO, ions%pos(:, iatom)
+    if (present(pos) .and. present(atoms)) then
+      do iatom = 1, size(pos, dim=2)
+        write(iunit, '(i5,4f12.6)') int(species_z(atoms(iatom)%species)),  M_ZERO, pos(:, iatom)
       end do
     end if
 
@@ -1238,10 +1205,7 @@ contains
 
     call io_close(iunit)
 
-    call X(cube_function_free_RS)(cube, cf)
-    call cube_end(cube)
-
-    POP_SUB(X(io_function_output_global).out_cube)
+    POP_SUB(X(io_cf_output_global).out_cube)
   end subroutine out_cube
 
 
@@ -1254,12 +1218,11 @@ contains
   subroutine out_xcrysden(write_real)
     logical, intent(in) :: write_real
 
-    integer :: ix, iy, iz, idir2, ix2, iy2, iz2, my_n(3)
-    type(cube_t) :: cube
-    type(cube_function_t) :: cf
+    integer :: ix, iy, iz, idir2, ix2, iy2, iz2, my_n(3), idir
     character(len=80) :: fname_ext
+    type(lattice_vectors_t) :: latt
 
-    PUSH_SUB(X(io_function_output_global).out_xcrysden)
+    PUSH_SUB(X(io_cf_output_global).out_xcrysden)
 
 #ifdef R_TCOMPLEX
     if (write_real) then
@@ -1277,11 +1240,6 @@ contains
       return
     end if
 
-    ! put values in a nice cube
-    call cube_init(cube, mesh%idx%ll, namespace, space, mesh%spacing, mesh%coord_system)
-    call X(cube_function_alloc_RS) (cube, cf)
-    call X(mesh_to_cube) (mesh, ff, cube, cf)
-
     ! Note that XCrySDen uses "general" not "periodic" grids
     ! mesh%idx%ll is "general" in aperiodic directions,
     ! but "periodic" in periodic directions.
@@ -1293,8 +1251,11 @@ contains
 
     iunit = io_open(trim(dir)//'/'//trim(fname_ext)//".xsf", namespace, action='write')
 
-    if (present(ions)) then
-      call write_xsf_geometry(iunit, ions, mesh)
+    if (present(pos) .and. present(atoms)) then
+      ! To avoid passing as an argument latt, we use the one of the cube.
+      ! As it is always 3D, we need to create a temporary lattice vectors to the right dimension
+      latt = lattice_vectors_t(namespace, space, cube%latt%rlattice(1:space%dim, 1:space%dim))
+      call write_xsf_geometry(iunit, space, latt, pos, atoms, mesh)
     end if
 
     write(iunit, '(a,i1,a)') 'BEGIN_BLOCK_DATAGRID_', space%dim, 'D'
@@ -1349,10 +1310,7 @@ contains
 
     call io_close(iunit)
 
-    call X(cube_function_free_RS)(cube, cf)
-    call cube_end(cube)
-
-    POP_SUB(X(io_function_output_global).out_xcrysden)
+    POP_SUB(X(io_cf_output_global).out_xcrysden)
   end subroutine out_xcrysden
 
 
@@ -1361,53 +1319,31 @@ contains
   subroutine out_netcdf(namespace)
     type(namespace_t), intent(in)  :: namespace
 
-    type(cube_t) :: cube
-    type(cube_function_t) :: cf
-
-    PUSH_SUB(X(io_function_output_global).out_netcdf)
-
-    ! put values in a nice cube
-    call cube_init(cube, mesh%idx%ll, namespace, space, mesh%spacing, mesh%coord_system)
-    call X(cube_function_alloc_RS) (cube, cf)
-    call X(mesh_to_cube) (mesh, ff, cube, cf)
+    PUSH_SUB(X(io_cf_output_global).out_netcdf)
 
     filename = io_workpath(trim(dir)//'/'//trim(fname)//".ncdf", namespace)
-
 
     call X(out_cf_netcdf)(filename, ierr, cf, cube, space, &
       units_from_atomic(units_out%length, mesh%spacing), .true., unit, namespace)
 
-    call X(cube_function_free_RS)(cube, cf)
-    call cube_end(cube)
-
-    POP_SUB(X(io_function_output_global).out_netcdf)
+    POP_SUB(X(io_cf_output_global).out_netcdf)
   end subroutine out_netcdf
-
-
 
 #endif /*defined(HAVE_NETCDF)*/
 
   ! ---------------------------------------------------------
-
   subroutine out_vtk()
-    type(cube_t) :: cube
-    type(cube_function_t) :: cf
     FLOAT :: dk(3), pnt(3)
     integer :: i, i1, i2, i3
     FLOAT, allocatable :: points(:,:,:,:)
 
-    PUSH_SUB(X(io_function_output_global).out_vtk)
+    PUSH_SUB(X(io_cf_output_global).out_vtk)
 
     do i = 1, 3
       dk(i)= units_from_atomic(units_out%length, mesh%spacing(i))
     end do
 
-    call cube_init(cube, mesh%idx%ll, namespace, space, dk, mesh%coord_system)
-    call X(cube_function_alloc_RS) (cube, cf)
-    call X(mesh_to_cube) (mesh, ff, cube, cf)
-
     filename = trim(dir)//'/'//trim(fname)//".vtk"
-
 
     if (cube%latt%nonorthogonal) then
       ! non-orthogonal grid
@@ -1429,13 +1365,10 @@ contains
       call X(vtk_out_cf)(filename, namespace, fname, ierr, cf, cube, dk(:), unit)
     end if
 
-    call X(cube_function_free_RS)(cube, cf)
-    call cube_end(cube)
-
-    POP_SUB(X(io_function_output_global).out_vtk)
+    POP_SUB(X(io_cf_output_global).out_vtk)
   end subroutine out_vtk
 
-end subroutine X(io_function_output_global)
+end subroutine X(io_cf_output_global)
 
 
 ! ---------------------------------------------------------
@@ -1502,7 +1435,11 @@ contains
     filename = trim(dir)//'/'//trim(fname)//"."//index2axisBZ(d1)//"=0"
     iunit = io_open(filename, namespace, action='write')
 
+#ifdef R_TCOMPLEX
     write(iunit, mfmtheader, iostat=ierr) '#', index2axisBZ(d2), index2axisBZ(d3), 'Re', 'Im'
+#else
+    write(iunit, mfmtheader, iostat=ierr) '#', index2axisBZ(d2), index2axisBZ(d3), 'Re'
+#endif
 
     kk(1:MAX_DIM) = M_ZERO
     dim = kpoints%reduced%dim
@@ -1512,8 +1449,7 @@ contains
         kpoints%reduced%point1BZ(1:dim,ik))
       if (abs(kk(d1)) < CNST(1.0e-6)) then
         fu = units_from_atomic(unit, ff(ik))
-        write(iunit, mformat, iostat=ierr)  &
-          kk(d2), kk(d3), fu
+        write(iunit, mformat, iostat=ierr) kk(d2), kk(d3), fu
 
       end if
     end do
@@ -1735,108 +1671,115 @@ end subroutine X(out_cf_netcdf)
 
 #endif /*defined(HAVE_NETCDF)*/
 
-  ! ---------------------------------------------------------
-  subroutine X(io_function_output_supercell) (how, dir, fname, mesh, space, ff, centers, supercell, unit, ierr, &
-    namespace, ions, grp, root, is_global, extra_atom)
-    integer(8),                 intent(in)  :: how
-    character(len=*),           intent(in)  :: dir
-    character(len=*),           intent(in)  :: fname
-    type(mesh_t),               intent(in)  :: mesh
-    type(space_t),              intent(in)  :: space
-    R_TYPE,           target,   intent(in)  :: ff(:,:)
-    FLOAT,                      intent(in)  :: centers(:,:)
-    integer,                    intent(in)  :: supercell(:)
-    type(unit_t),               intent(in)  :: unit
-    integer,                    intent(out) :: ierr
-    type(namespace_t),          intent(in)  :: namespace
-    type(ions_t),     optional, intent(in)  :: ions
-    type(mpi_grp_t),  optional, intent(in)  :: grp !< the group that shares the same data, must contain the domains group
-    integer,          optional, intent(in)  :: root !< which process is going to write the data
-    logical,          optional, intent(in)  :: is_global !< Input data is mesh%np_global? And, thus, it has not be gathered
-    FLOAT,            optional, intent(in)  :: extra_atom(:)
-  
-    integer :: Nreplica
-    logical :: is_global_
-    logical :: i_am_root
-    integer :: root_, irep
-    R_TYPE, pointer :: ff_global(:, :)
-    type(mpi_grp_t) :: grp_
-  
-    PUSH_SUB(X(io_function_output_supercell))
-    ierr = 0
-    is_global_ = optional_default(is_global, .false.)
-    if (is_global_) then
-      ASSERT(ubound(ff, dim=1, kind=i8) == mesh%np_global .or. ubound(ff, dim=1, kind=i8) == mesh%np_part_global)
-    else
-      ASSERT(ubound(ff, dim = 1) == mesh%np .or. ubound(ff, dim = 1) == mesh%np_part)
-    end if
+ ! ---------------------------------------------------------
+subroutine X(io_function_output_supercell) (how, dir, fname, mesh, space, latt, ff, centers, supercell, unit, ierr, &
+  namespace, pos, atoms, grp, root, is_global, extra_atom)
+  integer(8),                 intent(in)  :: how
+  character(len=*),           intent(in)  :: dir
+  character(len=*),           intent(in)  :: fname
+  class(mesh_t),              intent(in)  :: mesh
+  type(space_t),              intent(in)  :: space
+  type(lattice_vectors_t),    intent(in)  :: latt
+  R_TYPE,           target,   intent(in)  :: ff(:,:)
+  FLOAT,                      intent(in)  :: centers(:,:)
+  integer,                    intent(in)  :: supercell(:)
+  type(unit_t),               intent(in)  :: unit
+  integer,                    intent(out) :: ierr
+  type(namespace_t),          intent(in)  :: namespace
+  FLOAT,            optional, intent(in)  :: pos(:,:)
+  type(atom_t),     optional, intent(in)  :: atoms(:)
+  type(mpi_grp_t),  optional, intent(in)  :: grp !< the group that shares the same data, must contain the domains group
+  integer,          optional, intent(in)  :: root !< which process is going to write the data
+  logical,          optional, intent(in)  :: is_global !< Input data is mesh%np_global? And, thus, it has not be gathered
+  FLOAT,            optional, intent(in)  :: extra_atom(:)
 
-    Nreplica = product(supercell(1:ions%space%dim))
-  
-    i_am_root = .true.
-    call mpi_grp_init(grp_, -1)
-    root_ = optional_default(root, 0)
-    if(mesh%parallel_in_domains) then
-      call mpi_grp_copy(grp_, mesh%mpi_grp)
-      i_am_root = (mesh%mpi_grp%rank == root_)
-      if (.not. is_global_) then
-        if(bitand(how, OPTION__OUTPUTFORMAT__BOUNDARY_POINTS) /= 0) then
-          call messages_not_implemented("OutputFormat = boundary_points with domain parallelization")
-          SAFE_ALLOCATE(ff_global(1:mesh%np_part_global, 1:Nreplica))
-          ! FIXME: needs version of vec_gather that includes boundary points. See ticket #127
-        else
-          SAFE_ALLOCATE(ff_global(1:mesh%np_global, 1:Nreplica))
-        end if
-  
-        !note: here we are gathering data that we won`t write if grp is
-        !present, but to avoid it we will have to find out all if the
-        !processes are members of the domain line where the root of grp
-        !lives
-        do irep = 1, Nreplica
-          call par_vec_gather(mesh%pv, root_, ff(:,irep), ff_global(:,irep))
-        end do
+  integer :: Nreplica
+  logical :: is_global_
+  logical :: i_am_root
+  integer :: root_, irep
+  R_TYPE, pointer :: ff_global(:, :)
+  type(mpi_grp_t) :: grp_
+
+  PUSH_SUB(X(io_function_output_supercell))
+
+  ASSERT(present(pos) .eqv. present(atoms))
+
+  ierr = 0
+  is_global_ = optional_default(is_global, .false.)
+  if (is_global_) then
+    ASSERT(ubound(ff, dim=1, kind=i8) == mesh%np_global .or. ubound(ff, dim=1, kind=i8) == mesh%np_part_global)
+  else
+    ASSERT(ubound(ff, dim = 1) == mesh%np .or. ubound(ff, dim = 1) == mesh%np_part)
+  end if
+
+  Nreplica = product(supercell(1:space%dim))
+
+  i_am_root = .true.
+  call mpi_grp_init(grp_, -1)
+  root_ = optional_default(root, 0)
+  if(mesh%parallel_in_domains) then
+    call mpi_grp_copy(grp_, mesh%mpi_grp)
+    i_am_root = (mesh%mpi_grp%rank == root_)
+    if (.not. is_global_) then
+      if(bitand(how, OPTION__OUTPUTFORMAT__BOUNDARY_POINTS) /= 0) then
+        call messages_not_implemented("OutputFormat = boundary_points with domain parallelization")
+        SAFE_ALLOCATE(ff_global(1:mesh%np_part_global, 1:Nreplica))
+        ! FIXME: needs version of vec_gather that includes boundary points. See ticket #127
       else
-        ff_global => ff
+        SAFE_ALLOCATE(ff_global(1:mesh%np_global, 1:Nreplica))
       end if
+
+      !note: here we are gathering data that we won`t write if grp is
+      !present, but to avoid it we will have to find out all if the
+      !processes are members of the domain line where the root of grp
+      !lives
+      do irep = 1, Nreplica
+        call par_vec_gather(mesh%pv, root_, ff(:,irep), ff_global(:,irep))
+      end do
     else
       ff_global => ff
     end if
-  
-    if(present(grp)) then
-      i_am_root = i_am_root .and. (grp%rank == root_)
-      call mpi_grp_copy(grp_, grp)
-    end if
-  
-    if(i_am_root) then
-      call X(io_function_output_global_supercell)(how, dir, fname, mesh, space, ff_global, centers, supercell, &
-                            unit, ierr, namespace, ions = ions, extra_atom=extra_atom)
-    end if
-    ! I have to broadcast the error code
-    if (.not. is_global_) call grp_%bcast(ierr, 1, MPI_INTEGER, 0)
-  
-    if(mesh%parallel_in_domains .and. .not. is_global_) then
-      SAFE_DEALLOCATE_P(ff_global)
-    else
-      nullify(ff_global)
-    end if
+  else
+    ff_global => ff
+  end if
 
-    POP_SUB(X(io_function_output_supercell))
-  end subroutine X(io_function_output_supercell)
+  if(present(grp)) then
+    i_am_root = i_am_root .and. (grp%rank == root_)
+    call mpi_grp_copy(grp_, grp)
+  end if
+
+  if(i_am_root) then
+    call X(io_function_output_global_supercell)(how, dir, fname, mesh, space, latt, ff_global, centers, supercell, &
+      unit, ierr, namespace, pos = pos, atoms=atoms, extra_atom=extra_atom)
+  end if
+  ! I have to broadcast the error code
+  if (.not. is_global_) call grp_%bcast(ierr, 1, MPI_INTEGER, 0)
+
+  if(mesh%parallel_in_domains .and. .not. is_global_) then
+    SAFE_DEALLOCATE_P(ff_global)
+  else
+    nullify(ff_global)
+  end if
+
+  POP_SUB(X(io_function_output_supercell))
+end subroutine X(io_function_output_supercell)
 
 ! ---------------------------------------------------------
-subroutine X(io_function_output_global_supercell) (how, dir, fname, mesh, space, ff, centers, &
-                supercell, unit, ierr, namespace, ions, extra_atom)
+subroutine X(io_function_output_global_supercell) (how, dir, fname, mesh, space, latt, ff, centers, &
+  supercell, unit, ierr, namespace, pos, atoms, extra_atom)
   integer(8),                 intent(in)  :: how
   character(len=*),           intent(in)  :: dir, fname
   type(mesh_t),               intent(in)  :: mesh
   type(space_t),              intent(in)  :: space
+  type(lattice_vectors_t),     intent(in) :: latt
   R_TYPE,                     intent(in)  :: ff(:,:)  !< (mesh%np_global or mesh%np_part_global)
   FLOAT,                      intent(in)  :: centers(:,:)
   integer,                    intent(in)  :: supercell(:)
   type(unit_t),               intent(in)  :: unit
   integer,                    intent(out) :: ierr
   type(namespace_t),          intent(in)  :: namespace
-  type(ions_t),     optional, intent(in)  :: ions
+  FLOAT,            optional, intent(in)  :: pos(:,:)
+  type(atom_t),     optional, intent(in)  :: atoms(:)
   FLOAT,            optional, intent(in)  :: extra_atom(:)
 
   character(len=512) :: filename
@@ -1858,7 +1801,7 @@ subroutine X(io_function_output_global_supercell) (how, dir, fname, mesh, space,
   ASSERT(how > 0)
   ASSERT(ubound(ff, dim=1, kind=i8) >= mesh%np_global)
 
-  Nreplica = product(supercell(1:ions%space%dim))
+  Nreplica = product(supercell(1:space%dim))
 
   np_max = mesh%np_global
   ! should we output boundary points?
@@ -1926,7 +1869,7 @@ contains
         call index_to_coords(mesh%idx, ip, ixvect)
 
         if(ixvect(d2)==0.and.ixvect(d3)==0) then
-          xx = units_from_atomic(units_out%length, mesh_x_global(mesh, ip)) + centers(1:ions%space%dim, irep)
+          xx = units_from_atomic(units_out%length, mesh_x_global(mesh, ip)) + centers(1:space%dim, irep)
           fu = units_from_atomic(unit, ff(ip, irep))
           write(iunit, mformat, iostat=ierr) xx(d1), fu
         end if
@@ -1938,7 +1881,7 @@ contains
   end subroutine out_axis
 
 
-    ! ---------------------------------------------------------
+  ! ---------------------------------------------------------
   subroutine out_plane(d1, d2, d3)
     integer, intent(in) :: d1, d2, d3
 
@@ -1962,7 +1905,7 @@ contains
     do irep = 1, Nreplica
       if(abs(centers(d1, irep)) > M_EPSILON) cycle
       ixvect=1
-      do jdim=1, ions%space%dim
+      do jdim=1, space%dim
         if (jdim==d2 .or. jdim==d3) cycle
 
         do ix = mesh%idx%nr(1, jdim), mesh%idx%nr(2, jdim)
@@ -1970,7 +1913,7 @@ contains
           ixvect_test = 1
           ixvect_test(jdim) = ix
           ip = mesh_global_index_from_coords(mesh, ixvect_test)
-          if(ip /= 0) then 
+          if(ip /= 0) then
             call index_to_coords(mesh%idx, ip, ixvect_test)
             if(ixvect_test(jdim) == 0) exit
           end if
@@ -1980,7 +1923,7 @@ contains
 
       ! have found ix such that coordinate d1 is 0 for this value of ix
       ! ixvect is prepared for all dimensions apart from d2 and d3
-    
+
       do iy = mesh%idx%nr(1, d2), mesh%idx%nr(2, d2)
         write(iunit, mformat, iostat=ierr)
         do iz = mesh%idx%nr(1, d3), mesh%idx%nr(2, d3)
@@ -1990,7 +1933,7 @@ contains
           ip = mesh_global_index_from_coords(mesh, ixvect)
 
           if(ip <= np_max .and. ip > 0) then
-            xx = units_from_atomic(units_out%length, mesh_x_global(mesh, ip)+centers(1:ions%space%dim, irep))
+            xx = units_from_atomic(units_out%length, mesh_x_global(mesh, ip)+centers(1:space%dim, irep))
             fu = units_from_atomic(unit, ff(ip, irep))
             write(iunit, mformat, iostat=ierr)  &
               xx(d2), xx(d3), fu
@@ -2034,14 +1977,15 @@ contains
     fname_ext = trim(fname)
 #endif
 
-    if(ions%space%dim /= 3 .and. ions%space%dim /= 2) then
+    if(space%dim /= 3 .and. space%dim /= 2) then
       write(message(1), '(a)') 'Cannot output function '//trim(fname_ext)//' in XCrySDen format except in 2D or 3D.'
       call messages_warning(1)
       return
     end if
 
     ! put values in a nice cube
-    call cube_init(cube, mesh%idx%ll, namespace, ions%space, mesh%spacing, mesh%coord_system)
+    call cube_init(cube, mesh%idx%ll, namespace, space, mesh%spacing, mesh%coord_system)
+    call cube_init_cube_map(cube, mesh)
     SAFE_ALLOCATE(cf(1:Nreplica))
     do irep = 1, Nreplica
       call X(cube_function_alloc_RS) (cube, cf(irep))
@@ -2054,35 +1998,34 @@ contains
     ! Making this assignment, the output grid is entirely "general"
     !
     !Here we do not put the +1 for my_n
-    my_n(1:ions%space%periodic_dim) = mesh%idx%ll(1:ions%space%periodic_dim)
-    my_n(ions%space%periodic_dim + 1:ions%space%dim) = mesh%idx%ll(ions%space%periodic_dim + 1:ions%space%dim)
-    if(ions%space%dim == 2) my_n(3) = 1
+    my_n(1:space%periodic_dim) = mesh%idx%ll(1:space%periodic_dim)
+    my_n(space%periodic_dim + 1:space%dim) = mesh%idx%ll(space%periodic_dim + 1:space%dim)
+    if(space%dim == 2) my_n(3) = 1
 
-    my_n_s(1:ions%space%periodic_dim) = mesh%idx%ll(1:ions%space%periodic_dim)*supercell(1:ions%space%periodic_dim) +1
-    my_n_s(ions%space%periodic_dim + 1:ions%space%dim) = mesh%idx%ll(ions%space%periodic_dim + 1:ions%space%dim) &
-                    * supercell(ions%space%periodic_dim + 1:ions%space%dim)
-    if(ions%space%dim == 2) my_n_s(3) = 1
+    my_n_s(1:space%periodic_dim) = mesh%idx%ll(1:space%periodic_dim)*supercell(1:space%periodic_dim) +1
+    my_n_s(space%periodic_dim + 1:space%dim) = mesh%idx%ll(space%periodic_dim + 1:space%dim) &
+      * supercell(space%periodic_dim + 1:space%dim)
+    if(space%dim == 2) my_n_s(3) = 1
 
     ! This differs from mesh%sb%rlattice if it is not an integer multiple of the spacing
     do idir = 1, 3
       do idir2 = 1, 3
-        lattice_vectors(idir2, idir) = mesh%spacing(idir) * (my_n_s(idir) - 1) * ions%latt%rlattice_primitive(idir2, idir)
+        lattice_vectors(idir2, idir) = mesh%spacing(idir) * (my_n_s(idir) - 1) * latt%rlattice_primitive(idir2, idir)
       end do
     end do
-    
+
     iunit = io_open(trim(dir)//'/'//trim(fname_ext)//".xsf", action='write')
 
-    ASSERT(present(ions))
-    call write_xsf_geometry_supercell(iunit, ions, mesh, centers, supercell, extra_atom)
+    call write_xsf_geometry_supercell(iunit, space, latt, pos, atoms, mesh, centers, supercell, extra_atom)
 
-    write(iunit, '(a,i1,a)') 'BEGIN_BLOCK_DATAGRID_', ions%space%dim, 'D'
+    write(iunit, '(a,i1,a)') 'BEGIN_BLOCK_DATAGRID_', space%dim, 'D'
     write(iunit, '(4a)') 'units: coords = ', trim(units_abbrev(units_out%length)), &
-                            ', function = ', trim(units_abbrev(unit))
-    write(iunit, '(a,i1,a)') 'BEGIN_DATAGRID_', ions%space%dim, 'D_function'
-    write(iunit, '(3i7)') my_n_s(1:ions%space%dim)
+      ', function = ', trim(units_abbrev(unit))
+    write(iunit, '(a,i1,a)') 'BEGIN_DATAGRID_', space%dim, 'D_function'
+    write(iunit, '(3i7)') my_n_s(1:space%dim)
     write(iunit, '(a)') '0.0 0.0 0.0'
 
-    do idir = 1, ions%space%dim
+    do idir = 1, space%dim
       write(iunit, '(3f12.6)') (units_from_atomic(units_out%length, &
         lattice_vectors(idir2, idir)), idir2 = 1, 3)
     end do
@@ -2131,8 +2074,8 @@ contains
       end do
     end do
 
-    write(iunit, '(a,i1,a)') 'END_DATAGRID_', ions%space%dim, 'D'
-    write(iunit, '(a,i1,a)') 'END_BLOCK_DATAGRID_', ions%space%dim, 'D'
+    write(iunit, '(a,i1,a)') 'END_DATAGRID_', space%dim, 'D'
+    write(iunit, '(a,i1,a)') 'END_BLOCK_DATAGRID_', space%dim, 'D'
 
     call io_close(iunit)
 

@@ -84,11 +84,12 @@ contains
   end subroutine berry_init
 
   ! ---------------------------------------------------------
-  subroutine berry_perform_internal_scf(this, namespace, space, eigens, gr, st, hm, iter, ks, ions, ext_partners)
+  subroutine berry_perform_internal_scf(this, namespace, space, eigensolver, gr, st, hm, &
+    iter, ks, ions, ext_partners)
     type(berry_t),            intent(in)    :: this
     type(namespace_t),        intent(in)    :: namespace
     type(space_t),            intent(in)    :: space
-    type(eigensolver_t),      intent(inout) :: eigens
+    type(eigensolver_t),      intent(inout) :: eigensolver
     type(grid_t),             intent(in)    :: gr
     type(states_elec_t),      intent(inout) :: st
     type(hamiltonian_elec_t), intent(inout) :: hm
@@ -110,24 +111,24 @@ contains
       call messages_not_implemented("Berry phase parallel in states", namespace=namespace)
     end if
 
-    call calc_dipole(dipole, space, gr%mesh, st, ions)
+    call calc_dipole(dipole, space, gr, st, ions)
 
     do iberry = 1, this%max_iter_berry
-      eigens%converged = 0
-      call eigensolver_run(eigens, namespace, gr, st, hm, iter)
+      eigensolver%converged = 0
+      call eigensolver%run(namespace, gr, st, hm, iter)
 
       !Calculation of the Berry potential
-      call berry_potential(st, namespace, space, gr%mesh, hm%ions%latt, hm%ep%E_field, hm%vberry)
+      call berry_potential(st, namespace, space, gr, hm%ions%latt, hm%ep%E_field, hm%vberry)
 
       !Calculation of the corresponding energy
-      hm%energy%berry = berry_energy_correction(st, space, gr%mesh, hm%ions%latt, &
-        hm%ep%E_field(1:space%periodic_dim), hm%vberry(1:gr%mesh%np, 1:hm%d%nspin))
+      hm%energy%berry = berry_energy_correction(st, space, gr, hm%ions%latt, &
+        hm%ep%E_field(1:space%periodic_dim), hm%vberry(1:gr%np, 1:hm%d%nspin))
 
       !We recompute the KS potential
       call v_ks_calc(ks, namespace, space, hm, st, ions, ext_partners, calc_current=.false.)
 
       dipole_prev = dipole
-      call calc_dipole(dipole, space, gr%mesh, st, ions)
+      call calc_dipole(dipole, space, gr, st, ions)
       write(message(1),'(a,9f12.6)') 'Dipole = ', dipole(1:space%dim)
       call messages_info(1, namespace=namespace)
 
@@ -153,7 +154,7 @@ contains
   subroutine calc_dipole(dipole, space, mesh, st, ions)
     FLOAT,                 intent(out)   :: dipole(:)
     type(space_t),         intent(in)    :: space
-    type(mesh_t),          intent(in)    :: mesh
+    class(mesh_t),         intent(in)    :: mesh
     type(states_elec_t),   intent(in)    :: st
     type(ions_t),          intent(in)    :: ions
 
@@ -205,7 +206,7 @@ contains
   !! in this case, finite differences should be used to construct derivatives with respect to k
   FLOAT function berry_dipole(st, mesh, latt, space, dir) result(dipole)
     type(states_elec_t), intent(in)     :: st
-    type(mesh_t),        intent(in)     :: mesh
+    class(mesh_t),       intent(in)     :: mesh
     type(lattice_vectors_t), intent(in) :: latt
     type(space_t),       intent(in)     :: space
     integer,             intent(in)     :: dir
@@ -238,7 +239,7 @@ contains
   !! E Yaschenko, L Fu, L Resca, R Resta, Phys. Rev. B 58, 1222-1229 (1998)
   CMPLX function berry_phase_det(st, mesh, latt, space, dir, ik) result(det)
     type(states_elec_t),     intent(in) :: st
-    type(mesh_t),            intent(in) :: mesh
+    class(mesh_t),           intent(in) :: mesh
     type(lattice_vectors_t), intent(in) :: latt
     type(space_t),           intent(in) :: space
     integer,                 intent(in) :: dir
@@ -281,7 +282,7 @@ contains
   ! ---------------------------------------------------------
   subroutine berry_phase_matrix(st, mesh, latt, space, nst, ik, ik2, gvector, matrix)
     type(states_elec_t),     intent(in)  :: st
-    type(mesh_t),            intent(in)  :: mesh
+    class(mesh_t),           intent(in)  :: mesh
     type(lattice_vectors_t), intent(in)  :: latt
     type(space_t),           intent(in)  :: space
     integer,                 intent(in)  :: nst
@@ -352,7 +353,7 @@ contains
     type(states_elec_t),     intent(in)  :: st
     type(namespace_t),       intent(in)  :: namespace
     type(space_t),           intent(in)  :: space
-    type(mesh_t),            intent(in)  :: mesh
+    class(mesh_t),           intent(in)  :: mesh
     type(lattice_vectors_t), intent(in)  :: latt
     FLOAT,                   intent(in)  :: E_field(:) !< (space%dim)
     FLOAT,                   intent(out) :: pot(:,:)   !< (mesh%np, st%d%nspin)
@@ -399,7 +400,7 @@ contains
   FLOAT function berry_energy_correction(st, space, mesh, latt, E_field, vberry) result(delta)
     type(states_elec_t),     intent(in) :: st
     type(space_t),           intent(in) :: space
-    type(mesh_t),            intent(in) :: mesh
+    class(mesh_t),           intent(in) :: mesh
     type(lattice_vectors_t), intent(in) :: latt
     FLOAT,                   intent(in) :: E_field(:)  !< (space%periodic_dim)
     FLOAT,                   intent(in) :: vberry(:,:) !< (mesh%np, st%d%nspin)

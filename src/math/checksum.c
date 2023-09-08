@@ -27,13 +27,15 @@
    with the same numbers but in different orders. For more serious
    applications a better function must be used. */
 
-void FC_FUNC_(checksum_calculate, CHECKSUM_CALCULATE)(const fint * algorithm, const fint8 * narray, const fint8 * array, fint8 * sum){
+void FC_FUNC_(checksum_calculate,
+              CHECKSUM_CALCULATE)(const fint *algorithm, const fint8 *narray,
+                                  const fint8 *array, fint8 *sum) {
   fint8 i;
   fint8 mult;
   *sum = 0;
   mult = 1;
-  for(i = 0; i < *narray; i++){
-    *sum += mult*array[i];
+  for (i = 0; i < *narray; i++) {
+    *sum += mult * array[i];
     mult++;
   }
 }

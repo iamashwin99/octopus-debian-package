@@ -50,6 +50,7 @@ __kernel void X(density_gradient)(const int idir,
 
 }
 
+
 /*
  Local Variables:
  mode: c

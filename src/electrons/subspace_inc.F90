@@ -21,7 +21,7 @@
 subroutine X(subspace_diag)(this, namespace, mesh, st, hm, ik, eigenval, diff)
   type(subspace_t),            intent(in)    :: this
   type(namespace_t),           intent(in)    :: namespace
-  type(mesh_t),                intent(in)    :: mesh
+  class(mesh_t),               intent(in)    :: mesh
   type(states_elec_t), target, intent(inout) :: st
   type(hamiltonian_elec_t),    intent(in)    :: hm
   integer,                     intent(in)    :: ik
@@ -38,7 +38,7 @@ subroutine X(subspace_diag)(this, namespace, mesh, st, hm, ik, eigenval, diff)
 
   case (OPTION__SUBSPACEDIAGONALIZATION__SCALAPACK)
 
-    SAFE_ALLOCATE(psi(1:mesh%np_part, 1:st%d%dim, st%st_start:st%st_end))
+    SAFE_ALLOCATE(psi(1:mesh%np_part, 1:st%d%dim, st%st_start:max(st%st_end,1)))
 
     do ist = st%st_start, st%st_end
       call states_elec_get_state(st, mesh, ist, ik, psi(:, :, ist))
@@ -75,7 +75,7 @@ end subroutine X(subspace_diag)
 !> This routine diagonalises the Hamiltonian in the subspace defined by the states.
 subroutine X(subspace_diag_standard)(namespace, mesh, st, hm, ik, eigenval, diff)
   type(namespace_t),           intent(in)    :: namespace
-  type(mesh_t),                intent(in)    :: mesh
+  class(mesh_t),               intent(in)    :: mesh
   type(states_elec_t), target, intent(inout) :: st
   type(hamiltonian_elec_t),    intent(in)    :: hm
   integer,                     intent(in)    :: ik
@@ -86,6 +86,9 @@ subroutine X(subspace_diag_standard)(namespace, mesh, st, hm, ik, eigenval, diff
   integer             :: ib, minst, maxst
   type(wfs_elec_t)       :: hpsib
   type(profile_t), save :: prof_diff
+#ifdef R_TCOMPLEX
+  CMPLX :: phase
+#endif
 
   PUSH_SUB(X(subspace_diag_standard))
 
@@ -94,14 +97,17 @@ subroutine X(subspace_diag_standard)(namespace, mesh, st, hm, ik, eigenval, diff
   call X(subspace_diag_hamiltonian)(namespace, mesh, st, hm, ik, hmss)
 
   ! Diagonalize the Hamiltonian in the subspace.
-  ! only half of hmss has the matrix, but this is what Lapack needs
   call lalg_eigensolve(st%nst, hmss, eigenval)
 
-  ! the eigenvectors are not unique due to phases and degenerate subspaces, but
-  ! they must be consistent among processors in domain parallelization
-  if (mesh%parallel_in_domains) then
-    call mesh%mpi_grp%bcast(hmss(1, 1), st%nst**2, R_MPITYPE, 0)
-  end if
+  do ib = 1, st%nst
+#ifdef R_TCOMPLEX
+    phase = hmss(ib,ib)
+    if(abs(phase) > CNST(1e-16)) then
+      phase = phase / abs(phase)
+      call lalg_scal(st%nst, M_ONE/phase, hmss(:, ib))
+    end if
+#endif
+  end do
 
   ! Calculate the new eigenfunctions as a linear combination of the
   ! old ones.
@@ -118,7 +124,7 @@ subroutine X(subspace_diag_standard)(namespace, mesh, st, hm, ik, eigenval, diff
     minst = states_elec_block_min(st, ib)
     maxst = states_elec_block_max(st, ib)
 
-    if (hamiltonian_elec_apply_packed(hm)) call st%group%psib(ib, ik)%do_pack()
+    if (hm%apply_packed()) call st%group%psib(ib, ik)%do_pack()
 
     call st%group%psib(ib, ik)%copy_to(hpsib)
 
@@ -128,7 +134,7 @@ subroutine X(subspace_diag_standard)(namespace, mesh, st, hm, ik, eigenval, diff
 
     call hpsib%end()
 
-    if (hamiltonian_elec_apply_packed(hm)) call st%group%psib(ib, ik)%do_unpack(copy = .false.)
+    if (hm%apply_packed()) call st%group%psib(ib, ik)%do_unpack(copy = .false.)
 
   end do
 
@@ -151,7 +157,7 @@ end subroutine X(subspace_diag_standard)
 !! consumes more memory.
 subroutine X(subspace_diag_scalapack)(namespace, mesh, st, hm, ik, eigenval, psi, diff)
   type(namespace_t),        intent(in)    :: namespace
-  type(mesh_t),             intent(in)    :: mesh
+  class(mesh_t),            intent(in)    :: mesh
   type(states_elec_t),      intent(inout) :: st
   type(hamiltonian_elec_t), intent(in)    :: hm
   integer,                  intent(in)    :: ik
@@ -181,7 +187,7 @@ subroutine X(subspace_diag_scalapack)(namespace, mesh, st, hm, ik, eigenval, psi
 
   PUSH_SUB(X(subspace_diag_scalapack))
 
-  SAFE_ALLOCATE(hpsi(1:mesh%np_part, 1:st%d%dim, st%st_start:st%st_end))
+  SAFE_ALLOCATE(hpsi(1:mesh%np_part, 1:st%d%dim, st%st_start:max(st%st_end,1)))
 
   call states_elec_parallel_blacs_blocksize(st, namespace, mesh, psi_block, total_np)
 
@@ -225,11 +231,11 @@ subroutine X(subspace_diag_scalapack)(namespace, mesh, st, hm, ik, eigenval, psi
 
   ! We need to set to zero some extra parts of the array
   if (st%d%dim == 1) then
-    psi(mesh%np + 1:psi_block(1), 1:st%d%dim, st%st_start:st%st_end) = M_ZERO
-    hpsi(mesh%np + 1:psi_block(1), 1:st%d%dim, st%st_start:st%st_end) = M_ZERO
+    psi(mesh%np + 1:psi_block(1), 1:st%d%dim, st%st_start:max(st%st_end,1)) = M_ZERO
+    hpsi(mesh%np + 1:psi_block(1), 1:st%d%dim, st%st_start:max(st%st_end,1)) = M_ZERO
   else
-    psi(mesh%np + 1:mesh%np_part, 1:st%d%dim, st%st_start:st%st_end) = M_ZERO
-    hpsi(mesh%np + 1:mesh%np_part, 1:st%d%dim, st%st_start:st%st_end) = M_ZERO
+    psi(mesh%np + 1:mesh%np_part, 1:st%d%dim, st%st_start:max(st%st_end,1)) = M_ZERO
+    hpsi(mesh%np + 1:mesh%np_part, 1:st%d%dim, st%st_start:max(st%st_end,1)) = M_ZERO
   end if
 
   call profiling_in(prof_gemm1, TOSTRING(X(SCALAPACK_GEMM1)))
@@ -301,9 +307,16 @@ subroutine X(subspace_diag_scalapack)(namespace, mesh, st, hm, ik, eigenval, psi
   SAFE_ALLOCATE(work(1:lwork))
   SAFE_ALLOCATE(rwork(1:lrwork))
 
-  call pzheev(jobz = 'V', uplo = 'U', n = st%nst, a = hs(1, 1) , ia = 1, ja = 1, desca = hs_desc(1), &
-    w = eigenval(1), z = evectors(1, 1), iz = 1, jz = 1, descz = hs_desc(1), &
-    work = work(1), lwork = lwork, rwork = rwork(1), lrwork = lrwork, info = info)
+  if (st%nst == 1) then
+    ! pzheev from scalapack seems to return wrong eigenvectors for one state,
+    ! so we do not call it in this case.
+    eigenval(1) = TOFLOAT(hs(1, 1))
+    evectors(1, 1) = R_TOTYPE(M_ONE)
+  else
+    call pzheev(jobz = 'V', uplo = 'U', n = st%nst, a = hs(1, 1) , ia = 1, ja = 1, desca = hs_desc(1), &
+      w = eigenval(1), z = evectors(1, 1), iz = 1, jz = 1, descz = hs_desc(1), &
+      work = work(1), lwork = lwork, rwork = rwork(1), lrwork = lrwork, info = info)
+  end if
 
   if (info /= 0) then
     write(message(1),'(a,i6)') "ScaLAPACK pzheev call failure, error code = ", info
@@ -382,7 +395,7 @@ end subroutine X(subspace_diag_scalapack)
 !> This routine diagonalises the Hamiltonian in the subspace defined by the states.
 subroutine X(subspace_diag_hamiltonian)(namespace, mesh, st, hm, ik, hmss)
   type(namespace_t),           intent(in)    :: namespace
-  type(mesh_t),                intent(in)    :: mesh
+  class(mesh_t),               intent(in)    :: mesh
   type(states_elec_t), target, intent(inout) :: st
   type(hamiltonian_elec_t),    intent(in)    :: hm
   integer,                     intent(in)    :: ik
@@ -411,71 +424,54 @@ subroutine X(subspace_diag_hamiltonian)(namespace, mesh, st, hm, ik, hmss)
     call accel_create_buffer(hmss_buffer, ACCEL_MEM_READ_WRITE, R_TYPE_VAL, st%nst*st%nst)
     call accel_set_buffer_to_zero(hmss_buffer, R_TYPE_VAL, st%nst*st%nst)
 
-    if (.not. st%parallel_in_states .and. st%group%block_start == st%group%block_end) then
-      ! all the states are stored in one block
-      ! we can use blas directly
+    ! we have to copy the blocks to a temporary array
+    block_size = batch_points_block_size()
 
-      call X(accel_gemm)(transA = ACCEL_BLAS_N, transB = ACCEL_BLAS_C, &
-        M = int(st%nst, 8), N = int(st%nst, 8), K = int(mesh%np, 8), &
-        alpha = R_TOTYPE(mesh%volume_element), &
-        A = hpsib(st%group%block_start)%ff_device, offA = 0_8, &
-        lda = int(hpsib(st%group%block_start)%pack_size(1), 8), &
-        B = st%group%psib(st%group%block_start, ik)%ff_device, offB = 0_8, &
-        ldb = int(st%group%psib(st%group%block_start, ik)%pack_size(1), 8), &
-        beta = R_TOTYPE(M_ZERO), &
-        C = hmss_buffer, offC = 0_8, ldc = int(st%nst, 8))
+    ! need conversion to i8 to avoid possible overflow
+    call accel_create_buffer(psi_buffer, ACCEL_MEM_READ_WRITE, R_TYPE_VAL, int(st%nst, i8)*st%d%dim*block_size)
+    call accel_create_buffer(hpsi_buffer, ACCEL_MEM_READ_WRITE, R_TYPE_VAL, int(st%nst, i8)*st%d%dim*block_size)
+    if (st%parallel_in_states) then
+      SAFE_ALLOCATE(psi(1:st%nst, 1:st%d%dim, 1:block_size))
+      SAFE_ALLOCATE(hpsi(1:st%nst, 1:st%d%dim, 1:block_size))
+    end if
 
-    else
+    do sp = 1, mesh%np, block_size
+      size = min(block_size, mesh%np - sp + 1)
 
-      ! we have to copy the blocks to a temporary array
-      block_size = batch_points_block_size()
-
-      call accel_create_buffer(psi_buffer, ACCEL_MEM_READ_WRITE, R_TYPE_VAL, st%nst*st%d%dim*block_size)
-      call accel_create_buffer(hpsi_buffer, ACCEL_MEM_READ_WRITE, R_TYPE_VAL, st%nst*st%d%dim*block_size)
-      if (st%parallel_in_states) then
-        SAFE_ALLOCATE(psi(1:st%nst, 1:st%d%dim, 1:block_size))
-        SAFE_ALLOCATE(hpsi(1:st%nst, 1:st%d%dim, 1:block_size))
-      end if
-
-      do sp = 1, mesh%np, block_size
-        size = min(block_size, mesh%np - sp + 1)
-
-        do ib = st%group%block_start, st%group%block_end
-          ASSERT(R_TYPE_VAL == st%group%psib(ib, ik)%type())
-          call batch_get_points(st%group%psib(ib, ik), sp, sp + size - 1, psi_buffer, st%nst)
-          call batch_get_points(hpsib(ib), sp, sp + size - 1, hpsi_buffer, st%nst)
-        end do
-
-        if (st%parallel_in_states) then
-          call accel_read_buffer(psi_buffer, st%nst*st%d%dim*block_size, psi)
-          call states_elec_parallel_gather(st, (/st%d%dim, size/), psi)
-          call accel_write_buffer(psi_buffer, st%nst*st%d%dim*block_size, psi)
-          call accel_read_buffer(hpsi_buffer, st%nst*st%d%dim*block_size, hpsi)
-          call states_elec_parallel_gather(st, (/st%d%dim, size/), hpsi)
-          call accel_write_buffer(hpsi_buffer, st%nst*st%d%dim*block_size, hpsi)
-        end if
-
-        call X(accel_gemm)(transA = ACCEL_BLAS_N, transB = ACCEL_BLAS_C, &
-          M = int(st%nst, 8), N = int(st%nst, 8), K = int(size*st%d%dim, 8), &
-          alpha = R_TOTYPE(mesh%volume_element), &
-          A = hpsi_buffer, offA = 0_8, lda = int(st%nst, 8), &
-          B = psi_buffer, offB = 0_8, ldb = int(st%nst, 8), &
-          beta = R_TOTYPE(M_ONE), &
-          C = hmss_buffer, offC = 0_8, ldc = int(st%nst, 8))
-
-        call accel_finish()
-
+      do ib = st%group%block_start, st%group%block_end
+        ASSERT(R_TYPE_VAL == st%group%psib(ib, ik)%type())
+        call batch_get_points(st%group%psib(ib, ik), sp, sp + size - 1, psi_buffer, st%nst, st%d%dim)
+        call batch_get_points(hpsib(ib), sp, sp + size - 1, hpsi_buffer, st%nst, st%d%dim)
       end do
 
       if (st%parallel_in_states) then
-        SAFE_DEALLOCATE_A(psi)
-        SAFE_DEALLOCATE_A(hpsi)
+        call accel_read_buffer(psi_buffer, int(st%nst, i8)*st%d%dim*block_size, psi)
+        call states_elec_parallel_gather(st, (/st%d%dim, size/), psi)
+        call accel_write_buffer(psi_buffer, int(st%nst, i8)*st%d%dim*block_size, psi)
+        call accel_read_buffer(hpsi_buffer, int(st%nst, i8)*st%d%dim*block_size, hpsi)
+        call states_elec_parallel_gather(st, (/st%d%dim, size/), hpsi)
+        call accel_write_buffer(hpsi_buffer, int(st%nst, i8)*st%d%dim*block_size, hpsi)
       end if
 
-      call accel_release_buffer(psi_buffer)
-      call accel_release_buffer(hpsi_buffer)
+      call X(accel_gemm)(transA = ACCEL_BLAS_N, transB = ACCEL_BLAS_C, &
+        M = int(st%nst, 8), N = int(st%nst, 8), K = int(size*st%d%dim, 8), &
+        alpha = R_TOTYPE(mesh%volume_element), &
+        A = hpsi_buffer, offA = 0_8, lda = int(st%nst, 8), &
+        B = psi_buffer, offB = 0_8, ldb = int(st%nst, 8), &
+        beta = R_TOTYPE(M_ONE), &
+        C = hmss_buffer, offC = 0_8, ldc = int(st%nst, 8))
 
+      call accel_finish()
+
+    end do
+
+    if (st%parallel_in_states) then
+      SAFE_DEALLOCATE_A(psi)
+      SAFE_DEALLOCATE_A(hpsi)
     end if
+
+    call accel_release_buffer(psi_buffer)
+    call accel_release_buffer(hpsi_buffer)
 
     call accel_read_buffer(hmss_buffer, st%nst*st%nst, hmss)
     call accel_release_buffer(hmss_buffer)

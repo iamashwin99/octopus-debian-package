@@ -20,7 +20,7 @@
 subroutine X(x_fbe_calc)(namespace, psolver, mesh, der, st, ex, vxc)
   type(namespace_t),        intent(in)    :: namespace
   type(poisson_t),          intent(in)    :: psolver
-  type(mesh_t),             intent(in)    :: mesh
+  class(mesh_t),            intent(in)    :: mesh
   type(derivatives_t),      intent(in)    :: der
   type(states_elec_t),      intent(inout) :: st
   FLOAT,                    intent(inout) :: ex
@@ -51,7 +51,7 @@ end subroutine X(x_fbe_calc)
 !----------------------------s--------------------------------
 subroutine X(fbe) (namespace, mesh, der, psolver, st, isp, ex, vxc)
   type(namespace_t),           intent(in)    :: namespace
-  type(mesh_t),                intent(in)    :: mesh
+  class(mesh_t),               intent(in)    :: mesh
   type(derivatives_t),         intent(in)    :: der
   type(poisson_t),             intent(in)    :: psolver
   type(states_elec_t), target, intent(inout) :: st

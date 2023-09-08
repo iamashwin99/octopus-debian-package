@@ -52,8 +52,8 @@
 # ----- Maxwell output variables ------------------------------------------------------------------
 
  %MaxwellOutput
-  electric_field 
-  magnetic_field 
+  electric_field
+  magnetic_field
   maxwell_energy_density
  %
 
@@ -67,7 +67,7 @@
 
 # ----- Time step variables -----------------------------------------------------------------------
 
- TDSystemPropagator = exp_mid
+ TDSystemPropagator = prop_expmid
  TDTimeStep                        = 0.002
  TDPropagationTime                 = 0.1
 
@@ -88,4 +88,3 @@
  %MaxwellFunctions
    "plane_waves_function" | mxf_cosinoidal_wave | kx | 0 | 0 | p_s | 0 | 0 | pw
  %
-

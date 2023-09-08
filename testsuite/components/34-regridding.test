@@ -1,0 +1,35 @@
+# -*- coding: utf-8 mode: shell-script -*-
+
+Test       : Regridding
+Program    : octopus
+TestGroups : short-run, components
+Enabled    : Yes
+
+# If any test here breaks, do not adjust the values or the tolerances!
+# Probably something is seriously broken!
+Precision: 1e-15
+
+Input: 34-regridding.01-samespacing-mixed.inp
+match ; Rel. difference forward ; GREPFIELD(out, 'Forward: difference of reference to mapped function', 9) ; 0
+match ; Rel. difference backward ; GREPFIELD(out, 'Backward: difference of reference to mapped function', 9) ; 0
+
+Input: 34-regridding.02-samespacing-parstates.inp
+match ; Rel. difference forward ; GREPFIELD(out, 'Forward: difference of reference to mapped function', 9) ; 0
+match ; Rel. difference backward ; GREPFIELD(out, 'Backward: difference of reference to mapped function', 9) ; 0
+
+Input: 34-regridding.03-samespacing-pardomains.inp
+match ; Rel. difference forward ; GREPFIELD(out, 'Forward: difference of reference to mapped function', 9) ; 0
+match ; Rel. difference backward ; GREPFIELD(out, 'Backward: difference of reference to mapped function', 9) ; 0
+
+Input: 34-regridding.04-spacing-ratio3-mixed.inp
+match ; Rel. difference forward ; GREPFIELD(out, 'Forward: difference of reference to mapped function', 9) ; 0.229398
+match ; Rel. difference backward ; GREPFIELD(out, 'Backward: difference of reference to mapped function', 9) ; 0.430757
+
+Input: 34-regridding.05-spacing-ratio3-parstates.inp
+match ; Rel. difference forward ; GREPFIELD(out, 'Forward: difference of reference to mapped function', 9) ; 0.229398
+match ; Rel. difference backward ; GREPFIELD(out, 'Backward: difference of reference to mapped function', 9) ; 0.430757
+
+Processors: 4
+Input: 34-regridding.06-spacing-ratio3-pardomains.inp
+match ; Rel. difference forward ; GREPFIELD(out, 'Forward: difference of reference to mapped function', 9) ; 0.229398
+match ; Rel. difference backward ; GREPFIELD(out, 'Backward: difference of reference to mapped function', 9) ; 0.430757

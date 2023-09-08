@@ -5,7 +5,7 @@ CalculationMode = td
 Debug = trace
 
 Dimensions = 1
-fromScratch = yes
+FromScratch = yes
 
 BoxShape = sphere
 # In the original reference, the spacing is 0.25 a.u.
@@ -51,9 +51,8 @@ electric_amplitude = (sqrt(10^14)/sqrt(3.509470*10^16))
 AbsorbingBoundaries = mask
 AbWidth = 50
 
-%TDOutput 
+%TDOutput
  laser
- multipoles 
+ multipoles
  dipole_acceleration
 %
-

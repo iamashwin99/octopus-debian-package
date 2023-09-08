@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML-full"></script>
 <style>
-   BODY {background-color: white; 
+   BODY {background-color: white;
          font-size: 10pt; font-family: verdana,helvetica;}
    A  {text-decoration: none;color: blue}
 </style>
@@ -84,8 +84,8 @@
  atomic orbitals character. As a consequence, the sum of the different PDOS does not integrate
  to the total DOS.
 <br><br>
- The radii of the orbitals are controled by the threshold defined by <tt>AOThreshold<\tt>,
- and the fact that they are normalized or not by <tt>AONormalize<\tt>.
+ The radii of the orbitals are controled by the threshold defined by <tt>AOThreshold</tt>,
+ and the fact that they are normalized or not by <tt>AONormalize</tt>.
 
 </p><hr width='30%' align='left'/>
 
@@ -220,6 +220,12 @@
 <li><b>charge_density</b>:  Output of the charge density calculated by the divergence of the electric field.
 </li>
 <li><b>orbital_angular_momentum</b>:  Output of the orbital angular momentum
+</li>
+<li><b>vector_potential_mag</b>:  Output of the vector potential from magnetic field
+</li>
+<li><b>magnetic_field_diff</b>:  Output of the magnetic field difference
+</li>
+<li><b>total_current_mxll</b>:  Output of the total current density
 </li>
 <li><b>electric_field</b>:  Output of the electric field
 </li>
@@ -438,7 +444,7 @@
 <li><b>density_kpt</b>:  Outputs the electronic density resolved in momentum space.
 </li>
 <li><b>occ_matrices</b>:  Only for DFT+U calculations.
- Outputs the occupation matrices of LDA+U
+ Outputs the occupation matrices of DFT+U
 </li>
 <li><b>effectiveU</b>:  Only for DFT+U calculations.
  Outputs the value of the effectiveU for each atoms
@@ -463,6 +469,8 @@
 <li><b>xc_torque</b>:  Outputs the exchange-correlation torque. Only for the spinor case and in the 3D case.
 </li>
 <li><b>eigenval_kpt</b>:  Outputs the eigenvalues resolved in momentum space, with one file for each band.
+</li>
+<li><b>stress</b>:  Outputs the stress tensor and each of its contributing terms
 </li>
 <li><b>wfs_sqmod</b>:  Outputs modulus squared of the wavefunctions.
  The output file is called <tt>sqm-wf-</tt>. For linear response, the filename is <tt>sqm_lr_wf-</tt>.
@@ -551,6 +559,7 @@
 </li>
 <li><b>cube</b>:  Generates output in the <a href=http://paulbourke.net/dataformats/cube>cube file format</a>.
  Available only in 3D. Only writes the real part of complex functions.
+ This output format always uses atomic units.
 </li>
 <li><b>bild</b>:  Generates output in <a href=http://plato.cgl.ucsf.edu/chimera/docs/UsersGuide/bild.html>BILD format</a>.
 </li>

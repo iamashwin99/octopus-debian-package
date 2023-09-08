@@ -141,7 +141,7 @@ contains
     !%Option metis 1
     !% METIS library.
     !%Option parmetis 2
-    !% (Experimental) Use ParMETIS libary to perform the mesh partition.
+    !% (Experimental) Use ParMETIS library to perform the mesh partition.
     !% Only available if the code was compiled with ParMETIS support.
     !%Option part_hilbert 3
     !% Use the ordering along the Hilbert curve for partitioning.

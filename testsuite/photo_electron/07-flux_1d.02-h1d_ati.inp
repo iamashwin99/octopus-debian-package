@@ -24,7 +24,7 @@ ExperimentalFeatures = YES
 OnlyUserDefinedInitialStates = YES
 
 BoxShape = sphere
-Radius = 60  
+Radius = 60
 Spacing = 0.2
 
 TheoryLevel = independent_particles
@@ -62,7 +62,7 @@ omega = 1
 amplitude = 1*137
 tc=2*pi/omega
 Ntot=5
-nr=2 
+nr=2
 
 %TDExternalFields
   vector_potential | 1 | 0 | 0 | omega | "trap"

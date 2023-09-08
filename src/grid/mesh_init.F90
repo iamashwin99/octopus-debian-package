@@ -66,7 +66,7 @@ contains
 
 ! ---------------------------------------------------------
   subroutine mesh_init_stage_1(mesh, namespace, space, box, coord_system, spacing, enlarge)
-    type(mesh_t),                intent(inout) :: mesh
+    class(mesh_t),               intent(inout) :: mesh
     type(namespace_t),           intent(in)    :: namespace
     type(space_t),               intent(in)    :: space
     class(box_t), target,        intent(in)    :: box
@@ -170,7 +170,7 @@ contains
     mesh%idx%ll(1:MAX_DIM) = mesh%idx%nr(2, 1:MAX_DIM) - mesh%idx%nr(1, 1:MAX_DIM) + 1
     ! compute strides for cubic indices
     mesh%idx%stride(:) = 1
-    do idir = 2, space%dim
+    do idir = 2, space%dim+1
       mesh%idx%stride(idir) = mesh%idx%stride(idir-1) *  &
         (mesh%idx%ll(idir-1) + 2*mesh%idx%enlarge(idir-1))
     end do
@@ -183,7 +183,7 @@ contains
 !> This subroutine creates the global array of spatial indices
 !! and the inverse mapping.
   subroutine mesh_init_stage_2(mesh, namespace, space, box, stencil)
-    type(mesh_t),        intent(inout) :: mesh
+    class(mesh_t),       intent(inout) :: mesh
     type(namespace_t),   intent(in)    :: namespace
     type(space_t),       intent(in)    :: space
     class(box_t),        intent(in)    :: box
@@ -302,6 +302,7 @@ contains
         point_stencil(1:space%dim) = point(1:space%dim) + stencil%points(1:space%dim, is)
         ! check if point is in inner part
         call index_point_to_spatial(mesh%idx, space%dim, ispatialb, point_stencil)
+        ASSERT(ispatialb >= 0)
         if (ispatialb >= lbound(spatial_to_grid, dim=1, kind=i8) .and. &
           ispatialb <= ubound(spatial_to_grid, dim=1, kind=i8)) then
           if (spatial_to_grid(ispatialb) > 0) cycle
@@ -425,7 +426,7 @@ contains
 !! this mesh.
 ! ---------------------------------------------------------
   subroutine mesh_init_stage_3(mesh, namespace, space, stencil, mc, parent)
-    type(mesh_t),              intent(inout) :: mesh
+    class(mesh_t),             intent(inout) :: mesh
     type(namespace_t),         intent(in)    :: namespace
     type(space_t),             intent(in)    :: space
     type(stencil_t),           intent(in)    :: stencil
@@ -464,12 +465,14 @@ contains
 
     ! Compute mesh%x
     SAFE_ALLOCATE(mesh%x(1:mesh%np_part, 1:space%dim))
-    mesh%x(:, :) = M_ZERO
+    !$omp parallel do
+    do ip = 1, mesh%np_part
+      mesh%x(ip, 1:space%dim) = M_ZERO
+    end do
+
     do ip = 1, mesh%np_part
       mesh%x(ip, 1:space%dim) = mesh_x_global(mesh, mesh_local2global(mesh, ip))
     end do
-
-    call mesh_cube_map_init(mesh%cube_map, mesh%idx, mesh%np_global)
 
     call mesh_get_vol_pp()
 
@@ -660,6 +663,8 @@ contains
 
       np = 1
       if (mesh%use_curvilinear) np = mesh%np_part
+      ! If no local point, we should not try to access the arrays
+      if (mesh%np_part == 0) np = 0
 
       SAFE_ALLOCATE(mesh%vol_pp(1:np))
 
@@ -675,7 +680,7 @@ contains
         mesh%vol_pp(ip) = mesh%vol_pp(ip)*mesh%coord_system%det_Jac(mesh%x(ip, 1:space%dim), chi(1:space%dim))
       end do
 
-      if (mesh%use_curvilinear) then
+      if (mesh%use_curvilinear .or. mesh%np_part == 0) then
         mesh%volume_element = M_ONE
       else
         mesh%volume_element = mesh%vol_pp(1)

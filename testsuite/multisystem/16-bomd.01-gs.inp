@@ -1,0 +1,23 @@
+CalculationMode = gs
+
+FromScratch = yes
+
+bond_length = 2.4
+
+%RestartOptions
+  restart_gs | "test_electrons/restart"
+%
+
+%Coordinates
+ "C" |  -bond_length/2 |  0.0 |  0.0
+ "C" |   bond_length/2 |  0.0 |  0.0
+%
+
+Spacing = 0.6
+
+Radius = 6
+
+MixField = density
+
+
+PoissonSolver = isf

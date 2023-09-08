@@ -22,6 +22,7 @@ module output_me_oct_m
   use boundaries_oct_m
   use debug_oct_m
   use derivatives_oct_m
+  use energy_calc_oct_m
   use global_oct_m
   use grid_oct_m
   use hamiltonian_elec_oct_m
@@ -241,9 +242,9 @@ contains
               write(fname,'(i4)') id
               write(fname,'(a)') trim(dir)//'/ks_me_multipoles.'//trim(adjustl(fname))
               if (states_are_real(st)) then
-                call doutput_me_ks_multipoles(fname, namespace, space, st, gr%mesh, ll, mm, ik)
+                call doutput_me_ks_multipoles(fname, namespace, space, st, gr, ll, mm, ik)
               else
-                call zoutput_me_ks_multipoles(fname, namespace, space, st, gr%mesh, ll, mm, ik)
+                call zoutput_me_ks_multipoles(fname, namespace, space, st, gr, ll, mm, ik)
               end if
 
               id = id + 1
@@ -254,9 +255,9 @@ contains
             write(fname,'(i4)') id
             write(fname,'(a)') trim(dir)//'/ks_me_multipoles.'//trim(adjustl(fname))
             if (states_are_real(st)) then
-              call doutput_me_ks_multipoles2d(fname, namespace, st, gr%mesh, ll, ik)
+              call doutput_me_ks_multipoles2d(fname, namespace, st, gr, ll, ik)
             else
-              call zoutput_me_ks_multipoles2d(fname, namespace, st, gr%mesh, ll, ik)
+              call zoutput_me_ks_multipoles2d(fname, namespace, st, gr, ll, ik)
             end if
 
             id = id + 1
@@ -267,9 +268,9 @@ contains
             write(fname,'(i4)') id
             write(fname,'(a)') trim(dir)//'/ks_me_multipoles.'//trim(adjustl(fname))
             if (states_are_real(st)) then
-              call doutput_me_ks_multipoles1d(fname, namespace, st, gr%mesh, ll, ik)
+              call doutput_me_ks_multipoles1d(fname, namespace, st, gr, ll, ik)
             else
-              call zoutput_me_ks_multipoles1d(fname, namespace, st, gr%mesh, ll, ik)
+              call zoutput_me_ks_multipoles1d(fname, namespace, st, gr, ll, ik)
             end if
 
             id = id + 1
@@ -292,7 +293,6 @@ contains
       end do
     end if
 
-
     if (this%what(OPTION__OUTPUTMATRIXELEMENTS__ONE_BODY)) then
       message(1) = "Computing one-body matrix elements"
       call messages_info(1, namespace=namespace)
@@ -314,24 +314,27 @@ contains
 
       if (states_are_real(st)) then
         SAFE_ALLOCATE(doneint(1:id))
-        call dstates_elec_me_one_body(st, namespace, gr, hm%d%nspin, hm%vhxc, id, iindex(:,1), jindex(:,1), doneint)
-        do ll = 1, id
-          write(iunit, *) iindex(ll,1), jindex(ll,1), doneint(ll)
-        end do
+        call done_body_matrix_elements(st, namespace, gr, hm, id, iindex(:,1), jindex(:,1), doneint)
+        if (mpi_grp_is_root(gr%mpi_grp)) then
+          do ll = 1, id
+            write(iunit, *) iindex(ll,1), jindex(ll,1), doneint(ll)
+          end do
+        end if
         SAFE_DEALLOCATE_A(doneint)
       else
         SAFE_ALLOCATE(zoneint(1:id))
-        call zstates_elec_me_one_body(st, namespace, gr, hm%d%nspin, hm%vhxc, id, iindex(:,1), jindex(:,1), zoneint)
-        do ll = 1, id
-          write(iunit, *) iindex(ll,1), jindex(ll,1), zoneint(ll)
-        end do
+        call zone_body_matrix_elements(st, namespace, gr, hm, id, iindex(:,1), jindex(:,1), zoneint)
+        if (mpi_grp_is_root(gr%mpi_grp)) then
+          do ll = 1, id
+            write(iunit, *) iindex(ll,1), jindex(ll,1), zoneint(ll)
+          end do
+        end if
         SAFE_DEALLOCATE_A(zoneint)
       end if
 
       SAFE_DEALLOCATE_A(iindex)
       SAFE_DEALLOCATE_A(jindex)
       call io_close(iunit)
-
     end if
 
     if (this%what(OPTION__OUTPUTMATRIXELEMENTS__TWO_BODY) .or. this%what(OPTION__OUTPUTMATRIXELEMENTS__TWO_BODY_EXC_K)) then
@@ -348,7 +351,9 @@ contains
         end if
         ! how to do this properly? states_matrix
         iunit = io_open(trim(dir)//'/output_me_two_body', namespace, action='write')
-        write(iunit, '(a)') '#(n1,k1) (n2,k2) (n3,k3) (n4,k4) (n1-k1, n2-k2|n3-k3, n4-k4)'
+        if (mpi_grp_is_root(gr%mpi_grp)) then
+          write(iunit, '(a)') '# (n1, k1)  (n2, k2)  (n3, k3)  (n4, k4)  (n1-k1, n2-k2|n3-k3, n4-k4)'
+        end if
       else
         if (st%parallel_in_states) then
           call messages_not_implemented("OutputMatrixElements=two_body_exc_k with states parallelization", namespace=namespace)
@@ -358,7 +363,9 @@ contains
         end if
         ! how to do this properly? states_matrix
         iunit = io_open(trim(dir)//'/output_me_two_body_density', namespace, action='write')
-        write(iunit, '(a)') '#(n1,k1) (n2,k2) (n1-k1, n1-k2|n2-k2, n2-k1)'
+        if (mpi_grp_is_root(gr%mpi_grp)) then
+          write(iunit, '(a)') '#(n1, k1)  (n2, k2)  (n1-k1, n1-k2|n2-k2, n2-k1)'
+        end if
       end if
 
       if (this%what(OPTION__OUTPUTMATRIXELEMENTS__TWO_BODY)) then
@@ -382,33 +389,37 @@ contains
 
       if (states_are_real(st)) then
         SAFE_ALLOCATE(dtwoint(1:id))
-        call dstates_elec_me_two_body(st, namespace, space, gr, hm%kpoints, hm%exxop%psolver, this%st_start, &
+        call dtwo_body_matrix_elements(st, namespace, space, gr, hm%kpoints, hm%exxop%psolver, this%st_start, &
           this%st_end, iindex, jindex, kindex, lindex, dtwoint)
-        do ll = 1, id
-          write(iunit, '(4(i4,i5),e15.6)') iindex(1:2,ll), jindex(1:2,ll), kindex(1:2,ll), lindex(1:2,ll), dtwoint(ll)
-        end do
+        if (mpi_grp_is_root(gr%mpi_grp)) then
+          do ll = 1, id
+            write(iunit, '(4(i4,i5,1x),es22.12)') iindex(1:2,ll), jindex(1:2,ll), kindex(1:2,ll), lindex(1:2,ll), dtwoint(ll)
+          end do
+        end if
         SAFE_DEALLOCATE_A(dtwoint)
       else
         SAFE_ALLOCATE(ztwoint(1:id))
         if (allocated(hm%hm_base%phase)) then
           !We cannot pass the phase array like that if kpt%start is not 1.
           ASSERT(.not. st%d%kpt%parallel)
-          call zstates_elec_me_two_body(st, namespace, space, gr, hm%kpoints, hm%exxop%psolver, this%st_start, this%st_end, &
+          call ztwo_body_matrix_elements(st, namespace, space, gr, hm%kpoints, hm%exxop%psolver, this%st_start, this%st_end, &
             iindex, jindex, kindex, lindex, ztwoint, phase = hm%hm_base%phase, &
             singularity = singul, exc_k = (this%what(OPTION__OUTPUTMATRIXELEMENTS__TWO_BODY_EXC_K)))
         else
-          call zstates_elec_me_two_body(st, namespace, space, gr, hm%kpoints, hm%exxop%psolver, this%st_start, this%st_end, &
+          call ztwo_body_matrix_elements(st, namespace, space, gr, hm%kpoints, hm%exxop%psolver, this%st_start, this%st_end, &
             iindex, jindex, kindex, lindex, ztwoint, exc_k = (this%what(OPTION__OUTPUTMATRIXELEMENTS__TWO_BODY_EXC_K)))
         end if
 
-        if (this%what(OPTION__OUTPUTMATRIXELEMENTS__TWO_BODY)) then
-          do ll = 1, id
-            write(iunit, '(4(i4,i5),2e15.6)') iindex(1:2,ll), jindex(1:2,ll), kindex(1:2,ll), lindex(1:2,ll), ztwoint(ll)
-          end do
-        else
-          do ll = 1, id
-            write(iunit, '(2(i4,i5),2e15.6)') iindex(1:2,ll), kindex(1:2,ll), ztwoint(ll)
-          end do
+        if (mpi_grp_is_root(gr%mpi_grp)) then
+          if (this%what(OPTION__OUTPUTMATRIXELEMENTS__TWO_BODY)) then
+            do ll = 1, id
+              write(iunit, '(4(i4,i5,1x),2es22.12)') iindex(1:2,ll), jindex(1:2,ll), kindex(1:2,ll), lindex(1:2,ll), ztwoint(ll)
+            end do
+          else
+            do ll = 1, id
+              write(iunit, '(2(i4,i5),2es22.12)') iindex(1:2,ll), kindex(1:2,ll), ztwoint(ll)
+            end do
+          end if
         end if
         SAFE_DEALLOCATE_A(ztwoint)
       end if
@@ -419,8 +430,9 @@ contains
       SAFE_DEALLOCATE_A(lindex)
       call io_close(iunit)
 
-      call singularity_end(singul)
-
+      if (states_are_complex(st)) then
+        call singularity_end(singul)
+      end if
     end if
 
     POP_SUB(output_me)

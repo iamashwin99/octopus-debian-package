@@ -19,8 +19,10 @@
 #include "global.h"
 
 module projector_oct_m
+  use accel_oct_m
   use atom_oct_m
   use batch_oct_m
+  use batch_ops_oct_m
   use boundaries_oct_m
   use comm_oct_m
   use debug_oct_m
@@ -64,9 +66,7 @@ module projector_oct_m
     dprojector_commute_r,      &
     zprojector_commute_r,      &
     dprojector_commute_r_allatoms_alldir, &
-    zprojector_commute_r_allatoms_alldir, &
-    dr_project_psi,            &
-    zr_project_psi
+    zprojector_commute_r_allatoms_alldir
 
   integer, parameter :: MAX_NPROJECTIONS = 4
   integer, parameter :: MAX_L = 5
@@ -197,8 +197,10 @@ contains
     !   this%sphere%mesh%x(this%sphere%map(is), 1:ndim) by construction is the periodic image inside the unit cell.
     !   If a point of the submesh is inside the unit cell, diff(:,is) = 0.
     SAFE_ALLOCATE(diff(1:dim, 1:ns))
+    !$omp parallel private(ikpoint, kpoint, iphase, is, kr)
+    !$omp do
     do is = 1, ns
-      diff(:, is) = this%sphere%x(is,:) - this%sphere%mesh%x(this%sphere%map(is), :)
+      diff(:, is) = this%sphere%rel_x(:,is) + this%sphere%center - this%sphere%mesh%x(this%sphere%map(is), :)
     end do
 
     do iq = std%kpt%start, std%kpt%end
@@ -211,6 +213,7 @@ contains
       kpoint(1:dim) = kpoints%get_point(ikpoint)
 
       do iphase = 1, nphase
+        !$omp do
         do is = 1, ns
           ! this is only the correction to the global phase, that can
           ! appear if the sphere crossed the boundary of the cell. (diff=0 otherwise)
@@ -222,7 +225,8 @@ contains
           end if
 
           if (present(vec_pot_var)) then
-            if (allocated(vec_pot_var)) kr = kr + sum(vec_pot_var(1:dim, this%sphere%map(is))*this%sphere%x(is, :))
+            if (allocated(vec_pot_var)) kr = kr + sum(vec_pot_var(1:dim, this%sphere%map(is)) &
+              *(this%sphere%rel_x(:, is)+this%sphere%center))
           end if
 
           if (bnd%spiralBC .and. iphase > 1) then
@@ -231,9 +235,10 @@ contains
 
           this%phase(is, iphase, iq) = exp(-M_zI*kr)
         end do
+        !$omp end do nowait
       end do
-
     end do
+    !$omp end parallel
 
     SAFE_DEALLOCATE_A(diff)
 

@@ -51,7 +51,8 @@ subroutine X(cube_function_alloc_rs)(cube, cf, in_device, force_alloc)
       if (optional_default(in_device, .true.)) then
         is_allocated = .true.
         cf%in_device_memory = .true.
-        call accel_create_buffer(cf%real_space_buffer, ACCEL_MEM_READ_WRITE, R_TYPE_VAL, product(cube%rs_n(1:3)))
+        ! conversion to i8 needed to avoid overflow
+        call accel_create_buffer(cf%real_space_buffer, ACCEL_MEM_READ_WRITE, R_TYPE_VAL, product(int(cube%rs_n(1:3), i8)))
       end if
       !We use aligned memory for FFTW
     case (FFTLIB_FFTW)
@@ -213,36 +214,37 @@ end subroutine X(cube_function_allgather)
 !! parallel in real-space domains).
 ! ---------------------------------------------------------
 
-subroutine X(mesh_to_cube)(mesh, mf, cube, cf, local)
-  type(mesh_t),          intent(in)    :: mesh
-  R_TYPE,  target,       intent(in)    :: mf(:) !< function defined on the mesh. Can be
-  !< mf(mesh%np) or mf(mesh%np_global), depending if it is a local or global function
-  type(cube_t),          intent(in)    :: cube
+subroutine X(mesh_to_cube)(mesh, mf, cube, cf)
+  class(mesh_t),         intent(in)    :: mesh
+  R_TYPE,  target,       intent(in)    :: mf(:) !< function defined on the mesh, mesh%np points
+  type(cube_t), target,  intent(in)    :: cube
   type(cube_function_t), intent(inout) :: cf
-  logical, optional,     intent(in)    :: local  !< If .true. the mf array is a local array. Considered .false. if not present.
 
-  integer(i8) :: ip, ix, iy, iz
-  integer(i8) :: im, ii, nn
+  integer :: ip, ix, iy, iz, iproc
+  integer :: im, ii, nn
+  integer :: nps(0:mesh%mpi_grp%size-1), nmaps(0:mesh%mpi_grp%size-1)
   integer :: bsize
-  logical :: local_
-  R_TYPE, pointer :: gmf(:)
-  type(accel_mem_t)         :: mf_buffer
+  type(accel_mem_t) :: mf_buffer, recv_buffer, map_buffer
+  R_TYPE, pointer :: recv(:), mf_pointer(:)
+  integer, pointer :: map_pointer(:, :), map(:, :)
+  integer :: requests(1:4), recv_proc, send_proc
   type(accel_kernel_t), save :: X(kernel)
   type(profile_t), save :: prof_m2c
 
   PUSH_SUB(X(mesh_to_cube))
   call profiling_in(prof_m2c, TOSTRING(X(MESH_TO_CUBE)))
 
-  local_ = optional_default(local, .false.) .and. mesh%parallel_in_domains
+  ASSERT(ubound(mf, dim=1) == mesh%np .or. ubound(mf, dim=1) == mesh%np_part)
 
-  if (local_) then
-    ASSERT(ubound(mf, dim = 1) == mesh%np .or. ubound(mf, dim = 1) == mesh%np_part)
-    SAFE_ALLOCATE(gmf(1:mesh%np_global))
-    call par_vec_allgather(mesh%pv, gmf, mf)
-  else
-    ASSERT(ubound(mf, dim=1, kind=i8) == mesh%np_global .or. ubound(mf, dim=1, kind=i8) == mesh%np_part_global)
-    gmf => mf
+  if (.not. cube%cube_map_present) then
+    message(1) = "Internal error: cube_map needs to be initialized."
+    message(2) = "Please call cube_init_cube_map."
+    call messages_fatal(2)
   end if
+
+  ! get mesh and map sizes
+  call mesh%mpi_grp%allgather(mesh%np, 1, MPI_INTEGER, nps(0), 1, MPI_INTEGER)
+  call mesh%mpi_grp%allgather(cube%cube_map%nmap, 1, MPI_INTEGER, nmaps(0), 1, MPI_INTEGER)
 
   if (.not. cf%in_device_memory) then
 
@@ -252,76 +254,176 @@ subroutine X(mesh_to_cube)(mesh, mf, cube, cf, local)
     cf%X(rs) = M_ZERO
     !$omp end parallel workshare
 
-    ASSERT(allocated(mesh%cube_map%map))
+    ASSERT(allocated(cube%cube_map%map))
     ASSERT(mesh%box%dim <= 3)
 
-    !$omp parallel do private(ix, iy, iz, ip, nn, ii)
-    do im = 1, mesh%cube_map%nmap
-      ix = mesh%cube_map%map(1, im) + cube%center(1)
-      iy = mesh%cube_map%map(2, im) + cube%center(2)
-      iz = mesh%cube_map%map(3, im) + cube%center(3)
+    if (mesh%mpi_grp%size == 1) then
+      recv => mf
+      map => cube%cube_map%map
+    else
+      SAFE_ALLOCATE(recv(1:maxval(nps)))
+      SAFE_ALLOCATE(map(1:5, 1:maxval(nmaps)))
+    end if
 
-      ip = mesh%cube_map%map(MCM_POINT, im)
-      nn = mesh%cube_map%map(MCM_COUNT, im)
-      do ii = 0, nn - 1
-        cf%X(rs)(ix + ii, iy, iz) = gmf(ip + ii)
+    ! We basically get the mesh data and mapping from each process and execute
+    ! the mapping locally. This is faster than using collective operations.
+
+    ! communicate in ring pattern
+    do iproc = 0, mesh%mpi_grp%size - 1
+      ! first communicate mesh function and map
+      recv_proc = mesh%mpi_grp%rank - iproc
+      if (recv_proc < 0) recv_proc = recv_proc + mesh%mpi_grp%size
+      send_proc = mesh%mpi_grp%rank + iproc
+      if (send_proc >= mesh%mpi_grp%size) send_proc = send_proc - mesh%mpi_grp%size
+      if (mesh%mpi_grp%size > 1) then
+        call mesh%mpi_grp%irecv(recv, nps(recv_proc), R_MPITYPE, recv_proc, requests(1))
+        call mesh%mpi_grp%isend(mf, mesh%np, R_MPITYPE, send_proc, requests(2))
+        call mesh%mpi_grp%irecv(map, nmaps(recv_proc)*5, MPI_INTEGER, recv_proc, requests(3))
+        call mesh%mpi_grp%isend(cube%cube_map%map, cube%cube_map%nmap*5, MPI_INTEGER, send_proc, requests(4))
+        call mesh%mpi_grp%wait(4, requests)
+      end if
+
+      ! now do the mapping
+      !$omp parallel do private(ix, iy, iz, ip, nn, ii)
+      do im = 1, nmaps(recv_proc)
+        ix = map(1, im) + cube%center(1)
+        iy = map(2, im) + cube%center(2)
+        iz = map(3, im) + cube%center(3)
+
+        ip = map(MCM_POINT, im)
+        nn = map(MCM_COUNT, im)
+        do ii = 0, nn - 1
+          cf%X(rs)(ix + ii, iy, iz) = recv(ip + ii)
+        end do
       end do
+      !$omp end parallel do
     end do
-    !$omp end parallel do
+
+    if (mesh%mpi_grp%size == 1) then
+      nullify(recv)
+      nullify(map)
+    else
+      SAFE_DEALLOCATE_P(recv)
+      SAFE_DEALLOCATE_P(map)
+    end if
 
   else
 
-    call accel_set_buffer_to_zero(cf%real_space_buffer, R_TYPE_VAL, product(cube%rs_n(1:3)))
+    ! conversion to i8 needed to avoid overflow
+    call accel_set_buffer_to_zero(cf%real_space_buffer, R_TYPE_VAL, product(int(cube%rs_n(1:3), i8)))
 
-    call accel_create_buffer(mf_buffer, ACCEL_MEM_READ_ONLY, R_TYPE_VAL, mesh%np_global)
-    call accel_write_buffer(mf_buffer, mesh%np_global, gmf)
+    call accel_create_buffer(mf_buffer, ACCEL_MEM_READ_ONLY, R_TYPE_VAL, mesh%np)
+    call accel_write_buffer(mf_buffer, mesh%np, mf)
+    if (accel%cuda_mpi) then
+      call accel_get_device_pointer(mf_pointer, mf_buffer, [mesh%np])
+    else
+      mf_pointer => mf
+    end if
 
-    call accel_kernel_start_call(X(kernel), 'mesh_to_cube.cl', TOSTRING(X(mesh_to_cube)), &
-      flags = '-D' + R_TYPE_CL)
+    if (accel%cuda_mpi) then
+      call accel_get_device_pointer(map_pointer, cube%cube_map%map_buffer, [5, cube%cube_map%nmap])
+    else
+      map_pointer => cube%cube_map%map
+    end if
 
-    call accel_set_kernel_arg(X(kernel), 0, mesh%cube_map%nmap)
-    call accel_set_kernel_arg(X(kernel), 1, cube%fft%stride_rs(1))
-    call accel_set_kernel_arg(X(kernel), 2, cube%fft%stride_rs(2))
-    call accel_set_kernel_arg(X(kernel), 3, cube%fft%stride_rs(3))
-    call accel_set_kernel_arg(X(kernel), 4, cube%center(1))
-    call accel_set_kernel_arg(X(kernel), 5, cube%center(2))
-    call accel_set_kernel_arg(X(kernel), 6, cube%center(3))
-    call accel_set_kernel_arg(X(kernel), 7, mesh%cube_map%map_buffer)
-    call accel_set_kernel_arg(X(kernel), 8, mf_buffer)
-    call accel_set_kernel_arg(X(kernel), 9, cf%real_space_buffer)
+    call accel_create_buffer(recv_buffer, ACCEL_MEM_READ_ONLY, R_TYPE_VAL, maxval(nps))
+    if (accel%cuda_mpi) then
+      call accel_get_device_pointer(recv, recv_buffer, [maxval(nps)])
+    else
+      SAFE_ALLOCATE(recv(1:maxval(nps)))
+    end if
 
-    bsize = accel_kernel_workgroup_size(X(kernel))
+    call accel_create_buffer(map_buffer, ACCEL_MEM_READ_ONLY, TYPE_INTEGER, maxval(nmaps)*5)
+    if (accel%cuda_mpi) then
+      call accel_get_device_pointer(map, map_buffer, [5, maxval(nmaps)])
+    else
+      SAFE_ALLOCATE(map(1:5, 1:maxval(nmaps)))
+    end if
 
-    call accel_kernel_run(X(kernel), (/pad(mesh%cube_map%nmap, bsize)/), int((/bsize/), i8))
-    call accel_finish()
+    ! The following could also be done in a pipelined fashion to decrease the
+    ! copy latency, but seems to be fast enough as it is right now.
+    ! We basically get the mesh data and mapping from each process and execute
+    ! the mapping locally. Especially with GPU-aware MPI, this keeps the data
+    ! on the GPU and reduces communication overhead.
+
+    ! communicate in ring pattern
+    do iproc = 0, mesh%mpi_grp%size - 1
+      ! first communicate mesh function and map
+      recv_proc = mesh%mpi_grp%rank - iproc
+      if (recv_proc < 0) recv_proc = recv_proc + mesh%mpi_grp%size
+      send_proc = mesh%mpi_grp%rank + iproc
+      if (send_proc >= mesh%mpi_grp%size) send_proc = send_proc - mesh%mpi_grp%size
+      if (mesh%mpi_grp%size > 1) then
+        call mesh%mpi_grp%irecv(recv, nps(recv_proc), R_MPITYPE, recv_proc, requests(1))
+        call mesh%mpi_grp%isend(mf_pointer, mesh%np, R_MPITYPE, send_proc, requests(2))
+        call mesh%mpi_grp%irecv(map, nmaps(recv_proc)*5, MPI_INTEGER, recv_proc, requests(3))
+        call mesh%mpi_grp%isend(map_pointer, cube%cube_map%nmap*5, MPI_INTEGER, send_proc, requests(4))
+        call mesh%mpi_grp%wait(4, requests)
+
+        ! copy data to GPU if we cannot use CUDA-aware MPI
+        if (.not. accel%cuda_mpi) then
+          call accel_write_buffer(recv_buffer, nps(recv_proc), recv)
+          call accel_write_buffer(map_buffer, nmaps(recv_proc)*5, map)
+        end if
+      end if
+
+      ! then do the actual mapping
+      call accel_kernel_start_call(X(kernel), 'mesh_to_cube.cl', TOSTRING(X(mesh_to_cube)), &
+        flags = '-D' + R_TYPE_CL)
+
+      call accel_set_kernel_arg(X(kernel), 0, nmaps(recv_proc))
+      call accel_set_kernel_arg(X(kernel), 1, cube%fft%stride_rs(1))
+      call accel_set_kernel_arg(X(kernel), 2, cube%fft%stride_rs(2))
+      call accel_set_kernel_arg(X(kernel), 3, cube%fft%stride_rs(3))
+      call accel_set_kernel_arg(X(kernel), 4, cube%center(1))
+      call accel_set_kernel_arg(X(kernel), 5, cube%center(2))
+      call accel_set_kernel_arg(X(kernel), 6, cube%center(3))
+      if (mesh%mpi_grp%size > 1) then
+        call accel_set_kernel_arg(X(kernel), 7, map_buffer)
+        call accel_set_kernel_arg(X(kernel), 8, recv_buffer)
+      else
+        ! serial version
+        call accel_set_kernel_arg(X(kernel), 7, cube%cube_map%map_buffer)
+        call accel_set_kernel_arg(X(kernel), 8, mf_buffer)
+      end if
+      call accel_set_kernel_arg(X(kernel), 9, cf%real_space_buffer)
+
+      bsize = accel_kernel_workgroup_size(X(kernel))
+
+      call accel_kernel_run(X(kernel), (/pad(nmaps(recv_proc), bsize)/), (/bsize/))
+
+      call accel_finish()
+    end do
     call accel_release_buffer(mf_buffer)
+    call accel_release_buffer(map_buffer)
+    call accel_release_buffer(recv_buffer)
 
+    nullify(mf_pointer)
+    nullify(map_pointer)
+    if (accel%cuda_mpi) then
+      nullify(recv)
+      nullify(map)
+    else
+      SAFE_DEALLOCATE_P(recv)
+      SAFE_DEALLOCATE_P(map)
+    end if
   end if
 
-  if (local_) then
-    SAFE_DEALLOCATE_P(gmf)
-  end if
-
-  call profiling_count_transfers(mesh%np_global, mf(1))
+  call profiling_count_transfers(mesh%np, mf(1))
 
   call profiling_out(prof_m2c)
   POP_SUB(X(mesh_to_cube))
 end subroutine X(mesh_to_cube)
 
 ! ---------------------------------------------------------
-subroutine X(cube_to_mesh) (cube, cf, mesh, mf, local)
+subroutine X(cube_to_mesh) (cube, cf, mesh, mf)
   type(cube_t),          intent(in)  :: cube
   type(cube_function_t), intent(in)  :: cf
-  type(mesh_t),          intent(in)  :: mesh
-  R_TYPE,  target,       intent(out) :: mf(:) !< function defined on the mesh. Can be
-  !< mf(mesh%np) or mf(mesh%np_global), depending if it is a local or global function
-  logical, optional,     intent(in)  :: local  !< If .true. the mf array is a local array. Considered .false. if not present.
+  class(mesh_t),         intent(in)  :: mesh
+  R_TYPE,  target,       intent(out) :: mf(:) !< function defined on the mesh, mesh%np points
 
-  integer(i8) :: ip, ix, iy, iz
-  integer(i8) :: im, ii, nn
-  integer :: ipl
-  logical :: local_
-  R_TYPE, pointer :: gmf(:)
+  integer :: ip, ix, iy, iz
+  integer :: im, ii, nn
   integer                    :: bsize
   type(accel_mem_t)         :: mf_buffer
   type(accel_kernel_t), save :: X(kernel)
@@ -331,71 +433,61 @@ subroutine X(cube_to_mesh) (cube, cf, mesh, mf, local)
 
   call profiling_in(prof_c2m, TOSTRING(X(CUBE_TO_MESH)))
 
-  local_ = optional_default(local, .false.) .and. mesh%parallel_in_domains
-
-  if (local_) then
-    ASSERT(ubound(mf, dim = 1) == mesh%np .or. ubound(mf, dim = 1) == mesh%np_part)
-    SAFE_ALLOCATE(gmf(1:mesh%np_global))
-  else
-    ASSERT(ubound(mf, dim=1, kind=i8) == mesh%np_global .or. ubound(mf, dim=1, kind=i8) == mesh%np_part_global)
-    gmf => mf
+  ASSERT(ubound(mf, dim=1) == mesh%np .or. ubound(mf, dim=1) == mesh%np_part)
+  if (.not. cube%cube_map_present) then
+    message(1) = "Internal error: cube_map needs to be initialized."
+    message(2) = "Please call cube_init_cube_map."
+    call messages_fatal(2)
   end if
 
   if (.not. cf%in_device_memory) then
 
     ASSERT(associated(cf%X(rs)))
-    ASSERT(allocated(mesh%cube_map%map))
+    ASSERT(allocated(cube%cube_map%map))
 
     !$omp parallel do private(ix, iy, iz, ip, nn, ii)
-    do im = 1, mesh%cube_map%nmap
-      ix = mesh%cube_map%map(1, im) + cube%center(1)
-      iy = mesh%cube_map%map(2, im) + cube%center(2)
-      iz = mesh%cube_map%map(3, im) + cube%center(3)
+    do im = 1, cube%cube_map%nmap
+      ix = cube%cube_map%map(1, im) + cube%center(1)
+      iy = cube%cube_map%map(2, im) + cube%center(2)
+      iz = cube%cube_map%map(3, im) + cube%center(3)
 
-      ip = mesh%cube_map%map(MCM_POINT, im)
-      nn = mesh%cube_map%map(MCM_COUNT, im)
+      ip = cube%cube_map%map(MCM_POINT, im)
+      nn = cube%cube_map%map(MCM_COUNT, im)
 
       do ii = 0, nn - 1
-        gmf(ip + ii) = cf%X(rs)(ix + ii, iy, iz)
+        mf(ip + ii) = cf%X(rs)(ix + ii, iy, iz)
       end do
     end do
     !$omp end parallel do
 
   else
 
-    call accel_create_buffer(mf_buffer, ACCEL_MEM_WRITE_ONLY, R_TYPE_VAL, mesh%np_global)
+    call accel_create_buffer(mf_buffer, ACCEL_MEM_WRITE_ONLY, R_TYPE_VAL, mesh%np)
 
     call accel_kernel_start_call(X(kernel), 'mesh_to_cube.cl', TOSTRING(X(cube_to_mesh)), flags = '-D' + R_TYPE_CL)
 
-    call accel_set_kernel_arg(X(kernel), 0, mesh%cube_map%nmap)
+    call accel_set_kernel_arg(X(kernel), 0, cube%cube_map%nmap)
     call accel_set_kernel_arg(X(kernel), 1, cube%fft%stride_rs(1))
     call accel_set_kernel_arg(X(kernel), 2, cube%fft%stride_rs(2))
     call accel_set_kernel_arg(X(kernel), 3, cube%fft%stride_rs(3))
     call accel_set_kernel_arg(X(kernel), 4, cube%center(1))
     call accel_set_kernel_arg(X(kernel), 5, cube%center(2))
     call accel_set_kernel_arg(X(kernel), 6, cube%center(3))
-    call accel_set_kernel_arg(X(kernel), 7, mesh%cube_map%map_buffer)
+    call accel_set_kernel_arg(X(kernel), 7, cube%cube_map%map_buffer)
     call accel_set_kernel_arg(X(kernel), 8, cf%real_space_buffer)
     call accel_set_kernel_arg(X(kernel), 9, mf_buffer)
 
     bsize = accel_kernel_workgroup_size(X(kernel))
 
-    call accel_kernel_run(X(kernel), (/pad(mesh%cube_map%nmap, bsize)/), int((/bsize/), i8))
+    call accel_kernel_run(X(kernel), (/pad(cube%cube_map%nmap, bsize)/), (/bsize/))
     call accel_finish()
 
-    call accel_read_buffer(mf_buffer, mesh%np_global, gmf)
+    call accel_read_buffer(mf_buffer, mesh%np, mf)
     call accel_release_buffer(mf_buffer)
 
   end if
 
-  if (local_) then
-    do ipl = 1, mesh%np
-      mf(ipl) = gmf(mesh_local2global(mesh, ipl))
-    end do
-    SAFE_DEALLOCATE_P(gmf)
-  end if
-
-  call profiling_count_transfers(mesh%np_global, mf(1))
+  call profiling_count_transfers(mesh%np, mf(1))
 
   call profiling_out(prof_c2m)
 
@@ -408,15 +500,15 @@ end subroutine X(cube_to_mesh)
 !! mesh and the cube in parallel.
 ! ---------------------------------------------------------
 subroutine X(mesh_to_cube_parallel)(mesh, mf, cube, cf, map)
-  type(mesh_t),          intent(in)    :: mesh
+  class(mesh_t),         intent(in)    :: mesh
   R_TYPE,  target,       intent(in)    :: mf(:)  !< mf(mesh%np)
   type(cube_t),          intent(in)    :: cube
   type(cube_function_t), intent(inout) :: cf
   type(mesh_cube_parallel_map_t), intent(in) :: map
 
-  integer(i8) :: ip, ix, iy, iz
-  integer(i8) :: im, ii, nn
-  integer(i8) :: min_x, min_y, min_z, max_x, max_y, max_z
+  integer :: ip, ix, iy, iz
+  integer :: im, ii, nn
+  integer :: min_x, min_y, min_z, max_x, max_y, max_z
   R_TYPE, allocatable :: in(:), out(:)
   type(profile_t), save :: prof_m2c
 
@@ -424,6 +516,11 @@ subroutine X(mesh_to_cube_parallel)(mesh, mf, cube, cf, map)
   call profiling_in(prof_m2c, TOSTRING(X(MESH_TO_CUBE_PARALLEL)))
 
   ASSERT(ubound(mf, dim = 1) == mesh%np .or. ubound(mf, dim = 1) == mesh%np_part)
+  if (.not. cube%cube_map_present) then
+    message(1) = "Internal error: cube_map needs to be initialized."
+    message(2) = "Please call cube_init_cube_map."
+    call messages_fatal(2)
+  end if
 
   if (mesh%parallel_in_domains) then
     SAFE_ALLOCATE(in(1:map%m2c_nsend))
@@ -468,15 +565,15 @@ subroutine X(mesh_to_cube_parallel)(mesh, mf, cube, cf, map)
     end do
 
     ! Do the actual transform, only for the output values
-    do im = 1, mesh%cube_map%nmap
-      ip = mesh%cube_map%map(MCM_POINT, im)
-      nn = mesh%cube_map%map(MCM_COUNT, im)
+    do im = 1, cube%cube_map%nmap
+      ip = cube%cube_map%map(MCM_POINT, im)
+      nn = cube%cube_map%map(MCM_COUNT, im)
 
-      iz = mesh%cube_map%map(3, im) + cube%center(3)
+      iz = cube%cube_map%map(3, im) + cube%center(3)
       if (iz >= min_z .and. iz < max_z) then
-        iy = mesh%cube_map%map(2, im) + cube%center(2)
+        iy = cube%cube_map%map(2, im) + cube%center(2)
         if (iy >= min_y .and. iy < max_y) then
-          ix = mesh%cube_map%map(1, im) + cube%center(1)
+          ix = cube%cube_map%map(1, im) + cube%center(1)
           do ii = 0, nn - 1
             if (ix+ii >= min_x .and. ix+ii < max_x) then
               cf%X(rs)(ix+ii-min_x+1, iy-min_y+1, iz-min_z+1) = mf(ip + ii)
@@ -500,11 +597,11 @@ end subroutine X(mesh_to_cube_parallel)
 subroutine X(cube_to_mesh_parallel) (cube, cf, mesh, mf, map)
   type(cube_t),          intent(in)  :: cube
   type(cube_function_t), intent(in)  :: cf
-  type(mesh_t),          intent(in)  :: mesh
+  class(mesh_t),         intent(in)  :: mesh
   R_TYPE,                intent(out) :: mf(:)  !< mf(mesh%np)
   type(mesh_cube_parallel_map_t), intent(in) :: map
 
-  integer(i8) :: ip, ix, iy, iz, im, ii, nn, ixyz(3)
+  integer :: ip, ix, iy, iz, im, ii, nn, ixyz(3)
   R_TYPE, allocatable :: gcf(:,:,:)
   R_TYPE, allocatable :: in(:), out(:)
   type(profile_t), save :: prof_c2m
@@ -514,6 +611,12 @@ subroutine X(cube_to_mesh_parallel) (cube, cf, mesh, mf, map)
 
   ASSERT(.not. cf%in_device_memory)
   ASSERT(ubound(mf, dim = 1) == mesh%np .or. ubound(mf, dim = 1) == mesh%np_part)
+  if (.not. cube%cube_map_present) then
+    message(1) = "Internal error: cube_map needs to be initialized."
+    message(2) = "Please call cube_init_cube_map."
+    call messages_fatal(2)
+  end if
+
   if (cube%parallel_in_domains) then
     SAFE_ALLOCATE(in(1:map%c2m_nsend))
     SAFE_ALLOCATE(out(1:map%c2m_nrec))
@@ -549,11 +652,11 @@ subroutine X(cube_to_mesh_parallel) (cube, cf, mesh, mf, map)
     end if
 
     ! cube to mesh
-    do im = 1, mesh%cube_map%nmap
-      ip = mesh%cube_map%map(MCM_POINT, im)
-      nn = mesh%cube_map%map(MCM_COUNT, im)
+    do im = 1, cube%cube_map%nmap
+      ip = cube%cube_map%map(MCM_POINT, im)
+      nn = cube%cube_map%map(MCM_COUNT, im)
 
-      ixyz(1:3) = mesh%cube_map%map(1:3, im) + cube%center(1:3)
+      ixyz(1:3) = cube%cube_map%map(1:3, im) + cube%center(1:3)
 
       do ii = 0, nn - 1
         mf(ip + ii) = gcf(ixyz(1)+ii, ixyz(2), ixyz(3))
@@ -563,7 +666,7 @@ subroutine X(cube_to_mesh_parallel) (cube, cf, mesh, mf, map)
     SAFE_DEALLOCATE_A(gcf)
   end if
 
-  call profiling_count_transfers(mesh%np_global, mf(1))
+  call profiling_count_transfers(mesh%np, mf(1))
   call profiling_out(prof_c2m)
 
   POP_SUB(X(cube_to_mesh_parallel))
@@ -652,7 +755,7 @@ subroutine X(submesh_to_cube)(sm, mf, cube, cf)
     iz = sm%cube_map%map(3, im) + cube%center(3)
     cf%X(rs)(ix, iy, iz) = mf(im)
   end do
- 
+
   if (sm%mesh%parallel_in_domains) then
     call sm%mesh%allreduce(cf%X(rs))
     call profiling_count_transfers(sm%np_global, mf(1))

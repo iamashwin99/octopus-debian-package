@@ -40,7 +40,7 @@ subroutine X(bgw_vxc_dat)(bgw, namespace, space, dir, st, gr, hm, vxc)
   if (st%d%kpt%parallel) call messages_not_implemented("BerkeleyGW output parallel in k-points", namespace=namespace)
 
   if (mpi_grp_is_root(mpi_world)) iunit = io_open(trim(dir) // 'vxc.dat', namespace, action='write')
-  SAFE_ALLOCATE(psi(1:gr%mesh%np, 1))
+  SAFE_ALLOCATE(psi(1:gr%np, 1))
 
   ndiag = bgw%vxc_diag_nmax - bgw%vxc_diag_nmin + 1
   if (bgw%vxc_diag_nmin < 1 .or. bgw%vxc_diag_nmax < 1) then
@@ -55,7 +55,7 @@ subroutine X(bgw_vxc_dat)(bgw, namespace, space, dir, st, gr, hm, vxc)
     noffdiag = (bgw%vxc_offdiag_nmax - bgw%vxc_offdiag_nmin + 1)**2
   end if
   if (noffdiag > 0) then
-    SAFE_ALLOCATE(psi2(1:gr%mesh%np))
+    SAFE_ALLOCATE(psi2(1:gr%np))
     SAFE_ALLOCATE(off1(1:noffdiag))
     SAFE_ALLOCATE(off2(1:noffdiag))
   end if
@@ -64,7 +64,7 @@ subroutine X(bgw_vxc_dat)(bgw, namespace, space, dir, st, gr, hm, vxc)
 
   if (bgw%calc_exchange) then
     if (mpi_grp_is_root(mpi_world)) iunit_x = io_open(trim(dir) // 'x.dat', namespace, action='write')
-    SAFE_ALLOCATE(xpsi(1:gr%mesh%np, 1))
+    SAFE_ALLOCATE(xpsi(1:gr%np, 1))
     call exchange_operator_reinit(hm%exxop, M_ZERO, M_ONE, M_ZERO, st)
     SAFE_ALLOCATE(mtxel_x(1:ndiag + noffdiag, 1:st%d%nspin))
   end if
@@ -99,26 +99,26 @@ subroutine X(bgw_vxc_dat)(bgw, namespace, space, dir, st, gr, hm, vxc)
     do ispin = 1, st%d%nspin
       ikk = ik + ispin - 1
       do idiag = 1, ndiag
-        call states_elec_get_state(st, gr%mesh, 1, diag(idiag), ikk, psi(:, 1))
+        call states_elec_get_state(st, gr, 1, diag(idiag), ikk, psi(:, 1))
         ! multiplying psi*vxc first might be more efficient
-        mtxel(idiag, ispin) = X(mf_dotp)(gr%mesh, psi(:, 1), psi(:, 1)*vxc(:, ispin))
+        mtxel(idiag, ispin) = X(mf_dotp)(gr, psi(:, 1), psi(:, 1)*vxc(:, ispin))
         if (bgw%calc_exchange) then
           xpsi(:, :) = M_ZERO
-          call X(exchange_operator_single)(hm%exxop, namespace, space, gr%mesh, hm%d, hm%kpoints, ist, ikk, psi, xpsi, .false.)
-          mtxel_x(idiag, ispin) = X(mf_dotp)(gr%mesh, psi(:, 1), xpsi(:, 1))
+          call X(exchange_operator_single)(hm%exxop, namespace, space, gr, hm%d, hm%kpoints, ist, ikk, psi, xpsi, .false.)
+          mtxel_x(idiag, ispin) = X(mf_dotp)(gr, psi(:, 1), xpsi(:, 1))
         end if
       end do
 
       ! could do only upper or lower triangle here
       do ioff = 1, noffdiag
-        call states_elec_get_state(st, gr%mesh, 1, off1(ioff), ikk, psi(:, 1))
-        call states_elec_get_state(st, gr%mesh, 1, off2(ioff), ikk, psi2)
-        mtxel(ndiag + ioff, ispin) = X(mf_dotp)(gr%mesh, psi(:, 1), psi2(:) * vxc(:, ispin))
+        call states_elec_get_state(st, gr, 1, off1(ioff), ikk, psi(:, 1))
+        call states_elec_get_state(st, gr, 1, off2(ioff), ikk, psi2)
+        mtxel(ndiag + ioff, ispin) = X(mf_dotp)(gr, psi(:, 1), psi2(:) * vxc(:, ispin))
         ! FIXME: we should calc xpsi only for each state, not for each offdiag
         if (bgw%calc_exchange) then
           xpsi(:,:) = M_ZERO
-          call X(exchange_operator_single)(hm%exxop, namespace, space, gr%mesh, hm%d, hm%kpoints, ist, ikk, psi, xpsi, .false.)
-          mtxel_x(ndiag + ioff, ispin) = R_CONJ(X(mf_dotp)(gr%mesh, psi2, xpsi(:, 1)))
+          call X(exchange_operator_single)(hm%exxop, namespace, space, gr, hm%d, hm%kpoints, ist, ikk, psi, xpsi, .false.)
+          mtxel_x(ndiag + ioff, ispin) = R_CONJ(X(mf_dotp)(gr, psi2, xpsi(:, 1)))
         end if
       end do
     end do
@@ -182,25 +182,25 @@ subroutine X(bgw_vmtxel)(bgw, namespace, dir, st, gr, ifmax)
   PUSH_SUB(X(bgw_vmtxel))
 
   nmat = st%d%nik * bgw%vmtxel_ncband * bgw%vmtxel_nvband * st%d%nspin
-  SAFE_ALLOCATE(psi(1:gr%mesh%np))
-  SAFE_ALLOCATE(rpsi(1:gr%mesh%np))
+  SAFE_ALLOCATE(psi(1:gr%np))
+  SAFE_ALLOCATE(rpsi(1:gr%np))
   SAFE_ALLOCATE(vmtxel(1:nmat))
-  SAFE_ALLOCATE(rvec(1:gr%mesh%np))
+  SAFE_ALLOCATE(rvec(1:gr%np))
 
-  do ip = 1, gr%mesh%np
-    rvec(ip) = dot_product(gr%mesh%x(ip, 1:3), bgw%vmtxel_polarization(1:3))
+  do ip = 1, gr%np
+    rvec(ip) = dot_product(gr%x(ip, 1:3), bgw%vmtxel_polarization(1:3))
   end do
 
   do ik = st%d%kpt%start, st%d%kpt%end, st%d%nspin
     do is = 1, st%d%nspin
       ikk = ik + is - 1
       do iv = 1, bgw%vmtxel_nvband
-        call states_elec_get_state(st, gr%mesh, 1, ifmax(ik, is) - iv + 1, ikk, psi(:))
+        call states_elec_get_state(st, gr, 1, ifmax(ik, is) - iv + 1, ikk, psi(:))
         rpsi(:) = psi(:) * rvec(:)
         do ic = 1, bgw%vmtxel_ncband
-          call states_elec_get_state(st, gr%mesh, 1, ifmax(ik, is) + ic, ikk, psi(:))
+          call states_elec_get_state(st, gr, 1, ifmax(ik, is) + ic, ikk, psi(:))
           ikcvs = is + (iv - 1 + (ic - 1 + (ik - 1)*bgw%vmtxel_ncband)*bgw%vmtxel_nvband)*st%d%nspin
-          vmtxel(ikcvs) = X(mf_dotp)(gr%mesh, psi(:), rpsi(:))
+          vmtxel(ikcvs) = X(mf_dotp)(gr, psi(:), rpsi(:))
 !          write(6,*) ikcvs, ikk, is, ifmax(ik, is) - iv + 1, ifmax(ik, is) + ic, vmtxel(ikcvs)
           ! NB: Casida eps_diff file has these values times sqrt(nspin)
         end do
@@ -254,16 +254,16 @@ subroutine X(bgw_write_fs)(namespace, iunit, field_r, field_g, shell, nspin, gr,
   ! the half-sphere Hermitian representation for real functions.
 
 #ifdef R_TREAL
-  SAFE_ALLOCATE(zfield_r(1:gr%mesh%np))
+  SAFE_ALLOCATE(zfield_r(1:gr%np))
 #endif
 
   do is = 1, nspin
 #ifdef R_TREAL
-    zfield_r(1:gr%mesh%np) = TOCMPLX(field_r(1:gr%mesh%np, is), M_ZERO)
+    zfield_r(1:gr%np) = TOCMPLX(field_r(1:gr%np, is), M_ZERO)
 #else
     zfield_r => field_r(:, is)
 #endif
-    call zmesh_to_cube(gr%mesh, zfield_r(:), cube, cf, local = .true.)
+    call zmesh_to_cube(gr, zfield_r(:), cube, cf)
     call zcube_function_rs2fs(cube, cf)
 
 !    if (is_wfn) then
@@ -276,7 +276,7 @@ subroutine X(bgw_write_fs)(namespace, iunit, field_r, field_g, shell, nspin, gr,
 !          end do
 !        end do
 !      end do
-!      norm = sqrt(norm * gr%mesh%volume_element)
+!      norm = sqrt(norm * gr%volume_element)
 !
 !      norm = M_ZERO
 !      do iz = 1, cube%fs_n_global(3)
@@ -286,7 +286,7 @@ subroutine X(bgw_write_fs)(namespace, iunit, field_r, field_g, shell, nspin, gr,
 !          end do
 !        end do
 !      end do
-!      norm = sqrt(norm * gr%mesh%volume_element / product(cube%rs_n_global(1:3)))
+!      norm = sqrt(norm * gr%volume_element / product(cube%rs_n_global(1:3)))
 !    end if
 !
     field_g(:,:) = M_ZERO
@@ -297,10 +297,10 @@ subroutine X(bgw_write_fs)(namespace, iunit, field_r, field_g, shell, nspin, gr,
       iz = shell%coords(3, ig)
       if (is_wfn) then
         field_g(ig, is) = cf%fs(ix, iy, iz) * &
-          sqrt(gr%mesh%volume_element / product(cube%rs_n_global(1:3)))
+          sqrt(gr%volume_element / product(cube%rs_n_global(1:3)))
         norm = norm + abs(field_g(ig,is))**2
       else
-        field_g(ig, is) = cf%fs(ix, iy, iz) * gr%mesh%volume_element
+        field_g(ig, is) = cf%fs(ix, iy, iz) * gr%volume_element
       end if
     end do
 

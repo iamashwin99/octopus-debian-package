@@ -5,7 +5,7 @@ Program    : octopus
 TestGroups : long-run, optimal_control
 Enabled    : Yes
 
-# calculate GS and first excited state of 1D 
+# calculate GS and first excited state of 1D
 # asymmetric quantum well
 Input: 09-density+current.01-ground_state.inp
 
@@ -26,7 +26,7 @@ match ; J2 1st iteration  ; GREPFIELD(opt-control/convergence, ' 1  ', 4) ; -0.2
 
 
 # optimize overlap of density and minimize
-# the current of final state during certain 
+# the current of final state during certain
 # time before final time. Uses CG.
 Processors: 1
 # does not converge in parallel

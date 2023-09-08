@@ -26,6 +26,7 @@ module exchange_operator_oct_m
   use derivatives_oct_m
   use fourier_space_oct_m
   use global_oct_m
+  use grid_oct_m
   use kpoints_oct_m
   use lalg_adv_oct_m
   use lalg_basic_oct_m
@@ -43,7 +44,6 @@ module exchange_operator_oct_m
   use singularity_oct_m
   use space_oct_m
   use symmetries_oct_m
-  use symmetrizer_oct_m
   use states_abst_oct_m
   use states_elec_oct_m
   use states_elec_dim_oct_m
@@ -94,6 +94,10 @@ module exchange_operator_oct_m
     logical       :: useACE = .false.
     type(ACE_t)   :: ace
   end type exchange_operator_t
+
+  type(fourier_space_op_t) :: coulb !< Operator in Fourier space.
+  !                                    Saved as we avoid then to recompute it,
+  !                                    for instance in the case of CAM functionals in isolated systems
 
 contains
 
@@ -172,6 +176,7 @@ contains
     SAFE_DEALLOCATE_A(this%ace%zchi)
 
     call singularity_end(this%singul)
+    call fourier_space_op_end(coulb)
     call poisson_end(this%psolver)
 
     POP_SUB(exchange_operator_end)

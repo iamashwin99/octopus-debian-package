@@ -18,6 +18,8 @@
 
 #include "global.h"
 
+!> @brief This module implements fully polymorphic linked lists, and some specializations thereof.
+!!
 module linked_list_oct_m
   use global_oct_m
   use list_node_oct_m
@@ -33,58 +35,70 @@ module linked_list_oct_m
     integer_iterator_t
 
   !---------------------------------------------------------------------------
-  !> The following class implements a linked list of unlimited polymorphic
-  !> values. This allows the storage of any type of data. Iterating over the
-  !> list is done using the associated iterator. These two classes are not meant
-  !> to used as is, but rather to be extended and by providing an add method to the
-  !> list and a get_next method to the iterator.
+  !> @brief This class implements a linked list of unlimited polymorphic values.
+  !!
+  !! This allows the storage of any type of data. Iterating over the
+  !! list is done using the associated iterator.
+  !!
+  !! \note This class and the corresponding iterator (linked_list_iterator_t) are not meant
+  !! to used as is, but rather to be extended and by providing an add method to the
+  !! list and a get_next method to the iterator.
+  !!
   type :: linked_list_t
     private
     integer, public :: size = 0
     class(list_node_t), pointer :: first_node => null()
     class(list_node_t), pointer :: last_node => null()
   contains
-    procedure :: add_node => linked_list_add_node
-    procedure :: add_ptr  => linked_list_add_node_ptr
-    procedure :: add_copy => linked_list_add_node_copy
-    procedure :: delete => linked_list_delete_node
-    procedure :: has => linked_list_has
-    procedure :: copy => linked_list_copy
+    procedure :: add_node => linked_list_add_node !< @copydoc linked_list_oct_m::linked_list_add_node
+    procedure :: add_ptr  => linked_list_add_node_ptr !< @copydoc linked_list_oct_m::linked_list_add_node_ptr
+    procedure :: add_copy => linked_list_add_node_copy !< @copydoc linked_list_oct_m::linked_list_add_node_copy
+    procedure :: delete => linked_list_delete_node !< @copydoc linked_list_oct_m::linked_list_delete_node
+    procedure :: has => linked_list_has !< @copydoc linked_list_oct_m::linked_list_has
+    procedure :: copy => linked_list_copy !< @copydoc linked_list_oct_m::linked_list_copy
     generic   :: assignment(=) => copy
-    procedure :: empty => linked_list_empty
-    final     :: linked_list_finalize
+    procedure :: empty => linked_list_empty !< @copydoc linked_list_oct_m::linked_list_empty
+    final     :: linked_list_finalize !< @copydoc linked_list_oct_m::linked_list_finalize
   end type linked_list_t
+
+  !> @brief This class implements an iterator for the polymorphic linked list.
+  !!
+  !! \note This class and the corresponding list (linked_list_t) are not meant
+  !! to used as is, but rather to be extended and by providing an add method to the
+  !! list and a get_next method to the iterator.
 
   type :: linked_list_iterator_t
     private
     class(list_node_t), pointer :: next_node => null()
   contains
-    procedure :: start    => linked_list_iterator_start
-    procedure :: has_next => linked_list_iterator_has_next
-    procedure :: get_next_ptr => linked_list_iterator_get_next_ptr
+    procedure :: start    => linked_list_iterator_start !< @copydoc linked_list_oct_m::linked_list_iterator_start
+    procedure :: has_next => linked_list_iterator_has_next !< @copydoc linked_list_oct_m::linked_list_iterator_has_next
+    procedure :: get_next_ptr => linked_list_iterator_get_next_ptr !< @copydoc linked_list_oct_m::linked_list_iterator_get_next_ptr
   end type linked_list_iterator_t
 
   !---------------------------------------------------------------------------
-  !> The following class implements a linked list of unlimited polymorphic
-  !> values. Iterating over the list is done using the associated iterator and
-  !> there are two ways of doing so. The first is by using a "do while"
-  !> construct:
-  !>
-  !>  call iter%start(list)
-  !>  do while (iter%has_next())
-  !>     value => iter%get_next()
-  !>     ...
-  !>  end do
-  !>
-  !> The second method is with a simple "do":
-  !>
-  !>  call iter%start(list)
-  !>  do
-  !>     if (.not. iter%has_next()) exit
-  !>     value => iter%get_next()
-  !>     ...
-  !>  end do
-  !>
+  !> @brief This class implements a linked list of unlimited polymorphic values.
+  !!
+  !! Iterating over the list is done using the associated iterator and
+  !! there are two ways of doing so. The first is by using a "do while"
+  !! construct:
+  !! ```
+  !!  call iter%start(list)
+  !!  do while (iter%has_next())
+  !!     value => iter%get_next()
+  !!     ...
+  !!  end do
+  !!
+  !! The second method is with a simple "do":
+  !!
+  !!  call iter%start(list)
+  !!  do
+  !!     if (.not. iter%has_next()) exit
+  !!     value => iter%get_next()
+  !!     ...
+  !!  end do
+  !! ```
+  !!
   type, extends(linked_list_t) :: list_t
     private
   contains
@@ -97,27 +111,29 @@ module linked_list_oct_m
   end type list_iterator_t
 
   !---------------------------------------------------------------------------
-  !> The following class implements a linked list of integer values. Note that
-  !> the get method returns an integer, not a pointer.
+  !> @brief This class implements a linked list of integer values.
+  !!
+  !! Note that the get method returns an integer, not a pointer.
   type, extends(linked_list_t) :: integer_list_t
     private
   contains
-    procedure :: add => integer_list_add_node
+    procedure :: add => integer_list_add_node !< @copydoc linked_list_oct_m::integer_list_add_node
   end type integer_list_t
 
   type, extends(linked_list_iterator_t) :: integer_iterator_t
   contains
-    procedure :: get_next => integer_iterator_get_next
+    procedure :: get_next => integer_iterator_get_next !< @copydoc linked_list_oct_m::integer_iterator_get_next
   end type integer_iterator_t
 
 contains
 
   ! Linked list
   ! ---------------------------------------------------------
+  !> @brief add a node to the linked list
   subroutine linked_list_add_node(this, value, clone)
-    class(linked_list_t), intent(inout) :: this
-    class(*),             target        :: value
-    logical,              intent(in)    :: clone
+    class(linked_list_t), intent(inout) :: this   !< the linked list
+    class(*),             target        :: value  !< data to be added
+    logical,              intent(in)    :: clone  !< flag whether to clone, or keep a pointer
 
     class(list_node_t), pointer :: new_node
 
@@ -134,27 +150,30 @@ contains
   end subroutine linked_list_add_node
 
   ! ---------------------------------------------------------
+  !> @brief add data by pointer to the list
   subroutine linked_list_add_node_ptr(this, value)
-    class(linked_list_t), intent(inout) :: this
-    class(*),             target        :: value
+    class(linked_list_t), intent(inout) :: this  !< the linked list
+    class(*),             target        :: value !< pointer to the data
 
     call this%add_node(value, clone=.false.)
 
   end subroutine linked_list_add_node_ptr
 
   ! ---------------------------------------------------------
+  !> @brief add data by copying to the list
   subroutine linked_list_add_node_copy(this, value)
-    class(linked_list_t), intent(inout) :: this
-    class(*),             target        :: value
+    class(linked_list_t), intent(inout) :: this  !< the linked list
+    class(*),             target        :: value !< data to be added
 
     call this%add_node(value, clone=.true.)
 
   end subroutine linked_list_add_node_copy
 
   ! ---------------------------------------------------------
+  !> @brief delete a node from the list
   subroutine linked_list_delete_node(this, value)
-    class(linked_list_t), intent(inout) :: this
-    class(*),             target        :: value
+    class(linked_list_t), intent(inout) :: this  !< the list
+    class(*),             target        :: value !< the data to delete
 
     class(list_node_t), pointer :: previous, current, next
 

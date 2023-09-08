@@ -1,7 +1,7 @@
 CalculationMode = td
 
 Dimensions = 1
-fromScratch = yes
+FromScratch = yes
 RestartWrite = no
 
 BoxShape = sphere
@@ -20,17 +20,17 @@ TheoryLevel = independent_particles
 
 AbsorbingBoundaries = cap
 ABCapHeight = -0.85
-ABWidth = 40 
+ABWidth = 40
 I0 = 8.00*1e13
-lam = 800 
+lam = 800
 amp = (5.33685*1e-9)*sqrt(I0)
 om = 2*pi*(1/7.2973525664e-3)/(10*lam/0.52917725)
 T_pulse = 10*(2*pi/om)
-TDPropagationTime = T_pulse 
-TDTimeStep = 0.05 
+TDPropagationTime = T_pulse
+TDTimeStep = 0.05
 
 %TDExternalFields
- electric_field | i | 0 | 0 | om | "envelope_sin2" 
+ electric_field | i | 0 | 0 | om | "envelope_sin2"
 %
 
 %TDFunctions

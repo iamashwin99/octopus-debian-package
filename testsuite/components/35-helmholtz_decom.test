@@ -1,0 +1,51 @@
+# -*- coding: utf-8 mode: shell-script -*-
+
+Test       : Helmholtz Decomposition
+Program    : octopus
+TestGroups : short-run, components
+Enabled    : Yes
+
+# Test Helmholtz without surface correction - We take a large box so that the surface correction contribution is negligible
+# Note: For the Hertzian dipole case the norms are worse (and actually close to one) because the field has a singularity and the
+# analytical reference is significantly non-zero at the boundaries
+Input      : 35-helmholtz_decom.01-large_box_no_surf_corr.inp
+
+Precision: 2.50e-07
+match ;  Transverse field test (rel.). ; LINEFIELD(hertzian_dipole_test/no_surf_corr/norms, 2, 6) ; 0.257071429896
+Precision: 2.50e-07
+match ;  Longitudinal field test (rel.).  ; LINEFIELD(hertzian_dipole_test/no_surf_corr/norms, 4, 6) ; 0.9999999728505
+Precision: 2.50e-07
+match ;  Vector potential test (rel.). ; LINEFIELD(hertzian_dipole_test/no_surf_corr/norms, 6, 6) ; 14.3213829901659
+Precision: 2.50e-07
+match ;  Scalar potential test (rel.).  ; LINEFIELD(hertzian_dipole_test/no_surf_corr/norms, 8, 6) ; 0.9999999983515
+Precision: 2.50e-07
+match ;  Self consistency test (rel.).  ; LINEFIELD(hertzian_dipole_test/no_surf_corr/norms, 10, 6) ; 0.2576759261854
+Precision: 2.50e-07
+match ;  Transverse field test (rel.). ; LINEFIELD(gaussian_field_test/no_surf_corr/norms, 2, 6) ; 0.0330178614356
+Precision: 2.50e-07
+match ;  Longitudinal field test (rel.).  ; LINEFIELD(gaussian_field_test/no_surf_corr/norms, 4, 6) ; 0.0190535965370
+Precision: 2.50e-07
+match ;  Vector potential test (rel.). ; LINEFIELD(gaussian_field_test/no_surf_corr/norms, 6, 6) ; 0.0103291706013
+Precision: 2.50e-07
+match ;  Scalar potential test (rel.).  ; LINEFIELD(gaussian_field_test/no_surf_corr/norms, 8, 6) ; 0.0039962839830
+Precision: 2.50e-07
+match ;  Self consistency test (rel.).  ; LINEFIELD(gaussian_field_test/no_surf_corr/norms, 10, 6) ; 0.0198874136160
+
+
+# Test surface correction - We take a small box and we test that the deviations we get with the surface correction are smaller
+# We do not have testcases because there are asserts in the code
+# PARALLELEPIPED
+FailingInput  : 35-helmholtz_decom.02-parallelepiped_small_box_with_surf_corr.inp
+
+match ; Error message ; GREPCOUNT(err, 'Surface correction for Helmholtz decomposition') ; 1
+
+# SPHERE
+FailingInput  : 35-helmholtz_decom.03-sphere_small_box_with_surf_corr.inp
+
+match ; Error message ; GREPCOUNT(err, 'Surface correction for Helmholtz decomposition') ; 1
+
+# CYLINDER
+FailingInput  : 35-helmholtz_decom.04-cylinder_small_box_with_surf_corr.inp
+
+match ; Error message ; GREPCOUNT(err, 'Surface correction for Helmholtz decomposition') ; 1
+

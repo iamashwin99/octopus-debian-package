@@ -11,61 +11,102 @@ Enabled    : Yes
 Processors : 1
 Input      : 15-crank_nicolson.01-gs.inp
 match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
-match ; Initial energy ; GREPFIELD(static/info, 'Total       =', 3) ; -10.60764719
+Precision: 5.30e-08
+match ;  Initial energy  ; GREPFIELD(static/info, 'Total       =', 3) ; -10.60684395
 
 Processors : 4
 Input      : 15-crank_nicolson.02-kick.inp
-match ; Energy [step  1] ; LINEFIELD(td.general/energy, -21, 3) ; -1.058576638440e+01
-match ; Energy [step  5] ; LINEFIELD(td.general/energy, -16, 3) ; -1.043033051444e+01
-match ; Energy [step 10] ; LINEFIELD(td.general/energy, -11, 3) ; -1.043031059756e+01
-match ; Energy [step 15] ; LINEFIELD(td.general/energy, -6, 3) ; -1.043029718804e+01
-match ; Energy [step 20] ; LINEFIELD(td.general/energy, -1, 3) ; -1.043029007270e+01
+Precision: 5.29e-14
+match ;  Energy [step  1]  ; LINEFIELD(td.general/energy, -21, 3) ; -10.584950240567
+Precision: 5.21e-13
+match ;  Energy [step  5]  ; LINEFIELD(td.general/energy, -16, 3) ; -10.4295004676228
+Precision: 5.47e-14
+match ;  Energy [step 10]  ; LINEFIELD(td.general/energy, -11, 3) ; -10.42949455599585
+Precision: 5.21e-13
+match ;  Energy [step 15]  ; LINEFIELD(td.general/energy, -6, 3) ; -10.4294928113502
+Precision: 5.21e-13
+match ;  Energy [step 20]  ; LINEFIELD(td.general/energy, -1, 3) ; -10.4294928332755
 
-match ; Dipole [step  1] ; LINEFIELD(td.general/multipoles, -21, 4) ; -1.214172412514e-13
-match ; Dipole [step  5] ; LINEFIELD(td.general/multipoles, -16, 4) ; -7.295810178585e-01
-match ; Dipole [step 10] ; LINEFIELD(td.general/multipoles, -11, 4) ; -1.339402812014e+00
-match ; Dipole [step 15] ; LINEFIELD(td.general/multipoles, -6, 4) ; -1.833991422975e+00
-match ; Dipole [step 20] ; LINEFIELD(td.general/multipoles, -1, 4) ; -2.215415244400e+00
+Precision: 3.86e-15
+match ;  Dipole [step  1]  ; LINEFIELD(td.general/multipoles, -21, 4) ; 1.78063811661015e-16
+Precision: 3.92e-13
+match ;  Dipole [step  5]  ; LINEFIELD(td.general/multipoles, -16, 4) ; -0.729537838657262
+Precision: 8.63e-13
+match ;  Dipole [step 10]  ; LINEFIELD(td.general/multipoles, -11, 4) ; -1.33926577987298
+Precision: 8.25e-13
+match ;  Dipole [step 15]  ; LINEFIELD(td.general/multipoles, -6, 4) ; -1.83383317692458
+Precision: 1.11e-12
+match ;  Dipole [step 20]  ; LINEFIELD(td.general/multipoles, -1, 4) ; -2.2153062301367
 
 Input      : 15-crank_nicolson.03-freeze_domains.inp
-match ; Energy [step  1] ; LINEFIELD(td.general/energy, -21, 3) ; -1.022768000580e+01
-match ; Energy [step  5] ; LINEFIELD(td.general/energy, -16, 3) ; -1.014174610483e+01
-match ; Energy [step 10] ; LINEFIELD(td.general/energy, -11, 3) ; -1.013487936146e+01
-match ; Energy [step 15] ; LINEFIELD(td.general/energy, -6, 3) ;  -1.012668816529e+01
-match ; Energy [step 20] ; LINEFIELD(td.general/energy, -1, 3) ;  -1.011844216726e+01
+Precision: 5.11e-13
+match ;  Energy [step  1]  ; LINEFIELD(td.general/energy, -21, 3) ; -10.2265403587443
+Precision: 5.07e-14
+match ;  Energy [step  5]  ; LINEFIELD(td.general/energy, -16, 3) ; -10.140645728175599
+Precision: 5.07e-13
+match ;  Energy [step 10]  ; LINEFIELD(td.general/energy, -11, 3) ; -10.1337866293182
+Precision: 5.06e-12
+match ;  Energy [step 15]  ; LINEFIELD(td.general/energy, -6, 3) ; -10.125603617929
+Precision: 5.06e-13
+match ;  Energy [step 20]  ; LINEFIELD(td.general/energy, -1, 3) ; -10.1173667568852
 
-match ; Dipole [step  1] ; LINEFIELD(td.general/multipoles, -21, 4) ; -1.911553465566e-15
-match ; Dipole [step  5] ; LINEFIELD(td.general/multipoles, -16, 4) ; -3.957170174612e-01
-match ; Dipole [step 10] ; LINEFIELD(td.general/multipoles, -11, 4) ; -7.409784216867e-01
-match ; Dipole [step 15] ; LINEFIELD(td.general/multipoles, -6, 4) ;  -1.039496511223e+00
-match ; Dipole [step 20] ; LINEFIELD(td.general/multipoles, -1, 4) ;  -1.296299019633e+00
+Precision: 3.36e-15
+match ;  Dipole [step  1]  ; LINEFIELD(td.general/multipoles, -21, 4) ; -7.216449660063501e-16
+Precision: 1.98e-14
+match ;  Dipole [step  5]  ; LINEFIELD(td.general/multipoles, -16, 4) ; -0.395558921125707
+Precision: 3.70e-14
+match ;  Dipole [step 10]  ; LINEFIELD(td.general/multipoles, -11, 4) ; -0.740676941399034
+Precision: 5.20e-14
+match ;  Dipole [step 15]  ; LINEFIELD(td.general/multipoles, -6, 4) ; -1.03908777240214
+Precision: 6.48e-14
+match ;  Dipole [step 20]  ; LINEFIELD(td.general/multipoles, -1, 4) ; -1.29583516552772
 
-#Values below are compied from 15-crank_nicolson.03-freeze_domains.inp
+#Values below are copied from 15-crank_nicolson.03-freeze_domains.inp
 Input      : 15-crank_nicolson.04-freeze_states.inp
-match ; Energy [step  1] ; LINEFIELD(td.general/energy, -21, 3) ; -1.022768000580e+01
-match ; Energy [step  5] ; LINEFIELD(td.general/energy, -16, 3) ; -1.014174610483e+01
-match ; Energy [step 10] ; LINEFIELD(td.general/energy, -11, 3) ; -1.013487936146e+01
-match ; Energy [step 15] ; LINEFIELD(td.general/energy, -6, 3) ;  -1.012668816529e+01
-match ; Energy [step 20] ; LINEFIELD(td.general/energy, -1, 3) ;  -1.011844216726e+01
 
-match ; Dipole [step  1] ; LINEFIELD(td.general/multipoles, -21, 4) ; -1.911553465566e-15
-match ; Dipole [step  5] ; LINEFIELD(td.general/multipoles, -16, 4) ; -3.957170174612e-01
-match ; Dipole [step 10] ; LINEFIELD(td.general/multipoles, -11, 4) ; -7.409784216867e-01
-match ; Dipole [step 15] ; LINEFIELD(td.general/multipoles, -6, 4) ;  -1.039496511223e+00
-match ; Dipole [step 20] ; LINEFIELD(td.general/multipoles, -1, 4) ;  -1.296299019633e+00
+Precision: 5.11e-13
+match ;  Energy [step  1]  ; LINEFIELD(td.general/energy, -21, 3) ; -10.2265403587443
+Precision: 5.07e-14
+match ;  Energy [step  5]  ; LINEFIELD(td.general/energy, -16, 3) ; -10.140645728175599
+Precision: 5.07e-13
+match ;  Energy [step 10]  ; LINEFIELD(td.general/energy, -11, 3) ; -10.1337866293182
+Precision: 5.06e-12
+match ;  Energy [step 15]  ; LINEFIELD(td.general/energy, -6, 3) ; -10.125603617929
+Precision: 5.06e-13
+match ;  Energy [step 20]  ; LINEFIELD(td.general/energy, -1, 3) ; -10.1173667568852
+
+Precision: 3.44e-15
+match ;  Dipole [step  1]  ; LINEFIELD(td.general/multipoles, -21, 4) ; -1.03910839486946e-15
+Precision: 1.98e-14
+match ;  Dipole [step  5]  ; LINEFIELD(td.general/multipoles, -16, 4) ; -0.395558921125707
+Precision: 3.70e-14
+match ;  Dipole [step 10]  ; LINEFIELD(td.general/multipoles, -11, 4) ; -0.740676941399034
+Precision: 5.20e-14
+match ;  Dipole [step 15]  ; LINEFIELD(td.general/multipoles, -6, 4) ; -1.03908777240214
+Precision: 6.48e-14
+match ;  Dipole [step 20]  ; LINEFIELD(td.general/multipoles, -1, 4) ; -1.29583516552772
 
 
 Processors : 1
 Input : 15-crank_nicolson.05-freeze_sae.inp
-match ; Energy [step  1] ; LINEFIELD(td.general/energy, -21, 3) ; -5.5784825666446058e-01
-match ; Energy [step  5] ; LINEFIELD(td.general/energy, -16, 3) ; -5.1636936707457293e-01
-match ; Energy [step 10] ; LINEFIELD(td.general/energy, -11, 3) ; -5.1636936707442727e-01
-match ; Energy [step 15] ; LINEFIELD(td.general/energy, -6, 3) ;  -5.1636936707437220e-01
-match ; Energy [step 20] ; LINEFIELD(td.general/energy, -1, 3) ;  -5.1636936707439440e-01
+Precision: 3.36e-14
+match ;  Energy [step  1]  ; LINEFIELD(td.general/energy, -21, 3) ; -0.5571785867386825
+Precision: 2.97e-14
+match ;  Energy [step  5]  ; LINEFIELD(td.general/energy, -16, 3) ; -0.515717538770722
+Precision: 2.91e-14
+match ;  Energy [step 10]  ; LINEFIELD(td.general/energy, -11, 3) ; -0.5157175387705686
+Precision: 3.19e-14
+match ;  Energy [step 15]  ; LINEFIELD(td.general/energy, -6, 3) ; -0.5157175387705311
+Precision: 3.63e-14
+match ;  Energy [step 20]  ; LINEFIELD(td.general/energy, -1, 3) ; -0.5157175387705559
 
-match ; Dipole [step  1] ; LINEFIELD(td.general/multipoles, -21, 4) ; 2.2983142412540275e-16
-match ; Dipole [step  5] ; LINEFIELD(td.general/multipoles, -16, 4) ; -1.9290064232470508e-01
-match ; Dipole [step 10] ; LINEFIELD(td.general/multipoles, -11, 4) ; -3.5469132900297223e-01
-match ; Dipole [step 15] ; LINEFIELD(td.general/multipoles, -6, 4) ;  -4.8615995826740055e-01
-match ; Dipole [step 20] ; LINEFIELD(td.general/multipoles, -1, 4) ;  -6.0894670881721258e-01
-
+Precision: 2.19e-15
+match ;  Dipole [step  1]  ; LINEFIELD(td.general/multipoles, -21, 4) ; -7.379220068245151e-16
+Precision: 9.64e-14
+match ;  Dipole [step  5]  ; LINEFIELD(td.general/multipoles, -16, 4) ; -0.19282492353155
+Precision: 1.77e-14
+match ;  Dipole [step 10]  ; LINEFIELD(td.general/multipoles, -11, 4) ; -0.35455064874993
+Precision: 2.43e-14
+match ;  Dipole [step 15]  ; LINEFIELD(td.general/multipoles, -6, 4) ; -0.48597119215364
+Precision: 3.04e-14
+match ;  Dipole [step 20]  ; LINEFIELD(td.general/multipoles, -1, 4) ; -0.608714774920259

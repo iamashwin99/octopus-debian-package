@@ -18,10 +18,10 @@
 
 */
 
-#include <fortran_types.h>
-#include <unordered_map>
 #include <cassert>
+#include <fortran_types.h>
 #include <iostream>
+#include <unordered_map>
 
 struct alloc_cache {
   typedef std::unordered_multimap<fint8, void *> map;
@@ -33,7 +33,7 @@ struct alloc_cache {
   double vol_hits;
   double vol_misses;
 
-  alloc_cache(fint8 arg_max_size){
+  alloc_cache(fint8 arg_max_size) {
     max_size = arg_max_size;
     current_size = 0;
     hits = 0;
@@ -41,15 +41,17 @@ struct alloc_cache {
     vol_hits = 0.0;
     vol_misses = 0.0;
   }
-
 };
 
-extern "C" void FC_FUNC(alloc_cache_init, ALLOC_CACHE_INIT)(alloc_cache ** cache, fint8 max_size){
+extern "C" void FC_FUNC(alloc_cache_init, ALLOC_CACHE_INIT)(alloc_cache **cache,
+                                                            fint8 max_size) {
   *cache = new alloc_cache(max_size);
 }
 
-extern "C" void FC_FUNC(alloc_cache_end, ALLOC_CACHE_END)( alloc_cache ** cache, fint8 * hits, fint8 * misses,
-							   double * vol_hits, double * vol_misses){
+extern "C" void FC_FUNC(alloc_cache_end,
+                        ALLOC_CACHE_END)(alloc_cache **cache, fint8 *hits,
+                                         fint8 *misses, double *vol_hits,
+                                         double *vol_misses) {
 
   assert((*cache)->list.empty());
 
@@ -60,36 +62,41 @@ extern "C" void FC_FUNC(alloc_cache_end, ALLOC_CACHE_END)( alloc_cache ** cache,
   delete *cache;
 }
 
-extern "C" void FC_FUNC(alloc_cache_put_low, ALLOC_CACHE_PUT_LOW)(alloc_cache ** cache, const fint8 * size, void ** loc, fint * put){
-  if( (*cache)->current_size + *size <=  (*cache)->max_size ){
+extern "C" void FC_FUNC(alloc_cache_put_low,
+                        ALLOC_CACHE_PUT_LOW)(alloc_cache **cache,
+                                             const fint8 *size, void **loc,
+                                             fint *put) {
+  if ((*cache)->current_size + *size <= (*cache)->max_size) {
     (*cache)->current_size += *size;
     (*cache)->list.insert(alloc_cache::map::value_type(*size, *loc));
     *put = 1;
   } else {
     *put = 0;
   }
-
 }
 
 #define CACHE_ALLOC_ANY_SIZE -1
 
-extern "C" void FC_FUNC(alloc_cache_get_low, ALLOC_CACHE_GET_LOW)(alloc_cache ** cache, const fint8 * size, fint * found, void ** loc){
-  if(*size == CACHE_ALLOC_ANY_SIZE){
+extern "C" void FC_FUNC(alloc_cache_get_low,
+                        ALLOC_CACHE_GET_LOW)(alloc_cache **cache,
+                                             const fint8 *size, fint *found,
+                                             void **loc) {
+  if (*size == CACHE_ALLOC_ANY_SIZE) {
     auto pos = (*cache)->list.begin();
     *found = pos != (*cache)->list.end();
 
-    if(*found) {
+    if (*found) {
       *loc = pos->second;
       (*cache)->list.erase(pos);
     }
-    
+
   } else {
     auto pos = (*cache)->list.find(*size);
     *found = (pos != (*cache)->list.end());
-    
-    if(*found){
+
+    if (*found) {
       (*cache)->current_size -= *size;
-      
+
       assert(pos->first == *size);
       *loc = pos->second;
       (*cache)->list.erase(pos);
@@ -100,8 +107,5 @@ extern "C" void FC_FUNC(alloc_cache_get_low, ALLOC_CACHE_GET_LOW)(alloc_cache **
       (*cache)->misses++;
       (*cache)->vol_misses += *size;
     }
-
   }
-  
 }
-

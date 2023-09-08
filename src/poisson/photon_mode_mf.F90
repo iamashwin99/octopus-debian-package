@@ -76,12 +76,12 @@ contains
 
     PUSH_SUB(mf_init)
 
-    ions_dim = gr%mesh%box%dim
+    ions_dim = gr%box%dim
 
     SAFE_ALLOCATE(e_dip(1:ions_dim+1, 1:st%d%nspin))
     SAFE_ALLOCATE(n_dip(1:ions_dim))
 
-    SAFE_ALLOCATE(this%vmf(1:gr%mesh%np))
+    SAFE_ALLOCATE(this%vmf(1:gr%np))
     SAFE_ALLOCATE(this%dipole(1:ions_dim, 1:st%d%nspin))
     SAFE_ALLOCATE(this%dipole_former(1:ions_dim, 1:st%d%nspin))
 
@@ -95,7 +95,7 @@ contains
     this%has_restart = .false.
     !call dmf_multipoles(gr%mesh, st%rho(:, 1), 1, e_dip(:, 1))
     do ispin = 1, st%d%nspin
-      call dmf_multipoles(gr%mesh, st%rho(:, ispin), 1, e_dip(:, ispin))
+      call dmf_multipoles(gr, st%rho(:, ispin), 1, e_dip(:, ispin))
     end do
 
     n_dip = ions%dipole()
@@ -114,7 +114,7 @@ contains
       this%pt_q = M_ZERO
       this%pt_p = M_ZERO
     end if
-    
+
     this%pt_q_former = M_ZERO
     this%time_former = M_ZERO
 
@@ -167,7 +167,7 @@ contains
 
     PUSH_SUB(mf_calc)
 
-    ions_dim = gr%mesh%box%dim
+    ions_dim = gr%box%dim
 
     SAFE_ALLOCATE(e_dip(1:ions_dim+1, 1:st%d%nspin))
     SAFE_ALLOCATE(n_dip(1:ions_dim))
@@ -179,7 +179,7 @@ contains
       this%dipole_former(:, :) = this%dipole(:, :)
 
       do ispin = 1, st%d%nspin
-        call dmf_multipoles(gr%mesh, st%rho(:, ispin), 1, e_dip(:, ispin))
+        call dmf_multipoles(gr, st%rho(:, ispin), 1, e_dip(:, ispin))
       end do
 
       n_dip = ions%dipole()
@@ -189,7 +189,7 @@ contains
       end do
     end if
 
-    this%vmf(1:gr%mesh%np) = M_ZERO
+    this%vmf(1:gr%np) = M_ZERO
     this%fmf(1:ions_dim) = M_ZERO
 
     do ii = 1, pt_mode%nmodes
@@ -229,9 +229,9 @@ contains
       end if
 
       ! we need the negative sign due to the electric pol_dipole
-      this%vmf(1:gr%mesh%np) = this%vmf(1:gr%mesh%np) - &
+      this%vmf(1:gr%np) = this%vmf(1:gr%np) - &
         M_HALF*((lambda_pol_dipole + lambda_pol_dipole_former) + pt_mode%omega(ii)* &
-        (this%pt_q(ii) + this%pt_q_former(ii)))*(pt_mode%lambda(ii)*pt_mode%pol_dipole(1:gr%mesh%np,ii))
+        (this%pt_q(ii) + this%pt_q_former(ii)))*(pt_mode%lambda(ii)*pt_mode%pol_dipole(1:gr%np,ii))
       do jj = 1, ions_dim
         this%fmf(jj) = this%fmf(jj) - pt_mode%omega(ii)*pt_mode%lambda(ii)* &
           pt_mode%pol(ii, jj)*(this%pt_q(ii) + lambda_pol_dipole/pt_mode%omega(ii)) !minus?
@@ -264,7 +264,7 @@ contains
     integer :: iunit, err, jj, ions_dim
 
     PUSH_SUB(mf_photons_dump)
-    ions_dim = gr%mesh%box%dim
+    ions_dim = gr%box%dim
 
     SAFE_ALLOCATE(lines(1:2*ions_dim + 4))
 
@@ -306,7 +306,7 @@ contains
     PUSH_SUB(mf_photons_load)
 
     ierr = 0
-    ions_dim = gr%mesh%box%dim
+    ions_dim = gr%box%dim
 
     if (restart_skip(restart)) then
       ierr = -1

@@ -18,7 +18,6 @@
 
 */
 
-
 #include <config.h>
 #include <fortran_types.h>
 
@@ -28,37 +27,40 @@
  * where a,b,c,d are arbitrary and e,f are 0 or 1.
  * (http://www.fftw.org/doc/Complex-DFTs.html)
  * par is the parity: the result must satisfy n % 2 == par, provided par >= 0.
+ *
+ * NTD: To make cufft and FFTW to always give the same results, the multiples
+ * of 11 and 13 are not allowed.
  */
-void fft_optimize(int *n, int par)
-{
-  if(*n <= 2) return;
+void fft_optimize(int *n, int par) {
+  if (*n <= 2)
+    return;
 
-  for(;; (*n)++){
+  for (;; (*n)++) {
     int i, n2;
 
-    if((par >= 0) && (*n % 2 != par)) continue;
-    
+    if ((par >= 0) && (*n % 2 != par))
+      continue;
+
     /* For debugging:                 */
     /* printf("%i has factors ", *n); */
 
     n2 = *n;
-    for(i = 2; i <= n2; i++){
-      if(n2 % i == 0){
+    for (i = 2; i <= n2; i++) {
+      if (n2 % i == 0) {
         /* For debugging:    */
 	/* printf("%i ", i); */
-	if(i > 13) break;
+	if(i > 7) break;
 	n2 = n2 / i;
-	if(i != 11 && i != 13) i--;
+	i--;
       }
     }
     /* For debugging: */
     /* printf("\n");  */
-    if(n2 == 1) return;
+    if (n2 == 1)
+      return;
   }
 }
 
-void FC_FUNC_(oct_fft_optimize, OCT_FFT_OPTIMIZE)
-  (fint *n, fint *par)
-{
+void FC_FUNC_(oct_fft_optimize, OCT_FFT_OPTIMIZE)(fint *n, fint *par) {
   fft_optimize(n, *par);
 }

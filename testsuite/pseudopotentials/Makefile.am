@@ -49,6 +49,7 @@ dist_share_DATA =                                  \
 	10-helium_upf.01-gs_nofilter.inp           \
 	10-helium_upf.02-gs_filter_ts.inp          \
 	10-helium_upf.03-gs_filter_bsb.inp         \
+        T_ONCV_PBE-1.2.upf                         \
 	11-isotopes.01-deuterium.inp               \
 	11-isotopes.02-tritium.inp                 \
 	11-isotopes.test                           \
@@ -64,6 +65,11 @@ dist_share_DATA =                                  \
 	15-calcium_psp8_sic.test                   \
 	16-platinum_psp8.test                      \
 	16-platinum_psp8.01-gs.inp                 \
-	16-platinum_psp8.78_Pt_r.oncvpsp.psp8
+	16-platinum_psp8.78_Pt_r.oncvpsp.psp8      \
+        17-hgh_occupations.01-W.inp                \
+        17-hgh_occupations.02-Au.inp               \
+        17-hgh_occupations.03-W_sc.inp             \
+        17-hgh_occupations.04-Au_sc.inp            \
+        17-hgh_occupations.test
 
 CLEANFILES = *~ *.bak

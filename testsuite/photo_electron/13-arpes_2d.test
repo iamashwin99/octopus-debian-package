@@ -39,7 +39,7 @@ else
   match ; TD [total charge] ; LINEFIELD(td.general/multipoles, 2084, 3) ; 3.999850046460e+00
 endif
 
-# Get the ARPES spectrum 
+# Get the ARPES spectrum
 Processors : 1
 Util      : oct-photoelectron_spectrum
 Input     : 13-arpes_2d.04-spectrum.inp
@@ -58,5 +58,3 @@ else
   match ; ARPES [energy 2] ; LINEFIELD(PES_ARPES.path, 119, 4) ; 1.750000000000E+00
   match ; ARPES [kpath  2] ; LINEFIELD(PES_ARPES.path, 119, 1) ; 6.460026123303E-01
 endif
-
-

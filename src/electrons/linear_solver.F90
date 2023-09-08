@@ -157,7 +157,7 @@ contains
     call parse_variable(namespace, "LinearSolver", defsolver, fsolver)
 
     ! set up pointer for dot product and norm in QMR solvers
-    call mesh_init_mesh_aux(gr%mesh)
+    call mesh_init_mesh_aux(gr)
 
     !the last 2 digits select the linear solver
     this%solver = mod(fsolver, 100)
@@ -174,7 +174,7 @@ contains
     !%End
     call parse_variable(namespace, "LinearSolverMaxIter", 1000, this%max_iter)
 
-    call messages_print_stress(msg='Linear Solver', namespace=namespace)
+    call messages_print_with_emphasis(msg='Linear Solver', namespace=namespace)
 
     ! solver
     select case (this%solver)
@@ -208,13 +208,13 @@ contains
 
     call messages_info(1, namespace=namespace)
 
-    call messages_print_stress(namespace=namespace)
+    call messages_print_with_emphasis(namespace=namespace)
 
     if (this%solver == OPTION__LINEARSOLVER__MULTIGRID) then
       call messages_experimental("Multigrid linear solver")
 
       SAFE_ALLOCATE(this%mgrid)
-      call multigrid_init(this%mgrid, namespace, space, gr%mesh, gr%der, gr%stencil, mc)
+      call multigrid_init(this%mgrid, namespace, space, gr, gr%der, gr%stencil, mc)
     end if
 
     if (this%solver == OPTION__LINEARSOLVER__QMR_DOTP) then

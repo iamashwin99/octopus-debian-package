@@ -147,17 +147,6 @@ contains
     !% NOTE: The coordinates are treated in the units specified by <tt>Units</tt> and/or <tt>UnitsInput</tt>.
     !%End
 
-    !%Variable PDBClassical
-    !%Type string
-    !%Section System::Coordinates
-    !%Description
-    !% If this variable is present, the program tries to read the atomic coordinates for classical atoms.
-    !% from the file specified by its value. The same as <tt>PDBCoordinates</tt>, except that the
-    !% classical charge colum must be present. The interaction from the
-    !% classical atoms is specified by <tt>ClassicalPotential</tt>, for QM/MM calculations.
-    !% Not available in periodic systems.
-    !%End
-
     if (parse_is_defined(namespace, 'PDB'//trim(what))) then
       call check_duplicated(done)
 
@@ -174,12 +163,6 @@ contains
       iunit = io_open(str, namespace, action='read')
       call read_coords_read_PDB(what, iunit, gf)
       call io_close(iunit)
-    end if
-
-    ! PDB is the only acceptable format for classical atoms.
-    if (trim(what) == "Classical") then
-      POP_SUB(read_coords_read)
-      return
     end if
 
     !%Variable XYZCoordinates
@@ -206,7 +189,7 @@ contains
       message(1) = "Reading " // trim(what) // " from " // trim(str)
       call messages_info(1, namespace=namespace)
 
-      iunit = io_open(str, namespace, action='read', status='old')
+      iunit = io_open(str, global_namespace, action='read', status='old')
       read(iunit, *) gf%n
 
       if (gf%n <= 0) then
@@ -531,7 +514,7 @@ contains
     do
       read(iunit, '(a80)', err=990, end=990) record
       read(record, '(a6)') record_name
-      if (trim(record_name) == 'ATOM' .or. trim(record_name) == 'HETATOM') then
+      if (trim(record_name) == 'ATOM' .or. trim(record_name) == 'HETATM') then
         gf%n = gf%n + 1
       end if
     end do
@@ -545,17 +528,17 @@ contains
     do
       read(iunit, '(a80)', err=991, end=991) record
       read(record, '(a6)') record_name
-      if (trim(record_name) == 'ATOM' .or. trim(record_name) == 'HETATOM') then
+      if (trim(record_name) == 'ATOM' .or. trim(record_name) == 'HETATM') then
         read(record, '(12x,a4,1x,a3)') gf%atom(na)%label, gf%atom(na)%residue
         call str_trim(gf%atom(na)%label)
         gf%atom(na)%label = gf%atom(na)%label(1:1)
         call str_trim(gf%atom(na)%residue)
 
-        if (trim(what) == 'Classical') then
-          read(record, '(30x,3f8.3,6x,f5.2)') gf%atom(na)%x(1:3), gf%atom(na)%charge
-        else
-          read(record, '(30x,3f8.3)') gf%atom(na)%x(1:3)
-        end if
+        read(record, '(30x,3f8.3)') gf%atom(na)%x(1:3)
+        ! PDB files are always in angstrom
+        ! See the format definition
+        ! https://www.wwpdb.org/documentation/file-format-content/format33/sect9.html#HETATM
+        gf%atom(na)%x = units_to_atomic(unit_angstrom, gf%atom(na)%x)
 
         na = na + 1
       end if

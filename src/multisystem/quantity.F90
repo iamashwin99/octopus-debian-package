@@ -18,6 +18,8 @@
 
 #include "global.h"
 
+!> This module defines the quantity_t class and the IDs for quantities, which can be exposed by a system,
+!! and used by an interaction.
 module quantity_oct_m
   use clock_oct_m
   implicit none
@@ -62,7 +64,7 @@ module quantity_oct_m
     "m_conductivity  "  &
     /)
 
-  !> Systems can expose quantities that can be used to calculate interactions
+  !> Systems (system_t) can expose quantities that can be used to calculate interactions
   !! with other systems.
   !!
   !! Some quantities are dynamical variables of the system. Such quantities are
@@ -72,7 +74,8 @@ module quantity_oct_m
     private
     type(clock_t), public :: clock               !< Clock storing the time at which the quantity was last updated.
     logical,       public :: required = .false.  !< Should this quantities be calculated?
-    logical,       public :: protected = .false. !< Is this quantity protected, i.e., it cannot be updated on-demand
+    logical,       public :: available_at_any_time = .false. !< Can we use this quantity at any requested time? (e.g., this will be true for a static quantity, but false for a quantity that is only updated at specific time-steps)
+    logical,       public :: updated_on_demand = .true. !< If true, the quantity is only updated when requested. If false, the quantity is updated automatically during the execution of an algorithm.
   end type quantity_t
 
 contains

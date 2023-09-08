@@ -38,3 +38,5 @@ Debug = trace
 
 AOSubmesh = yes
 StatesPack = no
+
+DisableAccel = yes

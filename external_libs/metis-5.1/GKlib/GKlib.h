@@ -18,6 +18,9 @@
 #define __ICC__
 #endif
 
+/* strptime only available if this macro is set, needed for stricter compilers (STO 02/2023) */
+#define _XOPEN_SOURCE 700
+
 
 #include "gk_arch.h" /*!< This should be here, prior to the includes */
 

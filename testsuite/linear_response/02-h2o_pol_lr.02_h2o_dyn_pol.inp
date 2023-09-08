@@ -1,7 +1,7 @@
 # -*- coding: utf-8 mode: shell-script -*-
 
 CalculationMode = em_resp
-fromScratch = yes
+FromScratch = yes
 ExperimentalFeatures = yes
 EMCalcBornCharges = yes
 
@@ -14,7 +14,7 @@ EMCalcBornCharges = yes
 Spacing = 0.65
 Radius = 7.5589
 
-%EMFreqs 
+%EMFreqs
 2 | 0.0 | 0.1
 %
 

@@ -35,4 +35,3 @@ FromScratch = yes
 
 ProfilingMode = prof_memory
 SCFCalculateDipole = yes
-

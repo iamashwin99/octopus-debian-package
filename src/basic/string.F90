@@ -34,7 +34,8 @@ module string_oct_m
     conv_to_C_string, &
     string_f_to_c,    &
     string_c_to_f,    &
-    string_c_ptr_to_f
+    string_c_ptr_to_f,&
+    c_str_len
 
 contains
 
@@ -169,7 +170,7 @@ contains
   ! ---------------------------------------------------------
   function string_f_to_c(f_string) result(c_string)
     character(len=*), intent(in) :: f_string
-    character(kind=c_char,len=1) :: c_string(len_trim(f_string)+1)
+    character(kind=c_char,len=1) :: c_string(c_str_len(f_string))
 
     integer :: i, strlen
 
@@ -219,6 +220,15 @@ contains
     end if
 
   end subroutine string_c_ptr_to_f
+
+  !> Convert fortran character length to C character length.
+  !>
+  !> C strings end in C_NULL_CHAR, such that they are
+  !> always 1 character larger than fortran characters
+  integer pure function c_str_len(fortran_char)
+    character(len=*), intent(in) :: fortran_char
+    c_str_len = len_trim(fortran_char) + 1
+  end function c_str_len
 
 end module string_oct_m
 

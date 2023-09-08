@@ -502,9 +502,10 @@ end subroutine X(eigensolve)
 !! standard symmetric-definite eigenproblem, of the form  A*x=(lambda)*x.
 !! Here A is assumed to be symmetric.
 subroutine X(lowest_eigensolve)(k, n, a, e, v, preserve_mat)
-  integer, intent(in)    :: k, n
+  integer, intent(in)    :: k      !< Number of eigenvalues requested
+  integer, intent(in)    :: n      !< Dimensions of a
   R_TYPE,  intent(inout) :: a(:,:) !< (n, n)
-  FLOAT,   intent(out)   :: e(:)   !< (n)
+  FLOAT,   intent(out)   :: e(:)   !< (n) The first k elements contain the selected eigenvalues in ascending order.
   R_TYPE,  intent(out)   :: v(:,:) !< (n, k)
   logical, intent(in)    :: preserve_mat !< If true, the matrix a and b on exit are the same
   !                                      !< as on input
@@ -708,6 +709,45 @@ subroutine X(inverter)(n, a, det)
   SAFE_DEALLOCATE_A(ipiv)
 
 end subroutine X(inverter)
+
+
+!> @brief Norm of a 2D matrix.
+!!
+!! The spectral norm of a matrix \f$A\f$ is the largest singular value of \f$A\f$.
+!! i.e., the largest eigenvalue of the matrix \f$\sqrt{\dagger{A}A}\f$.
+!!
+!! @param[in] m, n       Dimensions of A
+!! @param[in] a          2D matrix
+!! @param[out] norm2     L2 norm of A
+subroutine X(matrix_norm2)(m, n, a, norm2)
+  integer,  intent(in)           :: m, n
+  R_TYPE,   intent(inout)        :: a(:, :)
+  FLOAT,    intent(out)          :: norm2
+
+  R_TYPE, allocatable :: u(:,:), vt(:,:)    !< Unitary matrices of SVD
+  FLOAT, allocatable :: sg_values(:)        !< Singular decomposition values
+  integer :: min_dim                        !< Smallest dimension of a
+
+  PUSH_SUB(X(matrix_norm2))
+
+  ASSERT(n > 0)
+  ASSERT(m > 0)
+  ASSERT(not_in_openmp())
+  min_dim = min(m, n)
+
+  SAFE_ALLOCATE( u(m, m))
+  SAFE_ALLOCATE(vt(n, n))
+  SAFE_ALLOCATE(sg_values(min_dim))
+
+  call X(singular_value_decomp)(m, n, a, u, vt, sg_values)
+  norm2 = maxval(sg_values)
+
+  SAFE_DEALLOCATE_A(sg_values)
+  SAFE_DEALLOCATE_A(vt)
+  SAFE_DEALLOCATE_A(u)
+
+  POP_SUB(X(matrix_norm2))
+end subroutine X(matrix_norm2)
 
 
 ! ---------------------------------------------------------
@@ -980,7 +1020,6 @@ subroutine dsingular_value_decomp(m, n, a, u, vt, sg_values)
   SAFE_DEALLOCATE_A(work)
   POP_SUB(dsingular_value_decomp)
 end subroutine dsingular_value_decomp
-
 
 ! ---------------------------------------------------------
 !> computes inverse of a real NxN matrix a(:,:) using the SVD decomposition
@@ -1444,11 +1483,18 @@ subroutine X(eigensolve_parallel)(n, a, e, bof, err_code)
     z=eigenvectors(1, 1), iz=1, jz=1, descz=desc(1), &
     work=work(1), lwork=int(worksize), info=info)
 #else
-  call pzheev(jobz='V', uplo='U', n=n, &
-    a=b(1, 1), ia=1, ja=1, desca=desc(1), w=e(1), &
-    z=eigenvectors(1, 1), iz=1, jz=1, descz=desc(1), &
-    work=work(1), lwork=int(worksize), &
-    rwork=rwork(1), lrwork=int(rworksize), info=info)
+  if (n == 1) then
+    ! pzheev from scalapack seems to return wrong eigenvectors for one state,
+    ! so we do not call it in this case.
+    e(1) = TOFLOAT(b(1, 1))
+    eigenvectors(1, 1) = R_TOTYPE(M_ONE)
+  else
+    call pzheev(jobz='V', uplo='U', n=n, &
+      a=b(1, 1), ia=1, ja=1, desca=desc(1), w=e(1), &
+      z=eigenvectors(1, 1), iz=1, jz=1, descz=desc(1), &
+      work=work(1), lwork=int(worksize), &
+      rwork=rwork(1), lrwork=int(rworksize), info=info)
+  end if
 #endif
 
   SAFE_DEALLOCATE_A(work)

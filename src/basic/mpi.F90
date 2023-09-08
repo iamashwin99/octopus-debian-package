@@ -45,7 +45,7 @@ module mpi_oct_m
   contains
     ! Wrapper functions for common MPI calls
     ! We do not check the error code in any of those wrappers because the behavior of
-    ! an application is undefined after an MPI error according to the standard. The 
+    ! an application is undefined after an MPI error according to the standard. The
     ! default is to let the application crash in such a case with an error message
     ! from the MPI runtime.
     procedure :: barrier => mpi_grp_barrier
@@ -139,6 +139,8 @@ module mpi_oct_m
     generic :: irecv => dmpi_grp_irecv_2, zmpi_grp_irecv_2, impi_grp_irecv_2, lmpi_grp_irecv_2
     procedure :: dmpi_grp_irecv_3, zmpi_grp_irecv_3, impi_grp_irecv_3, lmpi_grp_irecv_3
     generic :: irecv => dmpi_grp_irecv_3, zmpi_grp_irecv_3, impi_grp_irecv_3, lmpi_grp_irecv_3
+    procedure :: dmpi_grp_irecv_0_i8, zmpi_grp_irecv_0_i8, impi_grp_irecv_0_i8, lmpi_grp_irecv_0_i8
+    generic :: irecv => dmpi_grp_irecv_0_i8, zmpi_grp_irecv_0_i8, impi_grp_irecv_0_i8, lmpi_grp_irecv_0_i8
     procedure :: dmpi_grp_isend, zmpi_grp_isend, impi_grp_isend, lmpi_grp_isend
     generic :: isend => dmpi_grp_isend, zmpi_grp_isend, impi_grp_isend, lmpi_grp_isend
     procedure :: dmpi_grp_isend_0, zmpi_grp_isend_0, impi_grp_isend_0, lmpi_grp_isend_0
@@ -147,6 +149,8 @@ module mpi_oct_m
     generic :: isend => dmpi_grp_isend_2, zmpi_grp_isend_2, impi_grp_isend_2, lmpi_grp_isend_2
     procedure :: dmpi_grp_isend_3, zmpi_grp_isend_3, impi_grp_isend_3, lmpi_grp_isend_3
     generic :: isend => dmpi_grp_isend_3, zmpi_grp_isend_3, impi_grp_isend_3, lmpi_grp_isend_3
+    procedure :: dmpi_grp_isend_0_i8, zmpi_grp_isend_0_i8, impi_grp_isend_0_i8, lmpi_grp_isend_0_i8
+    generic :: isend => dmpi_grp_isend_0_i8, zmpi_grp_isend_0_i8, impi_grp_isend_0_i8, lmpi_grp_isend_0_i8
     procedure :: mpi_grp_wait, mpi_grp_waitall
     generic :: wait => mpi_grp_wait, mpi_grp_waitall
   end type mpi_grp_t

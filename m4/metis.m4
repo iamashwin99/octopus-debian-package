@@ -42,7 +42,7 @@ else
   esac
 
   if test x"$acx_external_metis" != xdisabled; then
-  
+
     dnl Backup CFLAGS and LIBS
     acx_metis_save_CFLAGS="$CFLAGS"
     acx_metis_save_LIBS="$LIBS"
@@ -86,16 +86,16 @@ METIS_SetDefaultOptions(options);
 
   if test x"$acx_external_metis" = xno ; then
     dnl METIS was not found to link with, but is included in the distribution
-  
+
     dnl We disable METIS support only if the user is requesting this explicitly
     AC_ARG_ENABLE(metis, AS_HELP_STRING([--disable-metis],
     			 [Do not compile with internal METIS domain-partitioning library.]),
 			 [acx_internal_metis=$enableval],[acx_internal_metis=yes])
-  
+
     AC_MSG_CHECKING([whether METIS included in Octopus is enabled])
-  
+
     AC_MSG_RESULT([$acx_internal_metis])
-  
+
     if test x"$acx_internal_metis" = xyes; then
       HAVE_METIS=1
       HAVE_COMP_METIS=1

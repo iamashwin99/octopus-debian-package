@@ -93,7 +93,7 @@ contains
   end subroutine affine_coordinates_copy
 
   ! ---------------------------------------------------------
-  function affine_coordinates_to_cartesian(this, chi) result(xx)
+  pure function affine_coordinates_to_cartesian(this, chi) result(xx)
     class(affine_coordinates_t), target, intent(in)  :: this
     FLOAT,                       intent(in)  :: chi(:)
     FLOAT :: xx(1:this%dim)
@@ -105,7 +105,7 @@ contains
   end function affine_coordinates_to_cartesian
 
   ! ---------------------------------------------------------
-  function affine_coordinates_from_cartesian(this, xx) result(chi)
+  pure function affine_coordinates_from_cartesian(this, xx) result(chi)
     class(affine_coordinates_t), target, intent(in)  :: this
     FLOAT,                               intent(in)  :: xx(:)
     FLOAT :: chi(1:this%dim)

@@ -37,7 +37,6 @@ module vdw_ts_oct_m
   use ps_oct_m
   use space_oct_m
   use species_oct_m
-  use states_elec_oct_m
   use unit_oct_m
   use unit_system_oct_m
 
@@ -55,17 +54,17 @@ module vdw_ts_oct_m
 
   type vdw_ts_t
     private
-    FLOAT, allocatable :: c6free(:)        !> Free atomic volumes for each atomic species.
-    FLOAT, allocatable :: dpfree(:)        !> Free atomic static dipole polarizability for each atomic species.
-    FLOAT, allocatable :: r0free(:)        !> Free atomic vdW radius for each atomic species.
-    FLOAT, allocatable :: c6abfree(:, :)   !> Free atomic heteronuclear C6 coefficient for each atom pair.
+    FLOAT, allocatable :: c6free(:)        !< Free atomic volumes for each atomic species.
+    FLOAT, allocatable :: dpfree(:)        !< Free atomic static dipole polarizability for each atomic species.
+    FLOAT, allocatable :: r0free(:)        !< Free atomic vdW radius for each atomic species.
+    FLOAT, allocatable :: c6abfree(:, :)   !< Free atomic heteronuclear C6 coefficient for each atom pair.
     FLOAT, allocatable :: volfree(:)
-    FLOAT, allocatable :: c6ab(:, :)       !> Effective atomic heteronuclear C6 coefficient for each atom pair.
-    FLOAT              :: cutoff           !> Cutoff value for the calculation of the VdW TS correction in periodic system.
-    FLOAT              :: damping          !> Parameter for the damping function steepness.
-    FLOAT              :: sr               !> Parameter for the damping function. Can depend on the XC correction used.
+    FLOAT, allocatable :: c6ab(:, :)       !< Effective atomic heteronuclear C6 coefficient for each atom pair.
+    FLOAT              :: cutoff           !< Cutoff value for the calculation of the VdW TS correction in periodic system.
+    FLOAT              :: damping          !< Parameter for the damping function steepness.
+    FLOAT              :: sr               !< Parameter for the damping function. Can depend on the XC correction used.
 
-    FLOAT, allocatable :: derivative_coeff(:) !> A pre-calculated coefficient for fast derivative evaluation
+    FLOAT, allocatable :: derivative_coeff(:) !< A pre-calculated coefficient for fast derivative evaluation
   end type vdw_ts_t
 
 contains
@@ -159,12 +158,12 @@ contains
 
   !------------------------------------------
 
-  subroutine vdw_ts_calculate(this, namespace, ions, mesh, st, density, energy, potential, force)
+  subroutine vdw_ts_calculate(this, namespace, ions, mesh, nspin, density, energy, potential, force)
     type(vdw_ts_t),      intent(inout) :: this
     type(namespace_t),   intent(in)    :: namespace
     type(ions_t),        intent(in)    :: ions
-    type(mesh_t),        intent(in)    :: mesh
-    type(states_elec_t), intent(in)    :: st
+    class(mesh_t),       intent(in)    :: mesh
+    integer,             intent(in)    :: nspin
     FLOAT,               intent(in)    :: density(:, :)
     FLOAT,               intent(out)   :: energy
     FLOAT,               intent(out)   :: potential(:)
@@ -206,7 +205,7 @@ contains
     energy=M_ZERO
     force(1:ions%space%dim, 1:ions%natoms) = M_ZERO
     this%derivative_coeff(1:ions%natoms) = M_ZERO
-    call hirshfeld_init(hirshfeld, mesh, ions, st)
+    call hirshfeld_init(hirshfeld, mesh, ions, nspin)
 
     do iatom = 1, ions%natoms
       call hirshfeld_volume_ratio(hirshfeld, iatom, density, vol_ratio(iatom))
@@ -315,12 +314,12 @@ contains
 
 
   !------------------------------------------
-  subroutine vdw_ts_force_calculate(this, force_vdw, ions, mesh, st, density)
+  subroutine vdw_ts_force_calculate(this, force_vdw, ions, mesh, nspin, density)
     type(vdw_ts_t),      intent(in)    :: this
     type(ions_t),        intent(in)    :: ions
     FLOAT,               intent(inout) :: force_vdw(1:ions%space%dim, 1:ions%natoms)
-    type(mesh_t),        intent(in)    :: mesh
-    type(states_elec_t), intent(in)    :: st
+    class(mesh_t),       intent(in)    :: mesh
+    integer,             intent(in)    :: nspin
     FLOAT,               intent(in)    :: density(:, :)
 
     type(hirshfeld_t) :: hirshfeld
@@ -352,7 +351,7 @@ contains
     vol_ratio(1:ions%natoms) = M_ZERO
 
 
-    call hirshfeld_init(hirshfeld, mesh, ions, st)
+    call hirshfeld_init(hirshfeld, mesh, ions, nspin)
 
 
     do iatom = 1, ions%natoms

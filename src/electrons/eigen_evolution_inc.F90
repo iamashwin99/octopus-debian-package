@@ -72,26 +72,25 @@ subroutine X(eigensolver_evolution)(namespace, mesh, st, hm, te, tol, niter, con
     end do
   end if
 
-  !I am leaving the loop as it is in case we want to change the logic of the code.
-  ! However, we would need to compute the density and v_ks inside the loop if we do so.
+  ! We freeze the Hxc potential for these iterations. By default we do only one iteration.
   do iter = 1, maxiter
 #if defined(R_TREAL)
     ! The application of the exponential for the real case is still done one state at a time, as we need
     ! to do a couple of type conversions. To avoid this, we need either a function to convert the
     ! type of a batch, or to modify the batch_copy_data_to routine to allow the copy between batches of
     ! different types.
-    do ist = conv + 1, st%nst
+    do ist = max(conv + 1, st%st_start), st%st_end
       call states_elec_get_state(st, mesh, ist, ik, zpsi)
       call wfs_elec_init(zpsib, hm%d%dim, ist, ist, zpsi, ik)
 
       call hamiltonian_elec_base_set_phase_corr(hm%hm_base, mesh, zpsib)
-      call exponential_apply_batch(te, namespace, mesh, hm, zpsib, -tau, imag_time = .true.)
+      call te%apply_batch(namespace, mesh, hm, zpsib, -tau, imag_time = .true.)
       call hamiltonian_elec_base_unset_phase_corr(hm%hm_base, mesh, zpsib)
 
       call batch_get_state(zpsib, 1, mesh%np, zpsi)
       psi(1:mesh%np, 1:st%d%dim) = R_TOTYPE(zpsi(1:mesh%np, 1:st%d%dim))
       norm(ist) = X(mf_nrm2)(mesh, st%d%dim, psi)
-      if (norm(ist) > CNST(1.1)) then
+      if (norm(ist) > CNST(1.5)) then
         message(1) = "Evolution eigensolver: the time evolution seems to be unstable."
         message(2) = "Please reduce the value of EigensolverImaginaryTime."
         call messages_fatal(2, namespace=namespace)
@@ -105,23 +104,23 @@ subroutine X(eigensolver_evolution)(namespace, mesh, st, hm, te, tol, niter, con
       minst = states_elec_block_min(st, ib)
       maxst = states_elec_block_max(st, ib)
 
-      if (hamiltonian_elec_apply_packed(hm)) then
+      if (hm%apply_packed()) then
         call st%group%psib(ib, ik)%do_pack()
       end if
 
       call hamiltonian_elec_base_set_phase_corr(hm%hm_base, mesh, st%group%psib(ib, ik))
-      call exponential_apply_batch(te, namespace, mesh, hm, st%group%psib(ib, ik), -tau, imag_time = .true.)
+      call te%apply_batch(namespace, mesh, hm, st%group%psib(ib, ik), -tau, imag_time = .true.)
       call hamiltonian_elec_base_unset_phase_corr(hm%hm_base, mesh, st%group%psib(ib, ik))
       matvec = matvec + te%exp_order*(states_elec_block_max(st, ib) - states_elec_block_min(st, ib) + 1)
 
       call mesh_batch_nrm2(mesh, st%group%psib(ib, ik), norm(minst:maxst))
-      if (any(norm(minst:maxst) > CNST(1.1))) then
+      if (any(norm(minst:maxst) > CNST(1.5))) then
         message(1) = "Evolution eigensolver: the time evolution seems to be unstable."
         message(2) = "Please reduce the value of EigensolverImaginaryTime."
         call messages_fatal(2, namespace=namespace)
       end if
 
-      if (hamiltonian_elec_apply_packed(hm)) then
+      if (hm%apply_packed()) then
         call st%group%psib(ib, ik)%do_unpack()
       end if
     end do
@@ -135,7 +134,7 @@ subroutine X(eigensolver_evolution)(namespace, mesh, st, hm, te, tol, niter, con
 
     ! Get the eigenvalues and the residues.
     do ib = convb + 1, st%group%block_end
-      if (hamiltonian_elec_apply_packed(hm)) then
+      if (hm%apply_packed()) then
         call st%group%psib(ib, ik)%do_pack()
       end if
 
@@ -159,7 +158,7 @@ subroutine X(eigensolver_evolution)(namespace, mesh, st, hm, te, tol, niter, con
         end do
       end if
 
-      if (hamiltonian_elec_apply_packed(hm)) then
+      if (hm%apply_packed()) then
         call st%group%psib(ib, ik)%do_unpack(copy=.false.)
       end if
     end do

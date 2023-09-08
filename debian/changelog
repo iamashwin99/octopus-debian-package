@@ -1,30 +1,8 @@
-octopus (12.2-2) mpsd-bullseye; urgency=medium
-
-  * New upstream version
-  * UNRELEASED
-  * add octopus-doc package
-  * add rules for octopus-doc
-  * enable openmp
-  * add cgal
-  * add nfft
-  * disable nfft as its too new for octopus
-  * remove nfft from source
-  * fix typo
-
- -- Ashwin Kumar Karnad <karnada@cfelm-pcx33671>  Mon, 29 May 2023 16:37:25 +0200
-
-octopus (12.2-1) UNRELEASED; urgency=medium
-
-  * New upstream version
-  * UNRELEASED
-
- -- Ashwin Kumar Karnad <karnada@cfelm-pcx33671>  Wed, 24 May 2023 16:32:48 +0200
-
 octopus (9.0) unstable; urgency=low
 
   * Updated to version 9.0.
 
- -- Micael Oliveira <micael.oliveira@mpsd.mpg.de>  Tue, 14 May 2019 17:18:43 +0100
+ -- Micael Oliveira <micael.oliveira@mpsd.mpg.de> Tue, 14 May 2019 17:18:43 +0100
 
 octopus (8.0) unstable; urgency=low
 
@@ -104,13 +82,13 @@ octopus (2.1.0rc1-1) unstable; urgency=low
 
 octopus (2.1pre1-3) unstable; urgency=low
 
-  * On amd64 linking to the gdlib causes octopus to segfault always when 
-    statically linked executables are used (independent of the compiler). 
-    Add --disable-gdlib so that -Bstatic/-static can be used again. 
- 
+  * On amd64 linking to the gdlib causes octopus to segfault always when
+    statically linked executables are used (independent of the compiler).
+    Add --disable-gdlib so that -Bstatic/-static can be used again.
+
   * Adding optimized and debug executables to the package. They are build with
     the Intel compiler. The executables carry the program suffix -intel-9.1 and
-    -intel-9.1-debug respectively. This is mainly used for nightly builds and 
+    -intel-9.1-debug respectively. This is mainly used for nightly builds and
     regression testing.
 
   * Remove outdated metis configure options.
@@ -119,7 +97,7 @@ octopus (2.1pre1-3) unstable; urgency=low
 
 octopus (2.1pre1-2) unstable; urgency=low
 
-  * Upstream removed the complex executable from the build 
+  * Upstream removed the complex executable from the build
     system. Removing the executable also from the package build.
 
  -- Heiko Appel <appel@physik.fu-berlin.de>  Thu, 18 May 2006 00:36:16 +0200
@@ -139,8 +117,8 @@ octopus (2.0-1) stable; urgency=low
 octopus (1.99devel-3) unstable; urgency=low
 
   * Changing libraries for the build of the x86_64 Debian package. I'm now not
-    linking to the system blas and lapack libraries anymore, but use my "home 
-    compiled" versions instead. This fixes the segfault bug that I mentioned 
+    linking to the system blas and lapack libraries anymore, but use my "home
+    compiled" versions instead. This fixes the segfault bug that I mentioned
     last Friday in the IRC. The spinors.test is now running properly also on
     x86_64 with nag5. Also thanks to Alberto for helping with the testing ...
 
@@ -148,7 +126,7 @@ octopus (1.99devel-3) unstable; urgency=low
 
 octopus (1.99devel-2) unstable; urgency=low
 
-  * Provide all four binaries (ocotpus, octopus_cmplx, octopus-mpi, 
+  * Provide all four binaries (ocotpus, octopus_cmplx, octopus-mpi,
     octopus_cmplx-mpi) in the package.
 
  -- Heiko Appel <appel@physik.fu-berlin.de>  Fri, 20 May 2005 16:34:45 +0200

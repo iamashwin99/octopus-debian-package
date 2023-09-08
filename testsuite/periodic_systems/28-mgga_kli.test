@@ -1,0 +1,45 @@
+# -*- coding: utf-8 mode: shell-script -*-
+
+Test       : MGGA within Kohn-Sham DFT at the KLI level with k-points
+Program    : octopus
+TestGroups : long-run, periodic_systems
+Enabled    : no-GPU-MPI
+
+Input      : 28-mgga_kli.01-Si_scan.inp
+
+match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
+
+match ; Total k-points   ; GREPFIELD(static/info, 'Total number of k-points', 6) ; 729
+match ; Space group        ; GREPFIELD(out, 'Space group', 4) ; 227
+match ; No. of symmetries  ; GREPFIELD(out, 'symmetries that can be used', 5)  ;  24
+
+Precision: 3.98e-07
+match ;  Total energy        ; GREPFIELD(static/info, 'Total       =', 3) ; -7.95879216
+Precision: 3.91e-07
+match ;  Ion-ion energy      ; GREPFIELD(static/info, 'Ion-ion     =', 3) ; -7.81793472
+Precision: 5.55e-07
+match ;  Eigenvalues sum     ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -0.663380765
+Precision: 7.64e-07
+match ;  Hartree energy      ; GREPFIELD(static/info, 'Hartree     =', 3) ; 0.565675935
+Precision: 4.35e-07
+match ;  Exchange energy     ; GREPFIELD(static/info, 'Exchange    =', 3) ; -2.151788
+Precision: 1.39e-07
+match ;  Correlation energy  ; GREPFIELD(static/info, 'Correlation =', 3) ; -0.27781913
+Precision: 9.63e-07
+match ;  Kinetic energy      ; GREPFIELD(static/info, 'Kinetic     =', 3) ; 3.0580798399999995
+Precision: 1.39e-06
+match ;  External energy     ; GREPFIELD(static/info, 'External    =', 3) ; -1.33519501
+
+Precision: 1.00e-04
+match ;  k-point 1 (x)  ; GREPFIELD(static/info, '#k =       1', 7) ; 0.0
+match ;  k-point 1 (y)  ; GREPFIELD(static/info, '#k =       1', 8) ; 0.0
+match ;  k-point 1 (z)  ; GREPFIELD(static/info, '#k =       1', 9) ; 0.0
+
+Precision: 1.67e-05
+match ;  Eigenvalue  1  ; GREPFIELD(static/info, '#k =       1', 3, 1) ; -0.334804
+Precision: 4.95e-05
+match ;  Eigenvalue  2  ; GREPFIELD(static/info, '#k =       1', 3, 2) ; 0.098998
+Precision: 5.03e-06
+match ;  Eigenvalue  4  ; GREPFIELD(static/info, '#k =       1', 3, 4) ; 0.100506
+Precision: 1.00e-05
+match ;  Eigenvalue  5  ; GREPFIELD(static/info, '#k =       1', 3, 5) ; 0.199966

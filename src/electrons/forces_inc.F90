@@ -57,7 +57,7 @@ end subroutine X(forces_gather)
 
 !---------------------------------------------------------------------------
 subroutine X(forces_from_local_potential)(mesh, namespace, ions, ep, gdensity, force)
-  type(mesh_t),                   intent(in)    :: mesh
+  class(mesh_t),                  intent(in)    :: mesh
   type(namespace_t),              intent(in)    :: namespace
   type(ions_t),                   intent(in)    :: ions
   type(epot_t),                   intent(in)    :: ep
@@ -146,8 +146,8 @@ subroutine X(forces_from_potential)(gr, namespace, space, ions, hm, st, force, f
 
   call profiling_in(prof, TOSTRING(X(FORCES_FROM_POTENTIALS)))
 
-  np = gr%mesh%np
-  np_part = gr%mesh%np_part
+  np = gr%np
+  np_part = gr%np_part
 
   SAFE_ALLOCATE(grad_psi(1:np, 1:space%dim, 1:st%d%dim))
   SAFE_ALLOCATE(grad_rho(1:np, 1:space%dim))
@@ -160,7 +160,7 @@ subroutine X(forces_from_potential)(gr, namespace, space, ions, hm, st, force, f
   force_nl = M_ZERO
   force_u = M_ZERO
 
-  if (gr%mesh%coord_system%local_basis) then
+  if (gr%coord_system%local_basis) then
     message(1) = "Pseudopotential contribution to the forces acting on the ions when using"
     message(2) = "curvilinear coordinates is not implemented and will be set to zero."
     call messages_warning(2)
@@ -185,14 +185,14 @@ subroutine X(forces_from_potential)(gr, namespace, space, ions, hm, st, force, f
       maxst = states_elec_block_max(st, ib)
 
       call st%group%psib(ib, iq)%copy_to(psib, copy_data = .true.)
-      if (hamiltonian_elec_apply_packed(hm)) call psib%do_pack()
+      if (hm%apply_packed()) call psib%do_pack()
 
       ! set the boundary conditions
-      call boundaries_set(gr%der%boundaries, gr%mesh, psib)
+      call boundaries_set(gr%der%boundaries, gr, psib)
 
       ! set the phase for periodic systems
       if (allocated(hm%hm_base%phase)) then
-        call hamiltonian_elec_base_phase(hm%hm_base, gr%mesh, gr%mesh%np_part, .false., psib)
+        call hamiltonian_elec_base_phase(hm%hm_base, gr, gr%np_part, .false., psib)
       end if
 
       ! calculate the gradient
@@ -202,13 +202,13 @@ subroutine X(forces_from_potential)(gr, namespace, space, ions, hm, st, force, f
       end do
 
       ! calculate the contribution to the density gradient
-      call X(density_accumulate_grad)(space, gr%mesh, st, psib, grad_psib, grad_rho)
+      call X(density_accumulate_grad)(space, gr, st, psib, grad_psib, grad_rho)
 
       ! the non-local potential contribution
-      if (hm%hm_base%apply_projector_matrices .and. .not. accel_is_enabled() .and. &
+      if (hm%hm_base%apply_projector_matrices .and. &
         .not. (st%symmetrize_density .and. hm%kpoints%use_symmetries)) then
 
-        call X(hamiltonian_elec_base_nlocal_force)(hm%hm_base, gr%mesh, st, gr%der%boundaries, iq, &
+        call X(hamiltonian_elec_base_nlocal_force)(hm%hm_base, gr, st, gr%der%boundaries%spiral, iq, &
           space%dim, psib, grad_psib, force_nl)
 
       else
@@ -219,9 +219,9 @@ subroutine X(forces_from_potential)(gr, namespace, space, ions, hm, st, force, f
 
           ! get the state and its gradient out of the batches (for the moment)
           do idim = 1, st%d%dim
-            call batch_get_state(psib, (/ist, idim/), gr%mesh%np_part, psi(:, idim))
+            call batch_get_state(psib, (/ist, idim/), gr%np_part, psi(:, idim))
             do idir = 1, space%dim
-              call batch_get_state(grad_psib(idir), (/ist, idim/), gr%mesh%np, grad_psi(:, idir, idim))
+              call batch_get_state(grad_psib(idir), (/ist, idim/), gr%np, grad_psi(:, idir, idim))
             end do
           end do
 
@@ -274,7 +274,7 @@ subroutine X(forces_from_potential)(gr, namespace, space, ions, hm, st, force, f
                 end associate
 
                 ! We convert the force to Cartesian coordinates before symmetrization
-                call gr%mesh%coord_system%covector_to_cartesian(ratom, force_psi)
+                call gr%coord_system%covector_to_cartesian(ratom, force_psi)
 
                 !Let us now apply the symmetry to the force
                 !Note: here we are working with reduced quantities
@@ -296,7 +296,7 @@ subroutine X(forces_from_potential)(gr, namespace, space, ions, hm, st, force, f
               end do
 
               ! We convert the force to Cartesian coordinates before symmetrization
-              call gr%mesh%coord_system%covector_to_cartesian(ions%pos(:, iatom), force_psi)
+              call gr%coord_system%covector_to_cartesian(ions%pos(:, iatom), force_psi)
 
               force_nl(1:space%dim, iatom) = force_nl(1:space%dim, iatom) + force_psi(1:space%dim)
             end do
@@ -308,7 +308,7 @@ subroutine X(forces_from_potential)(gr, namespace, space, ions, hm, st, force, f
       end if
 
       !The Hubbard forces
-      call X(lda_u_force)(hm%lda_u, namespace, space, gr%mesh, st, iq, psib, grad_psib, force_u, allocated(hm%hm_base%phase))
+      call X(lda_u_force)(hm%lda_u, namespace, space, gr, st, iq, psib, grad_psib, force_u, allocated(hm%hm_base%phase))
 
       call psib%end()
       do idir = 1, space%dim
@@ -323,12 +323,12 @@ subroutine X(forces_from_potential)(gr, namespace, space, ions, hm, st, force, f
 
   ! in this case we need to convert to Cartesian coordinates at the end
   ! TODO: integrate this to the routine X(hamiltonian_elec_base_nlocal_force)
-  if (hm%hm_base%apply_projector_matrices .and. .not. accel_is_enabled() .and. &
+  if (hm%hm_base%apply_projector_matrices .and. &
     .not. (st%symmetrize_density .and. hm%kpoints%use_symmetries)) then
 
     ! We convert the force to Cartesian coordinates
     do iatom = 1, ions%natoms
-      call gr%mesh%coord_system%covector_to_cartesian(ions%pos(:, iatom), force_nl(:, iatom))
+      call gr%coord_system%covector_to_cartesian(ions%pos(:, iatom), force_nl(:, iatom))
     end do
   end if
 
@@ -343,23 +343,23 @@ subroutine X(forces_from_potential)(gr, namespace, space, ions, hm, st, force, f
 #endif
 
   ! We convert the gradient of the density to cartesian coordinates before symmetrization
-  do ip = 1, gr%mesh%np
-    call gr%mesh%coord_system%covector_to_cartesian(gr%mesh%x(ip, :), grad_rho(ip, :))
+  do ip = 1, gr%np
+    call gr%coord_system%covector_to_cartesian(gr%x(ip, :), grad_rho(ip, :))
   end do
 
   if(st%symmetrize_density) then
-    call symmetrizer_init(symmetrizer, gr%mesh, gr%symm)
-    SAFE_ALLOCATE(symmtmp(1:gr%mesh%np, 1:space%dim))
+    call symmetrizer_init(symmetrizer, gr, gr%symm)
+    SAFE_ALLOCATE(symmtmp(1:gr%np, 1:space%dim))
 
-    call dsymmetrizer_apply(symmetrizer, gr%mesh, field_vector = grad_rho, &
+    call dsymmetrizer_apply(symmetrizer, gr, field_vector = grad_rho, &
       symmfield_vector = symmtmp, suppress_warning = .true.)
-    grad_rho(1:gr%mesh%np, 1:space%dim) = symmtmp(1:gr%mesh%np, 1:space%dim)
+    grad_rho(1:gr%np, 1:space%dim) = symmtmp(1:gr%np, 1:space%dim)
 
     SAFE_DEALLOCATE_A(symmtmp)
     call symmetrizer_end(symmetrizer)
   end if
 
-  call dforces_from_local_potential(gr%mesh, namespace, ions, hm%ep, grad_rho, force_loc)
+  call dforces_from_local_potential(gr, namespace, ions, hm%ep, grad_rho, force_loc)
 
   do iatom = 1, ions%natoms
     do idir = 1, space%dim
@@ -401,8 +401,8 @@ subroutine X(total_force_from_potential)(space, gr, ions, ep, st, kpoints, x, ld
   ASSERT(.not. st%symmetrize_density)
   ASSERT(lda_u_level == DFT_U_NONE)
 
-  np = gr%mesh%np
-  np_part = gr%mesh%np_part
+  np = gr%np
+  np_part = gr%np_part
 
   SAFE_ALLOCATE(grad_psi(1:np, 1:space%dim, 1:st%d%dim))
   SAFE_ALLOCATE(grad_rho(1:np, 1:space%dim))
@@ -421,10 +421,10 @@ subroutine X(total_force_from_potential)(space, gr, ions, ep, st, kpoints, x, ld
       ff = st%d%kweights(iq) * st%occ(ist, iq) * M_TWO
       if (abs(ff) <= M_EPSILON) cycle
 
-      call states_elec_get_state(st, gr%mesh, ist, iq, psi)
+      call states_elec_get_state(st, gr, ist, iq, psi)
 
       do idim = 1, st%d%dim
-        call boundaries_set(gr%der%boundaries, gr%mesh, psi(:, idim))
+        call boundaries_set(gr%der%boundaries, gr, psi(:, idim))
 
         if (space%is_periodic() .and. .not. kpoints_point_is_gamma(kpoints, ikpoint)) then
 
@@ -434,7 +434,7 @@ subroutine X(total_force_from_potential)(space, gr, ions, ep, st, kpoints, x, ld
           !Here we recompute it, and moreover the vector potential is missing
 #ifdef R_TCOMPLEX
           do ip = 1, np_part
-            phase = exp(-M_zI*sum(kpoint(:)*gr%mesh%x(ip, :)))
+            phase = exp(-M_zI*sum(kpoint(:)*gr%x(ip, :)))
             psi(ip, idim) = phase*psi(ip, idim)
           end do
 #else
@@ -481,7 +481,7 @@ subroutine X(total_force_from_potential)(space, gr, ions, ep, st, kpoints, x, ld
   end if
 #endif
 
-  call total_force_from_local_potential(gr%mesh, space, ep%vpsl, grad_rho, x)
+  call total_force_from_local_potential(gr, space, ep%vpsl, grad_rho, x)
 
   do iatom = 1, ions%natoms
     do idir = 1, space%dim
@@ -526,8 +526,8 @@ subroutine X(forces_derivative)(gr, namespace, space, ions, ep, st, kpoints, lr,
 
   ASSERT(lda_u_level == DFT_U_NONE)
 
-  np      = gr%mesh%np
-  np_part = gr%mesh%np_part
+  np      = gr%np
+  np_part = gr%np_part
 
   SAFE_ALLOCATE(grad_dl_psi(1:np, 1:space%dim, 1:st%d%dim))
   SAFE_ALLOCATE(grad_dl_psi2(1:np, 1:space%dim, 1:st%d%dim))
@@ -551,12 +551,12 @@ subroutine X(forces_derivative)(gr, namespace, space, ions, ep, st, kpoints, lr,
 
       do idim = 1, st%d%dim
 
-        call states_elec_get_state(st, gr%mesh, idim, ist, iq, psi(:, idim))
-        call boundaries_set(gr%der%boundaries, gr%mesh, psi(:, idim))
-        call lalg_copy(gr%mesh%np_part, lr%X(dl_psi)(:, idim, ist, iq), dl_psi(:, idim))
-        call boundaries_set(gr%der%boundaries, gr%mesh, dl_psi(:, idim))
-        call lalg_copy(gr%mesh%np_part, lr2%X(dl_psi)(:, idim, ist, iq), dl_psi2(:, idim))
-        call boundaries_set(gr%der%boundaries, gr%mesh, dl_psi2(:, idim))
+        call states_elec_get_state(st, gr, idim, ist, iq, psi(:, idim))
+        call boundaries_set(gr%der%boundaries, gr, psi(:, idim))
+        call lalg_copy(gr%np_part, lr%X(dl_psi)(:, idim, ist, iq), dl_psi(:, idim))
+        call boundaries_set(gr%der%boundaries, gr, dl_psi(:, idim))
+        call lalg_copy(gr%np_part, lr2%X(dl_psi)(:, idim, ist, iq), dl_psi2(:, idim))
+        call boundaries_set(gr%der%boundaries, gr, dl_psi2(:, idim))
 
         if (space%is_periodic() .and. .not. kpoints_point_is_gamma(kpoints, ikpoint)) then
 
@@ -566,7 +566,7 @@ subroutine X(forces_derivative)(gr, namespace, space, ions, ep, st, kpoints, lr,
           !Here we recompute it, and moreover the vector potential is missing
 #ifdef R_TCOMPLEX
           do ip = 1, np_part
-            phase = exp(-M_zI*sum(kpoint(:)*gr%mesh%x(ip, :)))
+            phase = exp(-M_zI*sum(kpoint(:)*gr%x(ip, :)))
             psi(ip, idim) = phase*psi(ip, idim)
             dl_psi(ip, idim) = phase*dl_psi(ip, idim)
             dl_psi2(ip, idim) = phase*dl_psi2(ip, idim)
@@ -626,7 +626,7 @@ subroutine X(forces_derivative)(gr, namespace, space, ions, ep, st, kpoints, lr,
 
   SAFE_ALLOCATE(force_local(1:space%dim, 1:ions%natoms))
   force_local = M_ZERO
-  call zforces_from_local_potential(gr%mesh, namespace, ions, ep, grad_rho, force_local)
+  call zforces_from_local_potential(gr, namespace, ions, ep, grad_rho, force_local)
   force_deriv(:,:) = force_deriv(:,:) + force_local(:,:)
   SAFE_DEALLOCATE_A(force_local)
   SAFE_DEALLOCATE_A(grad_rho)

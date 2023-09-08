@@ -18,7 +18,7 @@
 
 !Here ff is a function in the submesh
 R_TYPE function X(sm_integrate)(mesh, sm, ff, reduce) result(res)
-  type(mesh_t),      intent(in) :: mesh
+  class(mesh_t),     intent(in) :: mesh
   type(submesh_t),   intent(in) :: sm
   R_TYPE, optional,  intent(in) :: ff(:)
   logical, optional, intent(in) :: reduce
@@ -27,6 +27,8 @@ R_TYPE function X(sm_integrate)(mesh, sm, ff, reduce) result(res)
   type(profile_t), save :: prof_sm_reduce
 
   PUSH_SUB(X(sm_integrate))
+
+  ASSERT(not_in_openmp())
 
   ASSERT(present(ff) .or. sm%np == 0)
 
@@ -100,6 +102,8 @@ subroutine X(dsubmesh_add_to_mesh)(this, sphi, phi, factor)
 
   PUSH_SUB(X(dsubmesh_add_to_mesh))
 
+  ASSERT(not_in_openmp())
+
   if (present(factor)) then
     !Loop unrolling inspired by BLAS axpy routine
     m = mod(this%np, 4)
@@ -147,6 +151,8 @@ subroutine X(submesh_copy_from_mesh)(this, phi, sphi, conjugate)
 
   PUSH_SUB(X(submesh_copy_from_mesh))
 
+  ASSERT(not_in_openmp())
+
   if (.not. optional_default(conjugate, .false.)) then
     !$omp parallel do
     do ip = 1,this%np
@@ -175,6 +181,7 @@ subroutine X(submesh_copy_from_mesh_batch)(this, psib, spsi)
   PUSH_SUB(X(submesh_copy_from_mesh_batch))
 
   ASSERT(psib%status()/= BATCH_DEVICE_PACKED)
+  ASSERT(not_in_openmp())
 
   select case (psib%status())
   case (BATCH_NOT_PACKED)
@@ -306,6 +313,7 @@ subroutine X(submesh_batch_add_matrix)(this, factor, ss, mm)
   call profiling_in(prof, TOSTRING(X(SUBMESH_ADD_MATRIX)))
 
   ASSERT(.not. ss%is_packed())
+  ASSERT(not_in_openmp())
 
   select case (mm%status())
   case (BATCH_DEVICE_PACKED)
@@ -400,6 +408,8 @@ subroutine X(submesh_batch_add)(this, ss, mm)
   ASSERT(.not. ss%is_packed())
   ASSERT(.not. mm%is_packed())
 
+  ASSERT(not_in_openmp())
+
   ASSERT(mm%nst == ss%nst)
 
   !$omp parallel do private(ist, idim, jdim, is) if(.not. this%overlap)
@@ -450,6 +460,7 @@ subroutine X(submesh_batch_dotp_matrix)(this, mm, ss, dot, reduce)
 
   ASSERT(.not. ss%is_packed())
   ASSERT(.not. mm%is_packed())
+  ASSERT(not_in_openmp())
 
   if (this%mesh%use_curvilinear) then
 

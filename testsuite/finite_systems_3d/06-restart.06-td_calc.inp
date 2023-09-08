@@ -3,7 +3,7 @@
 # Start a time-dependent calculation
 
 CalculationMode = td
-fromScratch = yes
+FromScratch = yes
 Radius = 7.0
 Spacing = 0.5
 %Coordinates

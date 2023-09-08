@@ -447,7 +447,7 @@ contains
 
     ASSERT(this%space%is_periodic())
 
-    call messages_print_stress(msg="Lattice", namespace=namespace)
+    call messages_print_with_emphasis(msg="Lattice", namespace=namespace)
 
     write(message(1),'(a,3a,a)') '  Lattice Vectors [', trim(units_abbrev(units_out%length)), ']'
     do idir = 1, this%space%periodic_dim
@@ -483,7 +483,7 @@ contains
       call messages_info(4, namespace=namespace)
     end if
 
-    call messages_print_stress(namespace=namespace)
+    call messages_print_with_emphasis(namespace=namespace)
 
     POP_SUB(lattice_vectors_write_info)
   end subroutine lattice_vectors_write_info
@@ -707,4 +707,3 @@ end module lattice_vectors_oct_m
 !! mode: f90
 !! coding: utf-8
 !! End:
-

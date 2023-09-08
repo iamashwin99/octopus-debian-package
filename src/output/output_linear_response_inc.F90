@@ -23,7 +23,7 @@ subroutine X(output_lr) (outp, namespace, space, dir, st, mesh, lr, idir, isigma
   type(space_t),        intent(in) :: space
   character(len=*),     intent(in) :: dir
   type(states_elec_t),  intent(in) :: st
-  type(mesh_t),         intent(in) :: mesh
+  class(mesh_t),        intent(in) :: mesh
   type(lr_t),           intent(in) :: lr
   integer,              intent(in) :: idir      !< direction of perturbation
   integer,              intent(in) :: isigma
@@ -56,7 +56,7 @@ subroutine X(output_lr) (outp, namespace, space, dir, st, mesh, lr, idir, isigma
           write(fname, '(a,i1,2a)') 'lr_density-sp', is, '-', index2axis(idir)
         end if
         call X(io_function_output)(outp%how(OPTION__OUTPUT__DENSITY), dir, fname, namespace, space, &
-          mesh, lr%X(dl_rho)(:, is), fn_unit / pert_unit, ierr, ions = ions)
+          mesh, lr%X(dl_rho)(:, is), fn_unit / pert_unit, ierr, pos=ions%pos, atoms=ions%atom)
       end do
     end if
 
@@ -72,7 +72,7 @@ subroutine X(output_lr) (outp, namespace, space, dir, st, mesh, lr, idir, isigma
             write(fname, '(a,i1,4a)') 'alpha_density-sp', is, '-', index2axis(idir2), '-', index2axis(idir)
           end if
           call X(io_function_output)(outp%how(OPTION__OUTPUT__POL_DENSITY), dir, fname, namespace, space, &
-            mesh, tmp, fn_unit / pert_unit, ierr, ions = ions)
+            mesh, tmp, fn_unit / pert_unit, ierr, pos=ions%pos, atoms=ions%atom)
         end do
       end do
       SAFE_DEALLOCATE_A(tmp)
@@ -89,7 +89,7 @@ subroutine X(output_lr) (outp, namespace, space, dir, st, mesh, lr, idir, isigma
               write(fname, '(a,i1,4a)') 'lr_current-sp', is, '-', index2axis(idir2), '-',  index2axis(idir)
             end if
             call zio_function_output(outp%how(OPTION__OUTPUT__CURRENT), dir, fname, namespace, space, &
-              mesh, lr%dl_j(:, idir2, is), fn_unit / pert_unit, ierr, ions = ions)
+              mesh, lr%dl_j(:, idir2, is), fn_unit / pert_unit, ierr, pos=ions%pos, atoms=ions%atom)
           end do
         end do
       else
@@ -129,7 +129,7 @@ subroutine X(output_lr) (outp, namespace, space, dir, st, mesh, lr, idir, isigma
               end if
             end if
             call X(io_function_output) (outp%how(OPTION__OUTPUT__WFS), dir, fname, namespace, space, &
-              mesh, lr%X(dl_psi) (1:, idim, ist, ik), fn_unit  / pert_unit, ierr, ions = ions)
+              mesh, lr%X(dl_psi) (1:, idim, ist, ik), fn_unit  / pert_unit, ierr, pos=ions%pos, atoms=ions%atom)
           end do
         end do
       end if
@@ -163,7 +163,7 @@ subroutine X(output_lr) (outp, namespace, space, dir, st, mesh, lr, idir, isigma
 
             dtmp = abs(lr%X(dl_psi) (:, idim, ist, ik))**2
             call dio_function_output (outp%how(OPTION__OUTPUT__WFS_SQMOD), dir, fname, namespace, space, &
-              mesh, dtmp, fn_unit / pert_unit, ierr, ions = ions)
+              mesh, dtmp, fn_unit / pert_unit, ierr, pos=ions%pos, atoms=ions%atom)
           end do
         end do
       end if
@@ -192,7 +192,7 @@ contains
         write(fname, '(2a,i1,2a)') trim(filename1), '-sp', is, '-', index2axis(idir)
       end if
       call X(io_function_output)(outp%how(OPTION__OUTPUT__ELF), dir, trim(fname), namespace, space, &
-        mesh, lr%X(dl_de)(1:mesh%np,is), unit_one / pert_unit, ierr, ions = ions)
+        mesh, lr%X(dl_de)(1:mesh%np,is), unit_one / pert_unit, ierr, pos=ions%pos, atoms=ions%atom)
     end do
 
     do is = 1, st%d%nspin
@@ -202,7 +202,7 @@ contains
         write(fname, '(2a,i1,2a)') trim(filename2), '-sp', is, '-', index2axis(idir)
       end if
       call X(io_function_output)(outp%how(OPTION__OUTPUT__ELF), dir, trim(fname), namespace, space, &
-        mesh, lr%X(dl_elf)(1:mesh%np,is), unit_one / pert_unit, ierr, ions = ions)
+        mesh, lr%X(dl_elf)(1:mesh%np,is), unit_one / pert_unit, ierr, pos=ions%pos, atoms=ions%atom)
     end do
 
     POP_SUB(X(output_lr).lr_elf)

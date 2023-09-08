@@ -61,13 +61,13 @@ module lcao_oct_m
   use states_elec_dim_oct_m
   use states_elec_io_oct_m
   use submesh_oct_m
-  use symmetrizer_oct_m
   use unit_oct_m
   use unit_system_oct_m
   use v_ks_oct_m
   use varinfo_oct_m
   use wfs_elec_oct_m
   use xc_oct_m
+  use xc_sic_oct_m
 
   implicit none
 
@@ -96,8 +96,11 @@ module lcao_oct_m
     logical                 :: derivative
     integer,    allocatable :: cst(:, :)
     integer,    allocatable :: ck(:, :)
-    real(4),    allocatable :: dbuff(:, :, :, :) !< single-precision buffer
-    complex(4), allocatable :: zbuff(:, :, :, :) !< single-precision buffer
+    real(4),    allocatable :: dbuff_single(:, :, :, :) !< single-precision buffer
+    complex(4), allocatable :: zbuff_single(:, :, :, :) !< single-precision buffer
+    FLOAT,      allocatable :: dbuff(:, :, :, :)
+    CMPLX,      allocatable :: zbuff(:, :, :, :)
+    logical                 :: save_memory
     logical                 :: initialized_orbitals
     FLOAT                   :: orbital_scale_factor
 
@@ -149,7 +152,7 @@ contains
     type(states_elec_t),  intent(in)  :: st
 
     integer :: ia, n, iorb, jj, maxj, idim
-    integer :: ii, ll, mm, norbs
+    integer :: ii, ll, mm, norbs, ii_tmp
     integer :: mode_default
     FLOAT   :: max_orb_radius, maxradius
     integer :: iunit_o
@@ -257,6 +260,17 @@ contains
       this%complex_ylms = .false.
     end if
 
+    !%Variable LCAOSaveMemory
+    !%Type logical
+    !%Default false
+    !%Section SCF::LCAO
+    !%Description
+    !% If set to true, the LCAO will allocate extra memory needed in single precision instead of
+    !% double precision.
+    !%End
+    call parse_variable(namespace, 'LCAOSaveMemory', .false., this%save_memory)
+
+
     if (debug%info .and. mpi_grp_is_root(mpi_world)) then
       call io_mkdir('debug/lcao', namespace)
       iunit_o = io_open('debug/lcao/orbitals', namespace, action='write')
@@ -315,7 +329,7 @@ contains
       this%is_empty = .false.
 
       ! this is determined by the stencil we are using and the spacing
-      this%lapdist = maxval(abs(gr%mesh%idx%enlarge)*gr%mesh%spacing)
+      this%lapdist = maxval(abs(gr%idx%enlarge)*gr%spacing)
 
       ! calculate the radius of each orbital
       SAFE_ALLOCATE(this%radius(1:ions%natoms))
@@ -326,6 +340,8 @@ contains
         maxradius = M_ZERO
         do iorb = 1, norbs
           call species_iwf_ilm(ions%atom(ia)%species, iorb, 1, ii, ll, mm)
+          ! For all-electron species, we need to use the principal quantum number
+          if(species_is_full(ions%atom(ia)%species)) call species_iwf_n(ions%atom(ia)%species, iorb, 1, ii)
           maxradius = max(maxradius, species_get_iwf_radius(ions%atom(ia)%species, ii, is = 1))
         end do
 
@@ -367,6 +383,11 @@ contains
           do idim = 1,st%d%dim
             if (jj > species_niwfs(ions%atom(ia)%species)) cycle
             call species_iwf_ilm(ions%atom(ia)%species, jj, idim, ii, ll, mm)
+            ! For all-electron species, we need to use the principal quantum number
+            if(species_is_full(ions%atom(ia)%species)) then
+              ii_tmp = ii
+              call species_iwf_n(ions%atom(ia)%species, ii_tmp, 1, ii)
+            end if
             if (this%orbital_scale_factor*species_get_iwf_radius(ions%atom(ia)%species, ii, is = 1) >= max_orb_radius) cycle
 
             this%atom(iorb) = ia
@@ -595,7 +616,7 @@ contains
       end if
 
       ! this is determined by the stencil we are using and the spacing
-      this%lapdist = maxval(abs(gr%mesh%idx%enlarge)*gr%mesh%spacing)
+      this%lapdist = maxval(abs(gr%idx%enlarge)*gr%spacing)
 
       ! calculate the radius of each orbital
       SAFE_ALLOCATE(this%radius(1:ions%natoms))
@@ -606,6 +627,8 @@ contains
         maxradius = M_ZERO
         do iorb = 1, norbs
           call species_iwf_ilm(ions%atom(iatom)%species, iorb, 1, ii, ll, mm)
+          ! For all-electron species, we need to use the principal quantum number
+          if(species_is_full(ions%atom(iatom)%species)) call species_iwf_n(ions%atom(iatom)%species, iorb, 1, ii)
           maxradius = max(maxradius, species_get_iwf_radius(ions%atom(iatom)%species, ii, is = 1))
         end do
 
@@ -623,7 +646,7 @@ contains
 #ifndef HAVE_SCALAPACK
       this%parallel = .false.
 #else
-      this%parallel = (st%parallel_in_states .or. gr%mesh%parallel_in_domains) &
+      this%parallel = (st%parallel_in_states .or. gr%parallel_in_domains) &
         .and. .not. blacs_proc_grid_null(st%dom_st_proc_grid)
 
       if (this%parallel) then
@@ -719,15 +742,14 @@ contains
     ! By default, we want to use vxc for the LCAO.
     ! However, we can only do this if vxc depends on the density only
     ! For cases like MGGA or hybrids, OEP, we cannot do this
-    use_vxc = .true.
-    if (xc_is_orbital_dependent(hm%xc)) use_vxc = .false.
+    use_vxc = .not. (xc_is_orbital_dependent(hm%xc) .or. ks%sic%level == SIC_PZ_OEP)
 
     if (.not. present(st_start)) then
       call lcao_guess_density(lcao, namespace, st, gr, hm, ions, st%qtot, st%d%ispin, st%d%spin_channels, st%rho)
 
       if (st%d%ispin > UNPOLARIZED) then
         ASSERT(present(lmm_r))
-        call write_magnetic_moments(gr%mesh, st, ions, gr%der%boundaries, lmm_r, namespace=namespace)
+        call write_magnetic_moments(gr, st, ions, gr%der%boundaries, lmm_r, namespace=namespace)
       end if
 
       ! set up Hamiltonian (we do not call v_ks_h_setup here because we do not want to
@@ -758,15 +780,15 @@ contains
 
       ! In some rare cases, like bad pseudopotentials with unbound orbitals,
       ! we might not have enough orbitals to go up to the Fermi energy
-      ! In this case, we cannot set the eigenvales to a huge value, as 
+      ! In this case, we cannot set the eigenvales to a huge value, as
       ! the smearing will not converge. We set them to zero then
       select case (st%d%ispin)
       case (UNPOLARIZED)
-       required_min_nst = int(st%qtot/2)
+        required_min_nst = int(st%qtot/2)
       case (SPIN_POLARIZED)
-       required_min_nst = int(st%qtot/2)
+        required_min_nst = int(st%qtot/2)
       case (SPINORS)
-       required_min_nst = int(st%qtot)
+        required_min_nst = int(st%qtot)
       end select
       if (st%smear%method /= SMEAR_FIXED_OCC .and. st%smear%method /= SMEAR_SEMICONDUCTOR) then
         if (lcao%norbs <= required_min_nst .and. lcao%norbs < st%nst) then
@@ -775,7 +797,7 @@ contains
       end if
 
       if (.not. present(st_start)) then
-        call states_elec_fermi(st, namespace, gr%mesh)
+        call states_elec_fermi(st, namespace, gr)
         call states_elec_write_eigenvalues(min(st%nst, lcao%norbs), st, space, hm%kpoints, namespace=namespace)
 
         ! Update the density and the Hamiltonian
@@ -784,7 +806,7 @@ contains
             calc_eigenval = .false., calc_current=.false.)
           if (st%d%ispin > UNPOLARIZED) then
             ASSERT(present(lmm_r))
-            call write_magnetic_moments(gr%mesh, st, ions, gr%der%boundaries, lmm_r, namespace=namespace)
+            call write_magnetic_moments(gr, st, ions, gr%der%boundaries, lmm_r, namespace=namespace)
           end if
         end if
       end if
@@ -805,11 +827,11 @@ contains
       end if
 
       ! Randomly generate the initial wavefunctions.
-      call states_elec_generate_random(st, gr%mesh, hm%kpoints, ist_start_ = st_start_random, normalized = .false.)
+      call states_elec_generate_random(st, gr, hm%kpoints, ist_start_ = st_start_random, normalized = .false.)
 
       call messages_write('Orthogonalizing wavefunctions.')
       call messages_info(namespace=namespace)
-      call states_elec_orthogonalize(st, namespace, gr%mesh)
+      call states_elec_orthogonalize(st, namespace, gr)
 
       if (.not. lcao_done) then
         ! If we are doing unocc calculation, do not mess with the correct eigenvalues and occupations
@@ -817,7 +839,7 @@ contains
         call v_ks_calc(ks, namespace, space, hm, st, ions, ext_partners, &
           calc_eigenval=.not. present(st_start), calc_current=.false.) ! get potentials
         if (.not. present(st_start)) then
-          call states_elec_fermi(st, namespace, gr%mesh) ! occupations
+          call states_elec_fermi(st, namespace, gr) ! occupations
         end if
 
       end if
@@ -827,7 +849,7 @@ contains
       if (st_start > 1) then
         call messages_write('Orthogonalizing wavefunctions.')
         call messages_info(namespace=namespace)
-        call states_elec_orthogonalize(st, namespace, gr%mesh)
+        call states_elec_orthogonalize(st, namespace, gr)
       end if
 
     end if
@@ -859,6 +881,8 @@ contains
     SAFE_DEALLOCATE_A(this%ddim)
     SAFE_DEALLOCATE_A(this%cst)
     SAFE_DEALLOCATE_A(this%ck)
+    SAFE_DEALLOCATE_A(this%dbuff_single)
+    SAFE_DEALLOCATE_A(this%zbuff_single)
     SAFE_DEALLOCATE_A(this%dbuff)
     SAFE_DEALLOCATE_A(this%zbuff)
 
@@ -977,11 +1001,11 @@ contains
   subroutine lcao_atom_density(this, st, mesh, ions, iatom, spin_channels, rho)
     type(lcao_t),             intent(inout) :: this
     type(states_elec_t),      intent(in)    :: st
-    type(mesh_t),             intent(in)    :: mesh
+    class(mesh_t),            intent(in)    :: mesh
     type(ions_t),     target, intent(in)    :: ions
     integer,                  intent(in)    :: iatom
     integer,                  intent(in)    :: spin_channels
-    FLOAT,                    intent(inout) :: rho(:, :) !< (gr%mesh%np, spin_channels)
+    FLOAT,                    intent(inout) :: rho(:, :) !< (gr%np, spin_channels)
 
     FLOAT, allocatable :: dorbital(:, :)
     CMPLX, allocatable :: zorbital(:, :)
@@ -1070,6 +1094,13 @@ contains
         ions%pos(:, iatom), mesh, spin_channels, rho)
     end if
 
+    ! The above code can sometimes return negative values of the density. Here we avoid introducing
+    ! them in the calculation of v_s, mixing, ...
+    !$omp parallel do simd
+    do ip = 1, mesh%np
+      rho(ip, 1) = max(rho(ip, 1), M_ZERO)
+    end do
+
     POP_SUB(lcao_atom_density)
   end subroutine lcao_atom_density
 
@@ -1092,8 +1123,6 @@ contains
     FLOAT :: rr, rnd, phi, theta, mag(1:3), lmag, n1, n2,arg
     FLOAT, allocatable :: atom_rho(:,:)
     logical :: parallelized_in_atoms
-    type(symmetrizer_t) :: symmetrizer
-
 
     PUSH_SUB(lcao_guess_density)
 
@@ -1141,45 +1170,44 @@ contains
     rho = M_ZERO
     select case (gmd_opt)
     case (INITRHO_PARAMAGNETIC)
-      SAFE_ALLOCATE(atom_rho(1:gr%mesh%np, 1:spin_channels))
+      SAFE_ALLOCATE(atom_rho(1:gr%np, 1:spin_channels))
 
       parallelized_in_atoms = .true.
 
       do ia = ions%atoms_dist%start, ions%atoms_dist%end
-        call lcao_atom_density(this, st, gr%mesh, ions, ia, spin_channels, atom_rho)
-        rho(1:gr%mesh%np, 1:spin_channels) = rho(1:gr%mesh%np, 1:spin_channels) + &
-          atom_rho(1:gr%mesh%np, 1:spin_channels)
+        call lcao_atom_density(this, st, gr, ions, ia, spin_channels, atom_rho)
+        call lalg_axpy(gr%np, spin_channels, M_ONE, atom_rho, rho)
       end do
 
       if (spin_channels == 2) then
-        rho(1:gr%mesh%np, 1) = M_HALF*(sum(rho(1:gr%mesh%np, 1:2), dim=2))
-        rho(1:gr%mesh%np, 2) = rho(1:gr%mesh%np, 1)
+        rho(1:gr%np, 1) = M_HALF*(sum(rho(1:gr%np, 1:2), dim=2))
+        rho(1:gr%np, 2) = rho(1:gr%np, 1)
       end if
 
     case (INITRHO_FERROMAGNETIC)
-      SAFE_ALLOCATE(atom_rho(1:gr%mesh%np, 1:2))
+      SAFE_ALLOCATE(atom_rho(1:gr%np, 1:2))
 
       parallelized_in_atoms = .true.
 
       rho = M_ZERO
       do ia = ions%atoms_dist%start, ions%atoms_dist%end
-        call lcao_atom_density(this, st, gr%mesh, ions, ia, 2, atom_rho(1:gr%mesh%np, 1:2))
-        rho(1:gr%mesh%np, 1:2) = rho(1:gr%mesh%np, 1:2) + atom_rho(1:gr%mesh%np, 1:2)
+        call lcao_atom_density(this, st, gr, ions, ia, 2, atom_rho(1:gr%np, 1:2))
+        rho(1:gr%np, 1:2) = rho(1:gr%np, 1:2) + atom_rho(1:gr%np, 1:2)
       end do
 
     case (INITRHO_RANDOM) ! Randomly oriented spins
-      SAFE_ALLOCATE(atom_rho(1:gr%mesh%np, 1:2))
+      SAFE_ALLOCATE(atom_rho(1:gr%np, 1:2))
       do ia = 1, ions%natoms
-        call lcao_atom_density(this, st, gr%mesh, ions, ia, 2, atom_rho)
+        call lcao_atom_density(this, st, gr, ions, ia, 2, atom_rho)
 
         if (ispin == SPIN_POLARIZED) then
           call quickrnd(iseed, rnd)
           rnd = rnd - M_HALF
           if (rnd > M_ZERO) then
-            rho(1:gr%mesh%np, 1:2) = rho(1:gr%mesh%np, 1:2) + atom_rho(1:gr%mesh%np, 1:2)
+            rho(1:gr%np, 1:2) = rho(1:gr%np, 1:2) + atom_rho(1:gr%np, 1:2)
           else
-            rho(1:gr%mesh%np, 1) = rho(1:gr%mesh%np, 1) + atom_rho(1:gr%mesh%np, 2)
-            rho(1:gr%mesh%np, 2) = rho(1:gr%mesh%np, 2) + atom_rho(1:gr%mesh%np, 1)
+            rho(1:gr%np, 1) = rho(1:gr%np, 1) + atom_rho(1:gr%np, 2)
+            rho(1:gr%np, 2) = rho(1:gr%np, 2) + atom_rho(1:gr%np, 1)
           end if
         elseif (ispin == SPINORS) then
           call quickrnd(iseed, phi)
@@ -1187,7 +1215,7 @@ contains
           phi = phi*M_TWO*M_PI
           theta = theta*M_PI*M_HALF
 
-          call accumulate_rotated_density(gr%mesh, rho, atom_rho, theta, phi)
+          call accumulate_rotated_density(gr, rho, atom_rho, theta, phi)
         end if
       end do
 
@@ -1222,7 +1250,7 @@ contains
         call messages_fatal(1, namespace=namespace)
       end if
 
-      SAFE_ALLOCATE(atom_rho(1:gr%mesh%np, 1:2))
+      SAFE_ALLOCATE(atom_rho(1:gr%np, 1:2))
       do ia = 1, ions%natoms
         !Read from AtomsMagnetDirection block
         if (ispin == SPIN_POLARIZED) then
@@ -1238,21 +1266,21 @@ contains
         end if
 
         !Get atomic density
-        call lcao_atom_density(this, st, gr%mesh, ions, ia, 2, atom_rho)
+        call lcao_atom_density(this, st, gr, ions, ia, 2, atom_rho)
 
         !Scale magnetization density
-        n1 = dmf_integrate(gr%mesh, atom_rho(:, 1))
-        n2 = dmf_integrate(gr%mesh, atom_rho(:, 2))
+        n1 = dmf_integrate(gr, atom_rho(:, 1))
+        n2 = dmf_integrate(gr, atom_rho(:, 2))
 
         if (lmag > n1 + n2) then
           mag = mag*(n1 + n2)/lmag
           lmag = n1 + n2
         elseif (abs(lmag) <= M_EPSILON) then
           if (abs(n1 - n2) <= M_EPSILON) then
-            call lalg_axpy(gr%mesh%np, 2, M_ONE, atom_rho, rho)
+            call lalg_axpy(gr%np, 2, M_ONE, atom_rho, rho)
           else
             !$omp parallel do simd
-            do ip = 1, gr%mesh%np
+            do ip = 1, gr%np
               atom_rho(ip, 1) = M_HALF*(atom_rho(ip, 1) + atom_rho(ip, 2))
               rho(ip, 1) = rho(ip, 1) + atom_rho(ip, 1)
               rho(ip, 2) = rho(ip, 2) + atom_rho(ip, 1)
@@ -1263,11 +1291,11 @@ contains
 
         if (n1 - n2 /= lmag .and. n2 /= M_ZERO) then
           if (n1 - n2 < lmag) then
-            call lalg_axpy(gr%mesh%np, (lmag - n1 + n2)/M_TWO/n2, atom_rho(:, 2), atom_rho(:, 1))
-            call lalg_scal(gr%mesh%np, (n1 + n2 - lmag)/M_TWO/n2, atom_rho(:, 2))
+            call lalg_axpy(gr%np, (lmag - n1 + n2)/M_TWO/n2, atom_rho(:, 2), atom_rho(:, 1))
+            call lalg_scal(gr%np, (n1 + n2 - lmag)/M_TWO/n2, atom_rho(:, 2))
           elseif (n1 - n2 > lmag) then
-            call lalg_axpy(gr%mesh%np, (n1 - n2 - lmag)/M_TWO/n1, atom_rho(:, 1), atom_rho(:, 2))
-            call lalg_scal(gr%mesh%np, (n1 + n2 + lmag)/M_TWO/n1, atom_rho(:, 1))
+            call lalg_axpy(gr%np, (n1 - n2 - lmag)/M_TWO/n1, atom_rho(:, 1), atom_rho(:, 2))
+            call lalg_scal(gr%np, (n1 + n2 + lmag)/M_TWO/n1, atom_rho(:, 1))
           end if
         end if
 
@@ -1275,10 +1303,10 @@ contains
         if (ispin == SPIN_POLARIZED) then
 
           if (mag(1) > M_ZERO) then
-            call lalg_axpy(gr%mesh%np, 2, M_ONE, atom_rho, rho)
+            call lalg_axpy(gr%np, 2, M_ONE, atom_rho, rho)
           else
-            call lalg_axpy(gr%mesh%np, M_ONE, atom_rho(:,2), rho(:,1))
-            call lalg_axpy(gr%mesh%np, M_ONE, atom_rho(:,1), rho(:,2))
+            call lalg_axpy(gr%np, M_ONE, atom_rho(:,2), rho(:,1))
+            call lalg_axpy(gr%np, M_ONE, atom_rho(:,1), rho(:,2))
           end if
 
         elseif (ispin == SPINORS) then
@@ -1302,7 +1330,7 @@ contains
             end if
           end if
           theta = M_HALF*theta
-          call accumulate_rotated_density(gr%mesh, rho, atom_rho, theta, phi)
+          call accumulate_rotated_density(gr, rho, atom_rho, theta, phi)
         end if
       end do
 
@@ -1314,18 +1342,18 @@ contains
     if (ions%atoms_dist%parallel .and. parallelized_in_atoms) then
       ! NOTE: if random or user_defined are made parallelized in atoms, below should be st%d%nspin instead of spin_channels
       do is = 1, spin_channels
-        call lalg_copy(gr%mesh%np, rho(:,is), atom_rho(:,1))
-        call ions%atoms_dist%mpi_grp%allreduce(atom_rho(1, 1), rho(1, is), gr%mesh%np, MPI_FLOAT, MPI_SUM)
+        call lalg_copy(gr%np, rho(:,is), atom_rho(:,1))
+        call ions%atoms_dist%mpi_grp%allreduce(atom_rho(1, 1), rho(1, is), gr%np, MPI_FLOAT, MPI_SUM)
       end do
     end if
 
     ! we now renormalize the density (necessary if we have a charged system)
     rr = M_ZERO
     do is = 1, spin_channels
-      rr = rr + dmf_integrate(gr%mesh, rho(:, is), reduce = .false.)
+      rr = rr + dmf_integrate(gr, rho(:, is), reduce = .false.)
     end do
-    if (gr%mesh%parallel_in_domains) then
-      call gr%mesh%allreduce(rr)
+    if (gr%parallel_in_domains) then
+      call gr%allreduce(rr)
     end if
 
     write(message(1),'(a,f13.6)')'Info: Unnormalized total charge = ', rr
@@ -1337,25 +1365,19 @@ contains
     end if
     rr = M_ZERO
     do is = 1, spin_channels
-      rr = rr + dmf_integrate(gr%mesh, rho(:, is), reduce = .false.)
+      rr = rr + dmf_integrate(gr, rho(:, is), reduce = .false.)
     end do
-    if (gr%mesh%parallel_in_domains) then
-      call gr%mesh%allreduce(rr)
+    if (gr%parallel_in_domains) then
+      call gr%allreduce(rr)
     end if
 
     write(message(1),'(a,f13.6)')'Info: Renormalized total charge = ', rr
     call messages_info(1, namespace=namespace)
 
     if (st%symmetrize_density) then
-      call symmetrizer_init(symmetrizer, gr%mesh, gr%symm)
-
       do is = 1, st%d%nspin
-        call dsymmetrizer_apply(symmetrizer, gr%mesh, field = rho(:, is), &
-          symmfield = atom_rho(:, 1))
-        call lalg_copy(gr%mesh%np, atom_rho(:, 1), rho(:, is))
+        call dgrid_symmetrize_scalar_field(gr, rho(:, is))
       end do
-
-      call symmetrizer_end(symmetrizer)
     end if
 
     SAFE_DEALLOCATE_A(atom_rho)
@@ -1364,7 +1386,7 @@ contains
 
   ! ---------------------------------------------------------
   subroutine accumulate_rotated_density(mesh, rho, atom_rho, theta, phi)
-    type(mesh_t),        intent(in)    :: mesh
+    class(mesh_t),       intent(in)    :: mesh
     FLOAT,               intent(inout) :: rho(:,:)
     FLOAT,               intent(in)    :: atom_rho(:,:)
     FLOAT,               intent(in)    :: theta, phi

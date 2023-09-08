@@ -14,7 +14,7 @@ if (available scalapack); then
     match ; Overlap 6 6 ; GREPFIELD(out, '      6      6', 3) ;  0.100000E+01
     match ; Overlap 7 8 ; GREPFIELD(out, '      7      8', 3) ;  0.201708E-14
     match ; Overlap 9 9 ; GREPFIELD(out, '      9      9', 3) ;  0.100000E+01
-else    
+else
     match; Error;    GREPCOUNT(err, 'cholesky_parallel' ); 1
 endif
 

@@ -1,5 +1,5 @@
-////////////////////////////////////////////////////////////////////////////////  
-// Copyright (c) 2013, Lawrence Livermore National Security, LLC. 
+////////////////////////////////////////////////////////////////////////////////
+// Copyright (c) 2013, Lawrence Livermore National Security, LLC.
 // qb@ll:  Qbox at Lawrence Livermore
 //
 // This file is part of qb@ll.
@@ -7,8 +7,8 @@
 // Produced at the Lawrence Livermore National Laboratory.
 // Written by Xavier Andrade (xavier@llnl.gov), Erik Draeger
 // (draeger1@llnl.gov) and Francois Gygi (fgygi@ucdavis.edu).
-// Based on the Qbox code by Francois Gygi Copyright (c) 2008 
-// LLNL-CODE-635376. All rights reserved. 
+// Based on the Qbox code by Francois Gygi Copyright (c) 2008
+// LLNL-CODE-635376. All rights reserved.
 //
 // qb@ll is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -33,48 +33,47 @@
 
 #include <vector>
 
-#define SPLINE_FLAT_BC 0.0       /* Flat boundary condition (y'=0) */
-#define SPLINE_NATURAL_BC 1.e31  /* Natural boundary condition (Y"=0) */
+#define SPLINE_FLAT_BC 0.0      /* Flat boundary condition (y'=0) */
+#define SPLINE_NATURAL_BC 1.e31 /* Natural boundary condition (Y"=0) */
 
-
-void spline(const double *x, const double *y, int n, double yp1, double ypn, double *y2);
-void splint (const double *xa, const double *ya, const double *y2a, int n, double x, double *y);
-void splintd (const double *xa, const double *ya, const double *y2a, int n, double x, double *y, double *dy);
+void spline(const double *x, const double *y, int n, double yp1, double ypn,
+            double *y2);
+void splint(const double *xa, const double *ya, const double *y2a, int n,
+            double x, double *y);
+void splintd(const double *xa, const double *ya, const double *y2a, int n,
+             double x, double *y, double *dy);
 
 class Spline {
 
- public:
+public:
+  Spline() {}
 
-  Spline(){
-  }
-  
-  void fit(const double *x, double *y, int n, double yp1, double ypn){
+  void fit(const double *x, double *y, int n, double yp1, double ypn) {
     x_.resize(n);
     y_.resize(n);
     y2_.resize(n);
-    
-    for(int ii = 0; ii < n; ii++){
+
+    for (int ii = 0; ii < n; ii++) {
       x_[ii] = x[ii];
       y_[ii] = y[ii];
     }
     spline(x, y, n, yp1, ypn, &y2_[0]);
   }
 
-  double value(const double & x) const {
+  double value(const double &x) const {
     double y;
     splint(&x_[0], &y_[0], &y2_[0], x_.size(), x, &y);
     return y;
   }
-  
-  void derivative(const double & x, double & y, double & dy) const {
+
+  void derivative(const double &x, double &y, double &dy) const {
     splintd(&x_[0], &y_[0], &y2_[0], x_.size(), x, &y, &dy);
   }
- private :
 
+private:
   std::vector<double> x_;
   std::vector<double> y_;
   std::vector<double> y2_;
-  
 };
 
 #endif

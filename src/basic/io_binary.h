@@ -31,12 +31,12 @@ comment style should be used.
 /* These values must not be changed, as they are used in the restart files */
 #endif
 
-#define TYPE_NONE          -1
-#define TYPE_FLOAT          0
-#define TYPE_DOUBLE         1
-#define TYPE_FLOAT_COMPLEX  2
+#define TYPE_NONE -1
+#define TYPE_FLOAT 0
+#define TYPE_DOUBLE 1
+#define TYPE_FLOAT_COMPLEX 2
 #define TYPE_DOUBLE_COMPLEX 3
-#define TYPE_INT_32         4
-#define TYPE_INT_64         5
+#define TYPE_INT_32 4
+#define TYPE_INT_64 5
 
 #endif

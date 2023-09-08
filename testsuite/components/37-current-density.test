@@ -1,0 +1,22 @@
+# -*- coding: utf-8 mode: shell-script -*-
+
+Test       : Oct-test Current Density Components
+Program    : octopus
+TestGroups : short-run, components
+Enabled    : Yes
+
+Processors: 1
+Input: 37-current-density.inp
+Precision : 8.0e-6
+match ; Error norm paramagnetic current x-dir   ; GREPFIELD(out, 'idir =           1 , norm2(delta paramagnetic)', 7) ; 1.7737355626366226E-003
+match ; Error norm diamagnetic current y-dir    ; GREPFIELD(out, 'idir =           2 , norm2(delta diamagnetic)', 7)  ; 0.0
+
+Precision : 1.0e-8
+match ; Current diamagnetic (-3, -3) y-dir ; LINEFIELD(current_dia-y.z\=0,   286, 3) ;  5.49661621382504E-006
+match ; Current diamagnetic (0, 2)   y-dir ; LINEFIELD(current_dia-y.z\=0,   1026, 3) ; 0.0
+match ; Current paramagnetic (-2, 1) x-dir ; LINEFIELD(current_para-x.z\=0,   526, 3) ;   1.57288564720280E-003
+Precision : 3.0e-6
+match ; Current paramagnetic (0.4, -0.4) x-dir ; LINEFIELD(current_para-x.z\=0,  1115, 3) ; -3.85829961242028E-003
+Precision : 1.0e-8
+match ; Current magnetization (0, 3.0) x-dir ; LINEFIELD(current_mag-x.z\=0,  1031, 3) ;   -4.33112607764636E-004
+match ; Current magnetization (4.0, 0.0) y-dir ; LINEFIELD(current_mag-y.z\=0,   1916, 3) ;  8.38257617058655E-005

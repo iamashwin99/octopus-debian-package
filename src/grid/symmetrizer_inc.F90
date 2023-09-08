@@ -20,7 +20,7 @@
 subroutine X(symmetrizer_apply)(this, mesh, field, field_vector, symmfield, symmfield_vector, &
   suppress_warning, reduced_quantity)
   type(symmetrizer_t),         intent(in)    :: this
-  type(mesh_t),                intent(in)    :: mesh
+  class(mesh_t),               intent(in)    :: mesh
   R_TYPE,    optional, target, intent(in)    :: field(:) !< (np)
   R_TYPE,    optional, target, intent(in)    :: field_vector(:, :)  !< (np, 3)
   R_TYPE,            optional, intent(out)   :: symmfield(:) !< (np)
@@ -107,6 +107,7 @@ subroutine X(symmetrizer_apply)(this, mesh, field, field_vector, symmfield, symm
   nops = symmetries_number(this%symm)
   weight = M_ONE/nops
 
+  !$omp parallel do private(acc, acc_vector, iop, ipsrc)
   do ip = 1, mesh%np
     if (present(field)) acc = M_ZERO
     if (present(field_vector)) acc_vector(1:3) = M_ZERO
@@ -165,7 +166,7 @@ end subroutine X(symmetrizer_apply)
 !Here iop can be negative, indicating the spatial symmetry plus time reversal symmetry
 subroutine X(symmetrizer_apply_single)(this, mesh, iop, field, symmfield)
   type(symmetrizer_t),         intent(in)    :: this
-  type(mesh_t),                intent(in)    :: mesh
+  class(mesh_t),               intent(in)    :: mesh
   integer,                     intent(in)    :: iop
   R_TYPE,              target, intent(in)    :: field(:) !< (np)
   R_TYPE,                      intent(out)   :: symmfield(:) !< (np)
@@ -195,10 +196,12 @@ subroutine X(symmetrizer_apply_single)(this, mesh, iop, field, symmfield)
   end if
 
   if (iop>0) then
+    !$omp parallel do
     do ip = 1, mesh%np
       symmfield(ip) = field_global(this%map(ip,abs(iop)))
     end do
   else
+    !$omp parallel do
     do ip = 1, mesh%np
       symmfield(ip) = R_CONJ(field_global(this%map(ip,abs(iop))))
     end do

@@ -18,8 +18,9 @@
 
 #include "global.h"
 
-!>  general module for modelmb particles (e.g. 4 electrons in 1D equiv to
-!!  1 in 4D). Also calculate different densities on request.
+!>  @brief general module for modelmb particles
+!!
+!! (e.g. 4 electrons in 1D equiv to 1 in 4D). Also calculate different densities on request.
 module modelmb_particles_oct_m
   use debug_oct_m
   use global_oct_m
@@ -46,10 +47,10 @@ module modelmb_particles_oct_m
   type modelmb_particle_t
     private
     integer, public :: ndim              !< dimensionality of modelmb space each
-    !                                    !!  particle lives in
+    !!                                      particle lives in
 
     integer, public :: ntype_of_particle !< number of different types of particles
-    !                                    !!  modelmb in MAX_DIM dimensional space
+    !!                                      modelmb in MAX_DIM dimensional space
     integer :: max_particles_per_type    !< max number of different particle
 
     integer, public :: nparticle = 0     !< number of particles

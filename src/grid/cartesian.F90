@@ -86,7 +86,7 @@ contains
   end subroutine cartesian_copy
 
   ! ---------------------------------------------------------
-  function cartesian_to_cartesian(this, chi) result(xx)
+  pure function cartesian_to_cartesian(this, chi) result(xx)
     class(cartesian_t), target, intent(in)  :: this
     FLOAT,                      intent(in)  :: chi(:)
     FLOAT :: xx(1:this%dim)
@@ -98,7 +98,7 @@ contains
   end function cartesian_to_cartesian
 
   ! ---------------------------------------------------------
-  function cartesian_from_cartesian(this, xx) result(chi)
+  pure function cartesian_from_cartesian(this, xx) result(chi)
     class(cartesian_t), target, intent(in)  :: this
     FLOAT,                      intent(in)  :: xx(:)
     FLOAT :: chi(1:this%dim)
@@ -110,7 +110,7 @@ contains
   end function cartesian_from_cartesian
 
   ! ---------------------------------------------------------
-  subroutine dcartesian_vector_from_cartesian(this, xx, vv, src)
+  pure subroutine dcartesian_vector_from_cartesian(this, xx, vv, src)
     class(cartesian_t), intent(in)    :: this
     FLOAT,              intent(in)    :: xx(:)
     FLOAT,              intent(inout) :: vv(:)
@@ -126,7 +126,7 @@ contains
   end subroutine dcartesian_vector_from_cartesian
 
   ! ---------------------------------------------------------
-  subroutine zcartesian_vector_from_cartesian(this, xx, vv, src)
+  pure subroutine zcartesian_vector_from_cartesian(this, xx, vv, src)
     class(cartesian_t), intent(in)    :: this
     FLOAT,              intent(in)    :: xx(:)
     CMPLX,              intent(inout) :: vv(:)
@@ -142,7 +142,7 @@ contains
   end subroutine zcartesian_vector_from_cartesian
 
   ! ---------------------------------------------------------
-  subroutine dcartesian_covector_to_cartesian(this, xx, cv, src)
+  pure subroutine dcartesian_covector_to_cartesian(this, xx, cv, src)
     class(cartesian_t), intent(in)    :: this
     FLOAT,              intent(in)    :: xx(:)
     FLOAT,              intent(inout) :: cv(:)
@@ -158,7 +158,7 @@ contains
   end subroutine dcartesian_covector_to_cartesian
 
   ! ---------------------------------------------------------
-  subroutine zcartesian_covector_to_cartesian(this, xx, cv, src)
+  pure subroutine zcartesian_covector_to_cartesian(this, xx, cv, src)
     class(cartesian_t), intent(in)    :: this
     FLOAT,              intent(in)    :: xx(:)
     CMPLX,              intent(inout) :: cv(:)
@@ -174,7 +174,7 @@ contains
   end subroutine zcartesian_covector_to_cartesian
 
   ! ---------------------------------------------------------
-  FLOAT function cartesian_det_jac(this, xx, chi) result(jdet)
+  pure FLOAT function cartesian_det_jac(this, xx, chi) result(jdet)
     class(cartesian_t),    intent(in)  :: this
     FLOAT,                 intent(in)  :: xx(:)
     FLOAT,                 intent(in)  :: chi(:)

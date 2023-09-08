@@ -30,16 +30,17 @@ subroutine X(accel_herk)(uplo, trans, n, k, alpha, a, offa, lda, beta, c, offc, 
   integer(i8),       intent(in)    :: offc
   integer(i8),       intent(in)    :: ldc
 
-#ifdef HAVE_OPENCL
+#if defined(HAVE_CLBLAS) || defined(HAVE_CLBLAST)
   integer :: ierr
 #endif
 #ifdef HAVE_CUDA
   type(accel_mem_t) :: alpha_buffer, beta_buffer
+  type(c_ptr) :: A_with_offset, C_with_offset
 #endif
 
   PUSH_SUB(X(accel_herk))
 
-#ifdef HAVE_OPENCL
+#if defined(HAVE_CLBLAS) || defined(HAVE_CLBLAST)
 #ifdef R_TREAL
   call clblasDsyrkEx(order = clblasColumnMajor, uplo = uplo, transA = trans, N = n, K = k, &
     alpha = alpha, A = a%mem, offA = offa, lda = lda, &
@@ -60,8 +61,8 @@ subroutine X(accel_herk)(uplo, trans, n, k, alpha, a, offa, lda, beta, c, offc, 
 
 #ifdef HAVE_CUDA
 
-  ASSERT(offa == 0)
-  ASSERT(offc == 0)
+  A_with_offset = X(accel_get_pointer_with_offset)(a%mem, offa)
+  C_with_offset = X(accel_get_pointer_with_offset)(c%mem, offc)
 
   call accel_create_buffer(alpha_buffer, ACCEL_MEM_READ_ONLY, TYPE_FLOAT, 1)
   call accel_create_buffer(beta_buffer, ACCEL_MEM_READ_ONLY, TYPE_FLOAT, 1)
@@ -73,22 +74,25 @@ subroutine X(accel_herk)(uplo, trans, n, k, alpha, a, offa, lda, beta, c, offc, 
   call cuda_blas_dsyrk(handle = accel%cublas_handle, uplo = uplo, trans = trans, &
     n = n, k = k, &
     alpha = alpha_buffer%mem, &
-    A = a%mem, lda = lda, &
+    A = A_with_offset, lda = lda, &
     beta = beta_buffer%mem, &
-    C = c%mem, ldc = ldc)
+    C = C_with_offset, ldc = ldc)
 #else
   call cuda_blas_zherk(handle = accel%cublas_handle, uplo = uplo, trans = trans, &
     n = n, k = k, &
     alpha = alpha_buffer%mem, &
-    A = a%mem, lda = lda, &
+    A = A_with_offset, lda = lda, &
     beta = beta_buffer%mem, &
-    C = c%mem, ldc = ldc)
+    C = C_with_offset, ldc = ldc)
 #endif
 
   call accel_finish()
 
   call accel_release_buffer(alpha_buffer)
   call accel_release_buffer(beta_buffer)
+
+  call accel_clean_pointer(A_with_offset)
+  call accel_clean_pointer(C_with_offset)
 #endif
 
   POP_SUB(X(accel_herk))
@@ -113,8 +117,9 @@ subroutine X(accel_trsm)(side, uplo, trans, diag, m, n, alpha, a, offa, lda, b, 
 
 #ifdef HAVE_CUDA
   type(accel_mem_t) :: alpha_buffer
+  type(c_ptr) :: A_with_offset, B_with_offset
 #endif
-#ifdef HAVE_OPENCL
+#if defined(HAVE_CLBLAS) || defined(HAVE_CLBLAST)
   integer :: ierr
 #endif
 
@@ -122,17 +127,17 @@ subroutine X(accel_trsm)(side, uplo, trans, diag, m, n, alpha, a, offa, lda, b, 
 
 #ifdef HAVE_CUDA
 
-  ASSERT(offa == 0)
-  ASSERT(offb == 0)
+  A_with_offset = X(accel_get_pointer_with_offset)(a%mem, offa)
+  B_with_offset = X(accel_get_pointer_with_offset)(b%mem, offb)
 
   call accel_create_buffer(alpha_buffer, ACCEL_MEM_READ_ONLY, R_TYPE_VAL, 1)
   call accel_write_buffer(alpha_buffer, alpha)
 
   call aX(cuda_blas_, trsm)(handle = accel%cublas_handle, side = side, uplo = uplo, trans = trans, diag = diag, &
-    m = m, n = n, alpha = alpha_buffer%mem, A = a%mem, lda = lda, B = b%mem, ldb = ldb)
+    m = m, n = n, alpha = alpha_buffer%mem, A = A_with_offset, lda = lda, B = B_with_offset, ldb = ldb)
 #endif
 
-#ifdef HAVE_OPENCL
+#if defined(HAVE_CLBLAS) || defined(HAVE_CLBLAST)
   call aX(clblas,trsmEx)(order = clblasColumnMajor, side = side, uplo = uplo, transA = trans, diag = diag, &
     M = m, N = n, alpha = alpha, A = a%mem, offA = offa, lda = lda, &
     B = b%mem, offB = offb, ldb = ldb, &
@@ -144,6 +149,8 @@ subroutine X(accel_trsm)(side, uplo, trans, diag, m, n, alpha, a, offa, lda, b, 
 
 #ifdef HAVE_CUDA
   call accel_release_buffer(alpha_buffer)
+  call accel_clean_pointer(A_with_offset)
+  call accel_clean_pointer(B_with_offset)
 #endif
 
   POP_SUB(X(accel_trsm))
@@ -169,16 +176,17 @@ subroutine X(accel_gemm)(transa, transb, m, n, k, alpha, A, offa, lda, B, offb, 
   integer(i8),        intent(in)    :: offc
   integer(i8),        intent(in)    :: ldc
 
-#ifdef HAVE_CLBLAS
+#if defined(HAVE_CLBLAS) || defined(HAVE_CLBLAST)
   integer :: ierr
 #endif
 #ifdef HAVE_CUDA
   type(accel_mem_t) :: alpha_buffer, beta_buffer
+  type(c_ptr) :: A_with_offset, B_with_offset, C_with_offset
 #endif
 
   PUSH_SUB(X(accel_gemm))
 
-#ifdef HAVE_CLBLAS
+#if defined(HAVE_CLBLAS) || defined(HAVE_CLBLAST)
 
   call aX(clblas,gemmEx)(order = clblasColumnMajor, transA = transa, transB = transb, &
     M = m, N = n, K = k, &
@@ -191,9 +199,9 @@ subroutine X(accel_gemm)(transa, transb, m, n, k, alpha, A, offa, lda, B, offb, 
 #endif
 #ifdef HAVE_CUDA
 
-  ASSERT(offa == 0)
-  ASSERT(offb == 0)
-  ASSERT(offc == 0)
+  A_with_offset = X(accel_get_pointer_with_offset)(a%mem, offa)
+  B_with_offset = X(accel_get_pointer_with_offset)(b%mem, offb)
+  C_with_offset = X(accel_get_pointer_with_offset)(c%mem, offc)
 
   call accel_create_buffer(alpha_buffer, ACCEL_MEM_READ_ONLY, R_TYPE_VAL, 1)
   call accel_create_buffer(beta_buffer, ACCEL_MEM_READ_ONLY, R_TYPE_VAL, 1)
@@ -203,15 +211,18 @@ subroutine X(accel_gemm)(transa, transb, m, n, k, alpha, A, offa, lda, B, offb, 
 
   call aX(cuda_blas_,gemm)(handle = accel%cublas_handle, transa = transa, transb = transb, &
     m = m, n = n, k = k, &
-    alpha = alpha_buffer%mem, a = a%mem, lda = lda, &
-    b = b%mem, ldb = ldb, &
-    beta = beta_buffer%mem, c = c%mem, ldc = ldc)
+    alpha = alpha_buffer%mem, a = A_with_offset, lda = lda, &
+    b = B_with_offset, ldb = ldb, &
+    beta = beta_buffer%mem, c = C_with_offset, ldc = ldc)
 
   call accel_finish()
 
   call accel_release_buffer(alpha_buffer)
   call accel_release_buffer(beta_buffer)
 
+  call accel_clean_pointer(A_with_offset)
+  call accel_clean_pointer(B_with_offset)
+  call accel_clean_pointer(C_with_offset)
 #endif
 
   POP_SUB(X(accel_gemm))
@@ -230,7 +241,7 @@ subroutine X(accel_dot)(n, x, offx, incx, y, offy, incy, res, offres)
   type(accel_mem_t), intent(inout) :: res
   integer(i8),       intent(in)    :: offres
 
-#ifdef HAVE_OPENCL
+#if defined(HAVE_CLBLAS) || defined(HAVE_CLBLAST)
   integer :: status
   type(accel_mem_t)  :: scratch_buffer
 #endif
@@ -247,7 +258,7 @@ subroutine X(accel_dot)(n, x, offx, incx, y, offy, incy, res, offres)
     y = y%mem, offy = offy, incy = incy, res = res%mem, offres = offres)
 #endif
 
-#ifdef HAVE_OPENCL
+#if defined(HAVE_CLBLAS) || defined(HAVE_CLBLAST)
   call accel_create_buffer(scratch_buffer, ACCEL_MEM_READ_WRITE, R_TYPE_VAL, n)
 
 #ifdef R_TREAL
@@ -282,7 +293,7 @@ subroutine X(accel_dotu)(n, x, offx, incx, y, offy, incy, res, offres)
   type(accel_mem_t), intent(inout) :: res
   integer(i8),       intent(in)    :: offres
 
-#ifdef HAVE_OPENCL
+#if defined(HAVE_CLBLAS) || defined(HAVE_CLBLAST)
   integer :: status
   type(accel_mem_t)  :: scratch_buffer
 #endif
@@ -299,7 +310,7 @@ subroutine X(accel_dotu)(n, x, offx, incx, y, offy, incy, res, offres)
     y = y%mem, offy = offy, incy = incy, res = res%mem, offres = offres)
 #endif
 
-#ifdef HAVE_OPENCL
+#if defined(HAVE_CLBLAS) || defined(HAVE_CLBLAST)
   call accel_create_buffer(scratch_buffer, ACCEL_MEM_READ_WRITE, R_TYPE_VAL, n)
 
 #ifdef R_TREAL
@@ -332,7 +343,7 @@ subroutine X(accel_nrm2)(n, x, offx, incx, res, offres)
   type(accel_mem_t), intent(inout) :: res
   integer(i8),       intent(in)    :: offres
 
-#ifdef HAVE_OPENCL
+#if defined(HAVE_CLBLAS) || defined(HAVE_CLBLAST)
   integer :: status
   type(accel_mem_t)  :: scratch_buffer
 #endif
@@ -345,7 +356,7 @@ subroutine X(accel_nrm2)(n, x, offx, incx, res, offres)
 #endif
 
 
-#ifdef HAVE_OPENCL
+#if defined(HAVE_CLBLAS) || defined(HAVE_CLBLAST)
   call accel_create_buffer(scratch_buffer, ACCEL_MEM_READ_WRITE, R_TYPE_VAL, n)
 
 #ifdef R_TREAL
@@ -381,7 +392,7 @@ subroutine X(accel_gemv)(transa, m, n, alpha, A, lda, x, incx, beta, y, incy)
   type(accel_mem_t),  intent(inout) :: y
   integer(i8),        intent(in)    :: incy
 
-#ifdef HAVE_CLBLAS
+#if defined(HAVE_CLBLAS) || defined(HAVE_CLBLAST)
   integer :: ierr
 #endif
 #ifdef HAVE_CUDA
@@ -390,15 +401,15 @@ subroutine X(accel_gemv)(transa, m, n, alpha, A, lda, x, incx, beta, y, incy)
 
   PUSH_SUB(X(accel_gemv))
 
-#ifdef HAVE_CLBLAS
+#if defined(HAVE_CLBLAS) || defined(HAVE_CLBLAST)
 
   call aX(clblas,gemvEx)(order = clblasColumnMajor, transA = transa, &
     M = m, N = n,  &
-    alpha = alpha, A = a%mem, offa = 0, lda = lda, &
-    x = x%mem, offx = 0, incx = incx, &
-    beta = beta, y = y%mem, offy = 0, incy = incy, &
+    alpha = alpha, A = a%mem, offa = 0_i8, lda = lda, &
+    x = x%mem, offx = 0_i8, incx = incx, &
+    beta = beta, y = y%mem, offy = 0_i8, incy = incy, &
     CommandQueue = accel%command_queue, status = ierr)
-  if (ierr /= clblasSuccess) call clblas_print_error(ierr, 'clblasXgemmEx')
+  if (ierr /= clblasSuccess) call clblas_print_error(ierr, 'clblasXgemvEx')
 
 #endif
 #ifdef HAVE_CUDA

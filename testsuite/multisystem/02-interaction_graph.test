@@ -15,6 +15,3 @@ match ; Earth-Sun interaction  ; GREPCOUNT(debug/interaction_graph.dot, '"Earth"
 match ; Earth-Moon interaction ; GREPCOUNT(debug/interaction_graph.dot, '"Earth" -> "Moon" \[label="gravity"\]') ; 1
 match ; Moon-Sun interaction   ; GREPCOUNT(debug/interaction_graph.dot, '"Moon" -> "Sun" \[label="gravity"\]') ; 1
 match ; Moon-Earth interaction ; GREPCOUNT(debug/interaction_graph.dot, '"Moon" -> "Earth" \[label="gravity"\]') ; 1
-
-
-

@@ -28,11 +28,11 @@ case $with_pnfft_prefix in
   yes | "") ;;
   no) acx_pnfft_ok=disable ;;
   *.a | *.so | *.so.* | *.o) LIBS_PFFT="-L$with_pfft_prefix" ;;
-  *) LIBS_PNFFT="-L$with_pnfft_prefix/lib"; 
-     FCFLAGS_PNFFT="$ax_cv_f90_modflag$with_pnfft_prefix/include" ;;  
+  *) LIBS_PNFFT="-L$with_pnfft_prefix/lib";
+     FCFLAGS_PNFFT="$ax_cv_f90_modflag$with_pnfft_prefix/include" ;;
 esac
 
-dnl The include dir must be specified when the library is given with a 
+dnl The include dir must be specified when the library is given with a
 dnl specified file to be compiled static (i.e. *.a etc.)
 AC_ARG_WITH(pnfft-include, [AS_HELP_STRING([--with-pnfft-include=DIR], [Directory where PNFFT Fortran include files were installed.])])
 case $with_pnfft_include in
@@ -53,15 +53,15 @@ acx_pnfft_save_LIBS="$LIBS"
 acx_pnfft_save_FCFLAGS="$FCFLAGS"
 
 FCFLAGS_PNFFT="$FCFLAGS_PNFFT $FCFLAGS_PFFT"
-FCFLAGS="$FCFLAGS_PNFFT  $acx_pnfft_save_FCFLAGS"    
+FCFLAGS="$FCFLAGS_PNFFT  $acx_pnfft_save_FCFLAGS"
 
 
-testprogram="AC_LANG_PROGRAM([],[ 
+testprogram="AC_LANG_PROGRAM([],[
     use, intrinsic :: iso_c_binding
     include 'fftw3-mpi.f03'
     include 'pfft.f03'
     include 'pnfft.f03'
-    
+
     call pnfft_init()
   ])"
 
@@ -81,7 +81,7 @@ if test x"$acx_pnfft_ok" = xno; then
 fi
 
 
-dnl Generic PNFFT library 
+dnl Generic PNFFT library
 if test $acx_pnfft_ok = no; then
   AC_MSG_CHECKING([for pnfft library with -lpnfft])
   if test "$LIBS_PNFFT" = ""; then
@@ -89,7 +89,7 @@ if test $acx_pnfft_ok = no; then
     AC_LINK_IFELSE($testprogram, [acx_pnfft_ok=yes; LIBS_PNFFT=" -lpnfft $LIBS_PFFT"], [])
   else
     LIBS="$LIBS_PNFFT -lpnfft $LIBS_PFFT $LIBS"
-    AC_LINK_IFELSE($testprogram, [acx_pnfft_ok=yes; LIBS_PNFFT="$LIBS_PNFFT -lpnfft $LIBS_PFFT"], [])  
+    AC_LINK_IFELSE($testprogram, [acx_pnfft_ok=yes; LIBS_PNFFT="$LIBS_PNFFT -lpnfft $LIBS_PFFT"], [])
   fi
   if test $acx_pnfft_ok = no; then
     AC_MSG_RESULT([$acx_pnfft_ok])
@@ -103,7 +103,7 @@ dnl Finally, execute ACTION-IF-FOUND/ACTION-IF-NOT-FOUND:
 if test x"$acx_pnfft_ok" = xyes; then
   AC_DEFINE(HAVE_PNFFT,1,[Defined if you have PNFFT library.])
 else
-  AC_MSG_WARN([Could not find PNFFT library. 
+  AC_MSG_WARN([Could not find PNFFT library.
                *** Will compile without PNFFT support])
   LIBS_PNFFT=""
   FCFLAGS_PNFFT=""

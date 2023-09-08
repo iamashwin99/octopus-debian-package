@@ -75,7 +75,8 @@ endif
 
 Input: 05-output.02-gs.inp
 match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
-match ; Total energy     ; GREPFIELD(static/info, 'Total       =', 3) ; -11.99584633
+Precision: 6.00e-08
+match ;  Total energy      ; GREPFIELD(static/info, 'Total       =', 3) ; -11.99499095
 
 #geometry
 Precision : 0.0001
@@ -85,9 +86,17 @@ match ; Geometry         ; LINEFIELD(static/geometry.xyz, 3, 3) ; 0.000000
 match ; DX Origin        ; LINEFIELD(static/density.dx, 2, 2) ; -2.645886
 match ; DX Delta         ; LINEFIELD(static/density.dx, 3, 2) ; 0.264589
 
-Precision : 2e-9
-match ; DX value 1       ; LINEFIELD(static/density.dx, 1195, 1) ; 0.000166986832631
-match ; DX value 2       ; LINEFIELD(static/density.dx, 1489, 1) ; 0.001133466426887
+Precision: 8.35e-14
+match ;  DX value 1        ; LINEFIELD(static/density.dx, 1195, 1) ; 0.00016699428471
+Precision: 5.67e-15
+match ;  DX value 2        ; LINEFIELD(static/density.dx, 1489, 1) ; 0.001133485125962
+
+# vtk output
+Precision: 1e-5
+match ; vtk origin        ; LINEFIELD(static/density.vtk, 6, 2) ; -2.645886
+match ; vtk spacing       ; LINEFIELD(static/density.vtk, 7, 2) ; 0.264589
+match ; vtk dim density   ; LINEFIELD(static/density.vtk, 9, 4) ; 1
+match ; vtk dim grad_v0   ; LINEFIELD(static/grad_v0.vtk, 9, 4) ; 3
 
 #axis output
 Precision : 0.0001
@@ -95,11 +104,12 @@ match ; Axis pos 1       ; LINEFIELD(static/density.y\=0\,z\=0, 2, 1) ; -2.64588
 match ; Axis pos 9       ; LINEFIELD(static/density.y\=0\,z\=0, 10, 1) ; -0.52917720859000
 match ; Axis pos 17      ; LINEFIELD(static/density.y\=0\,z\=0, 18, 1) ; 1.58753162577000
 
-Precision : 0.000000001
-match ; Axis value 1     ; LINEFIELD(static/density.y\=0\,z\=0, 2, 2) ; 2.911461358502725e-06
-Precision : 0.000001
-match ; Axis value 9     ; LINEFIELD(static/density.y\=0\,z\=0, 10, 2) ; 2.75939509225883E-001
-match ; Axis value 17    ; LINEFIELD(static/density.y\=0\,z\=0, 18, 2) ; 6.57093245587566E-003
+Precision: 6.54e-17
+match ;  Axis value 1      ; LINEFIELD(static/density.y\=0\,z\=0, 2, 2) ; 2.91217896608642e-06
+Precision: 1.38e-15
+match ;  Axis value 9      ; LINEFIELD(static/density.y\=0\,z\=0, 10, 2) ; 0.2759541183663524
+Precision: 3.29e-16
+match ;  Axis value 17     ; LINEFIELD(static/density.y\=0\,z\=0, 18, 2) ; 0.00657053365168544
 
 #plane output
 Precision : 0.0001
@@ -110,14 +120,14 @@ match ; Plane pos  30 Z  ; LINEFIELD(static/density.x\=0,  29, 2) ;  1.058354417
 match ; Plane pos 295 Y  ; LINEFIELD(static/density.x\=0, 294, 1) ;  1.58753162577000
 match ; Plane pos 295 Z  ; LINEFIELD(static/density.x\=0, 294, 2) ;  2.64588604295000E-001
 
-Precision : 0.000000001
-match ; Plane value 10   ; LINEFIELD(static/density.x\=0, 9, 3)   ; 2.23463660289829e-05
-match ; Plane value 30   ; LINEFIELD(static/density.x\=0, 29, 3)  ; 0.00018976363254441698
-Precision: 1.3e-09
-match ; Plane value 295  ; LINEFIELD(static/density.x\=0, 294, 3) ; 0.006066726226347375
-Precision : 0.000000001
-match ; Plane value 10 Grad-y v0 ; LINEFIELD(static/grad_v0-y.x\=0,   9, 3) ; -1.42667157278682E+001
-
+Precision: 4.43e-17
+match ;  Plane value 10    ; LINEFIELD(static/density.x\=0, 9, 3) ; 2.234822034667115e-05
+Precision: 9.50e-14
+match ;  Plane value 30    ; LINEFIELD(static/density.x\=0, 29, 3) ; 0.000189773592480007
+Precision: 3.03e-16
+match ;  Plane value 295   ; LINEFIELD(static/density.x\=0, 294, 3) ; 0.00606638921516642
+Precision: 7.13e-13
+match ;  Plane value 10 Grad-y v0  ; LINEFIELD(static/grad_v0-y.x\=0, 9, 3) ; -14.2667157278682
 
 #xcrysden
 match ; XCrySDen geometry; LINEFIELD(static/geometry.xsf, 2, 3) ; 2.645886
@@ -134,28 +144,28 @@ match ; XCrySDen wf 4    ; LINEFIELD(static/wf-st0001.xsf, 8546, 1) ; 0.00723840
 
 # wfs axis_x output
 
-match ; wf-st0001 axis_x  2 coordinate ; LINEFIELD(static/wf-st0001.y\=0\,z\=0,   2, 1) ; -2.64588604295000E+000 
-match ; wf-st0001 axis_x  3 coordinate ; LINEFIELD(static/wf-st0001.y\=0\,z\=0,   3, 1) ; -2.38129743865500E+000 
-match ; wf-st0001 axis_x 11 coordinate ; LINEFIELD(static/wf-st0001.y\=0\,z\=0,  11, 1) ; -2.64588604295000E-001 
-match ; wf-st0001 axis_x 12 coordinate ; LINEFIELD(static/wf-st0001.y\=0\,z\=0,  12, 1) ;  0.00000000000000E+000 
-match ; wf-st0001 axis_x 21 coordinate ; LINEFIELD(static/wf-st0001.y\=0\,z\=0,  21, 1) ;  2.38129743865500E+000 
-match ; wf-st0001 axis_x 22 coordinate ; LINEFIELD(static/wf-st0001.y\=0\,z\=0,  22, 1) ;  2.64588604295000E+000 
+match ; wf-st0001 axis_x  2 coordinate ; LINEFIELD(static/wf-st0001.y\=0\,z\=0,   2, 1) ; -2.64588604295000E+000
+match ; wf-st0001 axis_x  3 coordinate ; LINEFIELD(static/wf-st0001.y\=0\,z\=0,   3, 1) ; -2.38129743865500E+000
+match ; wf-st0001 axis_x 11 coordinate ; LINEFIELD(static/wf-st0001.y\=0\,z\=0,  11, 1) ; -2.64588604295000E-001
+match ; wf-st0001 axis_x 12 coordinate ; LINEFIELD(static/wf-st0001.y\=0\,z\=0,  12, 1) ;  0.00000000000000E+000
+match ; wf-st0001 axis_x 21 coordinate ; LINEFIELD(static/wf-st0001.y\=0\,z\=0,  21, 1) ;  2.38129743865500E+000
+match ; wf-st0001 axis_x 22 coordinate ; LINEFIELD(static/wf-st0001.y\=0\,z\=0,  22, 1) ;  2.64588604295000E+000
 
-match ; wf-st0001 axis_x  2 value ; LINEFIELD(static/wf-st0001.y\=0\,z\=0,   2, 2) ;  1.70641900857292E-003 
-match ; wf-st0001 axis_x  3 value ; LINEFIELD(static/wf-st0001.y\=0\,z\=0,   3, 2) ;  1.19442352102221E-002 
-match ; wf-st0001 axis_x 11 value ; LINEFIELD(static/wf-st0001.y\=0\,z\=0,  11, 2) ;  8.51610286603397E-001 
-match ; wf-st0001 axis_x 12 value ; LINEFIELD(static/wf-st0001.y\=0\,z\=0,  12, 2) ;  1.04679899014083E+000 
-match ; wf-st0001 axis_x 21 value ; LINEFIELD(static/wf-st0001.y\=0\,z\=0,  21, 2) ;  1.19442352102221E-002 
-match ; wf-st0001 axis_x 22 value ; LINEFIELD(static/wf-st0001.y\=0\,z\=0,  22, 2) ;  1.70641900857292E-003 
+match ; wf-st0001 axis_x  2 value ; LINEFIELD(static/wf-st0001.y\=0\,z\=0,   2, 2) ;  1.70641900857292E-003
+match ; wf-st0001 axis_x  3 value ; LINEFIELD(static/wf-st0001.y\=0\,z\=0,   3, 2) ;  1.19442352102221E-002
+match ;  wf-st0001 axis_x 11 value  ; LINEFIELD(static/wf-st0001.y\=0\,z\=0, 11, 2) ; 0.851641775932584
+match ;  wf-st0001 axis_x 12 value  ; LINEFIELD(static/wf-st0001.y\=0\,z\=0, 12, 2) ; 1.04684000150317
+match ; wf-st0001 axis_x 21 value ; LINEFIELD(static/wf-st0001.y\=0\,z\=0,  21, 2) ;  1.19442352102221E-002
+match ; wf-st0001 axis_x 22 value ; LINEFIELD(static/wf-st0001.y\=0\,z\=0,  22, 2) ;  1.70641900857292E-003
 
 # wfs plane_x output
 
-match ; wf-st0001 plane_x   7 coordinate_x ; LINEFIELD(static/wf-st0001.x\=0,  7, 1 ) ; -2.64588604295000E+000 
-match ; wf-st0001 plane_x   9 coordinate_x ; LINEFIELD(static/wf-st0001.x\=0,  9, 1 ) ; -2.38129743865500E+000 
-match ; wf-st0001 plane_x  35 coordinate_x ; LINEFIELD(static/wf-st0001.x\=0, 35, 1 ) ; -1.85212023006500E+000 
-match ; wf-st0001 plane_x  36 coordinate_x ; LINEFIELD(static/wf-st0001.x\=0, 36, 1 ) ; -1.85212023006500E+000 
-match ; wf-st0001 plane_x  78 coordinate_x ; LINEFIELD(static/wf-st0001.x\=0, 78, 1 ) ; -1.32294302147500E+000 
-match ; wf-st0001 plane_x 328 coordinate_x ; LINEFIELD(static/wf-st0001.x\=0,328, 1 ) ;  2.11670883436000E+000 
+match ; wf-st0001 plane_x   7 coordinate_x ; LINEFIELD(static/wf-st0001.x\=0,  7, 1 ) ; -2.64588604295000E+000
+match ; wf-st0001 plane_x   9 coordinate_x ; LINEFIELD(static/wf-st0001.x\=0,  9, 1 ) ; -2.38129743865500E+000
+match ; wf-st0001 plane_x  35 coordinate_x ; LINEFIELD(static/wf-st0001.x\=0, 35, 1 ) ; -1.85212023006500E+000
+match ; wf-st0001 plane_x  36 coordinate_x ; LINEFIELD(static/wf-st0001.x\=0, 36, 1 ) ; -1.85212023006500E+000
+match ; wf-st0001 plane_x  78 coordinate_x ; LINEFIELD(static/wf-st0001.x\=0, 78, 1 ) ; -1.32294302147500E+000
+match ; wf-st0001 plane_x 328 coordinate_x ; LINEFIELD(static/wf-st0001.x\=0,328, 1 ) ;  2.11670883436000E+000
 
 match ; wf-st0001 plane_x   7 coordinate_y ; LINEFIELD(static/wf-st0001.x\=0,  7, 2 ) ;  0.00000000000000E+000
 match ; wf-st0001 plane_x   9 coordinate_y ; LINEFIELD(static/wf-st0001.x\=0,  9, 2 ) ; -1.05835441718000E+000
@@ -168,7 +178,7 @@ match ; wf-st0001 plane_x   7 value ; LINEFIELD(static/wf-st0001.x\=0,  7, 3 ) ;
 match ; wf-st0001 plane_x   9 value ; LINEFIELD(static/wf-st0001.x\=0,  9, 3 ) ;  4.72722234956469E-003
 match ; wf-st0001 plane_x  35 value ; LINEFIELD(static/wf-st0001.x\=0, 35, 3 ) ;  1.80632735425115E-002
 match ; wf-st0001 plane_x  36 value ; LINEFIELD(static/wf-st0001.x\=0, 36, 3 ) ;  2.66022333810161E-002
-match ; wf-st0001 plane_x  78 value ; LINEFIELD(static/wf-st0001.x\=0, 78, 3 ) ;  8.79657172129439E-002
+match ;  wf-st0001 plane_x  78 value  ; LINEFIELD(static/wf-st0001.x\=0, 78, 3) ; 0.08796343828957705
 match ; wf-st0001 plane_x 328 value ; LINEFIELD(static/wf-st0001.x\=0,328, 3 ) ;  1.91798194418790E-002
 
 # Convert the density from obf to dx format and check it. This utility runs in parallel.
@@ -181,6 +191,7 @@ match ; Convert to dx (line 29355) ; LINEFIELD(restart/gs/density.dx, 9048, 1) ;
 # Convert the density from obf to dx by performing two scalar operations. This utility runs in parallel.
 Program : oct-convert
 Input : 05-output.04-convert-op.inp
-Precision: 3e-09
-match ; Convert to dx (line 513)   ; LINEFIELD(convert/density.dx, 671, 1) ; 0.000244199344403
-match ; Convert to dx (line 29355) ; LINEFIELD(convert/density.dx, 9048, 1) ; 7.279592822e-06
+Precision: 1.22e-18
+match ;  Convert to dx (line 513)    ; LINEFIELD(convert/density.dx, 671, 1) ; 0.000244211913478
+Precision: 3.64e-14
+match ;  Convert to dx (line 29355)  ; LINEFIELD(convert/density.dx, 9048, 1) ; 7.280447415e-06

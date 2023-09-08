@@ -17,9 +17,9 @@
 !!
 !!
 !------------------------------------------------------------
-subroutine X(slater_calc) (namespace, mesh, space, exxop, st, kpoints, ex, vxc)
+subroutine X(slater_calc) (namespace, gr, space, exxop, st, kpoints, ex, vxc)
   type(namespace_t),           intent(in)    :: namespace
-  type(mesh_t),                intent(in)    :: mesh
+  type(grid_t),                intent(in)    :: gr
   type(space_t),               intent(in)    :: space
   type(exchange_operator_t),   intent(in)    :: exxop
   type(states_elec_t),         intent(in)    :: st
@@ -43,17 +43,17 @@ subroutine X(slater_calc) (namespace, mesh, space, exxop, st, kpoints, ex, vxc)
   !We first apply the exchange operator to all the states
   call xst%nullify()
   eig = M_ZERO
-  call X(exchange_operator_compute_potentials)(exxop, namespace, space, mesh, st, xst, kpoints)
+  call X(exchange_operator_compute_potentials)(exxop, namespace, space, gr, st, xst, kpoints)
 
-  SAFE_ALLOCATE(psi(1:mesh%np, 1:st%d%dim))
-  SAFE_ALLOCATE(xpsi(1:mesh%np, 1:st%d%dim))
+  SAFE_ALLOCATE(psi(1:gr%np, 1:st%d%dim))
+  SAFE_ALLOCATE(xpsi(1:gr%np, 1:st%d%dim))
   if (st%d%ispin == SPINORS) then
-    SAFE_ALLOCATE(bij(1:mesh%np, 1:3))
+    SAFE_ALLOCATE(bij(1:gr%np, 1:3))
     bij(:,:) = M_ZERO
   end if
 
   if (present(vxc) .and. st%d%ispin /= SPINORS) then
-    SAFE_ALLOCATE(tmp_vxc(1:mesh%np, 1:st%d%spin_channels))
+    SAFE_ALLOCATE(tmp_vxc(1:gr%np, 1:st%d%spin_channels))
     tmp_vxc(:,:) = M_ZERO
   end if
 
@@ -64,18 +64,18 @@ subroutine X(slater_calc) (namespace, mesh, space, exxop, st, kpoints, ex, vxc)
       weight = st%occ(ist, ik) * st%d%kweights(ik)
       if (abs(weight) < M_EPSILON) cycle
 
-      call states_elec_get_state(xst, mesh, ist, ik, xpsi)
-      call states_elec_get_state(st, mesh, ist, ik, psi)
+      call states_elec_get_state(xst, gr, ist, ik, xpsi)
+      call states_elec_get_state(st, gr, ist, ik, psi)
       !Here we accumulate the result for the potential
       if (present(vxc)) then
         if (st%d%ispin /= SPINORS) then
-          do ip = 1, mesh%np
+          do ip = 1, gr%np
             !If there is no density at this point, we simply ignore it
             tmp_vxc(ip, isp) = tmp_vxc(ip, isp) + weight* R_REAL(R_CONJ(psi(ip,1))*xpsi(ip,1)) &
               / (SAFE_TOL(st%rho(ip, isp),M_EPSILON))
           end do
         else
-          do ip = 1, mesh%np
+          do ip = 1, gr%np
             bij(ip, 1) = bij(ip, 1) + weight * R_REAL(xpsi(ip, 1)*R_CONJ(psi(ip, 1)))
             bij(ip, 2) = bij(ip, 2) + weight * R_REAL(xpsi(ip, 2)*R_CONJ(psi(ip, 2)))
             bij(ip, 3) = bij(ip, 3) + weight * xpsi(ip, 1) * R_CONJ(psi(ip, 2))
@@ -85,7 +85,7 @@ subroutine X(slater_calc) (namespace, mesh, space, exxop, st, kpoints, ex, vxc)
       end if
 
       ! get the contribution to the exchange energy
-      eig = eig + M_HALF * weight * R_REAL(X(mf_dotp)(mesh, st%d%dim, xpsi, psi))
+      eig = eig + M_HALF * weight * R_REAL(X(mf_dotp)(gr, st%d%dim, xpsi, psi))
     end do
   end do
 
@@ -107,7 +107,7 @@ subroutine X(slater_calc) (namespace, mesh, space, exxop, st, kpoints, ex, vxc)
   ex = ex + eig
 
   if (present(vxc) .and. st%d%ispin /= SPINORS) then
-    call lalg_axpy(mesh%np, st%d%spin_channels, M_ONE, tmp_vxc, vxc)
+    call lalg_axpy(gr%np, st%d%spin_channels, M_ONE, tmp_vxc, vxc)
   end if
   SAFE_DEALLOCATE_A(tmp_vxc)
 
@@ -115,7 +115,7 @@ subroutine X(slater_calc) (namespace, mesh, space, exxop, st, kpoints, ex, vxc)
   !Note that the final potential is real and stored as v_upup, v_downdown, Re(v_updown), and Im(updown)
   !See Eq. 22 in SI of PRB 98, 035140 (2018)
   if (present(vxc) .and. st%d%ispin == SPINORS) then
-    do ip = 1, mesh%np
+    do ip = 1, gr%np
 
       nn = st%rho(ip, 1) + st%rho(ip, 2)
       sqmod_updn = st%rho(ip, 3)**2 + st%rho(ip, 4)**2

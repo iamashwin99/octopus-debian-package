@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML-full"></script>
 <style>
-   BODY {background-color: white; 
+   BODY {background-color: white;
          font-size: 10pt; font-family: verdana,helvetica;}
    A  {text-decoration: none;color: blue}
 </style>
@@ -50,6 +50,18 @@
  the <tt>Occupations</tt> block or by prescribing
  an electronic temperature with <tt>Smearing</tt>, or in order to calculate
  excited states (including with <tt>CalculationMode = unocc</tt>).
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='ExtraStatesInPercent'></a>ExtraStatesInPercent</b>
+<br/><i>Section</i>: States
+<br/><i>Type</i>: float
+<br/><i>Default</i>: 0
+<br/><br> This variable allows to set the number of extra/empty states as percentage of the
+ used occupied states. For example, a value 35 for ExtraStatesInPercent would amount
+ to int(35/100 * nstates) extra states, where nstates denotes the amount of occupied
+ states Octopus is using for the system at hand.
 
 </p><hr width='30%' align='left'/>
 

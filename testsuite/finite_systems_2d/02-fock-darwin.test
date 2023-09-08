@@ -14,11 +14,11 @@ Enabled    : Yes
 # where w_c = (e*B)/(m*c) is the cyclotron frequency (e and m are the
 # charge and mass of the electron, respectively, and c is the speed of
 # light), and Omega = sqrt(omega^2 + (w_c/2)^2) -- omega is the frequency
-# that defines the Harmonic well. n = 0, 1, 2, ...; 
+# that defines the Harmonic well. n = 0, 1, 2, ...;
 # l = 0, 1, -1, 2, -2, ....
 # [V. Fock, Z. Phys. 47, 446 (1928); C. G. Darwin, Proc. Cambridge Philos.
 # Soc. 27, 86 (1930)]
-# 
+#
 
 Input : 02-fock-darwin.01-ground_state.inp
 

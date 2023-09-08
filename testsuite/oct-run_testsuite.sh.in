@@ -45,7 +45,7 @@ function usage() {
  Copyright (C) 2005-2006 by Heiko Appel
 
 Usage: oct-run_testsuite.sh [options]
-    
+
      -h            this message
      -n            dry-run mode (show what would be executed)
      -g LIST       comma-separated list of test groups to run
@@ -122,7 +122,7 @@ function checkqueue {
             if [ $? -ne 0 ]; then
                 still_waiting=0;
                 # remove it from the queue
-                
+
                 if [ $NUM -eq 1 ]; then
                     OCT_QUEUE=
                     OUTLIST=
@@ -198,7 +198,7 @@ gpuid=0
 
 if [ "$report" == "yes" ]; then
     if [ -f "$yaml" ]; then
-        `rm $yaml`                      
+        `rm $yaml`
     fi
 fi
 
@@ -230,7 +230,7 @@ for y in $tests; do
         else
             echo "  $runtest_directory/oct-run_regression_test.pl -l $opt_n \
                 $preserve_opt -D $bin_directory -f $y > ${ybase}.log -G $gpuid 2>&1 &"
-        fi 
+        fi
     fi
     if [ "$report" == "yes" ]; then
         $runtest_directory/oct-run_regression_test.pl -l $opt_n \
@@ -241,7 +241,7 @@ for y in $tests; do
     fi
     ppid=$!
     queue $ppid $test_name $gpuid
-	
+
     if [ $NUM -ge $OCT_TEST_NJOBS ]
     then
         checkqueue
@@ -257,7 +257,7 @@ done
 
 #Now print the logs for the tests that failed
 if [ $failed_tests -gt 0 ]; then
-    
+
     for l in $failed_logs
     do
         echo
@@ -289,7 +289,7 @@ dry_run="no"
 while getopts "hnlp:d:cg:q:r:" opt ; do
     case "$opt" in
         h) usage;;
-        n) dry_run="yes";; 
+        n) dry_run="yes";;
         l) local_run="yes";;
         p) prefix="$OPTARG"; testsuite=$prefix/share/octopus/testsuite;;
         d) directory="$OPTARG";;
@@ -326,7 +326,7 @@ if [ -z $OCT_TEST_NJOBS ] ; then
     echo " The environment variable OCT_TEST_NJOBS is not set. Octopus"
     echo " will determine automatically an appropriate number of jobs:"
     echo
-    
+
     # some Linux
     nproc=`which nproc 2> /dev/null`;
     if [ -n $nproc ] && [ -x $nproc ]; then
@@ -355,7 +355,7 @@ if [ -z $OCT_TEST_NJOBS ] ; then
             export EXEC=$nice
         fi
     fi
-    
+
     options=" "`$bin_directory/octopus -c`" "
     if [[ $options =~ " mpi " ]]; then
         OCT_TEST_NJOBS=$(($OCT_TEST_NJOBS/4))
@@ -380,13 +380,13 @@ if [ -z $OCT_TEST_NJOBS ] ; then
     echo
     echo " Running $OCT_TEST_NJOBS jobs in parallel. Set environment variable OCT_TEST_NJOBS to adjust this."
     echo
-    
+
     #wait for a bit for the user to read
     sleep 0.75
 else
     echo
     echo " Running $OCT_TEST_NJOBS jobs in parallel."
-    echo    
+    echo
 fi
 
 # Find testfiles.
@@ -419,7 +419,7 @@ if [ -z "$testfiles" ]; then
 # Otherwise, start the whole machinery.
 else
     # Get epoch seconds at testsuite start.
-    testsuite_start=$(date +%s) 
+    testsuite_start=$(date +%s)
 
     # trap signals, so we kill all children before dying
     trap "trap_kill" TERM INT
@@ -452,18 +452,18 @@ else
 	fi
     fi
     echo
-    
+
     # Clean up.
     [ "$cleanup" == "yes" ] && rm -f *.log
 
     # Get epoch seconds after we are done and compute time difference.
     testsuite_end=$(date +%s)
     timediff_sec=$[ testsuite_end - testsuite_start ]
-    
+
     RUNTIME="Total run-time of the testsuite: \
     $(printf '%02d:%02d:%02d' $[timediff_sec / 3600] \
     $[(timediff_sec % 3600) / 60 ] $[timediff_sec % 60])"
-    
+
     echo $RUNTIME
     echo ""
 fi

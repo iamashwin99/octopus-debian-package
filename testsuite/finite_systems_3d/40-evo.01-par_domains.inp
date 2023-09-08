@@ -1,0 +1,27 @@
+CalculationMode = gs
+FromScratch = yes
+
+Radius  = 6
+Spacing = 0.4
+
+PseudopotentialSet = hgh_lda
+
+%Coordinates
+  "Fe" | 0 | 0 | 0
+%
+
+SpinComponents = spinors
+RelativisticCorrection = spin_orbit
+
+ExperimentalFeatures = yes
+Eigensolver = evolution
+MixField = density
+Mixing = 1
+MixingScheme = linear
+EigensolverImaginaryTime = 0.4
+TDExponentialMethod = lanczos
+TDExpOrder = 16
+
+PoissonSolver = fft
+
+LCAOSaveMemory = yes

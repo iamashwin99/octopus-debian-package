@@ -32,10 +32,10 @@ dist_dta2_DATA = variables varinfo
 CLEANFILES = variables varinfo varinfo_orig
 
 varinfo:
-	$(top_srcdir)/build/mk_varinfo.pl -s $(top_srcdir) -b $(top_builddir)
+	$(top_srcdir)/scripts/mk_varinfo.pl -s $(top_srcdir) -b $(top_builddir)
 
 variables:
-	$(top_srcdir)/build/mk_varinfo.pl -s $(top_srcdir) -b $(top_builddir)
+	$(top_srcdir)/scripts/mk_varinfo.pl -s $(top_srcdir) -b $(top_builddir)
 
 check:
 	@for f in $(dist_dta1_DATA) $(dist_dta2_DATA); do \

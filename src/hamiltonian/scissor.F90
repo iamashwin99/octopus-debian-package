@@ -14,8 +14,6 @@
 !! along with this program; if not, write to the Free Software
 !! Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 !! 02111-1307, USA.
-!!
-!! $Id$
 
 #include "global.h"
 
@@ -71,7 +69,7 @@ contains
     type(namespace_t),        intent(in)    :: namespace
     type(space_t),            intent(in)    :: space
     type(states_elec_t),      intent(in)    :: st
-    type(mesh_t),             intent(in)    :: mesh
+    class(mesh_t),            intent(in)    :: mesh
     type(kpoints_t),          intent(in)    :: kpoints
     type(states_elec_dim_t),  intent(in)    :: d
     FLOAT,                    intent(in)    :: gap
@@ -89,10 +87,14 @@ contains
     ASSERT(.not. this%apply)
     ASSERT(.not. states_are_real(st))
 
-    call messages_print_stress(msg="TDScissor", namespace=namespace)
+    call messages_print_with_emphasis(msg="TDScissor", namespace=namespace)
 
-    if (st%parallel_in_states) call messages_not_implemented("Scissor operator parallel in states", namespace=namespace)
-    if (mesh%parallel_in_domains) call messages_not_implemented("Scissor operator parallel in domains", namespace=namespace)
+    if (st%parallel_in_states) then
+      call messages_not_implemented("Scissor operator parallel in states", namespace=namespace)
+    end if
+    if (mesh%parallel_in_domains) then
+      call messages_not_implemented("Scissor operator parallel in domains", namespace=namespace)
+    end if
 
     this%apply = .true.
     this%gap = gap
@@ -142,7 +144,7 @@ contains
       SAFE_DEALLOCATE_A(phase)
     end if
 
-    call messages_print_stress(namespace=namespace)
+    call messages_print_with_emphasis(namespace=namespace)
 
     POP_SUB(scissor_init)
   end subroutine scissor_init
@@ -171,4 +173,3 @@ end module scissor_oct_m
 !! mode: f90
 !! coding: utf-8
 !! End:
-

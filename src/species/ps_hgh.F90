@@ -91,7 +91,7 @@ contains
     type(namespace_t), intent(in)    :: namespace
 
     integer :: iunit, i, np
-    FLOAT :: xmin, xmax, a1, a2, f1, fm, aa, bb
+    FLOAT :: aa, bb
 
     PUSH_SUB(hgh_init)
 
@@ -111,41 +111,9 @@ contains
     end do
     psp%l_max = psp%l_max - 1
 
-    ! Initializes the logarithmic grid.
-    ! Parameters are obtained using the default values for the first non-zero point xmin,
-    ! the last point xmax, and the number of points np
-    ! These values have a default value obtained from the atomic number
-    ! Adapted from APE
-    xmin = sqrt(TOFLOAT(psp%conf%z))*CNST(1e-5)
-    xmax = sqrt(TOFLOAT(psp%conf%z))*CNST(30.0)
-    np = floor(sqrt(TOFLOAT(psp%conf%z))*CNST(200))
-    ! The code wants np to be an odd number
-    np = floor(np/M_TWO)*2+1
+    call logrid_find_parameters(namespace, psp%conf%z, aa, bb, np)
 
-    a1 = CNST(1e-8)
-    f1 = func(xmin, xmax, TOFLOAT(np), a1)
-    a2 = M_ONE
-    do
-      aa = (a2 + a1)*M_HALF
-      fm = func(xmin, xmax, TOFLOAT(np), aa)
-      if (M_HALF*abs(a1 - a2) < CNST(1.0e-16)) exit
-        if (fm*f1 > M_ZERO) then
-          a1 = aa
-          f1 = fm
-        else
-          a2 = aa
-        end if
-    end do
-
-    bb = xmin/(exp(aa)-M_ONE)
-
-    if (debug%info) then
-      write(message(1), '(a,es13.6,a,es13.6,a,i4)') 'Debug: Log grid parameters: a = ', aa, &
-       ' b = ', bb, ' np = ', np
-     call messages_info(1, namespace=namespace)
-    end if
-
-    call logrid_init(psp%g, LOGRID_PSF, aa, bb, np) 
+    call logrid_init(psp%g, LOGRID_PSF, aa, bb, np)
 
     ! Allocation of stuff.
     SAFE_ALLOCATE(psp%vlocal(1:psp%g%nrval))
@@ -158,15 +126,6 @@ contains
     end if
 
     POP_SUB(hgh_init)
-  contains 
-     FLOAT function func(r1, rn, n, a)
-       FLOAT, intent(in) :: r1, rn, a, n
-       if((n-M_ONE)*a < CNST(650)) then ! To avoid FPE
-         func = exp((n-M_ONE)*a)*r1 - M_ONE*r1 - rn*exp(a) + rn*M_ONE
-       else
-         func = M_HUGE*r1 - M_ONE*r1 - rn*exp(a) + rn*M_ONE
-       end if
-     end function func
   end subroutine hgh_init
 
 
@@ -471,7 +430,7 @@ contains
         r2 = r1**2
 
         vloc(ip) = -(p%z_val / r(ip)) * loct_erf(r1 / sqrt(M_TWO))
-        if(r2 < M_TWO * CNST(700)) then !Else we are getting an underflow
+        if(r2 < M_TWO * M_MAX_EXP_ARG) then !Else we are getting an underflow
           vloc(ip) = vloc(ip) + exp(-M_HALF*r2) * (p%c(1) + r2*(p%c(2) + r2*(p%c(3) + p%c(4)*r2)))
         end if
       end if

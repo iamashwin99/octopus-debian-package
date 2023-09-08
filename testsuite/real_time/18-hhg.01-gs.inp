@@ -3,7 +3,7 @@
 CalculationMode = gs
 
 Dimensions = 1
-fromScratch = yes
+FromScratch = yes
 
 BoxShape = sphere
 # In the original reference, the spacing is 0.25 a.u.
@@ -36,4 +36,3 @@ electric_field   | 1 | 0 | 0 | omega | "envelope_function"
 
 AbsorbingBoundaries = mask
 AbWidth = 50
-

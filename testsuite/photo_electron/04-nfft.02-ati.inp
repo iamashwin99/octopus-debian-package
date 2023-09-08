@@ -1,7 +1,7 @@
-# Here we reprodue ATI peaks as from 
+# Here we reprodue ATI peaks as from
 # U. Schwengelbeck and F. Faisal, Phys. Rev. A 50, 632 (1994).
-# PES is not exactly as in the reference since here we use a   
-# considerably shorter pulse of 5 cycles while is 20 in the 
+# PES is not exactly as in the reference since here we use a
+# considerably shorter pulse of 5 cycles while is 20 in the
 # paper.
 
 CalculationMode = td
@@ -30,7 +30,7 @@ ExperimentalFeatures = yes
 OnlyUserDefinedInitialStates = YES
 
 BoxShape = sphere
-Radius = 20 
+Radius = 20
 Spacing = 0.2
 
 TheoryLevel = independent_particles
@@ -42,7 +42,7 @@ omega = 1
 amplitude = 1*137
 tc=2*pi/omega
 Ntot=5
-nr=2 
+nr=2
 
 %TDExternalFields
   vector_potential | 1 | 0 | 0 | omega | "trap"
@@ -79,9 +79,3 @@ NFFTGuruInterface = YES
 NFFTCutoff = 2
 NFFTOversampling = 1.1
 NFFTPrecompute = NFFT_PRE_PSI
-
-
-
-
-
-

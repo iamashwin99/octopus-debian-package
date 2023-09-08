@@ -56,7 +56,7 @@ contains
 #include "undef.F90"
 
   subroutine modelmb_sym_all_states(space, mesh, st)
-    type(mesh_t),           intent(in)    :: mesh
+    class(mesh_t),          intent(in)    :: mesh
     type(space_t),          intent(in)    :: space
     type(states_elec_t),    intent(inout) :: st
 

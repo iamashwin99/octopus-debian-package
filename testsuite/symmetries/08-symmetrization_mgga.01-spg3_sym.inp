@@ -15,7 +15,7 @@ Spacing = 0.5
 FilterPotentials = filter_none
 ExtraStates = 1
 %KpointsGrid
- 4 | 4 | 4 
+ 4 | 4 | 4
 %
 KPointsUseSymmetries = yes
 KPointsUseTimeReversal = no
@@ -26,10 +26,9 @@ KPointsUseTimeReversal = no
 
 XCFunctional = mgga_x_rpp09 + lda_c_pz
 
-%Output 
+%Output
  bader   | axis_x
  density | axis_x
 %
 
 SCFCalculatePartialCharges = yes
-

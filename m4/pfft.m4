@@ -28,13 +28,13 @@ case $with_pfft_prefix in
   yes | "") ;;
   no) acx_pfft_ok=disable ;;
   *.a | *.so | *.so.* | *.o) LIBS_PFFT=$with_pfft_prefix ;
-     xpath=${with_pfft_prefix%/lib/*} 
-     FCFLAGS_PFFT="$ax_cv_f90_modflag$xpath/include";;  
-  *) LIBS_PFFT="-L$with_pfft_prefix/lib -lpfft"; 
+     xpath=${with_pfft_prefix%/lib/*}
+     FCFLAGS_PFFT="$ax_cv_f90_modflag$xpath/include";;
+  *) LIBS_PFFT="-L$with_pfft_prefix/lib -lpfft";
      FCFLAGS_PFFT="$ax_cv_f90_modflag$with_pfft_prefix/include" ;;
 esac
 
-dnl The include dir must be specified when the library is given with a 
+dnl The include dir must be specified when the library is given with a
 dnl specified file to be compiled static (i.e. *.a etc.)
 AC_ARG_WITH(pfft-include, [AS_HELP_STRING([--with-pfft-include=DIR], [PFFT Fortran include files directory])])
 case $with_pfft_include in
@@ -87,7 +87,7 @@ testprogram="AC_LANG_PROGRAM([],[
 if test $acx_pfft_ok = no; then
   AC_MSG_CHECKING([for pfft library])
   LIBS="$LIBS_PFFT $LIBS_FFTW $acx_pfft_save_LIB"
-  AC_LINK_IFELSE($testprogram, [acx_pfft_ok=yes; LIBS_PFFT="$LIBS"], [])  
+  AC_LINK_IFELSE($testprogram, [acx_pfft_ok=yes; LIBS_PFFT="$LIBS"], [])
 
   if test $acx_pfft_ok = no; then
     AC_MSG_RESULT([$acx_pfft_ok])
@@ -100,7 +100,7 @@ dnl Finally, execute ACTION-IF-FOUND/ACTION-IF-NOT-FOUND:
 if test x"$acx_pfft_ok" = xyes; then
   AC_DEFINE(HAVE_PFFT,1,[Defined if you have PFFT library.])
 else
-  AC_MSG_WARN([Could not find PFFT library. 
+  AC_MSG_WARN([Could not find PFFT library.
                *** Will compile without PFFT support])
   LIBS_PFFT=""
   FCFLAGS_PFFT=""

@@ -16,6 +16,7 @@
 !! 02110-1301, USA.
 !!
 
+!> This module defines the abstract class for the system factory.
 module system_factory_abst_oct_m
   use namespace_oct_m
   use system_oct_m
@@ -25,6 +26,7 @@ module system_factory_abst_oct_m
   public ::                        &
     system_factory_abst_t
 
+  !> @brief abstract class of the system factory
   type, abstract :: system_factory_abst_t
   contains
     procedure(system_factory_abst_create),     deferred :: create

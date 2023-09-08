@@ -19,7 +19,7 @@ PeriodicDimensions = 3
 1 | 1 | 1
 %
 
-%EMFreqs 
+%EMFreqs
 2 | 0.0 | 0.1
 %
 
@@ -32,4 +32,3 @@ EMCalcMagnetooptics = true
 FilterPotentials = filter_none
 
 MixField = density
-

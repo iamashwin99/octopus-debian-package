@@ -77,11 +77,16 @@ Tpulse = 210
 
 GaugeFieldPropagate = yes
 
-%TDOutput 
- laser 
- total_current 
- n_excited_el 
- gauge_field 
+%TDOutput
+ laser
+ total_current
+ n_excited_el
+ gauge_field
  td_occup
-% 
+%
+
+%Output
+  stress
+%
+
 OutputFormat = plane_x

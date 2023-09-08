@@ -78,7 +78,8 @@ contains
     call this%add_operation(OP_UPDATE_INTERACTIONS)
     call this%add_operation(OP_VERLET_COMPUTE_ACC)
     call this%add_operation(OP_VERLET_COMPUTE_VEL)
-    call this%add_operation(OP_FINISHED)
+    call this%add_operation(OP_STEP_DONE)
+    call this%add_operation(OP_REWIND_ALGORITHM)
 
     ! Verlet has only one algorithmic step
     this%algo_steps = 1

@@ -42,33 +42,41 @@ module system_factory_oct_m
 
   !# doc_start system_types
   integer, parameter ::             &
-    SYSTEM_ELECTRONIC         = 1,  &
-    SYSTEM_MAXWELL            = 2,  &
-    SYSTEM_CLASSICAL_PARTICLE = 3,  &
-    SYSTEM_CHARGED_PARTICLE   = 4,  &
-    SYSTEM_DFTBPLUS           = 5,  &
-    SYSTEM_LINEAR_MEDIUM      = 6,  &
-    SYSTEM_MATTER             = 7,  &
-    SYSTEM_DISPERSIVE_MEDIUM  = 8,  &
-    SYSTEM_MULTISYSTEM        = 9
+    SYSTEM_ELECTRONIC         = 1,  & !< electronic system (electrons_oct_m::electrons_t)
+    SYSTEM_MAXWELL            = 2,  & !< maxwell system, (maxwell_oct_m::maxwell_t)
+    SYSTEM_CLASSICAL_PARTICLE = 3,  & !< single classical particle (classical_particle_oct_m::classical_particle_t)
+    SYSTEM_CHARGED_PARTICLE   = 4,  & !< single charged classical particle (charged_particle_oct_m::charged_particle_t)
+    SYSTEM_DFTBPLUS           = 5,  & !< tight binding system (dftb_oct_m::dftb_t)
+    SYSTEM_LINEAR_MEDIUM      = 6,  & !< linear medium for Maxwell calculations (linear_medium_oct_m::linear_medium_t)
+    SYSTEM_MATTER             = 7,  & !< electrons including ions (matter_oct_m::matter_t)
+    SYSTEM_DISPERSIVE_MEDIUM  = 8,  & !< dispersive medium for classical electrodynamics (dispersive_medium_oct_m::dispersive_medium_t)
+    SYSTEM_MULTISYSTEM        = 9     !< container system. (multisystem_basic_oct_m::multisystem_basic_t)
   !# doc_end
 
-
+  !> @brief factory for classes, derived from the abstract system_cot_m::system_t class
+  !!
+  !! The systems factory performs the book-keeping when creating systems.
+  !! Systems are actually created by their own ''create'' function, to which
+  !! an instance of the systems_factory_t has to be passed.
   type, extends(system_factory_abst_t) :: system_factory_t
   contains
-    procedure :: create => system_factory_create
-    procedure :: block_name => system_factory_block_name
+    procedure :: create => system_factory_create         !< @copydoc system_factory_oct_m::system_factory_create
+    procedure :: block_name => system_factory_block_name !< @copydoc system_factory_oct_m::system_factory_block_name
   end type system_factory_t
 
 contains
 
   ! ---------------------------------------------------------------------------------------
+  !> @brief create a new system.
+  !!
+  !! This function is called by multisystem_create_system() and run().
+  !! It calls the constructors of specific systems.
   recursive function system_factory_create(this, namespace, name, type) result(system)
-    class(system_factory_t), intent(in) :: this
-    type(namespace_t),       intent(in) :: namespace
-    character(len=*),        intent(in) :: name
-    integer,                 intent(in) :: type
-    class(system_t),         pointer    :: system
+    class(system_factory_t), intent(in) :: this       !< the system factory
+    type(namespace_t),       intent(in) :: namespace  !< namespace of the parent
+    character(len=*),        intent(in) :: name       !< name of the system (will define namespace)
+    integer,                 intent(in) :: type       !< type of the system to create
+    class(system_t),         pointer    :: system     !< pointer to newly created system
 
     PUSH_SUB(system_factory_create)
 
@@ -127,6 +135,7 @@ contains
   end function system_factory_create
 
   ! ---------------------------------------------------------------------------------------
+  !> @brief block the name for new systems to avoid clashes.
   character(len=80) function system_factory_block_name(this) result(name)
     class(system_factory_t), intent(in)    :: this
 

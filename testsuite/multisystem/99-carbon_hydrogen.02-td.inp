@@ -1,5 +1,5 @@
 CalculationMode = td
-fromScratch = yes
+FromScratch = yes
 
 %Systems
  "Carbon"   | electronic
@@ -32,4 +32,3 @@ TDDeltaStrength = 0.01
 TDPolarizationDirection = 1
 
 TDEnergyUpdateIter = 1
-

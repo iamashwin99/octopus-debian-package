@@ -66,12 +66,12 @@ contains
   !> PCM reaction field due to the electronic density
   subroutine pcm_hartree_potential(pcm, space, mesh, psolver, ext_partners, vhartree, density, pcm_corr, &
     kick, time)
-    type(pcm_t),         intent(inout) :: pcm  
+    type(pcm_t),         intent(inout) :: pcm
     type(space_t),       intent(in)    :: space
-    type(mesh_t),        intent(in)    :: mesh
+    class(mesh_t),       intent(in)    :: mesh
     type(poisson_t),     intent(inout) :: psolver
     type(partner_list_t),intent(in)    :: ext_partners
-    FLOAT,               intent(in)    :: vhartree(:) 
+    FLOAT,               intent(in)    :: vhartree(:)
     FLOAT,               intent(in)    :: density(:)
     FLOAT,               intent(out)   :: pcm_corr
     type(kick_t), optional, intent(in) :: kick
@@ -87,7 +87,7 @@ contains
 
     PUSH_SUB(pcm_hartree_potential)
 
-    if(.not. pcm%run_pcm .or. .not. pcm_update(pcm)) then
+    if (.not. pcm%run_pcm .or. .not. pcm_update(pcm)) then
       pcm_corr = M_ZERO
       POP_SUB(pcm_hartree_potential)
       return
@@ -158,6 +158,14 @@ contains
       pcm_corr = dmf_dotp( mesh, density, pcm%v_e_rs + pcm%v_n_rs)
     end if
 
+    if (debug%info) then
+      call messages_write(' PCM potential updated')
+      call messages_new_line()
+      call messages_write(' PCM update iteration counter: ')
+      call messages_write(pcm%iter)
+      call messages_info()
+    end if
+
     POP_SUB(pcm_hartree_potential)
 
   end subroutine pcm_hartree_potential
@@ -168,4 +176,3 @@ end module pcm_potential_oct_m
 !! mode: f90
 !! coding: utf-8
 !! End:
-

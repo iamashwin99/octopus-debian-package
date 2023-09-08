@@ -8,14 +8,24 @@ Enabled    : Yes
 Input: 02-curvilinear_coordinates.01-gygi.inp
 
 match ; SCF convergence    ; GREPCOUNT(static/info, 'SCF converged') ; 1
-match ; Total energy       ; GREPFIELD(static/info, 'Total       =', 3) ; -2.86814684
-match ; Ion-ion energy     ; GREPFIELD(static/info, 'Ion-ion     =', 3) ; 0.00000000
-match ; Eigenvalues sum    ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -1.15224875
-match ; Hartree energy     ; GREPFIELD(static/info, 'Hartree     =', 3) ; 2.02132612
-match ; Int[n*v_xc]        ; GREPFIELD(static/info, 'Int\[n\*v_xc\] =', 3) ; -1.28990262
-match ; Exchange energy    ; GREPFIELD(static/info, 'Exchange    =', 3) ; -0.87307978
-match ; Correlation energy ; GREPFIELD(static/info, 'Correlation =', 3) ; -0.11143832
-match ; Kinetic energy     ; GREPFIELD(static/info, 'Kinetic     =', 3) ; 2.81804915
-match ; External energy    ; GREPFIELD(static/info, 'External    =', 3) ; -6.723019955
 
-match ; Eigenvalue         ; GREPFIELD(static/info, '1   --', 3) ; -0.576076
+Precision: 3.30e-07
+match ;  Total energy        ; GREPFIELD(static/info, 'Total       =', 3) ; -2.8680383799999998
+Precision: 1.00e-04
+match ;  Ion-ion energy      ; GREPFIELD(static/info, 'Ion-ion     =', 3) ; 0.0
+Precision: 2.59e-07
+match ;  Eigenvalues sum     ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -1.1520223
+Precision: 1.65e-07
+match ;  Hartree energy      ; GREPFIELD(static/info, 'Hartree     =', 3) ; 2.02141257
+Precision: 1.16e-07
+match ;  Int[n*v_xc]         ; GREPFIELD(static/info, 'Int\[n\*v_xc\] =', 3) ; -1.28995196
+Precision: 4.37e-07
+match ;  Exchange energy     ; GREPFIELD(static/info, 'Exchange    =', 3) ; -0.8731152
+Precision: 5.57e-08
+match ;  Correlation energy  ; GREPFIELD(static/info, 'Correlation =', 3) ; -0.11144032
+Precision: 1.65e-07
+match ;  Kinetic energy      ; GREPFIELD(static/info, 'Kinetic     =', 3) ; 2.81820872
+Precision: 3.36e-07
+match ;  External energy     ; GREPFIELD(static/info, 'External    =', 3) ; -6.72310422
+Precision: 2.88e-05
+match ;  Eigenvalue          ; GREPFIELD(static/info, '1   --', 3) ; -0.576011

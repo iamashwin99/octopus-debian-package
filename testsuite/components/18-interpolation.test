@@ -258,4 +258,3 @@ match ; Interpolation point complex 37; GREPFIELD(out, 'Random point complex 37 
 match ; Interpolation point complex 38; GREPFIELD(out, 'Random point complex 38 error:', 6) ; 0.0
 match ; Interpolation point complex 39; GREPFIELD(out, 'Random point complex 39 error:', 6) ; 0.0
 match ; Interpolation point complex 40; GREPFIELD(out, 'Random point complex 40 error:', 6) ; 0.0
-

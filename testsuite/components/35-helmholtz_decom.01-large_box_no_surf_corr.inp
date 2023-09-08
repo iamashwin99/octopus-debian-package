@@ -1,0 +1,18 @@
+CalculationMode = test
+testmode = helmholtz_decomposition
+
+%Coordinates
+"Na" | 0.0 | 0.0 |  0.0
+%
+
+# System Box
+BoxShape = parallelepiped
+Lsize  = 1.5
+
+Spacing = 0.15
+
+DerivativesOrder = 4
+PoissonSolver = cg
+PoissonSolverMaxIter = 1000
+SurfaceCorrection = no
+HelmholtzVisualizeBoxes = no

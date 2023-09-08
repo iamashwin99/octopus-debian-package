@@ -1,0 +1,62 @@
+# -*- coding: utf-8 mode: shell-script -*-
+
+Test       : Evolution eigensolver
+Program    : octopus
+TestGroups : short-run, finite_systems_3d
+Enabled    : Yes
+
+Input: 40-evo.01-par_domains.inp
+match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
+
+Precision: 9.67e-08
+match ;   Total energy         ; GREPFIELD(static/info, 'Total       =', 3) ; -19.33368283
+Precision: 1.00e-04
+match ;   Ion-ion energy       ; GREPFIELD(static/info, 'Ion-ion     =', 3) ; 0.0
+Precision: 9.02e-08
+match ;   Eigenvalues sum      ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -1.8044514600000001
+Precision: 2.20e-08
+match ;   Hartree energy       ; GREPFIELD(static/info, 'Hartree     =', 3) ; 18.78730058
+Precision: 5.50e-09
+match ;   Int[n*v_xc]          ; GREPFIELD(static/info, 'Int\[n\*v_xc\] =', 3) ; -5.249265984999999
+Precision: 1.82e-07
+match ;   Exchange energy      ; GREPFIELD(static/info, 'Exchange    =', 3) ; -3.63091314
+Precision: 1.80e-07
+match ;   Correlation energy   ; GREPFIELD(static/info, 'Correlation =', 3) ; -0.36028362
+Precision: 1.98e-07
+match ;   Kinetic energy       ; GREPFIELD(static/info, 'Kinetic     =', 3) ; 28.58375151
+Precision: 3.14e-07
+match ;   External energy      ; GREPFIELD(static/info, 'External    =', 3) ; -62.71353801
+
+Precision: 1.47e-05
+match ;   Eigenvalue [1]   ; GREPFIELD(static/info, '1   ', 3) ; -0.294303
+Precision: 8.24e-06
+match ;   Eigenvalue [2]   ; GREPFIELD(static/info, '2   ', 3) ; -0.164721
+
+#This test should have the same values as the one above
+#The reference values should be copied
+Input: 40-evo.02-par_states.inp
+match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
+
+Precision: 1.10e-07
+match ;   Total energy         ; GREPFIELD(static/info, 'Total       =', 3) ; -19.33368283
+Precision: 1.00e-04
+match ;   Ion-ion energy       ; GREPFIELD(static/info, 'Ion-ion     =', 3) ; 0.0
+Precision: 2.7e-7
+match ;   Eigenvalues sum      ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -1.80445141
+Precision: 9.39e-07
+match ;   Hartree energy       ; GREPFIELD(static/info, 'Hartree     =', 3) ; 18.78730058
+Precision: 2.62e-05
+match ;   Int[n*v_xc]          ; GREPFIELD(static/info, 'Int\[n\*v_xc\] =', 3) ; -5.249265984999999
+Precision: 2.1e-07
+match ;   Exchange energy      ; GREPFIELD(static/info, 'Exchange    =', 3) ; -3.63091314
+Precision: 1.80e-07
+match ;   Correlation energy   ; GREPFIELD(static/info, 'Correlation =', 3) ; -0.36028362
+Precision: 5.01e-07
+match ;   Kinetic energy       ; GREPFIELD(static/info, 'Kinetic     =', 3) ; 28.583751785
+Precision: 5.89e-07
+match ;   External energy      ; GREPFIELD(static/info, 'External    =', 3) ; -62.71353835
+
+Precision: 1.4e-03
+match ;   Eigenvalue [1]   ; GREPFIELD(static/info, '1   ', 3) ; -0.294303
+Precision: 8.24e-06
+match ;   Eigenvalue [2]   ; GREPFIELD(static/info, '2   ', 3) ; -0.164721

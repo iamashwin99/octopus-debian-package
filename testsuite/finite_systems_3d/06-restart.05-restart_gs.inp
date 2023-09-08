@@ -3,7 +3,7 @@
 # Now restart the previous calculation
 
 CalculationMode = gs
-fromScratch = no
+FromScratch = no
 Radius = 7.0
 Spacing = 0.5
 %Coordinates

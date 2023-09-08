@@ -25,6 +25,7 @@ module unocc_oct_m
   use energy_calc_oct_m
   use global_oct_m
   use output_oct_m
+  use output_modelmb_oct_m
   use hamiltonian_elec_oct_m
   use io_oct_m
   use kpoints_oct_m
@@ -119,7 +120,7 @@ contains
       bandstructure_mode = .true.
     end if
 
-    call init_(sys%gr%mesh, sys%st)
+    call init_(sys%gr, sys%st)
     converged = .false.
 
     read_td_states = .false.
@@ -144,10 +145,10 @@ contains
     read_gs = .true.
     if (.not. fromScratch) then
       call restart_init(restart_load_unocc, sys%namespace, RESTART_UNOCC, RESTART_TYPE_LOAD, sys%mc, ierr, &
-        mesh = sys%gr%mesh, exact = .true.)
+        mesh = sys%gr, exact = .true.)
 
       if (ierr == 0) then
-        call states_elec_load(restart_load_unocc, sys%namespace, sys%space, sys%st, sys%gr%mesh, sys%kpoints, &
+        call states_elec_load(restart_load_unocc, sys%namespace, sys%space, sys%st, sys%gr, sys%kpoints, &
           ierr, lowest_missing = lowest_missing)
         call restart_end(restart_load_unocc)
       end if
@@ -159,22 +160,30 @@ contains
     end if
 
     if (read_td_states) then
-      call restart_init(restart_load_gs, sys%namespace, RESTART_TD, RESTART_TYPE_LOAD, sys%mc, ierr_rho, mesh=sys%gr%mesh, &
+      call restart_init(restart_load_gs, sys%namespace, RESTART_TD, RESTART_TYPE_LOAD, sys%mc, ierr_rho, mesh=sys%gr, &
         exact=.true.)
     else
-      call restart_init(restart_load_gs, sys%namespace, RESTART_GS, RESTART_TYPE_LOAD, sys%mc, ierr_rho, mesh=sys%gr%mesh, &
+      call restart_init(restart_load_gs, sys%namespace, RESTART_GS, RESTART_TYPE_LOAD, sys%mc, ierr_rho, mesh=sys%gr, &
         exact=.true.)
     end if
 
     if (ierr_rho == 0) then
       if (read_gs) then
-        call states_elec_load(restart_load_gs, sys%namespace, sys%space, sys%st, sys%gr%mesh, sys%kpoints, &
+        call states_elec_load(restart_load_gs, sys%namespace, sys%space, sys%st, sys%gr, sys%kpoints, &
           ierr, lowest_missing = lowest_missing)
       end if
       if (sys%hm%lda_u_level /= DFT_U_NONE) then
         call lda_u_load(restart_load_gs, sys%hm%lda_u, sys%st, sys%hm%energy%dft_u, ierr)
+        if (ierr /= 0) then
+          message(1) = "Unable to read DFT+U information. DFT+U data will be calculated from states."
+          call messages_warning(1, namespace=sys%namespace)
+        end if
       end if
-      call states_elec_load_rho(restart_load_gs, sys%space, sys%st, sys%gr%mesh, ierr_rho)
+
+      call lda_u_init_coulomb_integrals(sys%hm%lda_u, sys%namespace, sys%space, sys%gr, sys%st, &
+        sys%mc, sys%hm%psolver, allocated(sys%hm%hm_base%phase))
+
+      call states_elec_load_rho(restart_load_gs, sys%space, sys%st, sys%gr, ierr_rho)
       write_density = restart_has_map(restart_load_gs)
       call restart_end(restart_load_gs)
     else
@@ -264,11 +273,11 @@ contains
 
     if (.not. bandstructure_mode) then
       ! Restart dump should be initialized after restart_load, as the mesh might have changed
-      call restart_init(restart_dump, sys%namespace, RESTART_UNOCC, RESTART_TYPE_DUMP, sys%mc, ierr, mesh=sys%gr%mesh)
+      call restart_init(restart_dump, sys%namespace, RESTART_UNOCC, RESTART_TYPE_DUMP, sys%mc, ierr, mesh=sys%gr)
 
       ! make sure the density is defined on the same mesh as the wavefunctions that will be written
       if (write_density) then
-        call states_elec_dump_rho(restart_dump, sys%space, sys%st, sys%gr%mesh, ierr_rho)
+        call states_elec_dump_rho(restart_dump, sys%space, sys%st, sys%gr, ierr_rho)
       end if
     end if
 
@@ -281,18 +290,18 @@ contains
     ! If not all gs wavefunctions were read when starting, in particular for nscf with different k-points,
     ! the occupations must be recalculated each time, though they do not affect the result of course.
     ! FIXME: This is wrong for metals where we must use the Fermi level from the original calculation!
-    call states_elec_fermi(sys%st, sys%namespace, sys%gr%mesh)
+    call states_elec_fermi(sys%st, sys%namespace, sys%gr)
 
-    if (sys%st%d%pack_states .and. hamiltonian_elec_apply_packed(sys%hm)) call sys%st%pack()
+    if (sys%st%d%pack_states .and. sys%hm%apply_packed()) call sys%st%pack()
 
     do iter = 1, max_iter
       output_iter = .false.
-      call eigensolver_run(eigens, sys%namespace, sys%gr, sys%st, sys%hm, 1, converged, sys%st%nst_conv)
+      call eigens%run(sys%namespace, sys%gr, sys%st, sys%hm, 1, converged, sys%st%nst_conv)
 
       ! If not all gs wavefunctions were read when starting, in particular for nscf with different k-points,
       ! the occupations must be recalculated each time, though they do not affect the result of course.
       ! FIXME: This is wrong for metals where we must use the Fermi level from the original calculation!
-      call states_elec_fermi(sys%st, sys%namespace, sys%gr%mesh)
+      call states_elec_fermi(sys%st, sys%namespace, sys%gr)
 
       call write_iter_(sys%namespace, sys%st)
 
@@ -318,7 +327,7 @@ contains
         ! write restart information.
         if (converged .or. (modulo(iter, sys%outp%restart_write_interval) == 0) &
           .or. iter == max_iter .or. forced_finish) then
-          call states_elec_dump(restart_dump, sys%space, sys%st, sys%gr%mesh, sys%kpoints, ierr, iter=iter)
+          call states_elec_dump(restart_dump, sys%space, sys%st, sys%gr, sys%kpoints, ierr, iter=iter)
           if (ierr /= 0) then
             message(1) = "Unable to write states wavefunctions."
             call messages_warning(1, namespace=sys%namespace)
@@ -336,6 +345,7 @@ contains
       if (output_iter .and. sys%outp%duringscf) then
         write(dirname,'(a,i4.4)') "unocc.",iter
         call output_all(sys%outp, sys%namespace, sys%space, dirname, sys%gr, sys%ions, iter, sys%st, sys%hm, sys%ks)
+        call output_modelmb(sys%outp, sys%namespace, sys%space, dirname, sys%gr, sys%ions, iter, sys%st)
       end if
 
       if (converged .or. forced_finish) exit
@@ -344,7 +354,7 @@ contains
 
     if (.not. bandstructure_mode) call restart_end(restart_dump)
 
-    if (sys%st%d%pack_states .and. hamiltonian_elec_apply_packed(sys%hm)) then
+    if (sys%st%d%pack_states .and. sys%hm%apply_packed()) then
       call sys%st%unpack()
     end if
 
@@ -363,7 +373,7 @@ contains
     if (sys%space%is_periodic().and. sys%st%d%nik > sys%st%d%nspin) then
       if (bitand(sys%kpoints%method, KPOINTS_PATH) /= 0) then
         call states_elec_write_bandstructure(STATIC_DIR, sys%namespace, sys%st%nst, sys%st, &
-          sys%gr%box, sys%ions, sys%gr%mesh, sys%kpoints, &
+          sys%ions, sys%gr, sys%kpoints, &
           sys%hm%hm_base%phase, vec_pot = sys%hm%hm_base%uniform_vector_potential, &
           vec_pot_var = sys%hm%hm_base%vector_potential)
       end if
@@ -371,6 +381,7 @@ contains
 
 
     call output_all(sys%outp, sys%namespace, sys%space, STATIC_DIR, sys%gr, sys%ions, -1, sys%st, sys%hm, sys%ks)
+    call output_modelmb(sys%outp, sys%namespace, sys%space, STATIC_DIR, sys%gr, sys%ions, -1, sys%st)
 
     call end_()
     POP_SUB(unocc_run_legacy)
@@ -379,7 +390,7 @@ contains
 
     ! ---------------------------------------------------------
     subroutine init_(mesh, st)
-      type(mesh_t),        intent(in)    :: mesh
+      class(mesh_t),       intent(in)    :: mesh
       type(states_elec_t), intent(inout) :: st
 
       PUSH_SUB(unocc_run_legacy.init_)
@@ -420,7 +431,7 @@ contains
       PUSH_SUB(unocc_run_legacy.write_iter_)
 
       write(str, '(a,i5)') 'Unoccupied states iteration #', iter
-      call messages_print_stress(msg=trim(str), namespace=sys%namespace)
+      call messages_print_with_emphasis(msg=trim(str), namespace=sys%namespace)
 
       write(message(1),'(a,i6,a,i6)') 'Converged states: ', minval(eigens%converged(1:st%d%nik))
       call messages_info(1, namespace=namespace)
@@ -430,7 +441,7 @@ contains
 
       call scf_print_mem_use(namespace)
 
-      call messages_print_stress(namespace=sys%namespace)
+      call messages_print_with_emphasis(namespace=sys%namespace)
 
       POP_SUB(unocc_run_legacy.write_iter_)
     end subroutine write_iter_

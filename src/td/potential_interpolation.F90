@@ -66,6 +66,7 @@ contains
 
     SAFE_ALLOCATE_SOURCE_A(vkso%v_old, vksi%v_old)
     SAFE_ALLOCATE_SOURCE_A(vkso%vtau_old, vksi%vtau_old)
+    vkso%mgga_with_exc = vksi%mgga_with_exc
 
     POP_SUB(potential_interpolation_copy)
   end subroutine potential_interpolation_copy
@@ -131,7 +132,8 @@ contains
       end do
     end do
 
-    if (present(vtau)) then
+    if (potential_interpolation%mgga_with_exc) then
+      ASSERT(present(vtau))
       do i = 1, interpolation_steps
         do ispin = 1, nspin
           do ip = 1, np
@@ -170,7 +172,8 @@ contains
     call interpolate( times, potential_interpolation%v_old(:, :, 1:interpolation_steps), &
       time, potential_interpolation%v_old(:, :, 0))
 
-    if (present(vtau)) then
+    if (potential_interpolation%mgga_with_exc) then
+      ASSERT(present(vtau))
       do j = interpolation_steps, 2, -1
         call lalg_copy(np, nspin, potential_interpolation%vtau_old(:, :, j-1), potential_interpolation%vtau_old(:, :, j))
       end do
@@ -196,7 +199,8 @@ contains
 
     call lalg_copy(np, nspin, vhxc, potential_interpolation%v_old(:, :, i))
 
-    if (present(vtau)) then
+    if (potential_interpolation%mgga_with_exc) then
+      ASSERT(present(vtau))
       call lalg_copy(np, nspin, vtau, potential_interpolation%vtau_old(:, :, i))
     end if
 
@@ -216,7 +220,8 @@ contains
 
     call lalg_copy(np, nspin, potential_interpolation%v_old(:, :, i), vhxc)
 
-    if (present(vtau)) then
+    if (potential_interpolation%mgga_with_exc) then
+      ASSERT(present(vtau))
       call lalg_copy(np, nspin, potential_interpolation%vtau_old(:, :, i), vtau)
     end if
 
@@ -245,7 +250,8 @@ contains
 
     call interpolate( times(1:order), potential_interpolation%v_old(:, :, 0:order-1), t, vhxc(:, :))
 
-    if (present(vtau)) then
+    if (potential_interpolation%mgga_with_exc) then
+      ASSERT(present(vtau))
       call interpolate( times(1:order), potential_interpolation%vtau_old(:, :, 0:order-1), t, vtau(:, :))
     end if
 
@@ -259,7 +265,7 @@ contains
     type(potential_interpolation_t), intent(in)    :: potential_interpolation
     type(restart_t),   intent(in)    :: restart
     type(space_t),     intent(in)    :: space
-    type(mesh_t),      intent(in)    :: mesh
+    class(mesh_t),     intent(in)    :: mesh
     integer,           intent(in)    :: nspin
     integer,           intent(out)   :: err2
 
@@ -306,7 +312,7 @@ contains
     type(namespace_t), intent(in)    :: namespace
     type(space_t),     intent(in)    :: space
     type(restart_t),   intent(in)    :: restart
-    type(mesh_t),      intent(in)    :: mesh
+    class(mesh_t),     intent(in)    :: mesh
     integer,           intent(in)    :: nspin
     integer,           intent(out)   :: err2
 

@@ -11,8 +11,8 @@ rCH   = 1.080*angstrom
 theta = 108.23 * pi / 180
 
 %Coordinates
- "C"  |                          0 |                          0 |        0       
- "H"  |                          0 |                          0 | rCH            
+ "C"  |                          0 |                          0 |        0
+ "H"  |                          0 |                          0 | rCH
  "Cl" |                          0 |  rCCl*sin(theta)           | rCCl*cos(theta)
  "Cl" |  rCCl*sin(theta)*sin(pi/3) | -rCCl*sin(theta)*cos(pi/3) | rCCl*cos(theta)
  "Cl" | -rCCl*sin(theta)*sin(pi/3) | -rCCl*sin(theta)*cos(pi/3) | rCCl*cos(theta)

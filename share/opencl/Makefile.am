@@ -21,35 +21,41 @@
 opencldir = $(pkgdatadir)/opencl
 
 dist_opencl_DATA =              \
+	axpy.cl                 \
+	boundaries.cl           \
 	cl_global.h             \
 	cl_complex.h            \
 	cl_rtype.h              \
-	cuda_compat.h           \
-	vpsi.cl                 \
-	set_zero.cl             \
-	set_one.cl              \
-	operate.cl              \
-	axpy.cl                 \
-	projector.cl            \
-	pack.cl                 \
+	cl_reduce.h             \
+	convert.cl              \
 	copy.cl                 \
-	mesh_batch_single.cl	\
+	cuda_compat.h           \
+	curl.cl                 \
 	density.cl              \
+	dftu_projector.cl       \
+	forces.cl               \
+	get_points.cl           \
+	ghost.cl                \
+	mesh_batch.cl           \
+	mesh_batch_single.cl	\
+	mesh_to_cube.cl         \
+	mod_sqr.cl              \
+	mul.cl                  \
+	operate.cl              \
+	pack.cl                 \
 	phase.cl                \
 	phase_spiral.cl         \
-	mesh_batch.cl           \
-	rotate.cl               \
+	pml.cl                  \
 	points.cl               \
+	projector.cl            \
+	projector_commutator.cl \
+	rotate.cl               \
+	set_zero.cl             \
+	set_one.cl              \
+	split.cl                \
 	trsm.cl                 \
-	mul.cl                  \
-	mesh_to_cube.cl         \
-	convert.cl              \
-	boundaries.cl           \
-	ghost.cl                \
-	forces.cl               \
-	mod_sqr.cl              \
 	uvw_to_xyz.cl           \
-	curl.cl
+	vpsi.cl
 
 # In order to get `make check' working with a `VPATH' build (e. g. to use
 # the `distcheck' target) the pseudopotential files have to be accessible

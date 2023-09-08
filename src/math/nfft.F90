@@ -69,20 +69,20 @@ module nfft_oct_m
   type nfft_t
     private
 
-    integer           :: N(3)       !> size of the nfft bandwidths
-    integer           :: M(3)          !> Number of the nfft nodes
-    integer           :: dim        !> the dimension
-    integer           :: fftN(3)    !> size of the fft used
-    FLOAT, public     :: norm       !> Normalization
+    integer           :: N(3)       !< size of the nfft bandwidths
+    integer           :: M(3)       !< Number of the nfft nodes
+    integer           :: dim        !< the dimension
+    integer           :: fftN(3)    !< size of the fft used
+    FLOAT, public     :: norm       !< Normalization
 
     ! Guru options
-    logical, public   :: set_defaults = .false. !> the defaults can be overriden
-    logical, public   :: guru                   !> use guru options?
-    integer, public   :: precompute             !> precompute strategy
-    integer, public   :: mm                     !> Window function cut-off parameter
-    FLOAT,   public   :: sigma                  !> Oversampling factor
+    logical, public   :: set_defaults = .false. !< the defaults can be overriden
+    logical, public   :: guru                   !< use guru options?
+    integer, public   :: precompute             !< precompute strategy
+    integer, public   :: mm                     !< Window function cut-off parameter
+    FLOAT,   public   :: sigma                  !< Oversampling factor
 
-    type(c_ptr)       :: plan                   !> the NFFT plan
+    type(c_ptr)       :: plan                   !< the NFFT plan
 
   end type nfft_t
 
@@ -163,8 +163,8 @@ contains
   subroutine nfft_init(nfft, nfft_options, N, dim, M, optimize)
     type(nfft_t),      intent(inout) :: nfft
     type(nfft_t),      intent(in)    :: nfft_options
-    integer,           intent(inout) :: N(3) !> nfft bandwidths
-    integer,           intent(inout) :: M(3) !> nfft nodes
+    integer,           intent(inout) :: N(3) !< nfft bandwidths
+    integer,           intent(inout) :: M(3) !< nfft nodes
     integer,           intent(in)    :: dim
     logical, optional, intent(in)    :: optimize
 

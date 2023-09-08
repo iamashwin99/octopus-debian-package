@@ -1,0 +1,38 @@
+CalculationMode = gs
+FromScratch = yes
+PeriodicDimensions = 3
+BoxShape = parallelepiped
+
+a = 10.26120
+%LatticeParameters
+ a | a | a
+%
+
+%LatticeVectors
+ 0.0 | 0.5 | 0.5
+ 0.5 | 0.0 | 0.5
+ 0.5 | 0.5 | 0.0
+%
+
+%ReducedCoordinates
+  "Si" |   0.0       | 0.0       | 0.0
+  "Si" |   1/4       | 1/4       | 1/4
+%
+
+Spacing = 0.45
+%KPointsGrid
+9 | 9 | 9
+%
+
+KPointsUseSymmetries = yes
+ExperimentalFeatures = yes
+
+ExtraStates = 2
+
+TheoryLevel = kohn_sham
+XCFunctional = mgga_x_revscan + mgga_c_revscan
+
+ConvRelEv = 1e-8
+
+FilterPotentials = filter_none
+

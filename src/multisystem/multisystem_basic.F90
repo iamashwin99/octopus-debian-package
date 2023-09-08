@@ -18,6 +18,8 @@
 
 #include "global.h"
 
+!> @brief This module implements the basic mulsisystem class, a container system for other systems
+!!
 module multisystem_basic_oct_m
   use debug_oct_m
   use global_oct_m
@@ -32,6 +34,10 @@ module multisystem_basic_oct_m
   public ::               &
     multisystem_basic_t
 
+  !> @brief Container class for lists of system_oct_m::system_t
+  !!
+  !! The multisystem_oct_m::multisystem_basic_t class is a special kind of system_oct_m::system_t, which can contain
+  !! other multisystems, allowing a hierarchy of grouped systems.
   type, extends(multisystem_t) :: multisystem_basic_t
 
   contains

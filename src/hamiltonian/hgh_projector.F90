@@ -77,12 +77,12 @@ contains
     if (reltyp == 0) then
       SAFE_ALLOCATE(hgh_p%dp(1:hgh_p%n_s, 1:3))
       do i = 1, 3
-        call species_real_nl_projector(a%species, hgh_p%n_s, sm%x(:, 1:3), sm%r, l, lm, i, hgh_p%dp(:, i))
+        call species_real_nl_projector(a%species, hgh_p%n_s, sm%rel_x, sm%r, l, lm, i, hgh_p%dp(:, i))
       end do
     else
       SAFE_ALLOCATE(hgh_p%zp(1:hgh_p%n_s, 1:3))
       do i = 1, 3
-        call species_nl_projector(a%species, hgh_p%n_s, sm%x(:, 1:3), sm%r, l, lm, i, hgh_p%zp(:, i))
+        call species_nl_projector(a%species, hgh_p%n_s, sm%rel_x, sm%r, l, lm, i, hgh_p%zp(:, i))
       end do
     end if
 

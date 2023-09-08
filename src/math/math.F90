@@ -18,8 +18,7 @@
 
 #include "global.h"
 
-!> This module is intended to contain "only mathematical" functions
-!! and procedures.
+!> @brief This module is intended to contain "only mathematical" functions and procedures.
 module math_oct_m
   use debug_oct_m
   use global_oct_m
@@ -32,6 +31,7 @@ module math_oct_m
 
   private
   public ::                     &
+    is_close,                   &
     diagonal_matrix,            &
     ylmr_cmplx,                 &
     ylmr_real,                  &
@@ -40,6 +40,8 @@ module math_oct_m
     hermite,                    &
     dcross_product,             &
     zcross_product,             &
+    zdcross_product,            &
+    dzcross_product,            &
     ddelta,                     &
     member,                     &
     make_idx_set,               &
@@ -55,7 +57,13 @@ module math_oct_m
     log2,                       &
     is_prime,                   &
     generate_rotation_matrix,   &
-    numder_ridders
+    numder_ridders,             &
+    generalized_laguerre_polynomial
+
+
+  interface is_close
+    module procedure dis_close_scalar_0
+  end interface
 
   interface diagonal_matrix
     module procedure idiagonal_matrix, ddiagonal_matrix, zdiagonal_matrix
@@ -71,19 +79,49 @@ module math_oct_m
   ! ------------------------------------------------------------------------------
 
   interface log2
-    module procedure dlog2, ilog2
+    module procedure dlog2, ilog2, llog2
   end interface log2
 
   interface pad
-    module procedure pad4, pad8
+    module procedure pad4, pad8, pad48, pad88
   end interface pad
 
 contains
 
+  !> @brief Are \f$x\f$ and \f$y\f$ equal within a tolerance.
+  !!
+  !! The function evaluates the expression:
+  !! \f[
+  !!     |x - y| \leq (atol * rtol) * |y|
+  !! \f]
+  !!
+  !! The tolerance values are positive, typically very small numbers.
+  !! The relative difference \f$(rtol * |y|)\f$ and the absolute difference
+  !! \f$ atol \f$ are added together to compare against the absolute difference
+  !! between \f$x\f$ and \f$y\f$. Default tolerances are based on numpy''s
+  !! [implementation](https://numpy.org/doc/stable/reference/generated/numpy.isclose.html).
+  !!
+  !! @param[in] x           Scalar.
+  !! @param[in] y           Scalar.
+  !! @param[in] rtol        Optional, relative tolerance.
+  !! @param[in] atol        Optional, absolute tolerance.
+  !! @return    is_close   .true. if \f$x\f$ and \f$y\f$ are close.
+  pure logical function dis_close_scalar_0(x, y, rtol, atol)
+    FLOAT, intent(in) :: x, y
+    FLOAT, optional, intent(in) :: rtol
+    FLOAT, optional, intent(in) :: atol
+    FLOAT :: atol_, rtol_
+
+    atol_ = optional_default(atol, CNST(1.e-8))
+    rtol_ = optional_default(rtol, CNST(1.e-5))
+
+    dis_close_scalar_0 = abs(x - y) <= (atol_ + rtol_ * abs(y))
+  end function
+
   ! ---------------------------------------------------------
   !> Currently only returns a matrix whose diagonal elements are all the
   !! same. Note that the real and complex versions are in math_inc.F90.
-  function idiagonal_matrix(dim, diag) result(matrix)
+  pure function idiagonal_matrix(dim, diag) result(matrix)
     integer, intent(in) :: dim
     integer, intent(in) :: diag
     integer :: matrix(dim, dim)
@@ -673,18 +711,34 @@ contains
   end subroutine  hypersphere_grad_matrix
 
   ! ---------------------------------------------------------
-  integer(i8) pure function pad8(size, blk)
+  integer(i8) pure function pad88(size, blk)
     integer(i8), intent(in) :: size
-    integer, intent(in) :: blk
+    integer(i8), intent(in) :: blk
 
     integer(i8) :: mm
 
     mm = mod(size, blk)
     if (mm == 0) then
-      pad8 = size
+      pad88 = size
     else
-      pad8 = size + blk - mm
+      pad88 = size + blk - mm
     end if
+  end function pad88
+
+  ! ---------------------------------------------------------
+  integer(i8) pure function pad48(size, blk)
+    integer,     intent(in) :: size
+    integer(i8), intent(in) :: blk
+
+    pad48 = pad88(int(size, i8), blk)
+  end function pad48
+
+  ! ---------------------------------------------------------
+  integer(i8) pure function pad8(size, blk)
+    integer(i8), intent(in) :: size
+    integer, intent(in) :: blk
+
+    pad8 = pad88(size, int(blk, i8))
   end function pad8
 
   ! ---------------------------------------------------------
@@ -692,14 +746,7 @@ contains
     integer, intent(in) :: size
     integer, intent(in) :: blk
 
-    integer :: mm
-
-    mm = mod(size, blk)
-    if (mm == 0) then
-      pad4 = size
-    else
-      pad4 = size + blk - mm
-    end if
+    pad4 = int(pad88(int(size, i8), int(blk, i8)), i4)
   end function pad4
 
   ! ---------------------------------------------------------
@@ -749,6 +796,14 @@ contains
 
   ! -------------------------------------------------------
 
+  integer(i8) pure function llog2(xx)
+    integer(i8), intent(in) :: xx
+
+    llog2 = nint(log2(TOFLOAT(xx)), kind=i8)
+  end function llog2
+
+  ! -------------------------------------------------------
+
   logical function is_prime(n)
     integer, intent(in) :: n
 
@@ -781,9 +836,9 @@ contains
 
   ! ---------------------------------------------------------
   !>  Generates a rotation matrix R to rotate a vector f to t.
-  !>
-  !>	T. Möller and J. F. Hughes, Journal of Graphics Tools 4, 1 (1999)
-  !>
+  !!
+  !!	T. Möller and J. F. Hughes, Journal of Graphics Tools 4, 1 (1999)
+  !!
   subroutine generate_rotation_matrix(R, ff, tt)
     FLOAT,   intent(out)  :: R(:,:)
     FLOAT,   intent(in)   :: ff(:)
@@ -981,6 +1036,171 @@ contains
     SAFE_DEALLOCATE_A(a)
     POP_SUB(numder_ridders)
   end subroutine numder_ridders
+
+  ! ---------------------------------------------------------
+  pure function dzcross_product(a, b) result(c)
+    FLOAT, intent(in) :: a(:) !< (3)
+    CMPLX, intent(in) :: b(:) !< (3)
+
+    CMPLX :: c(1:3)
+
+    c(1) = a(2)*b(3) - a(3)*b(2)
+    c(2) = a(3)*b(1) - a(1)*b(3)
+    c(3) = a(1)*b(2) - a(2)*b(1)
+
+  end function dzcross_product
+
+  ! ---------------------------------------------------------
+  pure function zdcross_product(a, b) result(c)
+    CMPLX, intent(in) :: a(:) !< (3)
+    FLOAT, intent(in) :: b(:) !< (3)
+
+    CMPLX :: c(1:3)
+
+    c(1) = a(2)*b(3) - a(3)*b(2)
+    c(2) = a(3)*b(1) - a(1)*b(3)
+    c(3) = a(1)*b(2) - a(2)*b(1)
+
+  end function zdcross_product
+
+
+!*****************************************************************************80
+!
+!! LM_POLYNOMIAL evaluates Laguerre polynomials Lm(n,m,x).
+!
+!  First terms:
+!
+!    M = 0
+!
+!    Lm(0,0,X) =   1
+!    Lm(1,0,X) =  -X   +  1
+!    Lm(2,0,X) =   X^2 -  4 X   +  2
+!    Lm(3,0,X) =  -X^3 +  9 X^2 -  18 X   +    6
+!    Lm(4,0,X) =   X^4 - 16 X^3 +  72 X^2 -   96 X +     24
+!    Lm(5,0,X) =  -X^5 + 25 X^4 - 200 X^3 +  600 X^2 -  600 x   +  120
+!    Lm(6,0,X) =   X^6 - 36 X^5 + 450 X^4 - 2400 X^3 + 5400 X^2 - 4320 X + 720
+!
+!    M = 1
+!
+!    Lm(0,1,X) =    0
+!    Lm(1,1,X) =   -1,
+!    Lm(2,1,X) =    2 X - 4,
+!    Lm(3,1,X) =   -3 X^2 + 18 X - 18,
+!    Lm(4,1,X) =    4 X^3 - 48 X^2 + 144 X - 96
+!
+!    M = 2
+!
+!    Lm(0,2,X) =    0
+!    Lm(1,2,X) =    0,
+!    Lm(2,2,X) =    2,
+!    Lm(3,2,X) =   -6 X + 18,
+!    Lm(4,2,X) =   12 X^2 - 96 X + 144
+!
+!    M = 3
+!
+!    Lm(0,3,X) =    0
+!    Lm(1,3,X) =    0,
+!    Lm(2,3,X) =    0,
+!    Lm(3,3,X) =   -6,
+!    Lm(4,3,X) =   24 X - 96
+!
+!    M = 4
+!
+!    Lm(0,4,X) =    0
+!    Lm(1,4,X) =    0
+!    Lm(2,4,X) =    0
+!    Lm(3,4,X) =    0
+!    Lm(4,4,X) =   24
+!
+!  Recursion:
+!
+!    Lm(0,M,X)   = 1
+!    Lm(1,M,X)   = (M+1-X)
+!
+!    if 2 <= N:
+!
+!      Lm(N,M,X)   = ( (M+2*N-1-X) * Lm(N-1,M,X)
+!                   +   (1-M-N)    * Lm(N-2,M,X) ) / N
+!
+!  Special values:
+!
+!    For M = 0, the associated Laguerre polynomials Lm(N,M,X) are equal
+!    to the Laguerre polynomials L(N,X).
+!
+!  Licensing:
+!
+!    This code is distributed under the GNU LGPL license.
+!
+!  Modified:
+!
+!    08 February 2003
+!
+!  Author:
+!
+!    John Burkardt
+!
+!  Reference:
+!
+!    Milton Abramowitz, Irene Stegun,
+!    Handbook of Mathematical Functions,
+!    National Bureau of Standards, 1964,
+!    ISBN: 0-486-61272-4,
+!    LC: QA47.A34.
+!
+!  Parameters:
+!
+!    Input, integer ( kind = 4 ) MM, the number of evaluation points.
+!
+!    Input, integer ( kind = 4 ) N, the highest order polynomial to compute.
+!    Note that polynomials 0 through N will be computed.
+!
+!    Input, integer ( kind = 4 ) M, the parameter.  M must be nonnegative.
+!
+!    Input, real ( kind = rk ) X(MM), the evaluation points.
+!
+!    Output, real ( kind = rk ) CX(MM,0:N), the associated Laguerre polynomials
+!    of degrees 0 through N evaluated at the evaluation points.
+!
+! Taken from
+! https://people.sc.fsu.edu/~jburkardt/f_src/laguerre_polynomial/laguerre_polynomial.html
+! and adapted to Octopus by N. Tancogne-Dejean
+  subroutine generalized_laguerre_polynomial ( np, nn, mm, xx, cx )
+    integer, intent(in)  :: np
+    integer, intent(in)  :: nn, mm
+    FLOAT,   intent(in)  :: xx(np)
+    FLOAT,   intent(out) :: cx(np)
+
+    integer ii
+    FLOAT, allocatable :: cx_tmp(:,:)
+
+    ASSERT(mm >= 0)
+
+    SAFE_ALLOCATE(cx_tmp(1:np, 0:nn))
+
+    if (nn < 0) then
+      cx = M_ZERO
+      return
+    end if
+
+    if (nn == 0) then
+      cx(1:np) = M_ONE
+      return
+    end if
+
+    cx_tmp(1:np,0) = M_ONE
+    cx_tmp(1:np,1) = TOFLOAT(mm + 1) - xx(1:np)
+
+    do ii = 2, nn
+      cx_tmp(1:np, ii) = &
+        (( TOFLOAT(mm + 2*ii - 1) - xx(1:np)) * cx_tmp(1:np,ii-1)   &
+        + TOFLOAT(-mm    -ii + 1)             * cx_tmp(1:np,ii-2)) / TOFLOAT(ii)
+    end do
+
+    cx(1:np) = cx_tmp(1:np, nn)
+
+    SAFE_DEALLOCATE_A(cx_tmp)
+
+  end subroutine generalized_laguerre_polynomial
 
 
 #include "undef.F90"

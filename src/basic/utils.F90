@@ -220,7 +220,7 @@ contains
     message(2) = &
       "Commit                 : "// trim(conf%git_commit)
     message(3) = &
-      "Build time             : "// trim(conf%build_time)
+      "Configuration time     : "// trim(conf%config_time)
     call messages_info(3)
 
     message(1) = 'Configuration options  : ' // trim(get_config_opts())
@@ -312,7 +312,7 @@ contains
 #ifdef HAVE_CLFFT
     get_optional_libraries = trim(get_optional_libraries)//' clamdfft'
 #endif
-#ifdef HAVE_CLBLAS
+#if (defined(HAVE_CLBLAS)) || (defined(HAVE_CLBLAST))
     get_optional_libraries = trim(get_optional_libraries)//' clblas'
 #endif
 #ifdef HAVE_DFTBPLUS

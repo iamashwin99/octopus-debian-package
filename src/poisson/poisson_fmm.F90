@@ -104,19 +104,24 @@ contains
     type(c_ptr) ::  ret
     type(mesh_t), pointer :: mesh
 
-    logical ::  short_range_flag = .true.
+    logical ::  short_range_flag
     real(kind = fcs_real_kind_isoc), dimension(3)   ::  box_a
     real(kind = fcs_real_kind_isoc), dimension(3)   ::  box_b
     real(kind = fcs_real_kind_isoc), dimension(3)   ::  box_c
-    real(kind = fcs_real_kind_isoc), dimension(3)   ::  offset = (/M_ZERO,M_ZERO,M_ZERO/)
-    logical, dimension(3)                           ::  periodicity = (/.false.,.false.,.false./)
+    real(kind = fcs_real_kind_isoc), dimension(3)   ::  offset
+    logical, dimension(3)                           ::  periodicity
     integer(kind = fcs_integer_kind_isoc)           ::  total_particles
 
-    integer(kind = fcs_integer_kind_isoc)           ::  local_particle_count = -1
+    integer(kind = fcs_integer_kind_isoc)           ::  local_particle_count
     real(kind = fcs_real_kind_isoc), dimension(8)   ::  local_charges
     real(kind = fcs_real_kind_isoc), dimension(24)  ::  local_coordinates
 
     PUSH_SUB(poisson_fmm_init)
+
+    short_range_flag = .true.
+    offset = (/M_ZERO,M_ZERO,M_ZERO/)
+    periodicity = (/.false.,.false.,.false./)
+    local_particle_count = -1
 
     method = "fmm"
     !%Variable DeltaEFMM

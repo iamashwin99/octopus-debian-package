@@ -37,9 +37,9 @@ OutputFormat                      = axis_x + axis_y + axis_z
 
 # Maxwell output variables
 %MaxwellOutput
- electric_field 
- magnetic_field 
- maxwell_energy_density 
+ electric_field
+ magnetic_field
+ maxwell_energy_density
  trans_electric_field
 %
 MaxwellOutputInterval             = 10
@@ -47,7 +47,7 @@ MaxwellTDOutput                   = maxwell_energy
 MaxwellRestartWriteInterval = 10
 
 # Time step variables
-TDSystemPropagator = exp_mid
+TDSystemPropagator = prop_expmid
 td = 1 / ( sqrt(c^2/dx_mx^2 + c^2/dx_mx^2 + c^2/dx_mx^2) )
 TDTimeStep                        = td
 TDPropagationTime                 = 10*td
@@ -75,4 +75,3 @@ ps_2_y      =  sqrt(1/3) * 20.0
   "plane_waves_function_1" | mxf_cosinoidal_wave | k_1_x | k_1_y | 0 | ps_1_x | ps_1_y | 0 | pw_1
   "plane_waves_function_2" | mxf_cosinoidal_wave | k_2_x | k_2_y | 0 | ps_2_x | ps_2_y | 0 | pw_2
 %
-

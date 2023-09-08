@@ -8,7 +8,7 @@ a =  2.856*angstrom
 
 PseudopotentialSet = pseudodojo_lda
 
-Spacing = 0.45
+Spacing = 0.42
 
 %LatticeParameters
   a | a | a
@@ -52,6 +52,3 @@ UnfoldMode = unfold_setup
  0.0 | 0.5 | 0.5 # X point
  1.0 | 1.0 | 1.0 # Another Gamma point
 %
-
-
-

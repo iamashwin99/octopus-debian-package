@@ -261,6 +261,7 @@ CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
 CFLAGS_CLBLAS = @CFLAGS_CLBLAS@
+CFLAGS_CLBLAST = @CFLAGS_CLBLAST@
 CFLAGS_CLFFT = @CFLAGS_CLFFT@
 CFLAGS_CUDA = @CFLAGS_CUDA@
 CFLAGS_FFTW = @CFLAGS_FFTW@
@@ -338,6 +339,7 @@ LIBS_BERKELEYGW = @LIBS_BERKELEYGW@
 LIBS_BLACS = @LIBS_BLACS@
 LIBS_BLAS = @LIBS_BLAS@
 LIBS_CLBLAS = @LIBS_CLBLAS@
+LIBS_CLBLAST = @LIBS_CLBLAST@
 LIBS_CLFFT = @LIBS_CLFFT@
 LIBS_CUDA = @LIBS_CUDA@
 LIBS_DFTBPLUS = @LIBS_DFTBPLUS@
@@ -832,10 +834,10 @@ uninstall-am: uninstall-dist_dta1DATA uninstall-dist_dta2DATA
 
 
 varinfo:
-	$(top_srcdir)/build/mk_varinfo.pl -s $(top_srcdir) -b $(top_builddir)
+	$(top_srcdir)/scripts/mk_varinfo.pl -s $(top_srcdir) -b $(top_builddir)
 
 variables:
-	$(top_srcdir)/build/mk_varinfo.pl -s $(top_srcdir) -b $(top_builddir)
+	$(top_srcdir)/scripts/mk_varinfo.pl -s $(top_srcdir) -b $(top_builddir)
 
 check:
 	@for f in $(dist_dta1_DATA) $(dist_dta2_DATA); do \

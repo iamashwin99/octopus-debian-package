@@ -26,7 +26,11 @@
 #if defined(RTYPE_DOUBLE)
 
 typedef double rtype;
+#ifdef __GFORTRAN__
+#define X(x)        d/**/x
+#else
 #define X(x)        d ## x
+#endif
 #define MUL(x, y)   ((x)*(y))
 #define CONJ(x)     (x)
 #define REAL(x)     (x)
@@ -35,7 +39,11 @@ typedef double rtype;
 #elif defined(RTYPE_COMPLEX)
 
 typedef double2 rtype;
+#ifdef __GFORTRAN__
+#define X(x)        z/**/x
+#else
 #define X(x)        z ## x
+#endif
 #define MUL(x, y)   complex_mul(x, y)
 #define CONJ(x)     complex_conj(x)
 #define REAL(x)     complex_real(x)

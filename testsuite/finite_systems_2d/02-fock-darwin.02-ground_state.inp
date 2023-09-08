@@ -12,7 +12,7 @@ omega = 1.0
 %
 
 %Coordinates
-"qd" | 0 | 0 | 0 
+"qd" | 0 | 0 | 0
 %
 
 BoxShape = sphere

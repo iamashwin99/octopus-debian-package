@@ -26,7 +26,6 @@
 #define R_TYPE_CL   'RTYPE_COMPLEX'
 #define R_TYPE_IOBINARY TYPE_DOUBLE_COMPLEX
 #define R_TOTYPE(x) cmplx(x, M_ZERO, REAL_PRECISION)
-#define R_TOPREC(x) cmplx(real(x), aimag(x), REAL_PRECISION)
 
 #define R_CONJ(x)   conjg(x)
 #define R_REAL(x)   real(x)
@@ -36,9 +35,15 @@
 #define R_ADD       2
 #define R_MUL       6
 
+#ifdef __GFORTRAN__
+#define X(x)        z/**/x
+#define pX(x)       pz/**/x
+#define aX(x,y)     x/**/z/**/y
+#else
 #define X(x)        z ## x
 #define pX(x)       pz ## x
 #define aX(x,y)     x ## z ## y
+#endif
 
 
 !! Local Variables:

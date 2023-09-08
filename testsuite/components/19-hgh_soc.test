@@ -7,11 +7,11 @@ Enabled    : Yes
 
 Input: 19-hgh_soc.01-3d.inp
 
-Precision: 9.21e-16
-match ;  Norm state  1 ; GREPFIELD(out, 'Norm state  1', 4) ; 0.92115
-Precision: 8.88e-16
-match ;  Norm state  2 ; GREPFIELD(out, 'Norm state  2', 4) ; 0.887579
-Precision: 8.84e-16
-match ;  Norm state  3 ; GREPFIELD(out, 'Norm state  3', 4) ; 0.884485
-Precision: 8.84e-16
-match ;  Norm state  4 ; GREPFIELD(out, 'Norm state  4', 4) ; 0.884479
+Precision: 4.61e-05
+match ;  Norm state  1 ; GREPFIELD(out, 'Norm state  1', 4) ; 0.921694
+Precision: 4.44e-05
+match ;  Norm state  2 ; GREPFIELD(out, 'Norm state  2', 4) ; 0.888117
+Precision: 4.43e-05
+match ;  Norm state  3 ; GREPFIELD(out, 'Norm state  3', 4) ; 0.885024
+Precision: 4.43e-05
+match ;  Norm state  4 ; GREPFIELD(out, 'Norm state  4', 4) ; 0.885017

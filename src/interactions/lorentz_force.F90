@@ -115,9 +115,6 @@ contains
     SAFE_ALLOCATE(this%partner_E_field(1:dim, 1:system_np))
     SAFE_ALLOCATE(this%partner_B_field(1:dim, 1:system_np))
 
-    system_quantities(POSITION)%required = .true.
-    system_quantities(VELOCITY)%required = .true.
-    system_quantities(CHARGE)%required = .true.
     this%system_charge => system_charge
     this%system_pos => system_pos
     this%system_vel => system_vel

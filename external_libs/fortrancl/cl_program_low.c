@@ -1,5 +1,6 @@
 /*
 ** Copyright (C) 2010-2012 X. Andrade <xavier@tddft.org>
+** Copyright (C) 2022 N. Tancogne-Dejean
 ** 
 ** FortranCL is free software: you can redistribute it and/or modify
 ** it under the terms of the GNU Lesser General Public License as published by
@@ -14,7 +15,6 @@
 ** You should have received a copy of the GNU Lesser General Public License
 ** along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **
-** $Id$
 */
 
 #include <config.h>
@@ -56,12 +56,22 @@ void FC_FUNC_(clbuildprogram_nodevices,CLBUILDPROGRAM_NODEVICES)
 void FC_FUNC_(clgetprogrambuildinfo_str,CLGETPROGRAMBUILDINFO_STR)
      (cl_program * program, cl_device_id * device, const int * param_name, 
       STR_F_TYPE param_value, int * retcode_err STR_ARG1){
-  char param_value_c[2000];
 
-  *retcode_err = (int) clGetProgramBuildInfo(*program, *device, (cl_program_build_info) *param_name,
+  if(*param_name == CL_PROGRAM_BUILD_LOG){
+    size_t logSize;
+    clGetProgramBuildInfo(*program, *device, CL_PROGRAM_BUILD_LOG, 0, NULL, &logSize);
+        
+    char param_value_c[logSize];
+    *retcode_err = (int) clGetProgramBuildInfo(*program, *device, (cl_program_build_info) *param_name,
+                                             sizeof(param_value_c), param_value_c, NULL);
+    TO_F_STR1(param_value_c, param_value);
+  }
+  else {
+    char param_value_c[2000];
+    *retcode_err = (int) clGetProgramBuildInfo(*program, *device, (cl_program_build_info) *param_name,
 					     sizeof(param_value_c), param_value_c, NULL);
-
-  TO_F_STR1(param_value_c, param_value);
+    TO_F_STR1(param_value_c, param_value);
+  }
 }
 
 /* -----------------------------------------------------------------------*/

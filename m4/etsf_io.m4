@@ -9,7 +9,7 @@ case $with_etsf_io_prefix in
   "") if test "x$FCFLAGS_ETSF_IO" = x; then
     FCFLAGS_ETSF_IO="$ax_cv_f90_modflag /usr/include"
   fi;;
-  *) LIBS_ETSF_IO="-L$with_etsf_io_prefix/lib"; 
+  *) LIBS_ETSF_IO="-L$with_etsf_io_prefix/lib";
      FCFLAGS_ETSF_IO="$ax_cv_f90_modflag$with_etsf_io_prefix/include" ;;
 esac
 
@@ -41,7 +41,7 @@ if test "$acx_etsf_io_ok" != disabled; then
       type(etsf_vars) :: vars
       call etsf_io_vars_free(vars)
     ]), [acx_etsf_io_ok=yes; FCFLAGS_ETSF_IO="$etsf_io_fcflags"; LIBS_ETSF_IO="$etsf_io_libs"], [])
-    if test x"$acx_etsf_io_ok" == xyes; then 
+    if test x"$acx_etsf_io_ok" == xyes; then
       break
     fi
   done
@@ -52,7 +52,7 @@ dnl Finally, execute ACTION-IF-FOUND/ACTION-IF-NOT-FOUND:
 if test x"$acx_etsf_io_ok" = xyes; then
   AC_DEFINE(HAVE_ETSF_IO,1,[Defined if you have the ETSF_IO library.])
 else
-  AC_MSG_WARN([Could not find etsf_io library. 
+  AC_MSG_WARN([Could not find etsf_io library.
            *** Will compile without ETSF I/O support])
   FCFLAGS_ETSF_IO=""
   LIBS_ETSF_IO=""

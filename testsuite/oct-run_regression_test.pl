@@ -40,7 +40,7 @@ Usage: oct-run_regression_test.pl [options]
     -n        dry-run
     -v        verbose
     -h        this usage
-    -D        name of the directory where to look for the executables   
+    -D        name of the directory where to look for the executables
     -s        run everything serial
     -f        filename of testsuite [required]
     -p        preserve working directories
@@ -137,7 +137,7 @@ if(!$opt_s) {
     if ("$mpiexec" eq "") { $mpiexec = `which mpiexec 2> /dev/null`; }
     chomp($mpiexec);
 
-    if( "$mpiexec" eq "" ) { 
+    if( "$mpiexec" eq "" ) {
         print "No mpiexec found: running in serial.\n\n";
     } else {
         $np = 1;
@@ -151,8 +151,8 @@ if(!$opt_s) {
 $np = 2;
 my $enabled = ""; # FIXME: should Enabled be optional?
 
-my $expect_error = 0; # check for controlled failure 
-my $error_match_done = 1;   # check that at least one error-match has been done. 
+my $expect_error = 0; # check for controlled failure
+my $error_match_done = 1;   # check that at least one error-match has been done.
 my $command_env;
 
 # Handle GPU offset
@@ -195,6 +195,7 @@ my $if_level = 0;
 # for this level is set to 1 and further blocks of the same level will be skipped.
 my @if_started = ();
 my @if_done = ();
+my $skip = 0;
 
 sub parse_condition {
 
@@ -252,7 +253,7 @@ sub check_conditions {
             $result = $result * ($options_available =~ /$_/i);
         }
     }
-    return ((not $if_done[$if_level]) and $result);
+    return ((not $if_done[$if_level]) and (not $skip) and $result);
 }
 
 
@@ -274,14 +275,14 @@ if (!$opt_m) {
 
     system ("rm -rf $workdir");
     mkdir $workdir;
-      
+
     $scriptname = "$workdir/matches.sh";
     open(SCRIPT, ">$scriptname") or die255("Could not create '$scriptname'.");
     print SCRIPT "#\!/usr/bin/env bash\n\n";
     print SCRIPT "perl $0 -m -D $exec_directory -f $opt_f\n";
     close(SCRIPT);
     chmod 0755, $scriptname;
-      
+
     $matchdir = $workdir;
 } else {
     $workdir = $pwd;
@@ -308,9 +309,9 @@ my $line_num;
 
 while ($_ = <TESTSUITE>) {
 
-    # remove trailing newline 
-    chomp; 
-    # remove leading whitespace 
+    # remove trailing newline
+    chomp;
+    # remove leading whitespace
     $_ =~ s/^\s+//;
     # remove trailing whitespace
     $_ =~ s/\s+$//;
@@ -369,7 +370,7 @@ while ($_ = <TESTSUITE>) {
         # FIXME: should we do this for a dry-run?
         if( ! -x "$command") {
             $command = "$exec_directory/../utils/$1";
-        }        
+        }
         if( ! -x $command) {
             die255("Executable '$1' not available.");
         }
@@ -387,13 +388,13 @@ while ($_ = <TESTSUITE>) {
         # FIXME: import Options to BGW version
     } elsif ( $_ =~ /^TestGroups\s*:\s*(.*)\s*$/) {
         # handled by oct-run_testsuite.sh
-        my @groups = split(/[;,]\s*/, $1);        
+        my @groups = split(/[;,]\s*/, $1);
         $report{$testname}{"testgroups"} = \@groups;
     } else {
         if ( $enabled eq "") {
             die255("Testsuite file must set Enabled tag before another (except Test, Program, Options, TestGroups).");
         }
-      
+
         if ( $_ =~ /^Util\s*:\s*(.*)\s*$/ || $_ =~ /^MPIUtil\s*:\s*(.*)\s*$/) {
             if( $_ =~ /^Util\s*:\s*(.*)\s*$/) {$np = "serial";}
             $command = "$exec_directory/$1";
@@ -401,7 +402,7 @@ while ($_ = <TESTSUITE>) {
                 $command = "$exec_directory/../utils/$1";
             }
             $report{$testname}{"util"} = $1;
-        
+
             if( ! -x "$command") {
                 die255("Cannot find utility '$1'.");
             }
@@ -413,7 +414,7 @@ while ($_ = <TESTSUITE>) {
                 $command = "$exec_directory/../utils/$1";
             }
             $report{$testname}{"util"} = $1;
-        
+
             if( ! -x "$command") {
                 die255("Cannot find utility '$1'.");
             }
@@ -425,44 +426,43 @@ while ($_ = <TESTSUITE>) {
             $np = $1;
         }
 
-        elsif ( $_ =~ /^if\s*\((.*)\)\s*;\s*then\s*$/i ) {
-    
+        elsif ( $_ =~ /^\s*if\s*\((.*)\)\s*;\s*then\s*$/i ) {
+
             # Entering an IF region
 
-            push(@conditions,$1);
-            $if_level += 1;
-            $if_started[$if_level] = 0;
-            $if_done[$if_level] = 0;
-    
+            if ( not $if_done[$if_level] ) {
+                push(@conditions,$1);
+                $if_level += 1;
+                $if_started[$if_level] = 0;
+                $if_done[$if_level] = 0;
+            }
+            else {
+                $skip = 1;
+            }
         }
-    
-        elsif ( $_ =~ /^elseif\s*\((.*)\)\s*;\s*then\s*$/i ) {
-    
-            $if_done[$if_level] = $if_started[$if_level];
-            $if_started[$if_level] = 0;
-            pop(@conditions);
-            push(@conditions,$1);
-    
-        }
-    
-        elsif ( $_ =~ /^else\s*$/i ) {
 
-            $if_done[$if_level] = $if_started[$if_level];
-            $if_started[$if_level] = 0;
-            pop(@conditions);
-            push(@conditions, "dummy");
+        elsif ( $_ =~ /^\s*else\s*$/i ) {
+
+            if (not $skip ) {
+                $if_done[$if_level] = $if_started[$if_level];
+                # $if_started[$if_level] = 0;
+                pop(@conditions);
+                push(@conditions, "dummy");
+            }
         }
-    
-        elsif ( $_ =~ /^endif\s*$/i ) {
-    
-            $if_done[$if_level] = $if_started[$if_level];
-            $if_started[$if_level] = 0;
-            if ($if_level==0) { die255("Ill-formed test file (unpaired endif.)\n"); }
-            # Exiting IF region
-            pop(@conditions);
-            $if_done[$if_level] = undef;
-            $if_level -= 1;
-    
+
+        elsif ( $_ =~ /^\s*endif\s*$/i ) {
+
+            if ( not $skip ) {
+                $if_done[$if_level] = $if_started[$if_level];
+                $if_started[$if_level] = 0;
+                if ($if_level==0) { die255("Ill-formed test file (unpaired endif.)\n"); }
+                # Exiting IF region
+                pop(@conditions);
+                $if_started[$if_level-1] = $if_done[$if_level];
+                $if_done[$if_level] = undef;
+                $if_level -= 1;
+            }
         }
 
 
@@ -476,7 +476,7 @@ while ($_ = <TESTSUITE>) {
                 $input_file = dirname($opt_f) . "/" . $input_base;
 
                 my %input_report;
-                $r_input_report = \%input_report;          
+                $r_input_report = \%input_report;
                 $report{$testname}{"input"}{basename($input_file)} = \%input_report;
 
 
@@ -527,9 +527,9 @@ while ($_ = <TESTSUITE>) {
                         } elsif ("$mpiexec" =~ /runjob/) { # used by BlueGene
                             $specify_np = "--np $np --exe";
                             $my_nslots = "";
-                        } elsif ("$mpiexec" =~ /poe/) { # used by IBM PE 
-                            $specify_np = ""; 
-                            $my_nslots = "MP_PROCS=$np"; 
+                        } elsif ("$mpiexec" =~ /poe/) { # used by IBM PE
+                            $specify_np = "";
+                            $my_nslots = "MP_PROCS=$np";
                         } else { # for mpirun and Cray's aprun
                             $specify_np = "-n $np";
                             $my_nslots = "";
@@ -636,10 +636,8 @@ while ($_ = <TESTSUITE>) {
                         $failures++;
                     }
                 }
-                for(my $i=$if_level; $i>=0; $i--) {
-                    $if_started[$i]=1;
-                }
-            } 
+                $if_started[$if_level]=1;
+            }
         }
 
         else {
@@ -700,7 +698,7 @@ sub run_match_new {
 
     $r_match_report->{"type"} = $func;
     $r_match_report->{"arguments"} = \@par;
-  
+
     if ($func eq "SHELL") { # function SHELL(shell code)
         check_num_args(1, 1, $#par, $func);
         $shell_command = $par[0];
@@ -724,7 +722,7 @@ sub run_match_new {
             $shell_command = "awk '(NR==$par[1]) {printf \$$par[2]}' $par[0]";
         }
 
-     
+
     } elsif ($func eq "LINEFIELD_ABS") { # function LINE(filename, line, field_re, field_im)
         check_num_args(4, 4, $#par, $func);
         if ($par[1] < 0) { # negative number means from end of file
@@ -773,7 +771,7 @@ sub run_match_new {
 
     # 'set -e; set -o pipefail' (bash 3 only) would make the whole pipe series give an error if any step does;
     # otherwise the error comes only if the last step failed.
-    $value = qx(cd $matchdir && $shell_command);    
+    $value = qx(cd $matchdir && $shell_command);
     # Perl gives error code shifted, for some reason.
     my $exit_code = $? >> 8;
     if ($exit_code) {
@@ -825,7 +823,7 @@ sub run_match_new {
             print "   Tolerance [%]    : ".($precnum/abs($ref_value)*100.0)."\n";
         }
         print "\n";
-    
+
     }
 
     return $success;
@@ -878,9 +876,9 @@ sub skip_exit {
 }
 
 sub check_error_resolved {
-    if (!$opt_n && !$error_match_done) { 
+    if (!$opt_n && !$error_match_done) {
         print "No error check performed!\n";
 #        $input_report{"execution"} = "fail";
-        $failures++; 
+        $failures++;
     }
 }

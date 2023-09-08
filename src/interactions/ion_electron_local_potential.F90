@@ -109,7 +109,7 @@ contains
   ! ---------------------------------------------------------
   subroutine ion_electron_local_potential_init(this, mesh, psolver, ions, namespace)
     class(ion_electron_local_potential_t),    intent(inout) :: this
-    type(mesh_t),                     target, intent(in)    :: mesh
+    class(mesh_t),                    target, intent(in)    :: mesh
     type(poisson_t),                  target, intent(in)    :: psolver
     type(ions_t),                     target, intent(in)    :: ions
     type(namespace_t),                target, intent(in)    :: namespace
@@ -174,7 +174,7 @@ contains
 
         SAFE_ALLOCATE(rho(1:this%mesh%np))
         call species_get_long_range_density(this%atom(ia)%species, this%namespace, this%space, this%latt, &
-          this%pos(:, ia), this%mesh, rho)
+          this%pos(:, ia), this%mesh, rho, sphere)
         call lalg_axpy(this%mesh%np, M_ONE, rho, density)
         SAFE_DEALLOCATE_A(rho)
 
@@ -193,13 +193,19 @@ contains
 
         ps => species_ps(this%atom(ia)%species)
 
-        radius = spline_cutoff_radius(ps%vl, ps%projectors_sphere_threshold) + this%mesh%spacing(1)
+        radius = spline_cutoff_radius(ps%vl, ps%projectors_sphere_threshold)*CNST(1.05)
 
-        call submesh_init(sphere, this%space, this%mesh, this%latt, this%pos(:, ia), radius)
+        if ( .not. submesh_compatible(sphere,radius,this%pos(:,ia), minval(this%mesh%spacing(1:this%space%dim))) ) then
+          call submesh_init(sphere, this%space, this%mesh, this%latt, this%pos(:, ia), radius)
+        end if
         SAFE_ALLOCATE(vl(1:sphere%np))
 
         do ip = 1, sphere%np
-          vl(ip) = spline_eval(ps%vl, sphere%r(ip))
+          if(sphere%r(ip) <= radius) then
+            vl(ip) = spline_eval(ps%vl, sphere%r(ip))
+          else
+            vl(ip) = 0
+          end if
         end do
 
         call submesh_add_to_mesh(sphere, vl, this%potential(:,1))

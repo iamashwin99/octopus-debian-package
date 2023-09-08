@@ -19,8 +19,8 @@
 
 ! ---------------------------------------------------------
 subroutine xc_kli_pauli_solve(mesh, st, oep)
-  type(mesh_t),        intent(in)    :: mesh
-  type(states_elec_t), intent(in) :: st
+  class(mesh_t),       intent(in)    :: mesh
+  type(states_elec_t), intent(in)    :: st
   type(xc_oep_t),      intent(inout) :: oep
   !
   integer :: ip, ist, jst, kssi, kssj, ik, proc, eigen_n
@@ -54,9 +54,9 @@ subroutine xc_kli_pauli_solve(mesh, st, oep)
       call states_elec_get_state(st, mesh, ist, ik, psi)
       !Here we accumulate the result for the potential
       do ip = 1, mesh%np
-        bij(ip, 1) = bij(ip, 1) + weight * TOFLOAT(conjg(oep%zlxc(ip, ist, 1))*conjg(psi(ip, 1)))
-        bij(ip, 2) = bij(ip, 2) + weight * TOFLOAT(conjg(oep%zlxc(ip, ist, 2))*conjg(psi(ip, 2)))
-        bij(ip, 3) = bij(ip, 3) + weight * conjg(oep%zlxc(ip, ist, 1)) * conjg(psi(ip, 2))
+        bij(ip, 1) = bij(ip, 1) + weight * TOFLOAT(conjg(oep%zlxc(ip, 1, ist, 1))*conjg(psi(ip, 1)))
+        bij(ip, 2) = bij(ip, 2) + weight * TOFLOAT(conjg(oep%zlxc(ip, 2, ist, 1))*conjg(psi(ip, 2)))
+        bij(ip, 3) = bij(ip, 3) + weight * conjg(oep%zlxc(ip, 1, ist, 1)) * conjg(psi(ip, 2))
         !The last component is simply the complex conjuguate of bij(3), so we do not compute it.
 
         ! We store \phi_{i,\alpha}(r)\phi^*_{i,\beta}(r). Needed for the KLI part
@@ -270,7 +270,7 @@ subroutine xc_kli_pauli_solve(mesh, st, oep)
         Ma(ist, jst) = Ma(ist, jst) - M_FOUR * dmf_dotp(mesh, 2, dd(:,3:4, jst), sqphi(:, 3:4, kssi))
       end do j_loop
       Ma(ist, ist) = M_ONE + Ma(ist, ist)
-      yy(ist, 1) = M_TWO * v_bar_S(kssi) - M_TWO * (oep%uxc_bar(kssi, 1) + oep%uxc_bar(kssi, 2))
+      yy(ist, 1) = M_TWO * v_bar_S(kssi) - M_TWO * (oep%uxc_bar(1, kssi, 1) + oep%uxc_bar(2, kssi, 1))
 
     end do i_loop
 
@@ -377,4 +377,3 @@ subroutine rotate_to_global(mat, alpha, betar, betai, alpha2, beta2, rot_mat)
   rot_mat(4) = alpha2 * mat(4) - alpha * betai * (mat(2)-mat(1)) - aimag(cross)
 
 end subroutine rotate_to_global
-

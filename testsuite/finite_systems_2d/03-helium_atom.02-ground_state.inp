@@ -3,10 +3,9 @@
 # This second example reproduces the ground-state calculation present in
 # [W.-C. Liu et al, Phys. Rev. Lett. 83, 520 (1999)]
 # The total energy reproduces the -2.238Ha quoted in the paper.
-
 CalculationMode = gs
 Dimensions = 2
-fromScratch = yes
+FromScratch = yes
 
 a = 1
 %Species
@@ -21,5 +20,3 @@ Radius  = 7.0
 Spacing = 0.14
 
 TheoryLevel = independent_particles
-
-EigenSolverTolerance = 1.0e-4

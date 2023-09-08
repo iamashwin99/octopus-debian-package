@@ -72,7 +72,7 @@ module geom_opt_oct_m
     type(ions_t),             pointer :: ions
     type(hamiltonian_elec_t), pointer :: hm
     type(electrons_t),        pointer :: syst
-    type(mesh_t),             pointer :: mesh
+    class(mesh_t),            pointer :: mesh
     type(states_elec_t),      pointer :: st
     integer                           :: dim
     integer                           :: size
@@ -141,9 +141,9 @@ contains
 
     ! load wavefunctions
     if (.not. fromscratch) then
-      call restart_init(restart_load, sys%namespace, RESTART_GS, RESTART_TYPE_LOAD, sys%mc, ierr, mesh=sys%gr%mesh)
+      call restart_init(restart_load, sys%namespace, RESTART_GS, RESTART_TYPE_LOAD, sys%mc, ierr, mesh=sys%gr)
       if (ierr == 0) then
-        call states_elec_load(restart_load, sys%namespace, sys%space, sys%st, sys%gr%mesh, sys%kpoints, ierr)
+        call states_elec_load(restart_load, sys%namespace, sys%space, sys%st, sys%gr, sys%kpoints, ierr)
       end if
       call restart_end(restart_load)
       if (ierr /= 0) then
@@ -168,7 +168,7 @@ contains
     SAFE_ALLOCATE(coords(1:g_opt%size))
     call to_coords(g_opt, coords)
 
-    if (sys%st%d%pack_states .and. hamiltonian_elec_apply_packed(sys%hm)) call sys%st%pack()
+    if (sys%st%d%pack_states .and. sys%hm%apply_packed()) call sys%st%pack()
 
     !Minimize
     select case (g_opt%method)
@@ -212,7 +212,7 @@ contains
       call messages_fatal(2, namespace=sys%namespace)
     end if
 
-    if (sys%st%d%pack_states .and. hamiltonian_elec_apply_packed(sys%hm)) call sys%st%unpack()
+    if (sys%st%d%pack_states .and. sys%hm%apply_packed()) call sys%st%unpack()
 
     ! print out geometry
     call from_coords(g_opt, coords)
@@ -250,10 +250,19 @@ contains
         call messages_warning(2, namespace=sys%namespace)
       end if
 
-      call states_elec_allocate_wfns(sys%st, sys%gr%mesh)
+
+      do iatom = 1, sys%ions%natoms
+        if (species_type(sys%ions%atom(iatom)%species) == SPECIES_FULL_DELTA) then
+          write(message(1),'(a)') "Geometry optimization for all-electron potential is not implemented."
+          call messages_fatal(1)
+        end if
+      enddo
+
+
+      call states_elec_allocate_wfns(sys%st, sys%gr)
 
       ! shortcuts
-      g_opt%mesh   => sys%gr%mesh
+      g_opt%mesh   => sys%gr
       g_opt%ions    => sys%ions
       g_opt%st     => sys%st
       g_opt%hm     => sys%hm
@@ -571,7 +580,7 @@ contains
         ! TODO: clean forces directory
       end do
 
-      call restart_init(g_opt%restart_dump, sys%namespace, RESTART_GS, RESTART_TYPE_DUMP, sys%mc, ierr, mesh=sys%gr%mesh)
+      call restart_init(g_opt%restart_dump, sys%namespace, RESTART_GS, RESTART_TYPE_DUMP, sys%mc, ierr, mesh=sys%gr)
 
       POP_SUB(geom_opt_run_legacy.init_)
     end subroutine init_
@@ -720,8 +729,8 @@ contains
       if (bitand(g_opt%syst%outp%how(OPTION__OUTPUT__FORCES), OPTION__OUTPUTFORMAT__BILD) /= 0) then
         call g_opt%ions%write_bild_forces_file('forces', trim(c_forces_iter))
       else
-        call write_xsf_geometry_file('forces', trim(c_forces_iter), g_opt%ions, g_opt%syst%gr%mesh, &
-          g_opt%syst%namespace, write_forces = .true.)
+        call write_xsf_geometry_file('forces', trim(c_forces_iter), g_opt%ions%space, g_opt%ions%latt, &
+          g_opt%ions%pos, g_opt%ions%atom, g_opt%syst%gr, g_opt%syst%namespace, total_forces=g_opt%ions%tot_force)
       end if
     end if
 

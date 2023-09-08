@@ -19,7 +19,7 @@ PeriodicDimensions = 3
 1 | 1 | 1
 %
 
-%EMFreqs 
+%EMFreqs
 1 | 0.0
 %
 
@@ -31,4 +31,3 @@ EMPerturbationType = magnetic
 FilterPotentials = filter_none
 
 MixField = density
-

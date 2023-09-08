@@ -33,6 +33,8 @@ module ghost_interaction_oct_m
   public ::                &
     ghost_interaction_t
 
+  !> The ghost ineraction is a dummy interaction, which needs to be setup between otherwise non-interacting
+  !! interaction partners, to ensure synchronicity between the systems.
   type, extends(interaction_with_partner_t) :: ghost_interaction_t
   contains
     procedure :: calculate => ghost_interaction_calculate

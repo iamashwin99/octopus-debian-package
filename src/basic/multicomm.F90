@@ -18,7 +18,9 @@
 
 #include "global.h"
 
-!> Given a number n_index of indices and their ranges index_range(1:n_index),
+!> @brief This module handles the communicators for the various parallelization strategies.
+!!
+!! Given a number n_index of indices and their ranges index_range(1:n_index),
 !! we divide the n_nodes in groups and create communicators for each group.
 !! Each group is associated with one index. The min_range indicates the minimum
 !! number of elements in each processor. For example, given min_range(1) = 25000,
@@ -87,7 +89,7 @@ module multicomm_oct_m
     P_STRATEGY_DOMAINS = 1,          & !< parallelization in domains
     P_STRATEGY_STATES  = 2,          & !< parallelization in states
     P_STRATEGY_KPOINTS = 3,          & !< parallelization in k-points
-    P_STRATEGY_OTHER   = 4,          &   !< something else like e-h pairs
+    P_STRATEGY_OTHER   = 4,          & !< something else like e-h pairs
     P_STRATEGY_MAX     = 4
 
   integer, public, parameter ::      &
@@ -185,7 +187,7 @@ contains
 
     mc%n_node  = n_node
 
-    call messages_print_stress(msg="Parallelization", namespace=namespace)
+    call messages_print_with_emphasis(msg="Parallelization", namespace=namespace)
 
     !%Variable ReorderRanks
     !%Default no
@@ -357,7 +359,7 @@ contains
 
     call group_comm_create()
 
-    call messages_print_stress(namespace=namespace)
+    call messages_print_with_emphasis(namespace=namespace)
 
     POP_SUB(multicomm_init)
 

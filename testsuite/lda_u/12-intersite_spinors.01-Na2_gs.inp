@@ -3,19 +3,19 @@ ExperimentalFeatures = yes
 FromScratch = yes
 
 #This tests does not run on GPU at the moment
-#But the second part (TD) runs well, so we simply 
+#But the second part (TD) runs well, so we simply
 #make it run on the CPU for GPU bots
 DisableAccel = yes
 
 dist = 3.0
 
 %Species
- "Na" | species_pseudo | set | standard | hubbard_l | 0 
+ "Na" | species_pseudo | set | standard | hubbard_l | 0
 %
 
 %Coordinates
-'Na'  | 0 | 0 | -dist 
-'Na'  | 0 | 0 |  dist 
+'Na'  | 0 | 0 | -dist
+'Na'  | 0 | 0 |  dist
 %
 
 Radius = 7

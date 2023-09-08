@@ -124,7 +124,7 @@ subroutine xc_oep_pt_rhs(mesh, st, is, oep, phi1, ist, rhs)
     call lalg_axpy(mesh%np, - sqrt(M_HALF*oep%pt%omega(1))*kkopii, phi1(:, 1, kst), aa(:,1))
   end do
 
-  if (ist /= oep%eigen_n + 1 .or. oep%level == XC_OEP_FULL) then
+  if (ist /= oep%eigen_n + 1 .or. oep%level == OEP_LEVEL_FULL) then
     abar = dmf_dotp(mesh,  aa(:, 1), psiii(:, 1))
     call lalg_axpy(mesh%np, -abar, psiii(:, 1), aa(:, 1))
   end if

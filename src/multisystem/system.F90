@@ -20,8 +20,11 @@
 
 #include "global.h"
 
+!> This module implements the abstract system type.
+!!
 module system_oct_m
   use algorithm_oct_m
+  use algorithm_factory_oct_m
   use clock_oct_m
   use debug_oct_m
   use ghost_interaction_oct_m
@@ -36,11 +39,6 @@ module system_oct_m
   use linked_list_oct_m
   use parser_oct_m
   use profiling_oct_m
-  use propagator_oct_m
-  use propagator_beeman_oct_m
-  use propagator_exp_mid_oct_m
-  use propagator_static_oct_m
-  use propagator_verlet_oct_m
   use quantity_oct_m
   use space_oct_m
   use unit_oct_m
@@ -51,14 +49,15 @@ module system_oct_m
   private
   public ::                                    &
     system_t,                                  &
-    system_dt_operation,                       &
+    system_execute_algorithm,                  &
     system_init_parallelization,               &
+    system_init_algorithm,                     &
+    system_init_clocks,                        &
     system_reset_clocks,                       &
     system_propagation_start,                  &
     system_propagation_finish,                 &
     system_restart_read,                       &
     system_restart_write,                      &
-    system_has_reached_final_propagation_time, &
     system_update_potential_energy,            &
     system_update_total_energy,                &
     system_end,                                &
@@ -71,18 +70,20 @@ module system_oct_m
   end type barrier_t
 
   integer, parameter, public :: &
-    NUMBER_BARRIERS = 2,        &
-    BARRIER_TIME    = 1,        &
-    BARRIER_RESTART = 2
+    NUMBER_BARRIERS = 1,        &
+    BARRIER_RESTART = 1
 
+  !> @brief Abstract class for systems
+  !!
+  !! All explicit systems are derived from this class.
   type, extends(interaction_partner_t), abstract :: system_t
     private
-    class(propagator_t), pointer, public :: prop => null()
+    class(algorithm_t),  pointer, public :: algo => null()
 
-    integer :: accumulated_loop_ticks
+    integer, public :: accumulated_loop_ticks
 
     integer, public :: interaction_timing  !< parameter to determine if interactions
-    !< should use the quantities at the exact time or if retardation is allowed
+    !!                                        should use the quantities at the exact time or if retardation is allowed
 
     type(integer_list_t), public :: supported_interactions
     type(interaction_list_t), public :: interactions !< List with all the interactions of this system
@@ -96,46 +97,48 @@ module system_oct_m
     FLOAT, public :: total_energy       !< Sum of internal, external, and self energy
 
   contains
-    procedure :: dt_operation =>  system_dt_operation
-    procedure :: reset_clocks => system_reset_clocks
-    procedure :: update_exposed_quantities => system_update_exposed_quantities
-    procedure :: init_propagator => system_init_propagator
-    procedure :: init_all_interactions => system_init_all_interactions
-    procedure :: init_parallelization => system_init_parallelization
-    procedure :: update_interactions => system_update_interactions
-    procedure :: update_interactions_start => system_update_interactions_start
-    procedure :: update_interactions_finish => system_update_interactions_finish
-    procedure :: propagation_start => system_propagation_start
-    procedure :: propagation_finish => system_propagation_finish
-    procedure :: iteration_info => system_iteration_info
-    procedure :: has_reached_final_propagation_time => system_has_reached_final_propagation_time
-    procedure :: restart_write => system_restart_write
-    procedure :: restart_read => system_restart_read
-    procedure :: output_start => system_output_start
-    procedure :: output_write => system_output_write
-    procedure :: output_finish => system_output_finish
-    procedure :: process_is_slave => system_process_is_slave
-    procedure :: exec_end_of_timestep_tasks => system_exec_end_of_timestep_tasks
-    procedure :: start_barrier => system_start_barrier
-    procedure :: end_barrier => system_end_barrier
-    procedure :: arrived_at_barrier => system_arrived_at_barrier
-    procedure :: arrived_at_any_barrier => system_arrived_at_any_barrier
-    procedure :: update_potential_energy => system_update_potential_energy
-    procedure :: update_internal_energy => system_update_internal_energy
-    procedure :: update_total_energy => system_update_total_energy
-    procedure(system_init_interaction),               deferred :: init_interaction
-    procedure(system_initial_conditions),             deferred :: initial_conditions
-    procedure(system_do_td_op),                       deferred :: do_td_operation
-    procedure(system_is_tolerance_reached),           deferred :: is_tolerance_reached
-    procedure(system_update_quantity),                deferred :: update_quantity
-    procedure(system_restart_write_data),             deferred :: restart_write_data
-    procedure(system_restart_read_data),              deferred :: restart_read_data
-    procedure(system_update_kinetic_energy),          deferred :: update_kinetic_energy
+    procedure :: execute_algorithm =>  system_execute_algorithm !< @copydoc system_oct_m::system_execute_algorithm
+    procedure :: reset_clocks => system_reset_clocks !< @copydoc system_oct_m::system_reset_clocks
+    procedure :: update_exposed_quantities => system_update_exposed_quantities !< @copydoc system_oct_m::system_update_exposed_quantities
+    procedure :: init_algorithm => system_init_algorithm !< @copydoc system_oct_m::system_init_algorithm
+    procedure :: algorithm_finished => system_algorithm_finished !< @copydoc system_oct_m::system_algorithm_finished
+    procedure :: init_clocks => system_init_clocks !< @copydoc system_oct_m::system_init_clocks
+    procedure :: init_all_interactions => system_init_all_interactions !< @copydoc system_oct_m::system_init_all_interactions
+    procedure :: init_parallelization => system_init_parallelization !< @copydoc system_oct_m::system_init_parallelization
+    procedure :: update_interactions => system_update_interactions !< @copydoc system_oct_m::system_update_interactions
+    procedure :: update_interactions_start => system_update_interactions_start !< @copydoc system_oct_m::system_update_interactions_start
+    procedure :: update_interactions_finish => system_update_interactions_finish !< @copydoc system_oct_m::system_update_interactions_finish
+    procedure :: propagation_start => system_propagation_start !< @copydoc system_oct_m::system_propagation_start
+    procedure :: propagation_finish => system_propagation_finish !< @copydoc system_oct_m::system_propagation_finish
+    procedure :: iteration_info => system_iteration_info !< @copydoc system_oct_m::system_iteration_info
+    procedure :: restart_write => system_restart_write !< @copydoc system_oct_m::system_restart_write
+    procedure :: restart_read => system_restart_read !< @copydoc system_oct_m::system_restart_read
+    procedure :: output_start => system_output_start !< @copydoc system_oct_m::system_output_start
+    procedure :: output_write => system_output_write !< @copydoc system_oct_m::system_output_write
+    procedure :: output_finish => system_output_finish !< @copydoc system_oct_m::system_output_finish
+    procedure :: process_is_slave => system_process_is_slave !< @copydoc system_oct_m::system_process_is_slave
+    procedure :: start_barrier => system_start_barrier !< @copydoc system_oct_m::system_start_barrier
+    procedure :: end_barrier => system_end_barrier !< @copydoc system_oct_m::system_end_barrier
+    procedure :: arrived_at_barrier => system_arrived_at_barrier !< @copydoc system_oct_m::system_arrived_at_barrier
+    procedure :: arrived_at_any_barrier => system_arrived_at_any_barrier !< @copydoc system_oct_m::system_arrived_at_any_barrier
+    procedure :: update_potential_energy => system_update_potential_energy !< @copydoc system_oct_m::system_update_potential_energy
+    procedure :: update_internal_energy => system_update_internal_energy !< @copydoc system_oct_m::system_update_internal_energy
+    procedure :: update_total_energy => system_update_total_energy !< @copydoc system_oct_m::system_update_total_energy
+    procedure(system_init_interaction),          deferred :: init_interaction !< @copydoc system_oct_m::system_init_interaction
+    procedure(system_initial_conditions),        deferred :: initial_conditions !< @copydoc system_oct_m::system_initial_conditions
+    procedure(system_do_algorithmic_operation),  deferred :: do_algorithmic_operation !< @copydoc system_oct_m::system_do_algorithmic_operation
+    procedure(system_is_tolerance_reached),      deferred :: is_tolerance_reached !< @copydoc system_oct_m::system_is_tolerance_reached
+    procedure(system_update_quantity),           deferred :: update_quantity !< @copydoc system_oct_m::system_update_quantity
+    procedure(system_update_exposed_quantity),   deferred :: update_exposed_quantity !< @copydoc system_oct_m::system_update_exposed_quantity
+    procedure(system_restart_write_data),        deferred :: restart_write_data !< @copydoc system_oct_m::system_restart_write_data
+    procedure(system_restart_read_data),         deferred :: restart_read_data !< @copydoc system_oct_m::system_restart_read_data
+    procedure(system_update_kinetic_energy),     deferred :: update_kinetic_energy !< @copydoc system_oct_m::system_update_kinetic_energy
   end type system_t
 
   abstract interface
 
     ! ---------------------------------------------------------
+    !> @brief initialize a given interaction of the system
     subroutine system_init_interaction(this, interaction)
       import system_t
       import interaction_t
@@ -144,20 +147,24 @@ module system_oct_m
     end subroutine system_init_interaction
 
     ! ---------------------------------------------------------
+    !> set initial conditions for a system
     subroutine system_initial_conditions(this)
       import system_t
       class(system_t), intent(inout) :: this
     end subroutine system_initial_conditions
 
     ! ---------------------------------------------------------
-    subroutine system_do_td_op(this, operation)
+    !> Execute one operation that is part of a larger algorithm.  Returns true
+    !! if the operation was successfully executed, false otherwise.
+    logical function system_do_algorithmic_operation(this, operation) result(done)
       import system_t
       import algorithmic_operation_t
       class(system_t),                intent(inout) :: this
       class(algorithmic_operation_t), intent(in)    :: operation
-    end subroutine system_do_td_op
+    end function system_do_algorithmic_operation
 
     ! ---------------------------------------------------------
+    !> @brief check whether a system has reached a given tolerance
     logical function system_is_tolerance_reached(this, tol)
       import system_t
       class(system_t), intent(in) :: this
@@ -179,6 +186,14 @@ module system_oct_m
     end subroutine system_update_quantity
 
     ! ---------------------------------------------------------
+    subroutine system_update_exposed_quantity(partner, iq)
+      import system_t
+      import clock_t
+      class(system_t), intent(inout) :: partner
+      integer,         intent(in)    :: iq
+    end subroutine system_update_exposed_quantity
+
+    ! ---------------------------------------------------------
     subroutine system_restart_write_data(this)
       import system_t
       class(system_t), intent(inout) :: this
@@ -197,153 +212,147 @@ module system_oct_m
 
   end interface
 
-  !> These classes extends the list and list iterator to create a system list.
+  !> @brief These classes extends the list and list iterator to create a system list.
+  !!
   !! Since a list of systems is also a list of interaction partners, the system
   !! list is an extension of the partner list.
   type, extends(partner_list_t) :: system_list_t
     private
   contains
-    procedure :: add => system_list_add_node
-    procedure :: contains => system_list_contains
+    procedure :: add => system_list_add_node !< @copydoc system_oct_m::system_list_add_node
+    procedure :: contains => system_list_contains !< @copydoc system_oct_m::system_list_contains
   end type system_list_t
 
   type, extends(linked_list_iterator_t) :: system_iterator_t
     private
   contains
-    procedure :: get_next => system_iterator_get_next
+    procedure :: get_next => system_iterator_get_next !< @copydoc system_oct_m::system_iterator_get_next
   end type system_iterator_t
 
 contains
 
   ! ---------------------------------------------------------
-  subroutine system_dt_operation(this)
+  !> @brief perform one or more algorithmic operations
+  !!
+  !! The following subroutine takes a system and performs as many algorithmic
+  !! operations as possible on the system until a barrier is reached. There are
+  !! two types of barriers:
+  !!
+  !!  - explicit barriers, implemented using the barrier_t type
+  !!  - the interaction update
+  !!
+  !! The interaction update is always considered a barrier, even if the update
+  !! was successful. This is to allow other system to also update their
+  !! interactions before this system moves on to the next operations.
+  subroutine system_execute_algorithm(this)
     class(system_t),     intent(inout) :: this
 
-    type(algorithmic_operation_t) :: tdop
-    logical :: all_updated
-
+    type(algorithmic_operation_t) :: operation
+    logical :: all_updated, at_barrier, operation_done
     type(event_handle_t) :: debug_handle
 
-    PUSH_SUB(system_dt_operation)
+    PUSH_SUB(system_execute_algorithm)
 
-    tdop = this%prop%get_td_operation()
+    at_barrier = .false.
 
-    if (debug%info) then
-      write(message(1), '(a,a,1X,a)') "Debug: Start  ", trim(tdop%label), " for '" + trim(this%namespace%get()) + "'"
-      call messages_info(1, namespace=this%namespace)
-    end if
+    do while (.not. at_barrier)
 
-    debug_handle = multisystem_debug_write_event_in(this%namespace, event_function_call_t("dt_operation", tdop),    &
-      system_clock=this%clock, prop_clock=this%prop%clock)
-
-    select case (tdop%id)
-    case (FINISHED)
-      if (.not. this%prop%step_is_done()) then
-        ! Increment the system clock by one time-step
-        this%clock = this%clock + CLOCK_TICK
-        call multisystem_debug_write_marker(this%namespace, event_clock_update_t("system",  "", this%clock, "tick"))
-
-        ! Execute additional operations at the end of the time step
-        call this%exec_end_of_timestep_tasks()
-
-        ! Recompute the total energy
-        call this%update_total_energy()
-
-        ! Write output
-        call this%output_write()
-
-        ! Mark propagation step as finished
-        call this%prop%finished()
-
-        ! Print information about the current iteration
-        ! (NB: needs to be done after marking the propagation step as finished,
-        ! so that the timings are correct)
-        call this%iteration_info()
-      else
-        if (.not. this%arrived_at_any_barrier()) then
-          ! Reset propagator for next step if not waiting at barrier
-          call this%prop%rewind()
-        end if
-      end if
-
-    case (UPDATE_INTERACTIONS)
-      ! We increment by one algorithmic step
-      this%prop%clock = this%prop%clock + CLOCK_TICK
-      call multisystem_debug_write_marker(this%namespace, event_clock_update_t("propagator", "", this%prop%clock, "tick"))
-
-      ! Try to update all the interactions
-      all_updated = this%update_interactions()
-
-      ! Move to next propagator step if all interactions have been
-      ! updated. Otherwise try again later.
-      if (all_updated) then
-        this%accumulated_loop_ticks = this%accumulated_loop_ticks + 1
-        call this%prop%next()
-      else
-        this%prop%clock = this%prop%clock - CLOCK_TICK
-        call multisystem_debug_write_marker(this%namespace, event_clock_update_t("propagator", "", this%prop%clock, "reverse"))
-      end if
-
-    case (START_SCF_LOOP)
-      ASSERT(this%prop%predictor_corrector)
-
-      call this%prop%save_scf_start()
-      this%prop%inside_scf = .true.
-      this%accumulated_loop_ticks = 0
+      operation = this%algo%get_current_operation()
 
       if (debug%info) then
-        write(message(1), '(a,i3,a)') "Debug: -- SCF iter ", this%prop%scf_count, " for '" + trim(this%namespace%get()) + "'"
+        write(message(1), '(a,a,1X,a)') "Debug: Start  ", trim(operation%label), " for '" + trim(this%namespace%get()) + "'"
         call messages_info(1, namespace=this%namespace)
       end if
 
-    case (END_SCF_LOOP)
-      ! Here we first check if we did the maximum number of steps.
-      ! Otherwise, we need check the tolerance
-      if (this%prop%scf_count == this%prop%max_scf_count) then
-        if (debug%info) then
-          message(1) = "Debug: -- Max SCF Iter reached for '" + trim(this%namespace%get()) + "'"
-          call messages_info(1, namespace=this%namespace)
-        end if
-        this%prop%inside_scf = .false.
-        call this%prop%next()
-      else
-        ! We reset the pointer to the begining of the scf loop
-        if (this%is_tolerance_reached(this%prop%scf_tol)) then
-          if (debug%info) then
-            message(1) = "Debug: -- SCF tolerance reached for '" + trim(this%namespace%get()) + "'"
-            call messages_info(1, namespace=this%namespace)
-          end if
-          this%prop%inside_scf = .false.
-          call this%prop%next()
-        else
-          ! We rewind the instruction stack
-          call this%prop%rewind_scf_loop()
+      debug_handle = multisystem_debug_write_event_in(this%namespace, event_function_call_t("dt_operation", operation),    &
+        system_clock=this%clock, prop_clock=this%algo%clock)
 
-          ! We reset the clocks
-          call this%reset_clocks(this%accumulated_loop_ticks)
-          this%accumulated_loop_ticks = 0
-          if (debug%info) then
-            write(message(1), '(a,i3,a,a)') "Debug: -- SCF iter ", this%prop%scf_count, " for '" + trim(this%namespace%get()), "'"
-            call messages_info(1, namespace=this%namespace)
-          end if
-        end if
+      ! First try to execute the operation as a system specific operation
+      operation_done = this%do_algorithmic_operation(operation)
+
+      ! If not done, we try to execute it as an algorithm-specific operation.
+      if (.not. operation_done) then
+        operation_done = this%algo%do_operation(operation)
+      else
+        call this%algo%next()
       end if
 
-    case default
-      call this%do_td_operation(tdop)
-      call this%prop%next()
-    end select
+      ! If still not done, the operation must be a generic operation
+      if (.not. operation_done) then
 
-    if (debug%info) then
-      write(message(1), '(a,a,1X,a, l)') "Debug: Finish ", trim(tdop%label), " for '" + trim(this%namespace%get()) + "' ", &
-        this%prop%step_is_done()
-      call messages_info(1, namespace=this%namespace)
-    end if
+        select case (operation%id)
+        case (SKIP)
+          ! Do nothing
+          call this%algo%next()
 
-    call multisystem_debug_write_event_out(debug_handle, system_clock=this%clock, prop_clock=this%prop%clock)
+        case (STEP_DONE)
+          ! Increment the system clock by one time-step
+          this%clock = this%clock + CLOCK_TICK
+          call multisystem_debug_write_marker(this%namespace, event_clock_update_t("system",  "", this%clock, "tick"))
 
-    POP_SUB(system_dt_operation)
-  end subroutine system_dt_operation
+          ! Recompute the total energy
+          call this%update_total_energy()
+
+          ! Write output
+          call this%output_write()
+
+          ! Update elapsed time
+          call this%algo%update_elapsed_time()
+
+          ! Print information about the current iteration
+          ! (NB: needs to be done after marking the propagation step as finished,
+          ! so that the timings are correct)
+          call this%iteration_info()
+
+          call this%algo%next()
+
+        case (REWIND_ALGORITHM)
+          if (.not. this%arrived_at_any_barrier() .and. .not. this%algorithm_finished()) then
+            ! Reset propagator for next step if not waiting at barrier and if
+            ! the algorithm is not finished
+            call this%algo%rewind()
+          else
+            at_barrier = .true.
+          end if
+
+        case (UPDATE_INTERACTIONS)
+          ! We increment by one algorithmic step
+          this%algo%clock = this%algo%clock + CLOCK_TICK
+          call multisystem_debug_write_marker(this%namespace, event_clock_update_t("propagator", "", this%algo%clock, "tick"))
+
+          ! Try to update all the interactions
+          all_updated = this%update_interactions()
+
+          ! Move to next algorithm step if all interactions have been
+          ! updated. Otherwise try again later.
+          if (all_updated) then
+            this%accumulated_loop_ticks = this%accumulated_loop_ticks + 1
+            call this%algo%next()
+          else
+            this%algo%clock = this%algo%clock - CLOCK_TICK
+            call multisystem_debug_write_marker(this%namespace, event_clock_update_t("propagator", "", this%algo%clock, "reverse"))
+          end if
+
+          ! Interactions are implicit barriers
+          at_barrier = .true.
+
+        case default
+          message(1) = "Unsupported algorithmic operation."
+          write(message(2), '(A,A,A)') trim(operation%id), ": ", trim(operation%label)
+          call messages_fatal(2, namespace=this%namespace)
+        end select
+      end if
+
+      if (debug%info) then
+        write(message(1), '(a,a,1X,a, l)') "Debug: Finish ", trim(operation%label), " for '" + trim(this%namespace%get()) + "' "
+        call messages_info(1, namespace=this%namespace)
+      end if
+
+      call multisystem_debug_write_event_out(debug_handle, system_clock=this%clock, prop_clock=this%algo%clock)
+    end do
+
+    POP_SUB(system_execute_algorithm)
+  end subroutine system_execute_algorithm
 
   ! ---------------------------------------------------------
   subroutine system_reset_clocks(this, accumulated_ticks)
@@ -359,8 +368,8 @@ contains
     PUSH_SUB(system_reset_clocks)
 
     ! Propagator clock
-    this%prop%clock = this%prop%clock - accumulated_ticks*CLOCK_TICK
-    call multisystem_debug_write_marker(this%namespace, event_clock_update_t("propagator", "", this%prop%clock, "reset"))
+    this%algo%clock = this%algo%clock - accumulated_ticks*CLOCK_TICK
+    call multisystem_debug_write_marker(this%namespace, event_clock_update_t("propagator", "", this%algo%clock, "reset"))
 
     ! Interaction clocks
     call iter%start(this%interactions)
@@ -391,7 +400,9 @@ contains
   end subroutine system_reset_clocks
 
   ! ---------------------------------------------------------
-  ! this function is called as partner from the interaction
+  !> @brief update all exposed quantities of the system.
+  !!
+  !! this function is called as partner from the interaction
   logical function system_update_exposed_quantities(partner, requested_time, interaction) result(allowed_to_update)
     class(system_t),      intent(inout) :: partner
     type(clock_t),        intent(in)    :: requested_time
@@ -418,7 +429,7 @@ contains
     select type (interaction)
     class is (interaction_with_partner_t)
 
-      if (partner%prop%inside_scf .or. partner%prop%clock + CLOCK_TICK < requested_time) then
+      if (partner%algo%inside_scf .or. partner%algo%clock + CLOCK_TICK < requested_time) then
         ! we are inside an SCF cycle and therefore are not allowed to expose any quantities.
         ! or we are too much behind the requested time
         allowed_to_update = .false.
@@ -432,25 +443,32 @@ contains
           ! All needed quantities must have been marked as required. If not, then fix your code!
           ASSERT(partner%quantities(q_id)%required)
 
-          ! First update the exposed quantities that are not protected
-          if (.not. partner%quantities(q_id)%protected) then
+          ! First update the exposed quantities that are updated on demand
+          if (partner%quantities(q_id)%updated_on_demand) then
             if (partner%quantities(q_id)%clock /= requested_time .and. &
               partner%quantities(q_id)%clock + CLOCK_TICK <= requested_time) then
               ! We can update because the partner will reach this time in the next sub-timestep
               call partner%update_exposed_quantity(q_id)
+
+              partner%quantities(q_id)%clock = partner%quantities(q_id)%clock + CLOCK_TICK
 
               call updated_quantity_debug()
             else
               call not_updated_quantity_debug()
             end if
           else
-            call protected_quantity_debug()
+            call auto_update_quantity_debug()
           end if
 
-
-          ! Now compare the times
-          ahead_in_time = partner%quantities(q_id)%clock > requested_time
-          right_on_time = partner%quantities(q_id)%clock == requested_time
+          if (partner%quantities(q_id)%available_at_any_time) then
+            ! We ignore the clock times when a quantity is available at any time
+            ahead_in_time = .false.
+            right_on_time = .true.
+          else
+            ! Compare the clock times
+            ahead_in_time = partner%quantities(q_id)%clock > requested_time
+            right_on_time = partner%quantities(q_id)%clock == requested_time
+          end if
 
           select case (partner%interaction_timing)
           case (OPTION__INTERACTIONTIMING__TIMING_EXACT)
@@ -516,23 +534,23 @@ contains
         write(message(1), '(a,a,a)') "Debug: ---- Did not update exposed quantity '", trim(QUANTITY_LABEL(q_id)), "'"
         write(message(2), '(a,f16.6,a,f16.6,a,f16.6)') "Debug: ------ Requested time is ", requested_time%time(), &
           ", quantity time is ", partner%quantities(q_id)%clock%time(), &
-          " and partner propagator time is ", partner%prop%clock%time()
+          " and partner propagator time is ", partner%algo%clock%time()
         call messages_info(2, namespace=partner%namespace)
       end if
 
     end subroutine not_updated_quantity_debug
 
-    subroutine protected_quantity_debug()
+    subroutine auto_update_quantity_debug()
 
       if (debug%info) then
         write(message(1), '(a,a,a)') "Debug: ---- Skip update of quantity '", trim(QUANTITY_LABEL(q_id)), &
-          "' as it is protected"
+          "' as it is updated automatically"
         write(message(2), '(a,f16.6,a,f16.6)') "Debug: ------ Requested time is ", requested_time%time(), &
           ", quantity time is ", partner%quantities(q_id)%clock%time()
         call messages_info(2, namespace=partner%namespace)
       end if
 
-    end subroutine protected_quantity_debug
+    end subroutine auto_update_quantity_debug
 
   end function system_update_exposed_quantities
 
@@ -590,7 +608,7 @@ contains
     call iter%start(this%interactions)
     do while (iter%has_next())
       interaction => iter%get_next()
-      if (interaction%clock == this%prop%clock) then
+      if (interaction%clock == this%algo%clock) then
         none_updated = .false.
         exit
       end if
@@ -605,7 +623,7 @@ contains
     do while (iter%has_next())
       interaction => iter%get_next()
 
-      if (.not. interaction%clock == this%prop%clock) then
+      if (.not. interaction%clock == this%algo%clock) then
         ! Update the system quantities that will be needed for computing the interaction
         do iq = 1, interaction%n_system_quantities
           ! Get requested quantity ID
@@ -614,15 +632,16 @@ contains
           ! All needed quantities must have been marked as required. If not, then fix your code!
           ASSERT(this%quantities(q_id)%required)
 
-          ! We do not need to update the protected quantities, the propagator takes care of that
-          if (this%quantities(q_id)%protected) cycle
+          ! We do not need to update quantities that are not updated on demand,
+          ! as the algorithm takes care of doing that
+          if (.not. this%quantities(q_id)%updated_on_demand) cycle
 
-          if (.not. this%quantities(q_id)%clock == this%prop%clock) then
+          if (.not. this%quantities(q_id)%clock == this%algo%clock) then
             ! The requested quantity is not at the requested time, so we try to update it
 
             ! Sanity check: it should never happen that the quantity is in advance
             ! with respect to the requested time.
-            if (this%quantities(q_id)%clock > this%prop%clock) then
+            if (this%quantities(q_id)%clock > this%algo%clock) then
               message(1) = "The quantity clock is in advance compared to the requested time."
               call messages_fatal(1, namespace=this%namespace)
             end if
@@ -633,7 +652,7 @@ contains
         end do
 
         ! We can now try to update the interaction
-        all_updated = interaction%update(this%prop%clock) .and. all_updated
+        all_updated = interaction%update(this%algo%clock) .and. all_updated
       end if
     end do
 
@@ -674,12 +693,36 @@ contains
   subroutine system_restart_write(this)
     class(system_t), intent(inout) :: this
 
+    logical :: restart_write
+    type(interaction_iterator_t) :: iter
+    class(interaction_t), pointer :: interaction
+    integer :: ii
+
     PUSH_SUB(system_restart_write)
 
-    ! do some generic restart steps here
-    call this%clock%restart_write('restart_system_clock', this%namespace)
-    ! the following call is delegated to the corresponding system
-    call this%restart_write_data()
+    call parse_variable(this%namespace, 'RestartWrite', .true., restart_write)
+
+    if (restart_write) then
+      ! do some generic restart steps here
+      ! write clock restart data
+      call this%clock%restart_write('restart_clock_system', this%namespace)
+      call this%algo%clock%restart_write('restart_clock_propagator', this%namespace)
+      call iter%start(this%interactions)
+      do while (iter%has_next())
+        interaction => iter%get_next()
+        call interaction%restart_write(this%namespace)
+      end do
+      do ii = 1, MAX_QUANTITIES
+        if (this%quantities(ii)%required) then
+          call this%quantities(ii)%clock%restart_write('restart_clock_quantity_'//trim(QUANTITY_LABEL(ii)), &
+            this%namespace)
+        end if
+      end do
+      ! the following call is delegated to the corresponding system
+      call this%restart_write_data()
+      message(1) = "Wrote restart data for system "//trim(this%namespace%get())
+      call messages_info(1, namespace=this%namespace)
+    end if
 
     POP_SUB(system_restart_write)
   end subroutine system_restart_write
@@ -689,12 +732,38 @@ contains
   logical function system_restart_read(this)
     class(system_t), intent(inout) :: this
 
+    type(interaction_iterator_t) :: iter
+    class(interaction_t), pointer :: interaction
+    integer :: ii
+
     PUSH_SUB(system_restart_read)
 
     ! do some generic restart steps here
-    system_restart_read = this%clock%restart_read('restart_system_clock', this%namespace)
+    ! read clock data
+    system_restart_read = this%clock%restart_read('restart_clock_system', this%namespace)
+    system_restart_read = system_restart_read .and. &
+      this%algo%clock%restart_read('restart_clock_propagator', this%namespace)
+    call iter%start(this%interactions)
+    do while (iter%has_next())
+      interaction => iter%get_next()
+      system_restart_read = system_restart_read .and. interaction%restart_read(this%namespace)
+      ! reduce by one because of the first UPDATE_INTERACTIONS
+      interaction%clock = interaction%clock - CLOCK_TICK
+    end do
+    do ii = 1, MAX_QUANTITIES
+      if (this%quantities(ii)%required) then
+        system_restart_read = system_restart_read .and. &
+          this%quantities(ii)%clock%restart_read('restart_clock_quantity_'//trim(QUANTITY_LABEL(ii)), &
+          this%namespace)
+      end if
+    end do
     ! the following call is delegated to the corresponding system
     system_restart_read = system_restart_read .and. this%restart_read_data()
+
+    if (system_restart_read) then
+      message(1) = "Successfully read restart data for system "//trim(this%namespace%get())
+      call messages_info(1, namespace=this%namespace)
+    end if
 
     POP_SUB(system_restart_read)
   end function system_restart_read
@@ -705,7 +774,7 @@ contains
 
     PUSH_SUB(system_output_start)
 
-    ! By default nothing is done to regarding outpout. Child classes that wish
+    ! By default nothing is done to regarding output. Child classes that wish
     ! to change this behaviour should override this method.
 
     POP_SUB(system_output_start)
@@ -717,7 +786,7 @@ contains
 
     PUSH_SUB(system_output_write)
 
-    ! By default nothing is done to regarding outpout. Child classes that wish
+    ! By default nothing is done to regarding output. Child classes that wish
     ! to change this behaviour should override this method.
 
     POP_SUB(system_output_write)
@@ -729,92 +798,26 @@ contains
 
     PUSH_SUB(system_output_finish)
 
-    ! By default nothing is done to regarding outpout. Child classes that wish
+    ! By default nothing is done to regarding output. Child classes that wish
     ! to change this behaviour should override this method.
 
     POP_SUB(system_output_finish)
   end subroutine system_output_finish
 
   ! ---------------------------------------------------------
-  subroutine system_init_propagator(this)
-    class(system_t),      intent(inout) :: this
+  subroutine system_init_algorithm(this, factory)
+    class(system_t),            intent(inout) :: this
+    class(algorithm_factory_t), intent(in)    :: factory
 
-    integer :: prop, ii
-    FLOAT :: dt
-    type(interaction_iterator_t) :: iter
-    class(interaction_t), pointer :: interaction
+    integer :: ii
 
-    PUSH_SUB(system_init_propagator)
+    PUSH_SUB(system_init_algorithm)
 
-    call messages_experimental('Multisystem propagator framework')
+    call messages_experimental('Multi-system framework')
 
-    !%Variable TDSystemPropagator
-    !%Type integer
-    !%Default static
-    !%Section Time-Dependent::Propagation
-    !%Description
-    !% A variable to set the propagator in the multisystem framework.
-    !% This is a temporary solution, and should be replaced by the
-    !% TDPropagator variable.
-    !%Option static 0
-    !% (Experimental) Do not propagate the system in time.
-    !%Option verlet 1
-    !% (Experimental) Verlet propagator.
-    !%Option beeman 2
-    !% (Experimental) Beeman propagator without predictor-corrector.
-    !%Option beeman_scf 3
-    !% (Experimental) Beeman propagator with predictor-corrector scheme.
-    !%Option exp_mid 4
-    !% (Experimental) Exponential midpoint propagator without predictor-corrector.
-    !%Option exp_mid_scf 5
-    !% (Experimental) Exponential midpoint propagator with predictor-corrector scheme.
-    !%End
-    call parse_variable(this%namespace, 'TDSystemPropagator', PROP_STATIC, prop)
-    if (.not. varinfo_valid_option('TDSystemPropagator', prop)) call messages_input_error(this%namespace, 'TDSystemPropagator')
-    call messages_print_var_option('TDSystemPropagator', prop, namespace=this%namespace)
+    this%algo => factory%create(this)
 
-    ! This variable is also defined (and properly documented) in td/td.F90.
-    ! This is temporary, until all the propagators are moved to the new framework.
-    call parse_variable(this%namespace, 'TDTimeStep', CNST(10.0), dt)
-    if (dt <= M_ZERO) then
-      call messages_input_error(this%namespace, 'TDTimeStep', "must be greater than zero")
-    end if
-    call messages_print_var_value('TDTimeStep', dt, namespace=this%namespace)
-
-    select case (prop)
-    case (PROP_STATIC)
-      this%prop => propagator_static_t(dt)
-    case (PROP_VERLET)
-      this%prop => propagator_verlet_t(dt)
-    case (PROP_BEEMAN)
-      this%prop => propagator_beeman_t(dt, predictor_corrector=.false.)
-    case (PROP_BEEMAN_SCF)
-      this%prop => propagator_beeman_t(dt, predictor_corrector=.true.)
-    case (PROP_EXPMID)
-      this%prop => propagator_exp_mid_t(dt, predictor_corrector=.false.)
-    case (PROP_EXPMID_SCF)
-      this%prop => propagator_exp_mid_t(dt, predictor_corrector=.true.)
-    case default
-      call messages_input_error(this%namespace, 'TDSystemPropagator')
-    end select
-
-    ! Initialize propagator clock
-    this%prop%clock = clock_t(time_step=this%prop%dt/this%prop%algo_steps)
-
-    ! Initialize system clock
-    this%clock = clock_t(time_step=this%prop%dt)
-
-    ! Interaction clocks
-    call iter%start(this%interactions)
-    do while (iter%has_next())
-      interaction => iter%get_next()
-      interaction%clock = this%prop%clock - CLOCK_TICK
-    end do
-
-    ! Required quantities clocks
-    where (this%quantities%required)
-      this%quantities%clock = this%prop%clock
-    end where
+    call this%init_clocks()
 
     !%Variable InteractionTiming
     !%Type integer
@@ -841,8 +844,47 @@ contains
       this%barrier(ii)%target_time = M_ZERO
     end do
 
-    POP_SUB(system_init_propagator)
-  end subroutine system_init_propagator
+    POP_SUB(system_init_algorithm)
+  end subroutine system_init_algorithm
+
+  ! ---------------------------------------------------------------------------------------
+  recursive function system_algorithm_finished(this) result(finished)
+    class(system_t),       intent(in) :: this
+    logical :: finished
+
+    finished = this%algo%finished()
+
+  end function system_algorithm_finished
+
+  ! ---------------------------------------------------------
+  subroutine system_init_clocks(this)
+    class(system_t),            intent(inout) :: this
+
+    type(interaction_iterator_t) :: iter
+    class(interaction_t), pointer :: interaction
+
+    PUSH_SUB(system_init_clocks)
+
+    ! Initialize propagator clock
+    this%algo%clock = clock_t(time_step=this%algo%dt/this%algo%algo_steps)
+
+    ! Initialize system clock
+    this%clock = clock_t(time_step=this%algo%dt)
+
+    ! Interactions clocks
+    call iter%start(this%interactions)
+    do while (iter%has_next())
+      interaction => iter%get_next()
+      interaction%clock = this%algo%clock - CLOCK_TICK
+    end do
+
+    ! Required quantities clocks
+    where (this%quantities%required)
+      this%quantities%clock = this%algo%clock
+    end where
+
+    POP_SUB(system_init_clocks)
+  end subroutine system_init_clocks
 
   ! ---------------------------------------------------------
   subroutine system_propagation_start(this)
@@ -854,7 +896,7 @@ contains
     PUSH_SUB(system_propagation_start)
 
     debug_handle = multisystem_debug_write_event_in(this%namespace, event_function_call_t("system_propagation_start"), &
-      system_clock = this%clock, prop_clock = this%prop%clock)
+      system_clock = this%clock, prop_clock = this%algo%clock)
 
     if (debug%info) then
       write(message(1), '(a,a,1X,a)') "Debug: Start  propagation_start for '" + trim(this%namespace%get()) + "'"
@@ -869,29 +911,35 @@ contains
     end if
 
     ! System-specific and propagator-specific initialization step
-    call this%do_td_operation(this%prop%start_step)
+    if (this%algo%start_step%id /= SKIP) then
+      if (.not. this%do_algorithmic_operation(this%algo%start_step)) then
+        message(1) = "Unsupported algorithmic operation."
+        write(message(2), '(A,A,A)') trim(this%algo%start_step%id), ": ", trim(this%algo%start_step%label)
+        call messages_fatal(2, namespace=this%namespace)
+      end if
+    end if
 
-    ! Compute the total energy at the begining of the simulation
+    ! Compute the total energy at the beginning of the simulation
     call this%update_total_energy()
 
     ! Start output
     call this%output_start()
 
     ! Write header for propagation log
-    call messages_print_stress(msg="Multi-system propagation", namespace=this%namespace)
+    call messages_print_with_emphasis(msg="Multi-system propagation", namespace=this%namespace)
     write(message(1), '(a6,1x,a14,1x,a13,1x,a10,1x,a15)') 'Iter', 'Time', 'Energy', 'SC Steps', 'Elapsed Time'
     call messages_info(1, namespace=this%namespace)
-    call messages_print_stress(namespace=this%namespace)
+    call messages_print_with_emphasis(namespace=this%namespace)
 
     ! Rewind propagator (will also set the initial time to compute the elapsed time)
-    call this%prop%rewind()
+    call this%algo%rewind()
 
     if (debug%info) then
       write(message(1), '(a,a,1X,a)') "Debug: Finish propagation_start for '" + trim(this%namespace%get()) + "'"
       call messages_info(1, namespace=this%namespace)
     end if
 
-    call multisystem_debug_write_event_out(debug_handle, system_clock = this%clock, prop_clock = this%prop%clock)
+    call multisystem_debug_write_event_out(debug_handle, system_clock = this%clock, prop_clock = this%algo%clock)
 
     POP_SUB(system_propagation_start)
   end subroutine system_propagation_start
@@ -904,15 +952,21 @@ contains
     PUSH_SUB(system_propagation_finish)
 
     debug_handle = multisystem_debug_write_event_in(this%namespace, event_function_call_t("system_propagation_finish"), &
-      system_clock = this%clock, prop_clock = this%prop%clock)
+      system_clock = this%clock, prop_clock = this%algo%clock)
 
     ! Finish output
     call this%output_finish()
 
     ! System-specific and propagator-specific finalization step
-    call this%do_td_operation(this%prop%final_step)
+    if (this%algo%final_step%id /= SKIP) then
+      if (.not.  this%do_algorithmic_operation(this%algo%final_step)) then
+        message(1) = "Unsupported algorithmic operation."
+        write(message(2), '(A,A,A)') trim(this%algo%final_step%id), ": ", trim(this%algo%final_step%label)
+        call messages_fatal(2, namespace=this%namespace)
+      end if
+    end if
 
-    call multisystem_debug_write_event_out(debug_handle, system_clock = this%clock, prop_clock = this%prop%clock)
+    call multisystem_debug_write_event_out(debug_handle, system_clock = this%clock, prop_clock = this%algo%clock)
 
     POP_SUB(system_propagation_finish)
   end subroutine system_propagation_finish
@@ -932,7 +986,7 @@ contains
     else
       fmt = '(i7,1x,f14.6,1X,f13.6,1X,i9,1X,'
     end if
-    if (this%prop%elapsed_time < 1e-3) then
+    if (this%algo%elapsed_time < 1e-3) then
       fmt = trim(fmt)//'es13.3)'
     else
       fmt = trim(fmt)//'f13.3)'
@@ -940,23 +994,11 @@ contains
 
     write(message(1), fmt) this%clock%get_tick(), &
       units_from_atomic(units_out%time, this%clock%time()), energy, &
-      0, this%prop%elapsed_time
+      0, this%algo%elapsed_time
     call messages_info(1, namespace=this%namespace)
 
     POP_SUB(system_iteration_info)
   end subroutine system_iteration_info
-
-  ! ---------------------------------------------------------
-  logical function system_has_reached_final_propagation_time(this, final_time)
-    class(system_t),      intent(inout) :: this
-    FLOAT,                intent(in)    :: final_time
-
-    PUSH_SUB(system_has_reached_final_propagation_time)
-
-    system_has_reached_final_propagation_time = (this%clock%time() >= final_time)
-
-    POP_SUB(system_has_reached_final_propagation_time)
-  end function system_has_reached_final_propagation_time
 
   ! ---------------------------------------------------------
   logical function system_process_is_slave(this)
@@ -971,18 +1013,6 @@ contains
   end function system_process_is_slave
 
   ! ---------------------------------------------------------
-  subroutine system_exec_end_of_timestep_tasks(this)
-    class(system_t), intent(inout) :: this
-
-    PUSH_SUB(system_exec_end_of_timestep_tasks)
-
-    ! By default no extra tasks are executed at the end of each time step.
-    ! Child classes that wish to change this behaviour should override this method.
-
-    POP_SUB(system_exec_end_of_timestep_tasks)
-  end subroutine system_exec_end_of_timestep_tasks
-
-  ! ---------------------------------------------------------
   subroutine system_end(this)
     class(system_t), intent(inout) :: this
 
@@ -992,8 +1022,8 @@ contains
     PUSH_SUB(system_end)
 
     ! No call to safe_deallocate macro here, as it gives an ICE with gfortran
-    if (associated(this%prop)) then
-      deallocate(this%prop)
+    if (associated(this%algo)) then
+      deallocate(this%algo)
     end if
 
     call iter%start(this%interactions)

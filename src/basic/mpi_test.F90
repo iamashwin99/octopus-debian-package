@@ -105,7 +105,7 @@ contains
     SAFE_DEALLOCATE_A(irecvbuf)
     SAFE_DEALLOCATE_A(lrecvbuf)
   end function test_scatterv
-    
+
   logical function test_gatherv()
     FLOAT, allocatable :: sendbuf(:), irecvbuf(:), lrecvbuf(:)
     integer, allocatable :: sendcnts(:), recvcounts(:)

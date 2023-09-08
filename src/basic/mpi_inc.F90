@@ -736,6 +736,27 @@ subroutine X(mpi_grp_send_3)(mpi_grp, sendbuf, sendcount, sendtype, dest, tag)
 end subroutine X(mpi_grp_send_3)
 
 ! ---------------------------------------------------------
+subroutine X(mpi_grp_irecv_0_i8)(mpi_grp, recvbuf, recvcount, recvtype, source, request, tag)
+  class(mpi_grp_t),  intent(in)    :: mpi_grp
+  R_TYPE,            intent(out)   :: recvbuf
+  integer(i8),       intent(in)    :: recvcount
+  integer,           intent(in)    :: recvtype
+  integer,           intent(in)    :: source
+  integer,           intent(inout) :: request
+  integer, optional, intent(in)    :: tag
+
+  integer :: tag_
+
+  ASSERT(recvcount < huge(0_i4))
+  tag_ = 0
+  if (present(tag)) tag_ = tag
+  if (mpi_grp%comm == -1) return
+#if defined(HAVE_MPI)
+  call MPI_Irecv(recvbuf, int(recvcount, i4), recvtype, source, tag_, mpi_grp%comm, request, mpi_err)
+#endif
+end subroutine X(mpi_grp_irecv_0_i8)
+
+! ---------------------------------------------------------
 subroutine X(mpi_grp_irecv_0)(mpi_grp, recvbuf, recvcount, recvtype, source, request, tag)
   class(mpi_grp_t),  intent(in)    :: mpi_grp
   R_TYPE,            intent(out)   :: recvbuf
@@ -809,6 +830,27 @@ subroutine X(mpi_grp_irecv_3)(mpi_grp, recvbuf, recvcount, recvtype, source, req
   call MPI_Irecv(recvbuf, recvcount, recvtype, source, tag_, mpi_grp%comm, request, mpi_err)
 #endif
 end subroutine X(mpi_grp_irecv_3)
+
+! ---------------------------------------------------------
+subroutine X(mpi_grp_isend_0_i8)(mpi_grp, sendbuf, sendcount, sendtype, source, request, tag)
+  class(mpi_grp_t),  intent(in)    :: mpi_grp
+  R_TYPE,            intent(in)    :: sendbuf
+  integer(i8),       intent(in)    :: sendcount
+  integer,           intent(in)    :: sendtype
+  integer,           intent(in)    :: source
+  integer,           intent(inout) :: request
+  integer, optional, intent(in)    :: tag
+
+  integer :: tag_
+
+  ASSERT(sendcount < huge(0_i4))
+  tag_ = 0
+  if (present(tag)) tag_ = tag
+  if (mpi_grp%comm == -1) return
+#if defined(HAVE_MPI)
+  call MPI_Isend(sendbuf, int(sendcount, i4), sendtype, source, tag_, mpi_grp%comm, request, mpi_err)
+#endif
+end subroutine X(mpi_grp_isend_0_i8)
 
 ! ---------------------------------------------------------
 subroutine X(mpi_grp_isend_0)(mpi_grp, sendbuf, sendcount, sendtype, source, request, tag)

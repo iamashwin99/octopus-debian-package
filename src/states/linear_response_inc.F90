@@ -31,7 +31,7 @@
 !! I am not sure what the generalization of this scheme is for metals, so we will just use Pc if there is smearing.
 ! ---------------------------------------------------------
 subroutine X(lr_orth_vector) (mesh, st, vec, ist, ik, omega, min_proj)
-  type(mesh_t),        intent(in)    :: mesh
+  class(mesh_t),       intent(in)    :: mesh
   type(states_elec_t), intent(in)    :: st
   R_TYPE,              intent(inout) :: vec(:,:)
   integer,             intent(in)    :: ist, ik
@@ -128,7 +128,7 @@ end subroutine X(lr_orth_vector)
 
 ! --------------------------------------------------------------------
 subroutine X(lr_build_dl_rho) (mesh, st, lr, nsigma)
-  type(mesh_t),        intent(in)    :: mesh
+  class(mesh_t),       intent(in)    :: mesh
   type(states_elec_t), intent(in)    :: st
   type(lr_t),          intent(inout) :: lr(:)
   integer,             intent(in)    :: nsigma
@@ -243,7 +243,7 @@ end subroutine X(lr_build_dl_rho)
 ! \alpha KS orbitals.
 ! ---------------------------------------------------------
 subroutine X(lr_orth_response)(mesh, st, lr, omega)
-  type(mesh_t),        intent(in)    :: mesh
+  class(mesh_t),       intent(in)    :: mesh
   type(states_elec_t), intent(in)    :: st
   type(lr_t),          intent(inout) :: lr
   R_TYPE,              intent(in)    :: omega
@@ -264,7 +264,7 @@ end subroutine X(lr_orth_response)
 ! ---------------------------------------------------------
 subroutine X(lr_swap_sigma)(st, mesh, plus, minus)
   type(states_elec_t), intent(in)    :: st
-  type(mesh_t),        intent(in)    :: mesh
+  class(mesh_t),       intent(in)    :: mesh
   type(lr_t),          intent(inout) :: plus
   type(lr_t),          intent(inout) :: minus
 
@@ -289,7 +289,7 @@ end subroutine X(lr_swap_sigma)
 subroutine X(lr_dump_rho)(lr, space, mesh, nspin, restart, rho_tag, ierr)
   type(lr_t),        intent(in)  :: lr
   type(space_t),     intent(in)  :: space
-  type(mesh_t),      intent(in)  :: mesh
+  class(mesh_t),     intent(in)  :: mesh
   integer,           intent(in)  :: nspin
   type(restart_t),   intent(in)  :: restart
   character(len=*),  intent(in)  :: rho_tag
@@ -330,9 +330,9 @@ end subroutine X(lr_dump_rho)
 
 ! ---------------------------------------------------------
 subroutine X(lr_load_rho)(dl_rho, space, mesh, nspin, restart, rho_tag, ierr)
-  R_TYPE,            intent(inout) :: dl_rho(:,:) !< (mesh%np, nspin)
+  R_TYPE, contiguous,intent(inout) :: dl_rho(:,:) !< (mesh%np, nspin)
   type(space_t),     intent(in)    :: space
-  type(mesh_t),      intent(in)    :: mesh
+  class(mesh_t),     intent(in)    :: mesh
   integer,           intent(in)    :: nspin
   type(restart_t),   intent(in)    :: restart
   character(len=*),  intent(in)    :: rho_tag

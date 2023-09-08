@@ -439,6 +439,8 @@ contains
     !Enlarge the cube region
     mask%ll(1:space%dim) = int(mask%ll(1:space%dim) * mask%enlarge(1:space%dim))
 
+    mask%np = mesh%np_part ! the mask is local
+
     select case (mask%pw_map_how)
 
     case (PW_MAP_PFFT)
@@ -447,6 +449,7 @@ contains
         mesh%spacing, mesh%coord_system, &
         fft_type = FFT_COMPLEX, fft_library = FFTLIB_PFFT, nn_out = ll, &
         mpi_grp = mask%mesh%mpi_grp, need_partition=.true.)
+      call cube_init_cube_map(mask%cube, mesh)
       !        print *,mpi_world%rank, "mask%mesh%mpi_grp%comm", mask%mesh%mpi_grp%comm, mask%mesh%mpi_grp%size
       !         print *,mpi_world%rank, "mask%cube%mpi_grp%comm", mask%cube%mpi_grp%comm, mask%cube%mpi_grp%size
 
@@ -461,7 +464,6 @@ contains
       mask%ll(1:3) = mask%cube%rs_n(1:3)
 
       mask%fft = mask%cube%fft
-      mask%np = mesh%np_part ! the mask is local
       if (mask%mesh%parallel_in_domains .and. mask%cube%parallel_in_domains) then
         call mesh_cube_parallel_map_init(mask%mesh_cube_map, mask%mesh, mask%cube)
       end if
@@ -471,10 +473,9 @@ contains
         mesh%spacing, mesh%coord_system, &
         fft_type = FFT_COMPLEX, fft_library = FFTLIB_FFTW, &
         nn_out = ll)
+      call cube_init_cube_map(mask%cube, mesh)
       mask%ll = ll
       mask%fft = mask%cube%fft
-      ASSERT(mesh%np_part_global < huge(mask%np))
-      mask%np = i8_to_i4(mesh%np_part_global)
 
 
     case (PW_MAP_NFFT)
@@ -487,11 +488,10 @@ contains
         mesh%spacing, mesh%coord_system, &
         fft_type = FFT_COMPLEX, fft_library = FFTLIB_NFFT, &
         nn_out = ll, tp_enlarge = mask%enlarge_2p)
+      call cube_init_cube_map(mask%cube, mesh)
 
       mask%ll = ll
       mask%fft = mask%cube%fft
-      ASSERT(mesh%np_part_global < huge(mask%np))
-      mask%np = i8_to_i4(mesh%np_part_global)
 
 
     case (PW_MAP_PNFFT)
@@ -503,11 +503,11 @@ contains
         fft_type = FFT_COMPLEX, fft_library = FFTLIB_PNFFT, &
         nn_out = ll, tp_enlarge = mask%enlarge_2p, &
         mpi_grp = mask%mesh%mpi_grp, need_partition=.true.)
+      call cube_init_cube_map(mask%cube, mesh)
 
       mask%ll(1:3) = mask%cube%fs_n(1:3)
 
       mask%fft = mask%cube%fft
-      mask%np = mesh%np_part ! the mask is local
       if (mask%mesh%parallel_in_domains .and. mask%cube%parallel_in_domains) then
         call mesh_cube_parallel_map_init(mask%mesh_cube_map, mask%mesh, mask%cube)
       end if
@@ -776,7 +776,7 @@ contains
           write(message(1),'(a)') 'PESMask should work only with TDExternalFields = vector_potential.'
           write(message(2),'(a)') 'Unless PESMaskMode = passive_mode the results are likely to be wrong. '
           call messages_warning(2, namespace=namespace)
- 
+
         end select
       end do
     end if
@@ -918,7 +918,6 @@ contains
     FLOAT   :: width
     FLOAT   :: xx(1:mesh%box%dim), rr, dd, ddv(1:mesh%box%dim), tmp(1:mesh%box%dim)
     CMPLX, allocatable :: mask_fn(:)
-    logical :: local_
 
     PUSH_SUB(pes_mask_generate_mask_function)
 
@@ -930,18 +929,10 @@ contains
     width = R(2) - R(1)
     xx = M_ZERO
 
-    !We want the mask cube function to be divided on the nodes?
-    local_= mask%cube%parallel_in_domains
-
     select case (shape)
     case (M_SIN2)
       do ip = 1, mask%np
-        if (local_) then
-          call mesh_r(mesh, ip, rr, coords=xx)
-        else
-          xx = mesh_x_global(mesh, i4_to_i8(ip))
-          rr = norm2(xx)
-        end if
+        call mesh_r(mesh, ip, rr, coords=xx)
 
         if (mask%user_def) then
           dd = mask%ufn(ip) - R(1)
@@ -990,12 +981,7 @@ contains
 
     case (M_STEP)
       do ip = 1, mask%np
-        if (local_) then
-          call mesh_r(mesh, ip, rr, coords=xx)
-        else
-          xx = mesh_x_global(mesh, i4_to_i8(ip))
-          rr = norm2(xx)
-        end if
+        call mesh_r(mesh, ip, rr, coords=xx)
         dd = rr - R(1)
         if (dd > M_ZERO) then
           if (dd  <  width) then
@@ -1018,7 +1004,7 @@ contains
     mask_fn(:) = M_ONE - mask_fn(:)
 
 
-    call pes_mask_mesh_to_cube(mask, mask_fn, mask%cM, local = local_)
+    call pes_mask_mesh_to_cube(mask, mask_fn, mask%cM)
 
     if (present(mask_sq)) mask_sq = TOFLOAT(mask%cM%zRS)
 
@@ -1256,26 +1242,17 @@ contains
   end subroutine pes_mask_K_to_X
 
   !---------------------------------------------------------
-  subroutine pes_mask_mesh_to_cube(mask, mf, cf, local)
+  subroutine pes_mask_mesh_to_cube(mask, mf, cf)
     type(pes_mask_t),      intent(in)    :: mask
     CMPLX,                 intent(in)    :: mf(:)
     type(cube_function_t), intent(inout) :: cf
-    logical, optional,     intent(in)    :: local
-
-    logical :: local_
 
     PUSH_SUB(pes_mask_mesh_to_cube)
-
-    local_ = optional_default(local, .true.)
 
     if (mask%cube%parallel_in_domains) then
       call zmesh_to_cube_parallel(mask%mesh, mf, mask%cube, cf, mask%mesh_cube_map)
     else
-      if (mask%mesh%parallel_in_domains) then
-        call zmesh_to_cube(mask%mesh, mf, mask%cube, cf, local = local_)
-      else
-        call zmesh_to_cube(mask%mesh, mf, mask%cube, cf)
-      end if
+      call zmesh_to_cube(mask%mesh, mf, mask%cube, cf)
     end if
 
     POP_SUB(pes_mask_mesh_to_cube)
@@ -1293,11 +1270,7 @@ contains
     if (mask%cube%parallel_in_domains) then
       call zcube_to_mesh_parallel(mask%cube, cf, mask%mesh, mf, mask%mesh_cube_map)
     else
-      if (mask%mesh%parallel_in_domains) then
-        call zcube_to_mesh(mask%cube, cf, mask%mesh, mf, local = .true.)
-      else
-        call zcube_to_mesh(mask%cube, cf, mask%mesh, mf)
-      end if
+      call zcube_to_mesh(mask%cube, cf, mask%mesh, mf)
     end if
 
     POP_SUB(pes_mask_cube_to_mesh)

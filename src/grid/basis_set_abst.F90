@@ -18,15 +18,12 @@
 
 #include "global.h"
 
-!> Abstract class for basis sets. In our context, basis sets include meshes, atomic orbitals, plane waves,
-!! possibly wavelets, etc. For this reason, the abstract class is very minimalistic, and only contains
-!! essential quantities and functions
+!> \ingroup Fortran_Module
 
 module basis_set_abst_oct_m
   use debug_oct_m
   use global_oct_m
   use messages_oct_m
-  use mpi_oct_m
   use namespace_oct_m
   use profiling_oct_m
 
@@ -35,6 +32,11 @@ module basis_set_abst_oct_m
   private
   public :: basis_set_abst_t
 
+  !> @brief abstract class for basis sets
+  !!
+  !! Abstract class for basis sets. In our context, basis sets include meshes, atomic orbitals, plane waves,
+  !! possibly wavelets, etc. For this reason, the abstract class is very minimalistic, and only contains
+  !! essential quantities and functions
   type, abstract :: basis_set_abst_t
     private
     logical :: time_dependent   !< flag for time-dependent basis sets

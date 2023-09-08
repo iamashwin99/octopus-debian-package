@@ -12,10 +12,10 @@ Spacing = 0.35*angstrom
 %
 
 %Coordinates
-  "Xe" | -1.5*angstrom | 0 | 0 
-  "Xe" |  1.5*angstrom | 0 | 0 
+  "Xe" | -1.5*angstrom | 0 | 0
+  "Xe" |  1.5*angstrom | 0 | 0
   %
-  
+
 ExcessCharge = 1
 
 SpinComponents = non_collinear
@@ -28,4 +28,3 @@ LCAOStart = lcao_none
 FilterPotentials = filter_none
 
 MixField = density
-

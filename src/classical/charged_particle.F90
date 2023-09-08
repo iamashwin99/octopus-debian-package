@@ -23,6 +23,7 @@ module charged_particle_oct_m
   use classical_particle_oct_m
   use clock_oct_m
   use coulomb_force_oct_m
+  use current_to_mxll_field_oct_m
   use debug_oct_m
   use global_oct_m
   use interaction_oct_m
@@ -30,7 +31,6 @@ module charged_particle_oct_m
   use lorentz_force_oct_m
   use messages_oct_m
   use multisystem_debug_oct_m
-  use mpi_oct_m
   use namespace_oct_m
   use parser_oct_m
   use profiling_oct_m
@@ -45,6 +45,8 @@ module charged_particle_oct_m
     charged_particle_t,   &
     charged_particle_init
 
+  !> @brief class for a charged classical particle
+  !!
   type, extends(classical_particle_t) :: charged_particle_t
     private
 
@@ -53,7 +55,6 @@ module charged_particle_oct_m
   contains
     procedure :: init_interaction => charged_particle_init_interaction
     procedure :: initial_conditions => charged_particle_initial_conditions
-    procedure :: do_td_operation => charged_particle_do_td
     procedure :: is_tolerance_reached => charged_particle_is_tolerance_reached
     procedure :: update_quantity => charged_particle_update_quantity
     procedure :: update_exposed_quantity => charged_particle_update_exposed_quantity
@@ -110,6 +111,12 @@ contains
     call this%supported_interactions%add(LORENTZ_FORCE)
     call this%supported_interactions%add(COULOMB_FORCE)
     call this%supported_interactions_as_partner%add(COULOMB_FORCE)
+    call this%supported_interactions_as_partner%add(CURRENT_TO_MXLL_FIELD)
+
+    this%quantities(CURRENT)%required = .true.
+    this%quantities(CHARGE)%updated_on_demand = .false.
+    this%quantities(CHARGE)%available_at_any_time = .true.
+
 
     POP_SUB(charged_particle_init)
   end subroutine charged_particle_init
@@ -145,18 +152,6 @@ contains
   end subroutine charged_particle_initial_conditions
 
   ! ---------------------------------------------------------
-  subroutine charged_particle_do_td(this, operation)
-    class(charged_particle_t),      intent(inout) :: this
-    class(algorithmic_operation_t), intent(in)    :: operation
-
-    PUSH_SUB(charged_particle_do_td)
-
-    call this%classical_particle_t%do_td_operation(operation)
-
-    POP_SUB(charged_particle_do_td)
-  end subroutine charged_particle_do_td
-
-  ! ---------------------------------------------------------
   logical function charged_particle_is_tolerance_reached(this, tol) result(converged)
     class(charged_particle_t), intent(in) :: this
     FLOAT,                     intent(in) :: tol
@@ -176,10 +171,10 @@ contains
     PUSH_SUB(charged_particle_update_quantity)
 
     select case (iq)
-    case (CHARGE)
-      ! The charged particle has a charge, but it is not necessary to update it, as it does not change with time.
-      ! We still need to set its clock, so we set it to be in sync with the particle position.
-      call this%quantities(iq)%clock%set_time(this%quantities(POSITION)%clock)
+    case(CURRENT)
+      ! The charged particle has a velocity, giving rise to the current.
+      ! Therefore we set it to be in sync with the particle velocity
+      call this%quantities(iq)%clock%set_time(this%quantities(VELOCITY)%clock)
     case default
       ! Other quantities should be handled by the parent class
       call this%classical_particle_t%update_quantity(iq)
@@ -196,13 +191,11 @@ contains
     PUSH_SUB(charged_particle_update_exposed_quantity)
 
     select case (iq)
-    case (CHARGE)
-      ! The charged particle has a charge, but it is not necessary to update it, as it does not change with time.
-      ! We still need to set its clock, so we set it to be in sync with the particle position.
-      call partner%quantities(iq)%clock%set_time(partner%quantities(POSITION)%clock)
+    case (CURRENT)
+      ! We still need to set its clock, so we set it to be in sync with the particle velocity.
+      call partner%quantities(iq)%clock%set_time(partner%quantities(VELOCITY)%clock)
       call multisystem_debug_write_marker(partner%namespace, &
         event_clock_update_t("quantity", QUANTITY_LABEL(iq), partner%quantities(iq)%clock, "set"))
-
     case default
       ! Other quantities should be handled by the parent class
       call partner%classical_particle_t%update_exposed_quantity(iq)
@@ -223,7 +216,12 @@ contains
       interaction%partner_np = 1
       SAFE_ALLOCATE(interaction%partner_charge(1))
       SAFE_ALLOCATE(interaction%partner_pos(1:partner%space%dim, 1))
-
+    type is (current_to_mxll_field_t)
+      interaction%partner_np = 1
+      interaction%grid_based_partner = .false.
+      SAFE_ALLOCATE(interaction%partner_charge(1))
+      SAFE_ALLOCATE(interaction%partner_pos(1:partner%space%dim, 1))
+      SAFE_ALLOCATE(interaction%partner_vel(1:partner%space%dim, 1))
     class default
       ! Other interactions should be handled by the parent class
       call partner%classical_particle_t%init_interaction_as_partner(interaction)
@@ -243,6 +241,11 @@ contains
     type is (coulomb_force_t)
       interaction%partner_charge(1) = partner%charge(1)
       interaction%partner_pos(:,1) = partner%pos(:, 1)
+
+    type is (current_to_mxll_field_t)
+      interaction%partner_charge(1) = partner%charge(1)
+      interaction%partner_pos(:,1) = partner%pos(:, 1)
+      interaction%partner_vel(:,1) = partner%vel(:, 1)
 
     class default
       call partner%classical_particle_t%copy_quantities_to_interaction(interaction)

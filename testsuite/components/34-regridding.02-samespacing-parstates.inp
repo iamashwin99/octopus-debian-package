@@ -1,0 +1,21 @@
+CalculationMode = test
+TestMode = regridding
+
+%Systems
+  "A" | electronic
+  "B" | electronic
+%
+
+%Coordinates
+"C" | 0.0 | 0.0 |  0.0
+%
+
+Spacing = 0.3*angstrom
+
+A.BoxShape = parallelepiped
+%A.Lsize
+  6.0*angstrom | 6.0*angstrom | 6.0*angstrom
+%
+
+B.BoxShape = sphere
+B.Radius  = 8.0*angstrom

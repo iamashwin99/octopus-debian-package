@@ -139,6 +139,19 @@ dist_share_DATA = \
 	36-kli_x.test                                         \
 	37-sternheimer_polarized.01-gs.inp                    \
 	37-sternheimer_polarized.02-em_resp.inp               \
-	37-sternheimer_polarized.test
+	37-sternheimer_polarized.test                         \
+	38-carbon_atom_cgal_box.01-gs.inp                     \
+	38-carbon_atom_cgal_box.01-gs.sphere.off              \
+	38-carbon_atom_cgal_box.test                          \
+	39-adsic.01-unpolarized.inp                           \
+	39-adsic.02-polarized.inp                             \
+	39-adsic.test                                         \
+	40-evo.01-par_domains.inp                             \
+	40-evo.02-par_states.inp                              \
+	40-evo.test                                           \
+	41-gpu-bug.01-C.inp                                   \
+	41-gpu-bug.test                                       \
+        42-full_potential_anc.01-gs.inp                       \
+        42-full_potential_anc.test
 
 CLEANFILES = *~ *.bak

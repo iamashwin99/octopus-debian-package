@@ -19,7 +19,7 @@
 ! ---------------------------------------------------------
 !> Currently only returns a matrix whose diagonal elements are all the
 !! same. Note that the integer version is in math.F90.
-function X(diagonal_matrix)(dim, diag) result(matrix)
+pure function X(diagonal_matrix)(dim, diag) result(matrix)
   integer, intent(in) :: dim
   R_TYPE,  intent(in) :: diag
   R_TYPE :: matrix(dim, dim)
@@ -133,7 +133,6 @@ pure function X(cross_product)(a, b) result(c)
   c(3) = a(1)*b(2) - a(2)*b(1)
 
 end function X(cross_product)
-
 
 !! Local Variables:
 !! mode: f90

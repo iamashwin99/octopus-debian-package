@@ -49,13 +49,13 @@ subroutine oct_finalcheck(sys, td)
   j2 = controlfunction_j2(par)
   jfunctional = j1 + j2
 
-  call messages_print_stress(msg='Final propagation with the best field', namespace=sys%namespace)
+  call messages_print_with_emphasis(msg='Final propagation with the best field', namespace=sys%namespace)
   write(message(1), '(6x,a,f12.5)') " => J1       = ", j1
   write(message(2), '(6x,a,f12.5)') " => J        = ", jfunctional
   write(message(3), '(6x,a,f12.5)') " => J2       = ", j2
   write(message(4), '(6x,a,f12.5)') " => Fluence  = ", fluence
   call messages_info(4, namespace=sys%namespace)
-  call messages_print_stress(namespace=sys%namespace)
+  call messages_print_with_emphasis(namespace=sys%namespace)
 
   call output_states(sys%outp, sys%namespace, sys%space, OCT_DIR//'final', psi, sys%gr, sys%ions, sys%hm, -1)
 

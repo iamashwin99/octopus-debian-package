@@ -73,7 +73,7 @@ contains
     type(states_elec_t),   intent(inout) :: st
     type(grid_t),          intent(in)    :: gr
     type(kpoints_t),       intent(in)    :: kpoints
-    !> elf(gr%mesh%np, 1) if st%d%ispin = 1, elf(gr%mesh%np, 3) otherwise.
+    !> elf(gr%np, 1) if st%d%ispin = 1, elf(gr%np, 3) otherwise.
     !! On output, it should contain the global ELF if st%d%ispin = 1,
     !! otherwise elf(:, 3) contains the global ELF, and
     !! elf(:, 1) and elf(:, 2) the spin-resolved ELF.
@@ -94,16 +94,16 @@ contains
     ! If we want it, the argument elf should have three components.
     nelfs = size(elf, 2)
 
-    SAFE_ALLOCATE(  rho(1:gr%mesh%np, 1:st%d%nspin))
-    SAFE_ALLOCATE(kappa(1:gr%mesh%np, 1:st%d%nspin))
+    SAFE_ALLOCATE(  rho(1:gr%np, 1:st%d%nspin))
+    SAFE_ALLOCATE(kappa(1:gr%np, 1:st%d%nspin))
     rho = M_ZERO
     kappa = M_ZERO
     call density_calc(st, gr, rho)
 
-    SAFE_ALLOCATE(grho(1:gr%mesh%np, 1:space%dim, 1:st%d%nspin))
-    SAFE_ALLOCATE(  jj(1:gr%mesh%np, 1:space%dim, 1:st%d%nspin))
+    SAFE_ALLOCATE(grho(1:gr%np, 1:space%dim, 1:st%d%nspin))
+    SAFE_ALLOCATE(  jj(1:gr%np, 1:space%dim, 1:st%d%nspin))
 
-    call states_elec_calc_quantities(gr%der, st, kpoints, .false., kinetic_energy_density = kappa, &
+    call states_elec_calc_quantities(gr, st, kpoints, .false., kinetic_energy_density = kappa, &
       paramagnetic_current = jj, density_gradient = grho)
 
     ! spin-dependent quantities
@@ -118,14 +118,14 @@ contains
 
     ! kappa will contain rho * D
     do_is: do is = 1, st%d%nspin
-      do ip = 1, gr%mesh%np
+      do ip = 1, gr%np
         kappa(ip, is) = kappa(ip, is)*rho(ip, is)        &    ! + tau * rho
           - M_FOURTH*sum(grho(ip, 1:space%dim, is)**2)      &    ! - | nabla rho |^2 / 4
           - sum(jj(ip, 1:space%dim, is)**2)                      ! - j^2
       end do
 
       ! pass this information to the caller if requested
-      if (present(de)) de(1:gr%mesh%np,is) = kappa(1:gr%mesh%np,is)
+      if (present(de)) de(1:gr%np,is) = kappa(1:gr%np,is)
 
     end do do_is
 
@@ -141,7 +141,7 @@ contains
 
     select case (st%d%ispin)
     case (UNPOLARIZED)
-      do ip = 1, gr%mesh%np
+      do ip = 1, gr%np
         if (rho(ip, 1) >= dmin) then
           select case (space%dim)
           case (3)
@@ -157,7 +157,7 @@ contains
 
     case (SPIN_POLARIZED, SPINORS)
       if (nelfs == 3) then
-        do ip = 1, gr%mesh%np
+        do ip = 1, gr%np
           dens = rho(ip, 1) + rho(ip, 2)
           if (dens >= dmin) then
             select case (space%dim)
@@ -172,7 +172,7 @@ contains
           end if
         end do
       end if
-      do ip = 1, gr%mesh%np
+      do ip = 1, gr%np
         do is = 1, st%d%spin_channels
           if (rho(ip, is) >= dmin) then
             select case (space%dim)

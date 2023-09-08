@@ -350,7 +350,7 @@ contains
     type(lda_u_t),       intent(in)    :: this
     character(len=*),    intent(in)    :: dir
     type(ions_t),        intent(in)    :: ions
-    type(mesh_t),        intent(in)    :: mesh
+    class(mesh_t),       intent(in)    :: mesh
     type(states_elec_t), intent(in)    :: st
     type(namespace_t),   intent(in)    :: namespace
 
@@ -383,7 +383,7 @@ contains
           end if
         end do !im
       end do ! ios
-      call write_xsf_geometry(iunit, ions, mesh, forces = mm)
+      call write_xsf_geometry(iunit,  ions%space, ions%latt, ions%pos, ions%atom, mesh, forces = mm)
       SAFE_DEALLOCATE_A(mm)
     end if
 
@@ -461,7 +461,7 @@ contains
     do ios = 1, this%norbsets
       do icopies = 1, this%orbsets(ios)%nneighbors
         ios2 = this%orbsets(ios)%map_os(icopies)
-        if(.not.this%basisfromstates) then
+        if (.not.this%basisfromstates) then
           if (this%orbsets(ios)%ndim == 1) then
             if (this%orbsets(ios)%nn /= 0) then
               write(message(1),'(i4,a10, 2x, i1, a1, i4, 1x, i1, a1, f7.3, f15.6)') ios, &
@@ -509,10 +509,12 @@ contains
 
 
   ! ---------------------------------------------------------
-  subroutine lda_u_dump(restart, this, st, ierr)
+  subroutine lda_u_dump(restart, namespace, this, st, mesh, ierr)
     type(restart_t),      intent(in)  :: restart
+    type(namespace_t),    intent(in)  :: namespace
     type(lda_u_t),        intent(in)  :: this
     type(states_elec_t),  intent(in)  :: st
+    class(mesh_t),        intent(in)  :: mesh
     integer,              intent(out) :: ierr
 
     integer :: err, occsize, ios, ncount
@@ -529,8 +531,8 @@ contains
     end if
 
     if (debug%info) then
-      message(1) = "Debug: Writing LDA+U restart."
-      call messages_info(1)
+      message(1) = "Debug: Writing DFT+U restart."
+      call messages_info(1, namespace=namespace)
     end if
 
     occsize = this%maxnorbs*this%maxnorbs*this%nspins*this%norbsets
@@ -580,9 +582,11 @@ contains
       end if
     end if
 
+    call lda_u_dump_coulomb_integrals(this, namespace, restart, st, mesh, ierr)
+
     if (debug%info) then
-      message(1) = "Debug: Writing LDA+U restart done."
-      call messages_info(1)
+      message(1) = "Debug: Writing DFT+U restart done."
+      call messages_info(1, namespace=namespace)
     end if
 
     POP_SUB(lda_u_dump)
@@ -614,7 +618,7 @@ contains
     end if
 
     if (debug%info) then
-      message(1) = "Debug: Reading LDA+U restart."
+      message(1) = "Debug: Reading DFT+U restart."
       call messages_info(1)
     end if
 
@@ -629,7 +633,7 @@ contains
       call lda_u_set_effectiveU(this, Ueff)
       SAFE_DEALLOCATE_A(Ueff)
 
-      if(this%intersite .and. this%maxneighbors > 0) then
+      if (this%intersite .and. this%maxneighbors > 0) then
         ncount = 0
         do ios = 1, this%norbsets
           ncount = ncount + this%orbsets(ios)%nneighbors
@@ -686,11 +690,92 @@ contains
     end if
 
     if (debug%info) then
-      message(1) = "Debug: Reading LDA+U restart done."
+      message(1) = "Debug: Reading DFT+U restart done."
       call messages_info(1)
     end if
 
     POP_SUB(lda_u_load)
   end subroutine lda_u_load
+
+  ! ---------------------------------------------------------
+  subroutine lda_u_dump_coulomb_integrals(this, namespace, restart, st, mesh, ierr)
+    type(lda_u_t),        intent(in)    :: this
+    type(namespace_t),    intent(in)    :: namespace
+    type(restart_t),      intent(in)    :: restart
+    type(states_elec_t),  intent(in)    :: st
+    class(mesh_t),        intent(in)    :: mesh
+    integer,              intent(out)   :: ierr
+
+    integer              :: coulomb_int_file, idim1, idim2, err
+    integer              :: ios, im, imp, impp, imppp
+    character(len=256)   :: lines(3)
+    logical              :: complex_coulomb_integrals
+
+    PUSH_SUB(lda_u_dump_coulomb_integrals)
+
+    ierr = 0
+
+    if (restart_skip(restart) .or. this%level == DFT_U_EMPIRICAL) then
+      ierr = -1
+      POP_SUB(lda_u_dump_coulomb_integrals)
+      return
+    end if
+
+    if (debug%info) then
+      message(1) = "Debug: Writing Coulomb integrals restart."
+      call messages_info(1)
+    end if
+
+    complex_coulomb_integrals = .false.
+    do ios = 1, this%norbsets
+      if (this%orbsets(ios)%ndim  > 1) complex_coulomb_integrals = .true.
+    end do
+
+    coulomb_int_file  = restart_open(restart, 'coulomb_integrals')
+    ! sanity checks. Example file 'coulomb_int_file':
+    ! norb=                        2
+    ! dim=                         1
+    ! checksum=                    xxxxxxxxxxx
+    write(lines(1), '(a20,i21)') "norb=", this%norbsets
+    write(lines(2), '(a20,i21)') "dim=", st%d%dim
+    write(lines(3), '(a20,i21)') "checksum=", mesh%idx%checksum
+    call restart_write(restart, coulomb_int_file, lines, 3, err)
+    if (err /= 0) ierr = ierr - 2
+
+    do ios = 1, this%norbsets
+      do im = 1, this%orbsets(ios)%norbs
+        do imp = 1, this%orbsets(ios)%norbs
+          do impp = 1, this%orbsets(ios)%norbs
+            do imppp = 1, this%orbsets(ios)%norbs
+              if(.not. complex_coulomb_integrals) then
+                write(lines(1), '(i4,i4,i4,i4,i4,e20.12)') ios, im, imp, impp, imppp, this%coulomb(im, imp, impp, imppp, ios)
+              else
+                do idim1 = 1, st%d%dim
+                  do idim2 = 1, st%d%dim
+                    write(lines(1), '(i4,i4,i4,i4,i4,2e20.12)') ios, im, imp, impp, imppp, idim1, idim2, &
+                      TOFLOAT(this%zcoulomb(im, imp, impp, imppp, idim1, idim2, ios)), &
+                      aimag(this%zcoulomb(im, imp, impp, imppp, idim1, idim2, ios))
+                  end do
+                end do
+              end if
+              call restart_write(restart, coulomb_int_file, lines, 1, err)
+              if (err /=0) then
+                ierr = ierr - 2**2
+                exit
+              end if
+            end do
+          end do
+        end do
+      end do
+    end do
+    call restart_close(restart, coulomb_int_file)
+
+    if (debug%info) then
+      message(1) = "Debug: Writing Coulomb integrals restart done."
+      call messages_info(1)
+    end if
+
+    POP_SUB(lda_u_dump_coulomb_integrals)
+  end subroutine lda_u_dump_coulomb_integrals
 
 end module lda_u_io_oct_m

@@ -24,9 +24,8 @@ TDDeltaStrength = 0.01/angstrom
  1/sqrt(2) |  1/sqrt(2) | 0
  1/sqrt(2) |  0         | 1/sqrt(2)
 %
-   
+
 TDPolarizationDirection = 1
 TDPolarizationEquivAxes = 3
 
 SpinComponents = spinors
-

@@ -77,6 +77,7 @@ subroutine X(poisson_solve_sm)(this, namespace, sm, pot, rho, all_nodes)
   !! all nodes or only the domain nodes for
   !! its calculations? (Defaults to .true.)
   logical, optional,    intent(in)    :: all_nodes
+
   type(derivatives_t), pointer :: der
 
   logical               :: all_nodes_value
@@ -169,6 +170,27 @@ subroutine X(poisson_solve_sm)(this, namespace, sm, pot, rho, all_nodes)
 #endif
   case (POISSON_FFT)
     call X(poisson_fft_solve)(this%fft_solver, sm%mesh, this%cube, pot, rho, this%mesh_cube_map, sm=sm)
+  case (POISSON_CG)
+#ifdef R_TREAL
+    call poisson_cg1(namespace, der, this%corrector, pot, rho)
+#else
+    SAFE_ALLOCATE(aux1(1:sm%np))
+    SAFE_ALLOCATE(aux2(1:sm%np))
+    ! first the real part
+    aux1(1:sm%np) = real(rho(1:sm%np))
+    aux2(1:sm%np) = real(pot(1:sm%np))
+    call poisson_cg1(namespace, der, this%corrector, aux2, aux1)
+    pot(1:sm%np)  = aux2(1:sm%np)
+
+    ! now the imaginary part
+    aux1(1:sm%np) = aimag(rho(1:sm%np))
+    aux2(1:sm%np) = aimag(pot(1:sm%np))
+    call poisson_cg1(namespace, der, this%corrector, aux2, aux1)
+    pot(1:sm%np) = pot(1:sm%np) + M_zI*aux2(1:sm%np)
+
+    SAFE_DEALLOCATE_A(aux1)
+    SAFE_DEALLOCATE_A(aux2)
+#endif
   end select
 
   POP_SUB(X(poisson_solve_sm))

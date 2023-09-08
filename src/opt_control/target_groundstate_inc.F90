@@ -20,7 +20,7 @@
  ! ----------------------------------------------------------------------
  !>
 subroutine target_init_groundstate(mesh, namespace, space, tg, td, restart, kpoints)
-  type(mesh_t),      intent(in)    :: mesh
+  class(mesh_t),     intent(in)    :: mesh
   type(namespace_t), intent(in)    :: namespace
   type(space_t),     intent(in)    :: space
   type(target_t),    intent(inout) :: tg
@@ -90,17 +90,17 @@ FLOAT function target_j1_groundstate(tg, gr, psi) result(j1)
 
   PUSH_SUB(target_j1_groundstate)
 
-  SAFE_ALLOCATE(zpsi(1:gr%mesh%np, 1:tg%st%d%dim))
-  SAFE_ALLOCATE(zst(1:gr%mesh%np, 1:tg%st%d%dim))
+  SAFE_ALLOCATE(zpsi(1:gr%np, 1:tg%st%d%dim))
+  SAFE_ALLOCATE(zst(1:gr%np, 1:tg%st%d%dim))
 
   j1 = M_ZERO
 
   do ik = 1, psi%d%nik
     do ist = psi%st_start, psi%st_end
-      call states_elec_get_state(psi, gr%mesh, ist, ik, zpsi)
-      call states_elec_get_state(tg%st, gr%mesh, ist, ik, zst)
+      call states_elec_get_state(psi, gr, ist, ik, zpsi)
+      call states_elec_get_state(tg%st, gr, ist, ik, zst)
 
-      j1 = j1 + psi%occ(ist, ik)*abs(zmf_dotp(gr%mesh, psi%d%dim, zpsi, zst))**2
+      j1 = j1 + psi%occ(ist, ik)*abs(zmf_dotp(gr, psi%d%dim, zpsi, zst))**2
 
     end do
   end do
@@ -126,20 +126,20 @@ subroutine target_chi_groundstate(tg, gr, psi_in, chi_out)
 
   PUSH_SUB(target_chi_groundstate)
 
-  SAFE_ALLOCATE(zpsi(1:gr%mesh%np, 1:tg%st%d%dim))
-  SAFE_ALLOCATE(zst(1:gr%mesh%np, 1:tg%st%d%dim))
-  SAFE_ALLOCATE(zchi(1:gr%mesh%np, 1:tg%st%d%dim))
+  SAFE_ALLOCATE(zpsi(1:gr%np, 1:tg%st%d%dim))
+  SAFE_ALLOCATE(zst(1:gr%np, 1:tg%st%d%dim))
+  SAFE_ALLOCATE(zchi(1:gr%np, 1:tg%st%d%dim))
 
   do ik = 1, psi_in%d%nik
     do ist = psi_in%st_start, psi_in%st_end
 
-      call states_elec_get_state(psi_in, gr%mesh, ist, ik, zpsi)
-      call states_elec_get_state(tg%st, gr%mesh, ist, ik, zst)
+      call states_elec_get_state(psi_in, gr, ist, ik, zpsi)
+      call states_elec_get_state(tg%st, gr, ist, ik, zst)
 
-      olap = zmf_dotp(gr%mesh, zst(:, 1), zpsi(:, 1))
-      zchi(1:gr%mesh%np, 1:tg%st%d%dim) = olap*zst(1:gr%mesh%np, 1:tg%st%d%dim)
+      olap = zmf_dotp(gr, zst(:, 1), zpsi(:, 1))
+      zchi(1:gr%np, 1:tg%st%d%dim) = olap*zst(1:gr%np, 1:tg%st%d%dim)
 
-      call states_elec_set_state(chi_out, gr%mesh, ist, ik, zchi)
+      call states_elec_set_state(chi_out, gr, ist, ik, zchi)
 
     end do
   end do

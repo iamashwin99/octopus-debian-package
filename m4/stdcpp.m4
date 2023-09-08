@@ -46,7 +46,7 @@ AC_SUBST([LDFLAGS_STATIC])
 
 #####
 
-AC_DEFUN([_AC_PROG_CXX_V_OUTPUT],  
+AC_DEFUN([_AC_PROG_CXX_V_OUTPUT],
 [AC_REQUIRE([AC_PROG_CXX])dnl
 AC_LANG_PUSH(C++)dnl
 AC_LANG_CONFTEST([AC_LANG_PROGRAM([])])
@@ -58,8 +58,8 @@ echo "$ac_cxx_v_output" >&AS_MESSAGE_LOG_FD
 CXXFLAGS=$ac_save_CXXFLAGS
 
 rm -rf conftest*
-AC_LANG_POP(C++)dnl    
-# If we are using xlf then replace all the commas with spaces.    
+AC_LANG_POP(C++)dnl
+# If we are using xlf then replace all the commas with spaces.
 if echo $ac_cxx_v_output | grep xlfentry >/dev/null 2>&1; then
   ac_cxx_v_output=`echo $ac_cxx_v_output | sed 's/,/ /g'`
 fi
@@ -70,7 +70,7 @@ ac_cxx_v_output="`echo $ac_cxx_v_output |
         grep 'LPATH is:' |
         sed 's,.*LPATH is\(: *[[^ ]]*\).*,\1,;s,: */, -L/,g'` $ac_cxx_v_output"
 
-# Fix for xlc++ (in vulcan/sequoia), we need to remove some lines  
+# Fix for xlc++ (in vulcan/sequoia), we need to remove some lines
 ac_cxx_v_output="`echo $ac_cxx_v_output | grep -v \ failed`"
 
 ])# _AC_PROG_CXX_V_OUTPUT
@@ -105,24 +105,24 @@ fi],
 
 AC_DEFUN([AC_CXX_LIBRARY_LDFLAGS],
 [AC_LANG_PUSH(C++)dnl
-_AC_PROG_CXX_V  
+_AC_PROG_CXX_V
 AC_CACHE_CHECK([for C++ libraries], ac_cv_cxxlibs,
 [if test "x$CXXLIBS" != "x"; then
   ac_cv_cxxlibs="$CXXLIBS" # Let the user override the test.
 else
 
-_AC_PROG_CXX_V_OUTPUT     
+_AC_PROG_CXX_V_OUTPUT
 
 ac_cv_cxxlibs=
 
-# Save positional arguments (if any)  
+# Save positional arguments (if any)
 ac_save_positional="$[@]"
 
 set X $ac_cxx_v_output
-while test $[@%:@] != 1; do      
+while test $[@%:@] != 1; do
   shift
   ac_arg=`echo $[1] | sed -e 's/\"//g' -e 's/\x27//g'` #remove single and double quote
-  case $ac_arg in   
+  case $ac_arg in
         [[\\/]]*.a | ?:[[\\/]]*.a)
           _AC_LIST_MEMBER_IF($ac_arg, $ac_cv_cxxlibs, ,
               ac_cv_cxxlibs="$ac_cv_cxxlibs $ac_arg")
@@ -139,12 +139,12 @@ while test $[@%:@] != 1; do
         -lkernel32)
           test x"$CYGWIN" != xyes && ac_cv_cxxlibs="$ac_cv_cxxlibs $ac_arg"
           ;;
-        -[[LuY]])      
+        -[[LuY]])
           # These flags, when seen by themselves, take an argument.
           # We remove the space between option and argument and re-iterate
           # unless we find an empty arg or a new option (starting with -)
           case $[2] in
-             "" | -*);;       
+             "" | -*);;
              *)
                 ac_arg="$ac_arg$[2]"
                 shift; shift
@@ -156,7 +156,7 @@ while test $[@%:@] != 1; do
           for ac_j in `echo $ac_arg | sed -e 's/-YP,/-L/;s/:/ -L/g'`; do
             _AC_LIST_MEMBER_IF($ac_j, $ac_cv_cxxlibs, ,
                                [ac_arg="$ac_arg $ac_j"
-                               ac_cv_cxxlibs="$ac_cv_cxxlibs $ac_j"]) 
+                               ac_cv_cxxlibs="$ac_cv_cxxlibs $ac_j"])
           done
           ;;
         -[[lL]]*)
@@ -166,7 +166,7 @@ while test $[@%:@] != 1; do
           # Ignore everything else.
   esac
 done
-# restore positional arguments    
+# restore positional arguments
 set X $ac_save_positional; shift
 
 # We only consider "LD_RUN_PATH" on Solaris systems.  If this is seen,
@@ -182,7 +182,7 @@ case `(uname -sr) 2>/dev/null` in
 esac
 fi # test "x$CXXLIBS" = "x"
 ])
-CXXLIBS="$ac_cv_cxxlibs"             
+CXXLIBS="$ac_cv_cxxlibs"
 AC_SUBST(CXXLIBS)
 AC_LANG_POP(C++)dnl
 ])# AC_CXX_LIBRARY_LDFLAGS

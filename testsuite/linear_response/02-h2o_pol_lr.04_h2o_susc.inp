@@ -7,7 +7,7 @@
 # the spacing and increase slightly the box radius.
 
 CalculationMode = em_resp
-fromScratch = yes
+FromScratch = yes
 RestartFixedOccupations = no
 
 %Coordinates

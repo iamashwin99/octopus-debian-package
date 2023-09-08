@@ -44,6 +44,8 @@ module box_cylinder_oct_m
     logical :: periodic_boundaries = .false. !< are the bases of the cylinder to be treated as periodic?
   contains
     procedure :: shape_contains_points => box_cylinder_shape_contains_points
+    procedure :: get_surface_points => box_cylinder_shape_get_surface_points
+    procedure :: get_surface_point_info => box_cylinder_shape_get_surface_point_info
     procedure :: write_info => box_cylinder_write_info
     procedure :: short_info => box_cylinder_short_info
     final     :: box_cylinder_finalize
@@ -135,6 +137,75 @@ contains
     end do
 
   end function box_cylinder_shape_contains_points
+
+  !--------------------------------------------------------------
+  !> Get a mask for the grid points telling which of them are surface points
+  !! 1. Create a box that is fractionally smaller than the original.
+  !! 2. Look for points that belong to the original box but not to the smaller one - These define surface points
+  function box_cylinder_shape_get_surface_points(this, namespace, mesh_spacing, nn, xx, number_of_layers) result(surface_points)
+    class(box_cylinder_t), intent(in)  :: this
+    type(namespace_t),     intent(in)  :: namespace
+    FLOAT,                 intent(in)  :: mesh_spacing(:)
+    integer,               intent(in)  :: nn
+    FLOAT,                 intent(in)  :: xx(:,:)
+    integer, optional,     intent(in)  :: number_of_layers
+
+    logical          :: surface_points(1:nn)
+    FLOAT            :: shrink(this%dim)
+    FLOAT, parameter :: compression = CNST(0.94)
+    class(box_cylinder_t), pointer :: shrinked_box
+    ! TODO: See Issue 705 (ftroisi) - Helmholtz decomposition refinement
+    ! The axis of the cylinder is always in the first direction of the box_shape. So the following assert checks that the spacing
+    ! in the other two direction (which define the circle) is the same (to avoid problems due to deformation effects)
+    ASSERT(abs(mesh_spacing(2) - mesh_spacing(3)) < M_EPSILON)
+
+    ! First of all determine how much the shrink should be based on the spacing in each direction
+    shrink(1) = 1 - (1 - BOX_BOUNDARY_DELTA) * (mesh_spacing(1) / this%half_length)
+    shrink(2) = 1 - compression * (mesh_spacing(2) / this%radius)
+
+    ! First of all we create a shrunk cylindric box
+    shrinked_box => box_cylinder_t(this%dim, this%center, this%axes%vectors, this%radius * shrink(2), &
+      M_TWO * this%half_length * shrink(1), namespace, periodic_boundaries=this%periodic_boundaries)
+
+    ! Then we look for points of the old box that are not containted in the smaller box
+    ! box_parallelepiped_shape_contains_points will return the point contained in the shrinked box,
+    ! but we are interested in the ones not contained, as they will the surface points of the original parallelepiped
+    surface_points = .not. box_cylinder_shape_contains_points(shrinked_box, nn, xx)
+    SAFE_DEALLOCATE_P(shrinked_box)
+
+  end function box_cylinder_shape_get_surface_points
+
+  !--------------------------------------------------------------
+  subroutine box_cylinder_shape_get_surface_point_info(this, point_coordinates, mesh_spacing, normal_vector, surface_element)
+    class(box_cylinder_t), intent(in)  :: this
+    FLOAT,                 intent(in)  :: point_coordinates(:) !< (x,y,z) coordinates of the point
+    FLOAT,                 intent(in)  :: mesh_spacing(:)      !< spacing of the mesh
+    FLOAT,                 intent(out) :: normal_vector(:)     !< normal vector to the surface point
+    FLOAT,                 intent(out) :: surface_element      !< surface element (needed to compute the surface integral)
+
+    PUSH_SUB(box_cylinder_shape_get_surface_point_info)
+
+    ! Compute the normal vector to the surface point
+
+    ! For a cylinder, the normal vector to a point is the normal to a circle if we are on its side while if we are on one of
+    ! its flat surfaces it is simply a vector of type (1,0,0)
+
+    ! So first of all we have to determine in which face we are. We know that the cylinder is along the first direction
+    ! defined by the box_shape_t basis vectors (which is x). To do that let us divide the vector containing the coordinates
+    ! of the point by the maximum length of the parallelepiped
+    normal_vector = (point_coordinates - this%center) / [this%half_length, this%radius, this%radius]
+
+    if (abs(normal_vector(1)) > norm2(normal_vector(2:3))) then
+      normal_vector(2:3) = M_ZERO
+      surface_element = mesh_spacing(2) * mesh_spacing(3)
+    else
+      ! in this case we are on the circle
+      normal_vector(1) = M_ZERO
+      surface_element = mesh_spacing(1)**2
+    end if
+
+    POP_SUB(box_cylinder_shape_get_surface_point_info)
+  end subroutine box_cylinder_shape_get_surface_point_info
 
   !--------------------------------------------------------------
   subroutine box_cylinder_write_info(this, iunit, namespace)

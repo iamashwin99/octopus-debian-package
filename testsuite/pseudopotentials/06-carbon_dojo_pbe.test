@@ -6,23 +6,38 @@ TestGroups : short-run, pseudopotentials
 Enabled    : Yes
 
 Input: 06-carbon_dojo_pbe.01-gs.inp
-Precision: 0.0004
 match ; SCF convergence    ; GREPCOUNT(static/info, 'SCF converged') ; 1
-match ; Total energy       ; GREPFIELD(static/info, 'Total       =', 3) ; -156.1444733
-Precision: 0.00011
-match ; Eigenvalue   [1up] ; GREPFIELD(static/info, '1   up', 3) ; -14.651344
-match ; Occupation   [1up] ; GREPFIELD(static/info, '1   up', 4) ;   1.000000
-match ; Eigenvalue   [1dn] ; GREPFIELD(static/info, '1   dn', 3) ; -11.709735
-match ; Occupation   [1dn] ; GREPFIELD(static/info, '1   dn', 4) ;   1.000000
-match ; Eigenvalue   [2up] ; GREPFIELD(static/info, '2   up', 3) ;  -6.137501
-match ; Occupation   [2up] ; GREPFIELD(static/info, '2   up', 4) ;   0.666667
-match ; Eigenvalue   [2dn] ; GREPFIELD(static/info, '2   dn', 3) ;  -3.481641
-match ; Occupation   [2dn] ; GREPFIELD(static/info, '2   dn', 4) ;   0.000000
-match ; Eigenvalue   [3up] ; GREPFIELD(static/info, '3   up', 3) ;  -6.137501
-match ; Occupation   [3up] ; GREPFIELD(static/info, '3   up', 4) ;   0.666667
-match ; Eigenvalue   [3dn] ; GREPFIELD(static/info, '3   dn', 3) ;  -3.481641
-match ; Occupation   [3dn] ; GREPFIELD(static/info, '3   dn', 4) ;   0.000000
-match ; Eigenvalue   [4up] ; GREPFIELD(static/info, '4   up', 3) ;  -6.137501
-match ; Occupation   [4up] ; GREPFIELD(static/info, '4   up', 4) ;   0.666667
-match ; Eigenvalue   [4dn] ; GREPFIELD(static/info, '4   dn', 3) ;  -3.481641
-match ; Occupation   [4dn] ; GREPFIELD(static/info, '4   dn', 4) ;   0.000000
+Precision: 2.57e-05
+match ;  Total energy        ; GREPFIELD(static/info, 'Total       =', 3) ; -156.14303693
+Precision: 7.33e-06
+match ;  Eigenvalue   [1up]  ; GREPFIELD(static/info, '1   up', 3) ; -14.650768
+Precision: 1.00e-01
+match ;  Occupation   [1up]  ; GREPFIELD(static/info, '1   up', 4) ; 1.0
+Precision: 5.85e-06
+match ;  Eigenvalue   [1dn]  ; GREPFIELD(static/info, '1   dn', 3) ; -11.709061
+Precision: 1.00e-01
+match ;  Occupation   [1dn]  ; GREPFIELD(static/info, '1   dn', 4) ; 1.0
+Precision: 3.07e-04
+match ;  Eigenvalue   [2up]  ; GREPFIELD(static/info, '2   up', 3) ; -6.13691
+Precision: 3.33e-05
+match ;  Occupation   [2up]  ; GREPFIELD(static/info, '2   up', 4) ; 0.666667
+Precision: 1.74e-05
+match ;  Eigenvalue   [2dn]  ; GREPFIELD(static/info, '2   dn', 3) ; -3.481001
+Precision: 1.00e-04
+match ;  Occupation   [2dn]  ; GREPFIELD(static/info, '2   dn', 4) ; 0.0
+Precision: 3.07e-04
+match ;  Eigenvalue   [3up]  ; GREPFIELD(static/info, '3   up', 3) ; -6.13691
+Precision: 3.33e-05
+match ;  Occupation   [3up]  ; GREPFIELD(static/info, '3   up', 4) ; 0.666667
+Precision: 1.74e-05
+match ;  Eigenvalue   [3dn]  ; GREPFIELD(static/info, '3   dn', 3) ; -3.481001
+Precision: 1.00e-04
+match ;  Occupation   [3dn]  ; GREPFIELD(static/info, '3   dn', 4) ; 0.0
+Precision: 3.07e-04
+match ;  Eigenvalue   [4up]  ; GREPFIELD(static/info, '4   up', 3) ; -6.13691
+Precision: 3.33e-05
+match ;  Occupation   [4up]  ; GREPFIELD(static/info, '4   up', 4) ; 0.666667
+Precision: 1.74e-05
+match ;  Eigenvalue   [4dn]  ; GREPFIELD(static/info, '4   dn', 3) ; -3.481001
+Precision: 1.00e-04
+match ;  Occupation   [4dn]  ; GREPFIELD(static/info, '4   dn', 4) ; 0.0

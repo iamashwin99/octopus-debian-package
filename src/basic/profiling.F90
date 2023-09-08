@@ -370,7 +370,7 @@ contains
     end do
 
     if (bitand(prof_vars%mode, PROFILING_MEMORY) /= 0) then
-      call messages_print_stress(msg="Memory profiling information", namespace=namespace)
+      call messages_print_with_emphasis(msg="Memory profiling information", namespace=namespace)
       write(message(1), '(a,i10)') 'Number of   allocations = ', prof_vars%alloc_count
       write(message(2), '(a,i10)') 'Number of deallocations = ', prof_vars%dealloc_count
       write(message(3), '(a,f18.3,a)') 'Maximum total memory allocated = ', prof_vars%max_memory/megabyte, ' Mbytes'
@@ -385,7 +385,7 @@ contains
         call messages_info(1)
       end do
 
-      call messages_print_stress(namespace=namespace)
+      call messages_print_with_emphasis(namespace=namespace)
 
       if (prof_vars%alloc_count /= prof_vars%dealloc_count) then
         write(message(1),'(a,i10,a,i10,a)') "Not all memory was deallocated: ", prof_vars%alloc_count, &
@@ -410,7 +410,7 @@ contains
     end if
 
     if (bitand(prof_vars%mode, PROFILING_IO) /= 0) then
-      call messages_print_stress(msg="IO profiling information", namespace=namespace)
+      call messages_print_with_emphasis(msg="IO profiling information", namespace=namespace)
       io_open_count = io_get_open_count()
       io_close_count = io_get_close_count()
       write(message(1), '(a,i10)') 'Number of file open  = ', io_open_count
@@ -420,7 +420,7 @@ contains
       write(message(3), '(a,i10)') 'Global number of file open  = ', io_open_count_red
       write(message(4), '(a,i10)') 'Global number of file close = ', io_close_count_red
       call messages_info(4)
-      call messages_print_stress(namespace=namespace)
+      call messages_print_with_emphasis(namespace=namespace)
     end if
 
     POP_SUB(profiling_end)
@@ -436,6 +436,11 @@ contains
     integer :: iprofile
 
     PUSH_SUB(profile_init)
+
+    if(len(label) > LABEL_LENGTH) then
+      message(1) = "Label " // trim(label) // " is too long for the internal profiler"
+      call messages_fatal(1)
+    end if
 
     this%label = label
     this%total_time = M_ZERO
@@ -472,7 +477,7 @@ contains
     do iprofile = 1, prof_vars%last_profile - 1
       if (prof_vars%profile_list(iprofile)%p%label == this%label) then
         message(1) = "Label "//label//" used more than once."
-        call messages_warning(1)
+        call messages_fatal(1)
         exit
       end if
     end do

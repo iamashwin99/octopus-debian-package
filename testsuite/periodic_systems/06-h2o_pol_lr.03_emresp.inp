@@ -1,6 +1,6 @@
 CalculationMode = em_resp
 ExperimentalFeatures = yes
-fromScratch = yes
+FromScratch = yes
 RestartFixedOccupations = no
 
 %Coordinates
@@ -24,7 +24,7 @@ EMCalcBornCharges = yes
 1 | 1 | 1
 %
 
-%EMFreqs 
+%EMFreqs
 2 | 0.0 | 0.1
 %
 
@@ -33,4 +33,3 @@ EMEta = 0.01
 FilterPotentials = filter_none
 
 MixField = density
-

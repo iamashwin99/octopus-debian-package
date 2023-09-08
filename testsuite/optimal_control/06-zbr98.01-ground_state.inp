@@ -6,7 +6,7 @@ ExperimentalFeatures = yes
 # The Morse potential is given by:
 # V(r) = D{exp[-beta*(r-r0)]-1}**2 - D
 # where, for the OH case:
-# 
+#
 D = 0.1994
 beta = 1.189
 #r0 = 1.821
@@ -21,8 +21,8 @@ omega = beta*sqrt(2*D/mu)
 #
 # The eigenenergies of this system are given by:
 #
-# E[nu] = -D + \hbar* [ omega*(nu+0.5) - Delta*(nu+0.5)^2 ] 
-# 
+# E[nu] = -D + \hbar* [ omega*(nu+0.5) - Delta*(nu+0.5)^2 ]
+#
 # where Delta is the anharmonicity constant:
 #Delta = omega^2 / (4*D)
 # The numerical value is .00040895133 Ha

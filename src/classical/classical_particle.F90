@@ -30,6 +30,7 @@ module classical_particle_oct_m
   use gravity_oct_m
   use io_oct_m
   use iso_c_binding
+  use lennard_jones_oct_m
   use messages_oct_m
   use mpi_oct_m
   use namespace_oct_m
@@ -53,7 +54,8 @@ module classical_particle_oct_m
     OUTPUT_COORDINATES = 1, &
     OUTPUT_ENERGY      = 2
 
-
+  !> @brief class for a neutral classical particle
+  !!
   type, extends(classical_particles_t) :: classical_particle_t
     type(c_ptr) :: output_handle(2)
 
@@ -63,6 +65,7 @@ module classical_particle_oct_m
     procedure :: output_start => classical_particle_output_start
     procedure :: output_write => classical_particle_output_write
     procedure :: output_finish => classical_particle_output_finish
+    procedure :: restart_write_data => classical_particle_restart_write_data
     procedure :: update_quantity => classical_particle_update_quantity
     procedure :: update_exposed_quantity => classical_particle_update_exposed_quantity
     procedure :: init_interaction_as_partner => classical_particle_init_interaction_as_partner
@@ -113,7 +116,7 @@ contains
       call messages_not_implemented('Classical particle for periodic systems', namespace=namespace)
     end if
 
-    call messages_print_stress(msg="Classical Particle", namespace=namespace)
+    call messages_print_with_emphasis(msg="Classical Particle", namespace=namespace)
 
     call classical_particles_init(this, 1)
 
@@ -128,8 +131,32 @@ contains
 
     call this%supported_interactions%add(GRAVITY)
     call this%supported_interactions_as_partner%add(GRAVITY)
+    call this%supported_interactions%add(LENNARD_JONES)
+    call this%supported_interactions_as_partner%add(LENNARD_JONES)
 
-    call messages_print_stress(namespace=namespace)
+    !%Variable LennardJonesEpsilon
+    !%Type float
+    !%Section ClassicalParticles
+    !%Description
+    !% Epsilon parameter (dispersion energy) of Lennard-Jones interaction for this species.
+    !% In case two particles have a different epsilon, the combination rule will be computed
+    !% <math>\epsilon_{12} = \sqrt{\epsilon_1 + \epsilon_2}</math>.
+    !%End
+    call parse_variable(namespace, 'LennardJonesEpsilon', M_ONE, this%lj_epsilon(1))
+    call messages_print_var_value('LennardJonesEpsilon', this%lj_epsilon(1), namespace=namespace)
+
+    !%Variable LennardJonesSigma
+    !%Type float
+    !%Section ClassicalParticles
+    !%Description
+    !% Sigma parameter (particle size) of Lennard-Jones interaction for this species.
+    !% In case two particles have a different sigma, the combination rule will be computed
+    !% <math>\sigma_{12} = (\sigma_1 + \sigma_2) / 2.
+    !%End
+    call parse_variable(namespace, 'LennardJonesSigma', M_ONE, this%lj_sigma(1))
+    call messages_print_var_value('LennardJonesSigma', this%lj_sigma(1), namespace=namespace)
+
+    call messages_print_with_emphasis(namespace=namespace)
 
     POP_SUB(classical_particle_init)
   end subroutine classical_particle_init
@@ -144,6 +171,15 @@ contains
     select type (interaction)
     type is (gravity_t)
       call interaction%init(this%space%dim, 1, this%quantities, this%mass, this%pos)
+    type is (lennard_jones_t)
+      if (.not. (parse_is_defined(this%namespace, 'LennardJonesSigma') .and. &
+        parse_is_defined(this%namespace, 'LennardJonesEpsilon') )) then
+        write(message(1),'(a,es9.2)') 'Using default value for Lennard-Jones parameter.'
+        call messages_warning(1, namespace=this%namespace)
+      end if
+
+      call interaction%init(this%space%dim, 1, this%quantities, this%pos, this%lj_epsilon(1), &
+        this%lj_sigma(1))
     class default
       call classical_particles_init_interaction(this, interaction)
     end select
@@ -213,10 +249,10 @@ contains
     end if
     ! Create output handle
     call io_mkdir('td.general', this%namespace)
-    if (mpi_grp_is_root(mpi_world)) then
-      call write_iter_init(this%output_handle(OUTPUT_COORDINATES), iteration, this%prop%dt, &
+    if (mpi_grp_is_root(this%grp)) then
+      call write_iter_init(this%output_handle(OUTPUT_COORDINATES), iteration, this%algo%dt, &
         trim(io_workpath("td.general/coordinates", this%namespace)))
-      call write_iter_init(this%output_handle(OUTPUT_ENERGY), iteration, this%prop%dt, &
+      call write_iter_init(this%output_handle(OUTPUT_ENERGY), iteration, this%algo%dt, &
         trim(io_workpath("td.general/energy", this%namespace)))
     end if
 
@@ -234,7 +270,7 @@ contains
 
     PUSH_SUB(classical_particle_output_finish)
 
-    if (mpi_grp_is_root(mpi_world)) then
+    if (mpi_grp_is_root(this%grp)) then
       call write_iter_end(this%output_handle(OUTPUT_COORDINATES))
       call write_iter_end(this%output_handle(OUTPUT_ENERGY))
     end if
@@ -250,7 +286,7 @@ contains
     character(len=50) :: aux
     FLOAT :: tmp(this%space%dim)
 
-    if (.not. mpi_grp_is_root(mpi_world)) return ! only first node outputs
+    if (.not. mpi_grp_is_root(this%grp)) return ! only first node outputs
 
     PUSH_SUB(classical_particle_output_write)
 
@@ -309,9 +345,7 @@ contains
     ! Force
     tmp(1:this%space%dim) = units_from_atomic(units_out%force, this%tot_force(1:this%space%dim, 1))
     call write_iter_double(this%output_handle(OUTPUT_COORDINATES), tmp, this%space%dim)
-
     call write_iter_nl(this%output_handle(OUTPUT_COORDINATES))
-
 
     ! Energies
     if (this%clock%get_tick() == 0) then
@@ -355,14 +389,31 @@ contains
   end subroutine classical_particle_output_write
 
   ! ---------------------------------------------------------
+  subroutine classical_particle_restart_write_data(this)
+    class(classical_particle_t), intent(inout) :: this
+
+    PUSH_SUB(classical_particle_restart_write_data)
+
+    call classical_particles_restart_write_data(this)
+
+    if (mpi_grp_is_root(this%grp)) then
+      call write_iter_flush(this%output_handle(OUTPUT_COORDINATES))
+      call write_iter_flush(this%output_handle(OUTPUT_ENERGY))
+    end if
+
+    POP_SUB(classical_particle_restart_write_data)
+  end subroutine classical_particle_restart_write_data
+
+
+  ! ---------------------------------------------------------
   subroutine classical_particle_update_quantity(this, iq)
     class(classical_particle_t), intent(inout) :: this
     integer,                     intent(in)    :: iq
 
     PUSH_SUB(classical_particle_update_quantity)
 
-    ! We are not allowed to update protected quantities!
-    ASSERT(.not. this%quantities(iq)%protected)
+    ! We are only allowed to update quantities that can be updated on demand
+    ASSERT(this%quantities(iq)%updated_on_demand)
 
     select case (iq)
     case default
@@ -380,8 +431,8 @@ contains
 
     PUSH_SUB(classical_particle_update_exposed_quantity)
 
-    ! We are not allowed to update protected quantities!
-    ASSERT(.not. partner%quantities(iq)%protected)
+    ! We are only allowed to update quantities that can be updated on demand
+    ASSERT(partner%quantities(iq)%updated_on_demand)
 
     select case (iq)
     case default
@@ -405,6 +456,16 @@ contains
       SAFE_ALLOCATE(interaction%partner_mass(1))
       SAFE_ALLOCATE(interaction%partner_pos(1:partner%space%dim, 1))
 
+    type is (lennard_jones_t)
+      interaction%partner_np = 1
+      SAFE_ALLOCATE(interaction%partner_pos(1:partner%space%dim, 1))
+      ! in case the LennardJones epsilon and sigma of system and partner are different,
+      ! we compute the combination rules with arithmetic and geometric means:
+      ! (they give back the original parameters if they happen to be equal):
+      ! sigma_12 = (sigma_1 + sigma_2)/2,    epsilon_12 = sqrt(epsilon_1 * epsilon_2)
+      interaction%lj_sigma = M_HALF * (partner%lj_sigma(1) + interaction%lj_sigma)
+      interaction%lj_epsilon = sqrt(partner%lj_epsilon(1) * interaction%lj_epsilon)
+
     class default
       ! Other interactions should be handled by the parent class
       call classical_particles_init_interaction_as_partner(partner, interaction)
@@ -423,6 +484,9 @@ contains
     select type (interaction)
     type is (gravity_t)
       interaction%partner_mass(1) = partner%mass(1)
+      interaction%partner_pos(:,1) = partner%pos(:,1)
+
+    type is (lennard_jones_t)
       interaction%partner_pos(:,1) = partner%pos(:,1)
 
     class default

@@ -446,18 +446,15 @@ subroutine pes_mask_output_states(namespace, space, st, gr, ions, dir, outp, mas
   CMPLX, allocatable :: PsiAB(:,:,:,:), psi(:)
   FLOAT,allocatable :: RhoAB(:,:)
   type(cube_function_t) :: cf
-  type(mesh_t):: mesh
 
   type(wfs_elec_t)        :: psib
   type(density_calc_t) :: dens_calc
 
   PUSH_SUB(pes_mask_output_states)
 
-  mesh= gr%mesh
-
-  SAFE_ALLOCATE(PsiAB(1:mesh%np_part, 1:st%d%dim,1:st%nst,1:st%d%nik))
-  SAFE_ALLOCATE(RhoAB(1:mesh%np_part, 1:st%d%nspin))
-  SAFE_ALLOCATE(psi(1:mesh%np_part))
+  SAFE_ALLOCATE(PsiAB(1:gr%np_part, 1:st%d%dim,1:st%nst,1:st%d%nik))
+  SAFE_ALLOCATE(RhoAB(1:gr%np_part, 1:st%d%nspin))
+  SAFE_ALLOCATE(psi(1:gr%np_part))
 
   call zcube_function_alloc_RS(mask%cube, cf, force_alloc = .true.)
 
@@ -476,7 +473,7 @@ subroutine pes_mask_output_states(namespace, space, st, gr, ions, dir, outp, mas
 
         call pes_mask_cube_to_mesh(mask, cf, PsiAB(:, idim, ist, ik))
 
-        call states_elec_get_state(st, gr%mesh, idim, ist, ik, psi)
+        call states_elec_get_state(st, gr, idim, ist, ik, psi)
 
         if (mask%mode /= PES_MASK_MODE_PASSIVE) then
           PsiAB(:, idim, ist, ik) = PsiAB(:, idim, ist, ik) + psi(:)
@@ -502,8 +499,8 @@ subroutine pes_mask_output_states(namespace, space, st, gr, ions, dir, outp, mas
       else
         write(fname, '(a,i1)') 'pes_den-sp', is
       end if
-      call dio_function_output(outp%how(OPTION__OUTPUT__PES_DENSITY), dir, fname, namespace, space, gr%mesh, &
-        RhoAB(:, is), fn_unit, ierr, ions = ions, grp = st%dom_st_kpt_mpi_grp)
+      call dio_function_output(outp%how(OPTION__OUTPUT__PES_DENSITY), dir, fname, namespace, space, gr, &
+        RhoAB(:, is), fn_unit, ierr, pos=ions%pos, atoms=ions%atom, grp = st%dom_st_kpt_mpi_grp)
     end do
   end if
 
@@ -528,8 +525,8 @@ subroutine pes_mask_output_states(namespace, space, st, gr, ions, dir, outp, mas
             end if
           end if
 
-          call zio_function_output(outp%how(OPTION__OUTPUT__PES_WFS), dir, fname, namespace, space, gr%mesh, &
-            PsiAB(1:, idim, ist, ik), fn_unit, ierr, ions = ions)
+          call zio_function_output(outp%how(OPTION__OUTPUT__PES_WFS), dir, fname, namespace, space, gr, &
+            PsiAB(1:, idim, ist, ik), fn_unit, ierr, pos=ions%pos, atoms=ions%atom)
 
         end do
       end do
@@ -785,7 +782,7 @@ subroutine pes_mask_output_full_mapM(pesK, file, namespace, space, Lk, ll, how, 
   FLOAT,             intent(in) :: Lk(:,:)
   integer,           intent(in) :: ll(:)
   integer,           intent(in) :: how
-  type(mesh_t),      intent(in) :: mesh
+  class(mesh_t),     intent(in) :: mesh
   FLOAT, optional,   intent(in) :: pmesh(:,:,:,:)
 
   integer :: iunit
@@ -799,6 +796,7 @@ subroutine pes_mask_output_full_mapM(pesK, file, namespace, space, Lk, ll, how, 
   PUSH_SUB(pes_mask_output_full_mapM)
 
   call cube_init(cube, ll, namespace, space, mesh%spacing, mesh%coord_system)
+  call cube_init_cube_map(cube, mesh)
   call dcube_function_alloc_RS(cube, cf, force_alloc = .true.)
   cf%dRS = pesK
 
@@ -1872,15 +1870,14 @@ end subroutine pes_mask_write_power_total
 !! of PES data
 !
 ! ---------------------------------------------------------
-subroutine pes_mask_output(mask, mesh, st, outp, namespace, space, file, gr, ions, iter)
+subroutine pes_mask_output(mask, gr, st, outp, namespace, space, file, ions, iter)
   type(pes_mask_t),    intent(inout)    :: mask
-  type(mesh_t),        intent(in)       :: mesh
+  type(grid_t),        intent(in)       :: gr
   type(states_elec_t), intent(in)       :: st
   type(output_t),      intent(in)       :: outp
   type(namespace_t),   intent(in)       :: namespace
   type(space_t),       intent(in)       :: space
   character(len=*),    intent(in)       :: file
-  type(grid_t),        intent(in)       :: gr
   type(ions_t),        intent(in)       :: ions
   integer,             intent(in)       :: iter
 
@@ -1932,12 +1929,12 @@ subroutine pes_mask_output(mask, mesh, st, outp, namespace, space, file, gr, ion
     call zcube_function_alloc_RS(mask%cube, cf1, force_alloc = .true.)
     call cube_function_alloc_FS(mask%cube, cf1, force_alloc = .true.)
 
-    SAFE_ALLOCATE(psi(1:mesh%np_part))
+    SAFE_ALLOCATE(psi(1:gr%np_part))
 
     do ik = st%d%kpt%start, st%d%kpt%end
       do ist =  st%st_start, st%st_end
         do idim = 1, st%d%dim
-          call states_elec_get_state(st, mesh, idim, ist, ik, psi)
+          call states_elec_get_state(st, gr, idim, ist, ik, psi)
           call pes_mask_mesh_to_cube(mask, psi, cf1)
           cf1%zRs = (M_ONE - mask%cM%zRs**10) * cf1%zRs ! mask^10 is practically a box function
           call pes_mask_X_to_K(mask, cf1%zRs, cf1%Fs)

@@ -57,7 +57,7 @@ module index_oct_m
     integer              :: type               !< index type
     integer              :: bits               !< bits per dimension for Hilbert index
     integer              :: offset(MAX_DIM)    !< offset for getting the indices from the spatial index
-    integer              :: stride(MAX_DIM)
+    integer              :: stride(MAX_DIM+1)
     integer              :: window_grid_to_spatial !< handle to shared memory window for map
     integer              :: window_spatial_to_grid !< handle to shared memory window for inverse map
   end type index_t
@@ -317,17 +317,15 @@ contains
     integer,       intent(in)  :: point(1:dim)
 
     integer :: ii
-    integer(i8) :: tmp
 
     ! no push_sub/pop_sub, called too often
     icubic = 0
     do ii = 1, dim
-      tmp = point(ii)+idx%offset(ii)
-      if (tmp < 0) then
+      if (point(ii) < idx%nr(1, ii) .or. point(ii) > idx%nr(2, ii)) then
         icubic = -1
         return
       end if
-      icubic = icubic + tmp * idx%stride(ii)
+      icubic = icubic + int(point(ii)+idx%offset(ii), i8) * idx%stride(ii)
     end do
   end subroutine index_point_to_cubic
 

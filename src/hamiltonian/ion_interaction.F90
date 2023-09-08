@@ -46,7 +46,8 @@ module ion_interaction_oct_m
     ion_interaction_end,              &
     ion_interaction_calculate,        &
     ion_interaction_init_parallelization, &
-    ion_interaction_test
+    ion_interaction_test,             &
+    ion_interaction_stress
 
   type ion_interaction_t
     ! Components are public by default
@@ -129,7 +130,7 @@ contains
   ! ---------------------------------------------------------
   !> For details about this routine, see
   !! http://octopus-code.org/wiki/Developers:Ion-Ion_interaction
-  subroutine ion_interaction_calculate(this, space, latt, atom, natoms, pos, catom, ncatoms, lsize, energy, force, &
+  subroutine ion_interaction_calculate(this, space, latt, atom, natoms, pos, lsize, energy, force, &
     energy_components, force_components)
     type(ion_interaction_t),  intent(inout) :: this
     type(space_t),            intent(in)    :: space
@@ -137,8 +138,6 @@ contains
     type(atom_t),             intent(in)    :: atom(:)
     integer,                  intent(in)    :: natoms
     FLOAT,                    intent(in)    :: pos(1:space%dim,1:natoms)
-    type(atom_classical_t),   intent(in)    :: catom(:)
-    integer,                  intent(in)    :: ncatoms
     FLOAT,                    intent(in)    :: lsize(:)
     FLOAT,                    intent(out)   :: energy
     FLOAT,                    intent(out)   :: force(:, :)
@@ -169,8 +168,6 @@ contains
 
     if (space%is_periodic()) then
 
-      ASSERT(ncatoms == 0)
-
       spci => atom(1)%species
       ! This depends on the area, but we should check if it is fully consistent.
       if (species_type(spci) == SPECIES_JELLIUM_SLAB) then
@@ -183,7 +180,7 @@ contains
 
     else
 
-      natom = natoms + ncatoms
+      natom = natoms
 
       ! only interaction inside the cell
       do iatom = this%dist%start, this%dist%end
@@ -219,23 +216,6 @@ contains
           force(1:space%dim,jatom) = force(1:space%dim,jatom) - f
           !energy
           energy=energy + dd
-
-        end do !jatom
-      end do !iatom
-
-      do iatom = this%dist%start, this%dist%end
-
-        do jatom = 1, ncatoms
-          r = pos(:, iatom) - catom(jatom)%x(1:space%dim)
-          rr = norm2(r)
-
-          zi = species_zval(atom(iatom)%species)
-          zj = catom(jatom)%charge
-          !the force
-          dd = zi*zj/rr
-          force(1:space%dim,iatom) = force(1:space%dim,iatom) + (dd/rr*2)*r
-          !energy
-          energy = energy + dd
 
         end do !jatom
       end do !iatom
@@ -298,7 +278,7 @@ contains
           zj = species_zval(atom(jatom)%species)
           rr = norm2(xi - pos(:, jatom))
 
-          if (rr < CNST(1e-5)) cycle
+          if (rr < R_MIN_ATOM_DIST) cycle
           if (rr > rcut) cycle
 
           erfc = M_ONE - loct_erf(this%alpha*rr)
@@ -530,7 +510,7 @@ contains
     rcut = M_TWO*this%alpha*CNST(4.6) + M_TWO*this%alpha**2*dz_max
     if (rcut > M_ZERO) then
       do
-        if (rcut * dz_max >= 718) exit  !Maximum double precision numbber
+        if (rcut * dz_max >= M_MAX_EXP_ARG) exit  !Maximum double precision number
         erfc1 = M_ONE - loct_erf(this%alpha*dz_max + M_HALF*rcut/this%alpha)
         if (erfc1 * exp(rcut*dz_max) < CNST(1e-10)) exit
         rcut = rcut * CNST(1.414)
@@ -577,7 +557,7 @@ contains
     end do
 
     !$omp parallel do private(iy, ss, gg, gg2, gg_abs, factor, iatom, jatom, gx, dz_ij, erfc1, factor1, erfc2, factor2, coeff) &
-    !$omp& collapse(2) reduction(+:efourier, force_tmp) 
+    !$omp& collapse(2) reduction(+:efourier, force_tmp)
     do ix = -ix_max, ix_max
       do iy = -iy_max, iy_max
 
@@ -684,16 +664,264 @@ contains
   end subroutine Ewald_long_2D
 
   ! ---------------------------------------------------------
+  !> @brief Computes the contribution to the stress tensor the ion-ion energy
+  subroutine ion_interaction_stress(this, space, latt, atom, natoms, pos, stress_ii)
+    type(ion_interaction_t),   intent(inout) :: this
+    type(space_t),             intent(in)    :: space
+    type(lattice_vectors_t),   intent(in)    :: latt
+    type(atom_t),              intent(in)    :: atom(:)
+    integer,                   intent(in)    :: natoms
+    FLOAT,                     intent(in)    :: pos(:,:)
+    FLOAT,                     intent(out)   :: stress_ii(space%dim, space%dim)
 
-  subroutine ion_interaction_test(space, latt, atom, natoms, pos, catom, ncatoms, lsize, &
+    FLOAT :: stress_short(1:space%dim, 1:space%dim), stress_Ewald(1:space%dim, 1:space%dim)
+
+    PUSH_SUB(ion_interaction_stress)
+
+    stress_ii = M_ZERO
+
+    ! Only implemented in the periodic case
+    ASSERT(space%is_periodic())
+
+    ! Short range part in real space
+    call ion_interaction_stress_short(this, space, latt, atom, natoms, pos, stress_short)
+
+    ! Long range part in Fourier space
+    select case(space%periodic_dim)
+    case(3)
+      call Ewald_3D_stress(this, space, latt, atom, natoms, pos, stress_Ewald)
+    case default
+      ASSERT(.false.)
+    end select
+
+    stress_ii = stress_short + stress_Ewald
+
+    POP_SUB(ion_interaction_stress)
+  end subroutine ion_interaction_stress
+
+  ! ---------------------------------------------------------
+  !> @brief Computes the short-range contribution to the stress tensor the ion-ion energy
+  subroutine ion_interaction_stress_short(this, space, latt, atom, natoms, pos, stress_short)
+    type(ion_interaction_t),   intent(inout) :: this
+    type(space_t),             intent(in)    :: space
+    type(lattice_vectors_t),   intent(in)    :: latt
+    type(atom_t),              intent(in)    :: atom(:)
+    integer,                   intent(in)    :: natoms
+    FLOAT,                     intent(in)    :: pos(1:space%dim,1:natoms)
+    FLOAT,                     intent(out)   :: stress_short(1:space%dim, 1:space%dim)
+
+    FLOAT :: xi(space%dim)
+    FLOAT :: r_ij, zi, zj, erfc, Hp, factor
+    integer :: iatom, jatom, icopy, idir, jdir
+    type(profile_t), save :: ion_ion_prof
+    FLOAT :: alpha, rcut
+    type(lattice_iterator_t) :: latt_iter
+
+    PUSH_SUB(ion_interaction_stress_short)
+    call profiling_in(ion_ion_prof, "ION_ION_STRESS_SHORT")
+
+    ! Only implemented in the periodic case
+    ASSERT(space%is_periodic())
+
+    alpha = this%alpha
+
+    ! See the code for the energy above to understand this parameter
+    rcut = CNST(6.0)/alpha
+
+    ! the short-range part is calculated directly
+    stress_short = M_ZERO
+    latt_iter = lattice_iterator_t(latt, rcut)
+
+    do iatom = this%dist%start, this%dist%end
+      if (.not. species_represents_real_atom(atom(iatom)%species)) cycle
+      zi = species_zval(atom(iatom)%species)
+
+      do icopy = 1, latt_iter%n_cells
+        xi = pos(:, iatom) + latt_iter%get(icopy)
+
+        do jatom = 1, natoms
+          zj = species_zval(atom(jatom)%species)
+          r_ij = norm2(xi - pos(:, jatom))
+
+          if (r_ij < R_MIN_ATOM_DIST) cycle
+
+          erfc = M_ONE - loct_erf(alpha*r_ij)
+          Hp = -M_TWO/sqrt(M_PI)*exp(-(alpha*r_ij)**2) - erfc/(alpha*r_ij)
+          factor = M_HALF*zj*zi*alpha*Hp
+          do idir = 1,3
+            do jdir = 1,3
+              stress_short(idir, jdir) = stress_short(idir, jdir) &
+                - factor*(xi(idir) - pos(idir, jatom))*(xi(jdir) - pos(jdir, jatom))/(r_ij**2)
+            end do
+          end do
+
+        end do
+      end do
+    end do
+
+    if (this%dist%parallel) then
+      call comm_allreduce(this%dist%mpi_grp, stress_short)
+    end if
+
+    stress_short = stress_short/latt%rcell_volume
+
+    call profiling_out(ion_ion_prof)
+
+    POP_SUB(ion_interaction_stress_short)
+  end subroutine ion_interaction_stress_short
+
+
+
+  ! ---------------------------------------------------------
+  !> @brief Computes the contribution to the stress tensor from the 3D Ewald sum
+  !!
+  !! The formula that is implemented here correspond to the expression B1 of
+  !! Nielsen and Martin, Stresses in semiconductors: Ab initio calculations on Si, Ge, and GaAs
+  !! PRB 32, 3792 (1985)
+  !!
+  !! \f[
+  !! \sigma_{\alpha\beta}^{\rm Ewald} = \frac{\pi}{2\Omega^2\epsilon} \sum_{\mathbf{G\neq0}} \frac{e^{-G^2/4\epsilon}}{G^2/4\epsilon}\left|\sum_\tau Z_\tau e^{i\mathbf{G}\cdot\mathbf{x}_\tau}\right|^2 \Big(2\frac{G_\alpha G_\beta}{G^2}(G^2/4\epsilon + 1) - \delta_{\alpha\beta}\Big) \nonumber\\
+  !! + \frac{\sqrt{\epsilon}}{2\Omega} \sum_{\mathbf{\tau\sigma T}} Z_\tau Z_{\sigma} H(\sqrt{\epsilon}D) \frac{D_\alpha D_{\beta}}{D^2}\Bigg|_{\mathbf{D=x_{\sigma}-x_{\tau}+T\neq0}} \nonumber\\
+  !!
+  !! + \frac{\pi}{2\Omega^2\epsilon}\left(\sum_{\tau} Z_\tau\right)^2\delta_{\alpha\beta}\,,
+  !! \f]
+  !!
+  !! where the function \f$H(x)\f$ is
+  !!
+  !! \f[
+  !! H(x) = \frac{\partial[{\rm erfc}(x)]}{\partial x} - \frac{{\rm erfc}(x)}{x}
+  !! \f]
+  !!
+  subroutine Ewald_3D_stress(this, space, latt, atom, natoms, pos, stress_Ewald)
+    type(ion_interaction_t),   intent(inout) :: this
+    type(space_t),             intent(in)    :: space
+    type(lattice_vectors_t),   intent(in)    :: latt
+    type(atom_t),              intent(in)    :: atom(:)
+    integer,                   intent(in)    :: natoms
+    FLOAT,                     intent(in)    :: pos(1:space%dim,1:natoms)
+    FLOAT,                     intent(out)   :: stress_Ewald(3, 3) ! temporal
+
+    FLOAT   :: zi, rcut, sigma_erf
+    integer :: iatom
+    integer :: ix, iy, iz, isph, ss, idim, idir, jdir
+    FLOAT   :: gg(space%dim), gg2, gx
+    FLOAT   :: factor, charge, charge_sq
+    CMPLX   :: sumatoms, aa
+    type(profile_t), save :: prof
+
+    call profiling_in(prof, "STRESS_3D_EWALD")
+    PUSH_SUB(Ewald_3D_stress)
+
+    ! Currently this is only implemented for 3D
+    ASSERT(space%dim == 3)
+    ASSERT(space%periodic_dim == 3) ! Not working for mixed periodicity
+    !                                 (klattice along the non-periodic directions is wrong)
+    !                                 Anyway gg/gg2 is not correct for mixed periodicity
+
+    stress_Ewald = M_ZERO
+
+    ! And the long-range part, using an Ewald sum
+    charge = M_ZERO
+    charge_sq = M_ZERO
+    do iatom = 1, natoms
+      zi = species_zval(atom(iatom)%species)
+      charge = charge + zi
+      charge_sq = charge_sq + zi**2
+    end do
+
+    ! get a converged value for the cutoff in g
+    rcut = huge(rcut)
+    do idim = 1, space%periodic_dim
+      rcut = min(rcut, sum(latt%klattice(1:space%periodic_dim, idim)**2))
+    end do
+
+    rcut = sqrt(rcut)
+
+    isph = ceiling(CNST(9.5)*this%alpha/rcut)
+
+    do ix = -isph, isph
+      do iy = -isph, isph
+        do iz = -isph, isph
+
+          ss = ix**2 + iy**2 + iz**2
+
+          if (ss == 0 .or. ss > isph**2) cycle
+
+          gg = ix*latt%klattice(:, 1) + iy*latt%klattice(:, 2) + iz*latt%klattice(:, 3)
+          gg2 = sum(gg**2)
+
+          ! g=0 must be removed from the sum
+          if (gg2 < M_EPSILON) cycle
+
+          gx = -CNST(0.25)*gg2/this%alpha**2
+
+          if (gx < CNST(-36.0)) cycle
+
+          factor = M_TWO*M_PI*exp(gx)/(latt%rcell_volume*gg2)
+
+          if (factor < epsilon(factor)) cycle
+
+          sumatoms = M_Z0
+
+          do iatom = 1, natoms
+            gx = sum(gg*pos(:, iatom))
+            aa = species_zval(atom(iatom)%species)*TOCMPLX(cos(gx), sin(gx))
+            sumatoms = sumatoms + aa
+          end do
+
+          factor = factor*abs(sumatoms)**2
+
+          do idir = 1, 3
+            do jdir = 1, 3
+              stress_Ewald(idir, jdir) = stress_Ewald(idir, jdir) &
+                - M_TWO*factor*gg(idir)*gg(jdir)/gg2*(CNST(0.25)*gg2/this%alpha**2+M_ONE)
+
+            end do
+            stress_Ewald(idir, idir) = stress_Ewald(idir, idir) + factor
+          end do
+
+        end do
+      end do
+    end do
+
+
+    ! The G = 0 term of the Ewald summation
+    factor = M_HALF*M_PI*charge**2/(latt%rcell_volume*this%alpha**2)
+    do idir = 1,3
+      stress_Ewald(idir,idir) = stress_Ewald(idir,idir) - factor
+    end do
+
+
+    ! TODO (Issue #681): Move this term and the corresponding energy to the pseudopotential code
+    !
+    ! Contribution from G=0 component of the long-range part
+    ! See the above energy routine for more details
+    !
+    ! sigma_erf is in fact species_ps(atom(iatom)%species)%sigma_erf
+    ! which is hardcoded to 0.625 in the species/ps.F90 file.
+    sigma_erf = CNST(0.625)
+    do idir = 1,3
+      stress_Ewald(idir,idir) = stress_Ewald(idir,idir) &
+        + M_TWO*M_PI*sigma_erf**2*charge**2 /latt%rcell_volume
+    end do
+
+    stress_Ewald = stress_Ewald / latt%rcell_volume
+
+
+    call profiling_out(prof)
+    POP_SUB(Ewald_3D_stress)
+
+  end subroutine Ewald_3D_stress
+
+  ! ---------------------------------------------------------
+
+  subroutine ion_interaction_test(space, latt, atom, natoms, pos, lsize, &
     namespace, mc)
     type(space_t),            intent(in)    :: space
     type(lattice_vectors_t),  intent(in)    :: latt
     type(atom_t),             intent(in)    :: atom(:)
     integer,                  intent(in)    :: natoms
     FLOAT,                    intent(in)    :: pos(1:space%dim,1:natoms)
-    type(atom_classical_t),   intent(in)    :: catom(:)
-    integer,                  intent(in)    :: ncatoms
     FLOAT,                    intent(in)    :: lsize(:)
     type(namespace_t),        intent(in)    :: namespace
     type(multicomm_t),        intent(in)    :: mc
@@ -712,7 +940,7 @@ contains
     SAFE_ALLOCATE(force(1:space%dim, 1:natoms))
     SAFE_ALLOCATE(force_components(1:space%dim, 1:natoms, 1:ION_NUM_COMPONENTS))
 
-    call ion_interaction_calculate(ion_interaction, space, latt, atom, natoms, pos, catom, ncatoms, lsize, energy, force, &
+    call ion_interaction_calculate(ion_interaction, space, latt, atom, natoms, pos, lsize, energy, force, &
       energy_components = energy_components, force_components = force_components)
 
     call messages_write('Ionic energy        =')

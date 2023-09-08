@@ -18,6 +18,8 @@
 
 #include "global.h"
 
+!> This module defines a container system for electrons and ions
+!!
 module matter_oct_m
   use debug_oct_m
   use electrons_oct_m
@@ -33,6 +35,11 @@ module matter_oct_m
   public ::               &
     matter_t
 
+  !> @brief container class for for electrons and ions
+  !!
+  !! Currently, this system type is not yet used, as the electrons_oct_m::electrons_t type still contains the ions.
+  !! Once the ions are fully disentangled from the electrons, this class will be used for electron-ion systems.
+  !!
   type, extends(multisystem_t) :: matter_t
     class(electrons_t), pointer :: electrons => NULL()
     class(ions_t),      pointer :: ions => NULL()

@@ -25,7 +25,7 @@ if test $acx_lapack_ok = no; then
   esac
 fi
 
-dnl Backup LIBS 
+dnl Backup LIBS
 acx_lapack_save_LIBS="$LIBS"
 LIBS="$LIBS_LAPACK $LIBS_BLAS $LIBS $FLIBS"
 

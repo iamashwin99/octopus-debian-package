@@ -1,7 +1,7 @@
 # -*- coding: utf-8 mode: shell-script -*-
 #
 CalculationMode = gs
-fromScratch = yes
+FromScratch = yes
 UnitsOutput = ev_angstrom
 
 %Coordinates
@@ -12,8 +12,8 @@ UnitsOutput = ev_angstrom
 "C" | species_pseudo | file | "09-carbon_cpi.C.cpi" | lmax | 1 | lloc | 1
 %
 
-spacing = 0.19*angstrom
-radius = 5.0*angstrom
+Spacing = 0.19*angstrom
+Radius = 5.0*angstrom
 
 SpinComponents = polarized
 
@@ -28,11 +28,6 @@ XCFunctional = lda_x + lda_c_pz
 PoissonSolver = fft
 PoissonFFTKernel = multipole_correction
 
-ConvRelDens = 4e-6
-
-FromScratch = yes
-
 FilterPotentials = filter_none
 
 MixField = density
-

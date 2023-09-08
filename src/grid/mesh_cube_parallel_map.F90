@@ -42,6 +42,7 @@ module mesh_cube_parallel_map_oct_m
 
   type mesh_cube_parallel_map_t
     ! Components are public by default
+    logical :: initialized = .false.
 
     ! Mesh to cube:
     type(partition_transfer_t) :: m2c
@@ -75,10 +76,11 @@ contains
     type(cube_t),                   intent(in)  :: cube
 
     integer :: ip, ixyz(3), lxyz(3), ipos, cube_np
-    integer(i8) :: im, ipg, nn, ii
+    integer :: ix, iy, iz
     integer, allocatable :: cube_part_local(:)
     integer(i8), allocatable :: global_index(:)
     integer(i8), allocatable :: mf_order(:), cf_order(:)
+    integer(i8) :: ipg
     type(dimensions_t), allocatable :: part(:)
 
     type(profile_t), save :: prof
@@ -90,34 +92,13 @@ contains
     SAFE_ALLOCATE(part(1:cube%mpi_grp%size))
     call cube_partition(cube, part)
 
-    ixyz = 0
-    cube_np = 0
-    do im = 1, mesh%cube_map%nmap
-      ipg = mesh%cube_map%map(MCM_POINT, im)
-      nn = mesh%cube_map%map(MCM_COUNT, im)
-
-      call mesh_global_index_to_coords(mesh, ipg, ixyz)
-      ixyz = ixyz + cube%center
-
-      do ii = 0, nn - 1
-        !! an option using less memory, but slower
-        if (cube_point_to_process(ixyz, part) == cube%mpi_grp%rank + 1) cube_np = cube_np + 1
-        if (cube_np >= huge(cube_np)-1) then
-          message(1) = "Error: too many local points in mehs_cube_parallel_map."
-          message(2) = "Please use more processors for domain parallelization."
-          call messages_fatal(2)
-        end if
-        ixyz(1) = ixyz(1) + 1
-      end do
-    end do
-
     ! Mesh to cube
     ! We will work only with the local mesh points and we need to know the global index of those points.
     SAFE_ALLOCATE(cube_part_local(1:mesh%np))
     SAFE_ALLOCATE(global_index(1:mesh%np))
     do ip = 1, mesh%np
       global_index(ip) = mesh_local2global(mesh, ip)
-      call mesh_global_index_to_coords(mesh, global_index(ip), ixyz)
+      call mesh_local_index_to_coords(mesh, ip, ixyz)
       ixyz = ixyz + cube%center
       cube_part_local(ip) = cube_point_to_process(ixyz, part)
     end do
@@ -161,23 +142,33 @@ contains
 
 
     ! Cube to mesh
+    ASSERT(product(i4_to_i8(cube%rs_n)) < huge(0_i4))
+    cube_np = product(cube%rs_n)
 
     ! We will work only with the local cube points and we need to know the global index of those points.
     SAFE_ALLOCATE(cube_part_local(1:cube_np))
     SAFE_ALLOCATE(global_index(1:cube_np))
     ipos = 0
-    do ipg = 1, mesh%np_global
-
-      call mesh_global_index_to_coords(mesh, ipg, ixyz)
-      ixyz = ixyz + cube%center
-      if (cube_point_to_process(ixyz, part) == cube%mpi_grp%rank + 1) then
-        ipos = ipos + 1
-        global_index(ipos) = ipg
-      end if
+    do iz = part(cube%mpi_grp%rank+1)%start_xyz(3), part(cube%mpi_grp%rank+1)%end_xyz(3)
+      do iy = part(cube%mpi_grp%rank+1)%start_xyz(2), part(cube%mpi_grp%rank+1)%end_xyz(2)
+        do ix = part(cube%mpi_grp%rank+1)%start_xyz(1), part(cube%mpi_grp%rank+1)%end_xyz(1)
+          ixyz(1) = ix
+          ixyz(2) = iy
+          ixyz(3) = iz
+          ixyz = ixyz - cube%center
+          ipg = mesh_global_index_from_coords(mesh, ixyz)
+          ! do not map boundary points
+          if (ipg > 0 .and. ipg <= mesh%np_global) then
+            ipos = ipos + 1
+            global_index(ipos) = ipg
+          end if
+        end do
+      end do
     end do
+    cube_np = ipos
 
     if (mesh%parallel_in_domains) then
-      call partition_get_partition_number(mesh%partition, ipos, global_index, cube_part_local)
+      call partition_get_partition_number(mesh%partition, cube_np, global_index, cube_part_local)
     else
       cube_part_local = 1
     end if
@@ -201,7 +192,6 @@ contains
           lxyz(1:3), " is not stored in partition ", cube%mpi_grp%rank + 1
         call messages_fatal(1)
       end if
-
       this%c2m_cf_order(ip, 1:3) = lxyz(1:3)
     end do
     do ip = 1, this%c2m_nrec
@@ -218,6 +208,8 @@ contains
     SAFE_DEALLOCATE_A(cube_part_local)
     SAFE_DEALLOCATE_A(global_index)
 
+    this%initialized = .true.
+
     call profiling_out(prof)
     POP_SUB(mesh_cube_parallel_map_init)
   end subroutine mesh_cube_parallel_map_init
@@ -228,12 +220,15 @@ contains
 
     PUSH_SUB(mesh_cube_parallel_map_end)
 
-    SAFE_DEALLOCATE_A(this%m2c_mf_order)
-    SAFE_DEALLOCATE_A(this%m2c_cf_order)
-    SAFE_DEALLOCATE_A(this%c2m_mf_order)
-    SAFE_DEALLOCATE_A(this%c2m_cf_order)
-    call partition_transfer_end(this%m2c)
-    call partition_transfer_end(this%c2m)
+    if (this%initialized) then
+      SAFE_DEALLOCATE_A(this%m2c_mf_order)
+      SAFE_DEALLOCATE_A(this%m2c_cf_order)
+      SAFE_DEALLOCATE_A(this%c2m_mf_order)
+      SAFE_DEALLOCATE_A(this%c2m_cf_order)
+      call partition_transfer_end(this%m2c)
+      call partition_transfer_end(this%c2m)
+      this%initialized = .false.
+    end if
 
     POP_SUB(mesh_cube_parallel_map_end)
   end subroutine mesh_cube_parallel_map_end

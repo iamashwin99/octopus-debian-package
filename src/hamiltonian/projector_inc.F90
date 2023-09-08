@@ -20,7 +20,7 @@
 !> X(project_psi) calculates the action of a projector on the psi wavefunction.
 !! The result is summed up to ppsi
 subroutine X(project_psi)(mesh, bnd, pj, npj, dim, psi, ppsi, ik)
-  type(mesh_t),       intent(in)    :: mesh
+  class(mesh_t),      intent(in)    :: mesh
   type(boundaries_t), intent(in)    :: bnd
   type(projector_t),  intent(in)    :: pj(:)
   integer,            intent(in)    :: npj
@@ -55,7 +55,7 @@ end subroutine X(project_psi)
 !! only one reduction is required). Finally |ppsi> += |p><p|psi> is
 !! calculated.
 subroutine X(project_psi_batch)(mesh, bnd, pj, npj, dim, psib, ppsib)
-  type(mesh_t),      intent(in)    :: mesh
+  class(mesh_t),     intent(in)    :: mesh
   type(boundaries_t),intent(in)    :: bnd
   type(projector_t), intent(in)    :: pj(:)
   integer,           intent(in)    :: npj
@@ -65,6 +65,7 @@ subroutine X(project_psi_batch)(mesh, bnd, pj, npj, dim, psib, ppsib)
 
   integer :: ipj, nreduce, ii, ns, idim, ll, mm, is, ist, bind
   R_TYPE, allocatable :: reduce_buffer(:,:), lpsi(:, :), uvpsi(:,:,:)
+  R_TYPE, allocatable :: lpsi_mesh(:, :), ppsi_mesh(:, :)
   integer, allocatable :: ireduce(:, :, :, :)
   type(profile_t), save :: prof
   type(profile_t), save :: reduce_prof
@@ -74,7 +75,6 @@ subroutine X(project_psi_batch)(mesh, bnd, pj, npj, dim, psib, ppsib)
   call profiling_in(prof, TOSTRING(X(VNLPSI)))
 
   ASSERT(.not. bnd%spiral)
-  ASSERT(psib%status() /= BATCH_DEVICE_PACKED)
 
   ! generate the reduce buffer and related structures
   SAFE_ALLOCATE(ireduce(1:npj, 0:MAX_L, -MAX_L:MAX_L, 1:psib%nst))
@@ -107,6 +107,10 @@ subroutine X(project_psi_batch)(mesh, bnd, pj, npj, dim, psib, ppsib)
 
   ! FIXME: restore openmp
   SAFE_ALLOCATE(lpsi(1:maxval(pj(1:npj)%sphere%np), 1:dim))
+
+  if (psib%status() == BATCH_DEVICE_PACKED) then
+    SAFE_ALLOCATE(lpsi_mesh(mesh%np, 1:dim))
+  endif
 
   do ist = 1, psib%nst
     do ipj = 1, npj
@@ -154,6 +158,25 @@ subroutine X(project_psi_batch)(mesh, bnd, pj, npj, dim, psib, ppsib)
           end if
         end do
 
+      case (BATCH_DEVICE_PACKED)
+        call batch_get_state(psib, ist, mesh%np, lpsi_mesh)
+
+        do idim = 1, dim
+          if (allocated(pj(ipj)%phase)) then
+#ifdef R_TCOMPLEX
+            do is = 1, ns
+              lpsi(is, idim) = lpsi_mesh(pj(ipj)%sphere%map(is), idim)*pj(ipj)%phase(is, 1, psib%ik)
+            end do
+#else
+            ! Phase not allowed for real batches
+            ASSERT(.false.)
+#endif
+          else
+            do is = 1, ns
+              lpsi(is, idim) = lpsi_mesh(pj(ipj)%sphere%map(is), idim)
+            end do
+          end if
+        end do
       end select
 
       ! apply the projectors for each angular momentum component
@@ -184,6 +207,9 @@ subroutine X(project_psi_batch)(mesh, bnd, pj, npj, dim, psib, ppsib)
   end do ! ist
 
   SAFE_DEALLOCATE_A(lpsi)
+  if (psib%status() == BATCH_DEVICE_PACKED) then
+    SAFE_DEALLOCATE_A(lpsi_mesh)
+  endif
 
   if (mesh%parallel_in_domains) then
     call profiling_in(reduce_prof, TOSTRING(X(VNLPSI_REDUCE_BATCH)))
@@ -198,8 +224,12 @@ subroutine X(project_psi_batch)(mesh, bnd, pj, npj, dim, psib, ppsib)
   end do
 
   ! calculate |ppsi> += |p><p|psi>
-  !$omp parallel private(ist, ipj, ns, lpsi, ll, mm, ii, idim, is, uvpsi, bind) if(.not. sphere_overlap) firstprivate(reduce_buffer)
+  !$omp parallel private(ist, ipj, ns, lpsi, ppsi_mesh, ll, mm, ii, idim, is, uvpsi, bind) &
+  !$omp if(.not. sphere_overlap .and. .not. accel_is_enabled()) firstprivate(reduce_buffer)
   SAFE_ALLOCATE(lpsi(1:maxval(pj(1:npj)%sphere%np), 1:dim))
+  if (psib%status() == BATCH_DEVICE_PACKED) then
+    SAFE_ALLOCATE(ppsi_mesh(mesh%np, 1:dim))
+  endif
   !$omp do
   do ist = 1, psib%nst
     do ipj = 1, npj
@@ -285,17 +315,39 @@ subroutine X(project_psi_batch)(mesh, bnd, pj, npj, dim, psib, ppsib)
           end if
         end do
 
+      case (BATCH_DEVICE_PACKED)
+        call batch_get_state(ppsib, ist, mesh%np, ppsi_mesh)
+        do idim = 1, dim
+          if (allocated(pj(ipj)%phase)) then
+#ifdef R_TCOMPLEX
+            do is = 1, ns
+              ppsi_mesh(pj(ipj)%sphere%map(is), idim) = ppsi_mesh(pj(ipj)%sphere%map(is), idim)&
+                + lpsi(is, idim) * conjg(pj(ipj)%phase(is, 1, psib%ik))
+            end do
+#else
+            ! Phase not allowed for real batches
+            ASSERT(.false.)
+#endif
+          else
+            do is = 1, ns
+              ppsi_mesh(pj(ipj)%sphere%map(is), idim) = ppsi_mesh(pj(ipj)%sphere%map(is), idim) + lpsi(is, idim)
+            end do
+          end if
+        end do
+        call batch_set_state(ppsib, ist, mesh%np, ppsi_mesh)
       end select
 
     end do ! ipj
   end do ! ist
   !$omp end do nowait
   SAFE_DEALLOCATE_A(lpsi)
+  if (psib%status() == BATCH_DEVICE_PACKED) then
+    SAFE_DEALLOCATE_A(ppsi_mesh)
+  endif
   !$omp end parallel
 
   SAFE_DEALLOCATE_A(reduce_buffer)
   SAFE_DEALLOCATE_A(ireduce)
-
   call profiling_out(prof)
   POP_SUB(X(project_psi_batch))
 
@@ -383,7 +435,7 @@ end function X(projector_matrix_element)
 
 !------------------------------------------------------------------------------
 subroutine X(project_sphere)(mesh, pj, dim, psi, ppsi)
-  type(mesh_t),      intent(in)    :: mesh
+  class(mesh_t),     intent(in)    :: mesh
   type(projector_t), intent(in)    :: pj
   integer,           intent(in)    :: dim
   R_TYPE,            intent(in)    :: psi(:, :)   ! psi(1:ns, dim)
@@ -426,7 +478,7 @@ end subroutine X(project_sphere)
 !> This function calculates |cpsi> += [x, V_nl] |psi>
 subroutine X(projector_commute_r)(pj, mesh, bnd, dim, idir, ik, psi, cpsi)
   type(projector_t), target, intent(in)     :: pj
-  type(mesh_t),              intent(in)     :: mesh
+  class(mesh_t),             intent(in)     :: mesh
   type(boundaries_t),        intent(in)     :: bnd
   integer,                   intent(in)     :: dim
   integer,                   intent(in)     :: idir
@@ -449,7 +501,7 @@ subroutine X(projector_commute_r)(pj, mesh, bnd, dim, idir, ik, psi, cpsi)
 
     ns = pj%sphere%np
     map => pj%sphere%map
-    smx => pj%sphere%x
+    smx => pj%sphere%rel_x
 
     SAFE_ALLOCATE(  lpsi(1:ns, 1:dim))
     SAFE_ALLOCATE(xplpsi(1:ns, 1:dim))
@@ -473,12 +525,12 @@ subroutine X(projector_commute_r)(pj, mesh, bnd, dim, idir, ik, psi, cpsi)
     ! x V_nl |psi>
     call X(project_sphere)(mesh, pj, dim, lpsi, xplpsi)
     do idim = 1, dim
-      xplpsi(1:ns, idim) = smx(1:ns, idir) * xplpsi(1:ns, idim)
+      xplpsi(1:ns, idim) = smx(idir, 1:ns) * xplpsi(1:ns, idim)
     end do
 
     ! V_nl x |psi>
     do idim = 1, dim
-      lpsi(1:ns, idim) = smx(1:ns, idir) * lpsi(1:ns, idim)
+      lpsi(1:ns, idim) = smx(idir, 1:ns) * lpsi(1:ns, idim)
     end do
     call X(project_sphere)(mesh, pj, dim, lpsi, pxlpsi)
 
@@ -513,7 +565,7 @@ end subroutine X(projector_commute_r)
 subroutine X(projector_commute_r_allatoms_alldir)(pj, ions, mesh, dim, bnd, ik, psi, cpsi)
   type(projector_t), target, intent(in)     :: pj(:)
   type(ions_t),              intent(in)     :: ions
-  type(mesh_t),              intent(in)     :: mesh
+  class(mesh_t),             intent(in)     :: mesh
   integer,                   intent(in)     :: dim
   type(boundaries_t),        intent(in)     :: bnd
   integer,                   intent(in)     :: ik
@@ -537,7 +589,7 @@ subroutine X(projector_commute_r_allatoms_alldir)(pj, ions, mesh, dim, bnd, ik, 
 
       ns = pj(iatom)%sphere%np
       map => pj(iatom)%sphere%map
-      smx => pj(iatom)%sphere%x
+      smx => pj(iatom)%sphere%rel_x
 
       SAFE_ALLOCATE(  lpsi(1:ns, 1:dim))
       SAFE_ALLOCATE( plpsi(1:ns, 1:dim))
@@ -569,9 +621,9 @@ subroutine X(projector_commute_r_allatoms_alldir)(pj, ions, mesh, dim, bnd, ik, 
         ! x V_nl |psi>
         do idim = 1, dim
           ! x V_nl |psi>
-          xplpsi(1:ns, idim) = smx(1:ns, idir) * plpsi(1:ns, idim)
+          xplpsi(1:ns, idim) = smx(idir, 1:ns) * plpsi(1:ns, idim)
           ! x |psi>
-          xlpsi(1:ns, idim) = smx(1:ns, idir) * lpsi(1:ns, idim)
+          xlpsi(1:ns, idim) = smx(idir, 1:ns) * lpsi(1:ns, idim)
         end do
         ! V_nl x |psi>
         call X(project_sphere)(mesh, pj(iatom), dim, xlpsi, pxlpsi)
@@ -606,95 +658,6 @@ subroutine X(projector_commute_r_allatoms_alldir)(pj, ions, mesh, dim, bnd, ik, 
   POP_SUB(X(projector_commute_r_allatoms_alldir))
 
 end subroutine X(projector_commute_r_allatoms_alldir)
-
-!------------------------------------------------------------------------------
-!> This function calculates |cpsi> += r * V_nl  |psi>
-subroutine X(r_project_psi)(pj, mesh, dim, ik, psi, cpsi)
-  type(projector_t), target, intent(in)     :: pj
-  type(mesh_t),              intent(in)     :: mesh
-  integer,                   intent(in)     :: dim
-  integer,                   intent(in)     :: ik
-  R_TYPE,                    intent(in)     :: psi(:, :)
-  R_TYPE,                    intent(inout)  :: cpsi(:,:,:)
-
-  integer ::  ns, idim, sb_dim, isb_dim
-#ifdef R_TCOMPLEX
-  integer :: ip
-#endif
-  R_TYPE, allocatable :: lpsi(:, :), xplpsi(:, :), xplpsi_t(:, :, :)
-  integer, pointer :: map(:)
-  FLOAT,   pointer :: smx(:, :)
-  type(profile_t), save :: prof
-
-  PUSH_SUB(X(r_project_psi))
-  call profiling_in(prof, TOSTRING(X(P_PROJECT_PSI)))
-
-  sb_dim = mesh%box%dim
-
-  if (pj%type /= PROJ_NONE) then
-
-    ns = pj%sphere%np
-    map => pj%sphere%map
-    smx => pj%sphere%x
-
-    SAFE_ALLOCATE(  lpsi(1:ns, 1:dim))
-    SAFE_ALLOCATE(xplpsi(1:ns, 1:dim))
-    SAFE_ALLOCATE(xplpsi_t(1:ns, 1:sb_dim+1, 1:dim))
-
-    if (allocated(pj%phase)) then
-#ifdef R_TCOMPLEX
-      do idim = 1, dim
-        lpsi(1:ns, idim) = psi(map(1:ns), idim)*pj%phase(1:ns, 1, ik)
-      end do
-#else
-      ! Phase not allowed for real functions
-      ASSERT(.false.)
-#endif
-    else
-      do idim = 1, dim
-        lpsi(1:ns, idim) = psi(map(1:ns), idim)
-      end do
-    end if
-
-    ! x V_nl |psi>
-    call X(project_sphere)(mesh, pj, dim, lpsi, xplpsi)
-    do idim = 1, dim
-
-      do isb_dim = 1,sb_dim
-        xplpsi_t(1:ns, isb_dim, idim) = smx(1:ns, isb_dim) * xplpsi(1:ns, idim)
-      end do
-
-      xplpsi_t(1:ns, sb_dim+1, idim) = xplpsi(1:ns, idim)
-    end do
-
-    ! |cpsi> += x V_nl |psi>
-    if (allocated(pj%phase)) then
-#ifdef R_TCOMPLEX
-      do idim = 1, dim
-        do ip = 1, ns
-          cpsi(map(ip), 1:sb_dim+1, idim) = cpsi(map(ip), 1:sb_dim+1, idim) + &
-            xplpsi_t(ip, 1:sb_dim+1, idim) * R_CONJ(pj%phase(ip, 1, ik))
-        end do
-      end do
-#else
-      ! Phase not allowed for real functions
-      ASSERT(.false.)
-#endif
-    else
-      do idim = 1, dim
-        cpsi(map(1:ns), 1:sb_dim+1, idim) = cpsi(map(1:ns), 1:sb_dim+1, idim) &
-          + xplpsi_t(1:ns, 1:sb_dim+1, idim)
-      end do
-    end if
-
-    SAFE_DEALLOCATE_A(lpsi)
-    SAFE_DEALLOCATE_A(xplpsi)
-    SAFE_DEALLOCATE_A(xplpsi_t)
-  end if
-  call profiling_out(prof)
-  POP_SUB(X(r_project_psi))
-
-end subroutine X(r_project_psi)
 
 !! Local Variables:
 !! mode: f90

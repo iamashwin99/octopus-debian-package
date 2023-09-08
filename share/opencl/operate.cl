@@ -33,9 +33,9 @@ __kernel void operate(const int nn,
 		      __global double const * restrict fi, const int ldfi,
 		      __global double * restrict fo, const int ldfo){
   
-  const int ist = get_global_id(0);
-  const int nst = get_global_size(0);
-  const int l = get_global_id(1);
+  const long long ist = get_global_id(0);
+  const long long nst = get_global_size(0);
+  const long long l = get_global_id(1);
   
   if(l >= nri) return;
   
@@ -68,13 +68,13 @@ __kernel void operate_map(const int np,
   extern __shared__ int indexl[];
 #endif
   
-  const int ist = get_global_id(0);
-  const int nst = get_global_size(0);
-  const int ipd = get_global_id(1) + get_global_size(1)*get_global_id(2);
-  const int lip = get_local_id(1);
+  const long long ist = get_global_id(0);
+  const long long nst = get_global_size(0);
+  const long long ipd = get_global_id(1) + get_global_size(1)*get_global_id(2);
+  const long long lip = get_local_id(1);
     
 #ifdef INDIRECT
-  const int ip  = (ipd<np) ? indirect[ipd] : 0;
+  const long long ip  = (ipd<np) ? indirect[ipd] : 0;
 #else
 #define ip ipd
 #endif
@@ -224,10 +224,10 @@ __kernel void operate_nomap(const int np,
   extern __shared__ int indexl[];
 #endif
 
-  const int ist = get_global_id(0);
-  const int nst = get_global_size(0);
-  const int ip  = get_global_id(1);
-  const int lip = get_local_id(1);
+  const long long ist = get_global_id(0);
+  const long long nst = get_global_size(0);
+  const long long ip  = get_global_id(1);
+  const long long lip = get_local_id(1);
   
   if(ip < np){
 

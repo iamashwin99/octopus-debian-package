@@ -46,7 +46,26 @@ module cuda_oct_m
     cuda_device_capability,             &
     cuda_driver_version,                &
     cuda_set_stream,                    &
-    cuda_deref
+    cuda_deref,                         &
+    cuda_get_pointer_with_offset,       &
+    cuda_clean_pointer
+
+  integer, parameter, public ::                      &
+    CUBLAS_DIAG_NON_UNIT = 0,                        &
+    CUBLAS_DIAG_UNIT     = 1
+
+  integer, parameter, public ::                      &
+    CUBLAS_OP_N = 0,                                 &
+    CUBLAS_OP_T = 1,                                 &
+    CUBLAS_OP_C = 2
+
+  integer, parameter, public ::                      &
+    CUBLAS_FILL_MODE_LOWER = 0,                      &
+    CUBLAS_FILL_MODE_UPPER = 1
+
+  integer, parameter, public ::                      &
+    CUBLAS_SIDE_LEFT  = 0,                           &
+    CUBLAS_SIDE_RIGHT = 1
 
   interface
 
@@ -295,7 +314,7 @@ module cuda_oct_m
 
     ! -------------------------------------------------
 
-    subroutine cuda_memcpy_htod(cuda_ptr, data, size, offset, async)
+    subroutine cuda_memcpy_htod(cuda_ptr, data, size, offset)
       use iso_c_binding
       use kind_oct_m
       implicit none
@@ -304,12 +323,11 @@ module cuda_oct_m
       type(*),         intent(in)    :: data
       integer(i8),     intent(in)    :: size
       integer(i8),     intent(in)    :: offset
-      logical(c_bool), intent(in)    :: async
     end subroutine cuda_memcpy_htod
 
     ! -------------------------------------------------
 
-    subroutine cuda_memcpy_dtoh(cuda_ptr, data, size, offset, async)
+    subroutine cuda_memcpy_dtoh(cuda_ptr, data, size, offset)
       use iso_c_binding
       use kind_oct_m
       implicit none
@@ -318,8 +336,23 @@ module cuda_oct_m
       type(*),         intent(inout) :: data
       integer(i8),     intent(in)    :: size
       integer(i8),     intent(in)    :: offset
-      logical(c_bool), intent(in)    :: async
     end subroutine cuda_memcpy_dtoh
+
+    subroutine cuda_get_pointer_with_offset(buffer, offset, buffer_offset)
+      use iso_c_binding
+      implicit none
+
+      type(c_ptr), intent(in)  :: buffer
+      integer(8),  intent(in)  :: offset
+      type(c_ptr), intent(out) :: buffer_offset
+    end subroutine cuda_get_pointer_with_offset
+
+    subroutine cuda_clean_pointer(buffer)
+      use iso_c_binding
+      implicit none
+
+      type(c_ptr), intent(in)  :: buffer
+    end subroutine cuda_clean_pointer
   end interface
 
 end module cuda_oct_m

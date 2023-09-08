@@ -14,7 +14,7 @@ BoxShape = parallelepiped
 Spacing = 0.55
 FilterPotentials = filter_none
 %KpointsGrid
- 4 | 4 | 4 
+ 4 | 4 | 4
 %
 KPointsUseSymmetries = yes
 %ReducedCoordinates
@@ -22,11 +22,10 @@ KPointsUseSymmetries = yes
 "Si" | 8.3000000000E-01 | 8.5000000000E-01 | 8.9000000000E-01
 %
 
-%Output 
+%Output
  bader   | axis_x
  density
 %
 OutputFormat = axis_x
 
 SCFCalculatePartialCharges = yes
-

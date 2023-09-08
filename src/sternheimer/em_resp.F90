@@ -45,7 +45,11 @@ module em_resp_oct_m
   use namespace_oct_m
   use parser_oct_m
   use pcm_oct_m
-  use pert_oct_m
+  use perturbation_oct_m
+  use perturbation_electric_oct_m
+  use perturbation_kdotp_oct_m
+  use perturbation_magnetic_oct_m
+  use perturbation_none_oct_m
   use profiling_oct_m
   use restart_oct_m
   use smear_oct_m
@@ -71,15 +75,21 @@ module em_resp_oct_m
     em_resp_run,             &
     out_hyperpolarizability
 
+  integer, parameter ::             &
+    PERTURBATION_ELECTRIC         = 1,  &
+    PERTURBATION_MAGNETIC         = 2,  &
+    PERTURBATION_NONE             = 0
+
+
   type em_resp_t
     private
-    type(pert_t) :: perturbation
+    class(perturbation_t), pointer :: perturbation
 
     integer :: nsigma !< 1: consider only positive values of the frequency
-    !                 !! 2: consider both positive and negative
+    !!                   2: consider both positive and negative
     integer :: nfactor!< 1: only one frequency needed
-    !                 !! 2: two frequencies (complex conjugate for magneto-optics)
-    !                 !! 3: three frequencies (for the hyperpolarizabilities)
+    !!                   2: two frequencies (complex conjugate for magneto-optics)
+    !!                   3: three frequencies (for the hyperpolarizabilities)
     integer :: nomega !< number of frequencies to consider
 
     FLOAT :: eta                     !< small imaginary part to add to the frequency
@@ -87,21 +97,21 @@ module em_resp_oct_m
     FLOAT,      allocatable :: omega(:)  !< the frequencies to consider
     type(lr_t), allocatable :: lr(:,:,:) !< linear response for (space%dim, nsigma, nfactor)
     CMPLX,      allocatable :: alpha_k(:, :, :, :)    !< contributions of k-points to
-    !                                                 !! the linear polarizability
+    !!                                                   the linear polarizability
     CMPLX,      allocatable :: alpha_be_k(:, :, :, :) !< contributions of k-points to
-    !                                                 !! the magneto-optical response
+    !!                                                   the magneto-optical response
     logical :: calc_hyperpol
-    CMPLX, allocatable :: alpha(:, :, :)         !< the linear polarizability
-    CMPLX, allocatable :: alpha_be(:, :, :)      !< the magneto-optical response
-    CMPLX, allocatable :: alpha0(:, :, :)        !< the linear polarizability without G = G` = 0 term
-    !                                            !! of the LRC kernel
-    CMPLX, allocatable :: alpha_be0(:, :, :)     !< the magneto-optical response without G = G` = 0
-    !                                            !! term of the LRC kernel
-    CMPLX, allocatable :: beta(:, :, :)          !< first hyperpolarizability
+    CMPLX   :: alpha(3, 3, 3)                    !< the linear polarizability
+    CMPLX   :: alpha_be(3, 3, 3)                 !< the magneto-optical response
+    CMPLX   :: alpha0(3, 3, 3)                   !< the linear polarizability without G = G` = 0 term
+    !! of the LRC kernel
+    CMPLX   :: alpha_be0(3, 3, 3)                !< the magneto-optical response without G = G` = 0
+    !! term of the LRC kernel
+    CMPLX   :: beta (3, 3, 3)                    !< first hyperpolarizability
 
-    CMPLX, allocatable :: chi_para(:, :)         !< The paramagnetic part of the susceptibility
-    CMPLX, allocatable :: chi_dia (:, :)         !< The diamagnetic  part of the susceptibility
-    CMPLX, allocatable :: magn(:)                !< The orbital magnetization
+    CMPLX   :: chi_para(3, 3)                    !< The paramagnetic part of the susceptibility
+    CMPLX   :: chi_dia (3, 3)                    !< The diamagnetic  part of the susceptibility
+    CMPLX   :: magn(3)                           !< The orbital magnetization
 
     logical :: ok(1:3)                           !< whether calculation is converged
     logical :: force_no_kdotp                    !< whether to use kdotp run for periodic system
@@ -113,9 +123,9 @@ module em_resp_oct_m
     logical :: wfns_from_scratch                 !< whether to ignore restart LR wfns and initialize to zero
     logical :: calc_magnetooptics                !< whether to calculate magneto-optical response
     logical :: magnetooptics_nohvar              !< whether to consider corrections to exchange-correlation
-    !                                            !! and Hartree terms for magnetic perturbations in magneto-optics
+    !!                                              and Hartree terms for magnetic perturbations in magneto-optics
     logical :: kpt_output                        !< whether to include in the output contributions of different
-    !                                            !! k-points to dielectric constant
+    !!                                              k-points to dielectric constant
     logical :: lrc_kernel                        !< whether the LRC kernel is used
 
   end type em_resp_t
@@ -152,17 +162,18 @@ contains
     type(lr_t), allocatable :: b_lr(:, :)
     type(lr_t), allocatable :: kb_lr(:, :, :), k2_lr(:, :, :)
     type(lr_t), allocatable :: ke_lr(:, :, :, :)
-    type(pert_t)            :: pert_kdotp, pert2_none, pert_b
+    class(perturbation_t), pointer :: pert_kdotp, pert2_none, pert_b
 
     integer :: sigma, idir, idir2, ierr, iomega, ifactor
     integer :: ierr_e(3), ierr_e2(3), nfactor_ke
     character(len=100) :: str_tmp
     logical :: complex_response, have_to_calculate, use_kdotp, opp_freq, &
       exact_freq(3), complex_wfs, allocate_rho_em, allocate_rho_mo
+    logical :: magnetic_pert
 
-    FLOAT :: last_omega, frequency
+    FLOAT :: last_omega, frequency, dfrequency_eta
     FLOAT, allocatable :: dl_eig(:,:,:)
-    CMPLX :: frequency_eta, frequency_zero, lrc_coef(sys%space%dim, sys%space%dim)
+    CMPLX :: zfrequency_eta, lrc_coef(sys%space%dim, sys%space%dim)
     type(restart_t) :: gs_restart, kdotp_restart
 
     PUSH_SUB(em_resp_run_legacy)
@@ -179,22 +190,14 @@ contains
       call messages_experimental('em_resp with reduced k-grid', namespace=sys%namespace)
     end if
 
-
-    SAFE_ALLOCATE(em_vars%alpha(1:sys%space%dim, 1:sys%space%dim, 1:3))
-    SAFE_ALLOCATE(em_vars%alpha_be(1:sys%space%dim, 1:sys%space%dim, 1:sys%space%dim))
-    SAFE_ALLOCATE(em_vars%alpha0(1:sys%space%dim, 1:sys%space%dim, 1:3))
-    SAFE_ALLOCATE(em_vars%alpha_be0(1:sys%space%dim, 1:sys%space%dim, 1:sys%space%dim))
-    SAFE_ALLOCATE(em_vars%beta(1:sys%space%dim, 1:sys%space%dim, 1:sys%space%dim))
-    SAFE_ALLOCATE(em_vars%chi_para(1:sys%space%dim, 1:sys%space%dim))
-    SAFE_ALLOCATE(em_vars%chi_dia(1:sys%space%dim, 1:sys%space%dim))
-    SAFE_ALLOCATE(em_vars%magn(1:sys%space%dim))
-
     call parse_input()
 
-    if (pert_type(em_vars%perturbation) == PERTURBATION_MAGNETIC .and. &
-      any(abs(em_vars%omega(1:em_vars%nomega)) > M_EPSILON)) then
-      call messages_not_implemented('Dynamical magnetic response', namespace=sys%namespace)
-    end if
+    select type(ptr=>em_vars%perturbation)
+    type is(perturbation_magnetic_t)
+      if (any(abs(em_vars%omega(1:em_vars%nomega)) > M_EPSILON)) then
+        call messages_not_implemented('Dynamical magnetic response', namespace=sys%namespace)
+      end if
+    end select
 
     em_vars%lrc_kernel = .false.
     if (abs(sys%ks%xc%kernel_lrc_alpha) > M_EPSILON) em_vars%lrc_kernel = .true.
@@ -206,9 +209,9 @@ contains
 
     complex_wfs = states_are_complex(sys%st)
     complex_response = (em_vars%eta > M_EPSILON) .or. states_are_complex(sys%st)
-    call restart_init(gs_restart, sys%namespace, RESTART_GS, RESTART_TYPE_LOAD, sys%mc, ierr, mesh=sys%gr%mesh, exact=.true.)
+    call restart_init(gs_restart, sys%namespace, RESTART_GS, RESTART_TYPE_LOAD, sys%mc, ierr, mesh=sys%gr, exact=.true.)
     if (ierr == 0) then
-      call states_elec_look_and_load(gs_restart, sys%namespace, sys%space, sys%st, sys%gr%mesh, sys%kpoints, &
+      call states_elec_look_and_load(gs_restart, sys%namespace, sys%space, sys%st, sys%gr, sys%kpoints, &
         is_complex = complex_response)
       call restart_end(gs_restart)
     else
@@ -245,7 +248,7 @@ contains
       message(1) = "Reading kdotp wavefunctions for periodic directions."
       call messages_info(1, namespace=sys%namespace)
 
-      call restart_init(kdotp_restart, sys%namespace, RESTART_KDOTP, RESTART_TYPE_LOAD, sys%mc, ierr, mesh=sys%gr%mesh)
+      call restart_init(kdotp_restart, sys%namespace, RESTART_KDOTP, RESTART_TYPE_LOAD, sys%mc, ierr, mesh=sys%gr)
       if (ierr /= 0) then
         message(1) = "Unable to read kdotp wavefunctions."
         message(2) = "Previous kdotp calculation required."
@@ -254,14 +257,14 @@ contains
 
       do idir = 1, sys%space%periodic_dim
         call lr_init(kdotp_lr(idir, 1))
-        call lr_allocate(kdotp_lr(idir, 1), sys%st, sys%gr%mesh, allocate_rho = .false.)
+        call lr_allocate(kdotp_lr(idir, 1), sys%st, sys%gr, allocate_rho = .false.)
 
         ! load wavefunctions
         str_tmp = kdotp_wfs_tag(idir)
         ! 1 is the sigma index which is used in em_resp
         call restart_open_dir(kdotp_restart, wfs_tag_sigma(sys%namespace, str_tmp, 1), ierr)
         if (ierr == 0) then
-          call states_elec_load(kdotp_restart, sys%namespace, sys%space, sys%st, sys%gr%mesh, sys%kpoints, ierr, &
+          call states_elec_load(kdotp_restart, sys%namespace, sys%space, sys%st, sys%gr, sys%kpoints, ierr, &
             lr=kdotp_lr(idir, 1))
         end if
         call restart_close_dir(kdotp_restart)
@@ -289,17 +292,17 @@ contains
     end if
 
     if (em_vars%calc_hyperpol .and. use_kdotp) then
-      call pert_init(pert_kdotp, sys%namespace, PERTURBATION_KDOTP, sys%ions)
-      call pert_init(pert2_none, sys%namespace, PERTURBATION_NONE,  sys%ions)
+      pert_kdotp => perturbation_kdotp_t(sys%namespace, sys%ions)
+      pert2_none => perturbation_none_t(sys%namespace)
       call messages_experimental("Second-order Sternheimer equation", namespace=sys%namespace)
-      call pert_setup_dir(pert2_none, 1)  ! direction is irrelevant
+      call pert2_none%setup_dir(1)  ! direction is irrelevant
       SAFE_ALLOCATE(kdotp_em_lr2(1:sys%space%periodic_dim, 1:sys%space%dim, 1:em_vars%nsigma, 1:em_vars%nfactor))
       do ifactor = 1, em_vars%nfactor
         do sigma = 1, em_vars%nsigma
           do idir = 1, sys%space%periodic_dim
             do idir2 = 1, sys%space%dim
               call lr_init(kdotp_em_lr2(idir, idir2, sigma, ifactor))
-              call lr_allocate(kdotp_em_lr2(idir, idir2, sigma, ifactor), sys%st, sys%gr%mesh, allocate_rho = .false.)
+              call lr_allocate(kdotp_em_lr2(idir, idir2, sigma, ifactor), sys%st, sys%gr, allocate_rho = .false.)
             end do
           end do
         end do
@@ -327,35 +330,36 @@ contains
       end if
     end if
 
-    if (pert_type(em_vars%perturbation) == PERTURBATION_MAGNETIC) then
+    magnetic_pert = .false.
+    select type(ptr => em_vars%perturbation)
+    type is(perturbation_magnetic_t)
       em_vars%nsigma = 1
       if (use_kdotp) call messages_experimental("Magnetic perturbation for periodic systems", namespace=sys%namespace)
-    end if
+      magnetic_pert = .true.
+    end select
 
-    if (em_vars%calc_magnetooptics .or. &
-      (pert_type(em_vars%perturbation) == PERTURBATION_MAGNETIC)) then
-      frequency_zero = M_ZERO
+    if (em_vars%calc_magnetooptics .or. magnetic_pert) then
       em_vars%occ_response = .false.
 
       if (use_kdotp) then
-        call pert_init(pert2_none, sys%namespace, PERTURBATION_NONE, sys%ions)
-        call pert_setup_dir(pert2_none, 1)
+        pert2_none => perturbation_none_t(sys%namespace)
+        call pert2_none%setup_dir(1)
 
         SAFE_ALLOCATE(k2_lr(1:sys%space%dim, 1:sys%space%dim, 1))
         SAFE_ALLOCATE(kb_lr(1:sys%space%dim, 1:sys%space%dim, 1))
         do idir = 1, sys%space%dim
           do idir2 = 1, sys%space%dim
             call lr_init(kb_lr(idir, idir2, 1))
-            call lr_allocate(kb_lr(idir, idir2, 1), sys%st, sys%gr%mesh, allocate_rho = .false.)
+            call lr_allocate(kb_lr(idir, idir2, 1), sys%st, sys%gr, allocate_rho = .false.)
             if (idir2 <= idir) then
               call lr_init(k2_lr(idir, idir2, 1))
-              call lr_allocate(k2_lr(idir, idir2, 1), sys%st, sys%gr%mesh, allocate_rho = .false.)
+              call lr_allocate(k2_lr(idir, idir2, 1), sys%st, sys%gr, allocate_rho = .false.)
             end if
           end do
         end do
 
         if (sys%space%periodic_dim < sys%space%dim) then
-          if (pert_type(em_vars%perturbation) == PERTURBATION_MAGNETIC) then
+          if (magnetic_pert) then
             message(1) = "All directions should be periodic for magnetic perturbations with kdotp."
           else
             message(1) = "All directions should be periodic for magnetooptics with kdotp."
@@ -364,11 +368,11 @@ contains
         end if
         if (.not. complex_response) then
           do idir = 1, sys%space%dim
-            call dlr_orth_response(sys%gr%mesh, sys%st, kdotp_lr(idir, 1), M_ZERO)
+            call dlr_orth_response(sys%gr, sys%st, kdotp_lr(idir, 1), M_ZERO)
           end do
         else
           do idir = 1, sys%space%dim
-            call zlr_orth_response(sys%gr%mesh, sys%st, kdotp_lr(idir, 1), frequency_zero)
+            call zlr_orth_response(sys%gr, sys%st, kdotp_lr(idir, 1), M_z0)
           end do
         end if
         call sternheimer_init(sh_kmo, sys%namespace, sys%space, sys%gr, sys%st, sys%hm, sys%ks%xc, sys%mc, &
@@ -378,11 +382,11 @@ contains
 
     SAFE_ALLOCATE(em_vars%lr(1:sys%space%dim, 1:em_vars%nsigma, 1:em_vars%nfactor))
     do ifactor = 1, em_vars%nfactor
-      call born_charges_init(em_vars%Born_charges(ifactor), sys%namespace, sys%ions, sys%st, sys%space%dim)
+      call born_charges_init(em_vars%Born_charges(ifactor), sys%namespace, sys%ions, sys%st%val_charge, &
+        sys%st%qtot, sys%space%dim)
     end do
 
-    if (pert_type(em_vars%perturbation) == PERTURBATION_MAGNETIC &
-      .and. sys%st%d%nspin == 1 .and. states_are_real(sys%st)) then
+    if (magnetic_pert .and. sys%st%d%nspin == 1 .and. states_are_real(sys%st)) then
       ! first-order response is zero if there is time-reversal symmetry. F Mauri and SG Louie, PRL 76, 4246 (1996)
       call sternheimer_init(sh, sys%namespace, sys%space, sys%gr, sys%st, sys%hm, sys%ks%xc, sys%mc, &
         complex_response, set_ham_var = 0, set_last_occ_response = em_vars%occ_response)
@@ -410,13 +414,18 @@ contains
       do idir = 1, sys%space%dim
         do sigma = 1, em_vars%nsigma
           call lr_init(em_vars%lr(idir, sigma, ifactor))
-          call lr_allocate(em_vars%lr(idir, sigma, ifactor), sys%st, sys%gr%mesh, allocate_rho = allocate_rho_em)
+          call lr_allocate(em_vars%lr(idir, sigma, ifactor), sys%st, sys%gr, allocate_rho = allocate_rho_em)
         end do
       end do
     end do
 
-    if ((pert_type(em_vars%perturbation) .ne. PERTURBATION_ELECTRIC) .or. (.not. use_kdotp) &
-      .or. sys%st%d%nik == 1) em_vars%kpt_output = .false.
+    select type(ptr=> em_vars%perturbation)
+    type is(perturbation_electric_t)
+      !Do nothing
+    class default
+      em_vars%kpt_output = .false.
+    end select
+    if (.not. use_kdotp .or. sys%st%d%nik == 1) em_vars%kpt_output = .false.
 
     if (em_vars%kpt_output) then
       SAFE_ALLOCATE(em_vars%alpha_k(1:sys%space%dim, 1:sys%space%dim, 1:em_vars%nfactor, 1:sys%st%d%nik))
@@ -429,14 +438,14 @@ contains
       else
         call sternheimer_init(sh_mo, sys%namespace, sys%space, sys%gr, sys%st, sys%hm, sys%ks%xc, sys%mc, &
           complex_response, set_last_occ_response = em_vars%occ_response)
-        call sternheimer_build_kxc(sh_mo, sys%namespace, sys%gr%mesh, sys%st, sys%ks%xc)
+        call sternheimer_build_kxc(sh_mo, sys%namespace, sys%gr, sys%st, sys%ks%xc)
       end if
       call messages_experimental("Magneto-optical response", namespace=sys%namespace)
       allocate_rho_mo = sternheimer_add_fxc(sh_mo) .or. sternheimer_add_hartree(sh_mo)
       SAFE_ALLOCATE(b_lr(1:sys%space%dim, 1))
       do idir = 1, sys%space%dim
         call lr_init(b_lr(idir, 1))
-        call lr_allocate(b_lr(idir, 1), sys%st, sys%gr%mesh, allocate_rho = allocate_rho_mo)
+        call lr_allocate(b_lr(idir, 1), sys%st, sys%gr, allocate_rho = allocate_rho_mo)
       end do
 
       if (use_kdotp) then
@@ -451,13 +460,13 @@ contains
             do sigma = 1, em_vars%nsigma
               do ifactor = 1, nfactor_ke
                 call lr_init(ke_lr(idir, idir2, sigma, ifactor))
-                call lr_allocate(ke_lr(idir, idir2, sigma, ifactor), sys%st, sys%gr%mesh, allocate_rho = .false.)
+                call lr_allocate(ke_lr(idir, idir2, sigma, ifactor), sys%st, sys%gr, allocate_rho = .false.)
               end do
             end do
           end do
         end do
       else
-        call pert_init(pert_b, sys%namespace, PERTURBATION_MAGNETIC,  sys%ions)
+        pert_b => perturbation_magnetic_t(sys%namespace, sys%ions)
       end if
     end if
 
@@ -469,8 +478,9 @@ contains
 
       do ifactor = 1, em_vars%nfactor
         frequency = em_vars%freq_factor(ifactor)*em_vars%omega(iomega)
-        frequency_eta = frequency + M_zI * em_vars%eta
-        if (em_vars%calc_magnetooptics .and. ifactor == 2) frequency_eta = frequency - M_zI * em_vars%eta
+        zfrequency_eta = frequency + M_zI * em_vars%eta
+        if (em_vars%calc_magnetooptics .and. ifactor == 2) zfrequency_eta = frequency - M_zI * em_vars%eta
+        dfrequency_eta = TOFLOAT(zfrequency_eta)
 
         if (abs(frequency) < M_EPSILON .and. em_vars%calc_magnetooptics .and. use_kdotp) then
           message(1) = "Magnetooptical response with kdotp requires non-zero frequency."
@@ -495,14 +505,14 @@ contains
             - frequency) < M_EPSILON) then
 
             do idir = 1, sys%space%dim
-              call lr_copy(sys%st, sys%gr%mesh, em_vars%lr(idir, 1, ifactor - 1), em_vars%lr(idir, 1, ifactor))
-              call lr_copy(sys%st, sys%gr%mesh, em_vars%lr(idir, 2, ifactor - 1), em_vars%lr(idir, 2, ifactor))
+              call lr_copy(sys%st, sys%gr, em_vars%lr(idir, 1, ifactor - 1), em_vars%lr(idir, 1, ifactor))
+              call lr_copy(sys%st, sys%gr, em_vars%lr(idir, 2, ifactor - 1), em_vars%lr(idir, 2, ifactor))
 
               if (em_vars%calc_hyperpol .and. use_kdotp) then
                 do idir2 = 1, sys%space%periodic_dim
-                  call lr_copy(sys%st, sys%gr%mesh, kdotp_em_lr2(idir, idir2, 1, ifactor - 1), &
+                  call lr_copy(sys%st, sys%gr, kdotp_em_lr2(idir, idir2, 1, ifactor - 1), &
                     kdotp_em_lr2(idir, idir2, 1, ifactor))
-                  call lr_copy(sys%st, sys%gr%mesh, kdotp_em_lr2(idir, idir2, 2, ifactor - 1), &
+                  call lr_copy(sys%st, sys%gr, kdotp_em_lr2(idir, idir2, 2, ifactor - 1), &
                     kdotp_em_lr2(idir, idir2, 2, ifactor))
                 end do
               end if
@@ -517,14 +527,14 @@ contains
             + frequency) < M_EPSILON) then
 
             do idir = 1, sys%space%dim
-              call lr_copy(sys%st, sys%gr%mesh, em_vars%lr(idir, 1, ifactor - 1), em_vars%lr(idir, 2, ifactor))
-              call lr_copy(sys%st, sys%gr%mesh, em_vars%lr(idir, 2, ifactor - 1), em_vars%lr(idir, 1, ifactor))
+              call lr_copy(sys%st, sys%gr, em_vars%lr(idir, 1, ifactor - 1), em_vars%lr(idir, 2, ifactor))
+              call lr_copy(sys%st, sys%gr, em_vars%lr(idir, 2, ifactor - 1), em_vars%lr(idir, 1, ifactor))
 
               if (em_vars%calc_hyperpol .and. use_kdotp) then
                 do idir2 = 1, sys%space%periodic_dim
-                  call lr_copy(sys%st, sys%gr%mesh, kdotp_em_lr2(idir, idir2, 1, ifactor - 1), &
+                  call lr_copy(sys%st, sys%gr, kdotp_em_lr2(idir, idir2, 1, ifactor - 1), &
                     kdotp_em_lr2(idir, idir2, 2, ifactor))
-                  call lr_copy(sys%st, sys%gr%mesh, kdotp_em_lr2(idir, idir2, 2, ifactor - 1), &
+                  call lr_copy(sys%st, sys%gr, kdotp_em_lr2(idir, idir2, 2, ifactor - 1), &
                     kdotp_em_lr2(idir, idir2, 1, ifactor))
                 end do
               end if
@@ -542,14 +552,14 @@ contains
           if (have_to_calculate .and. abs(frequency - last_omega) < M_EPSILON) then
 
             do idir = 1, sys%space%dim
-              call lr_copy(sys%st, sys%gr%mesh, em_vars%lr(idir, 1, em_vars%nfactor), em_vars%lr(idir, 1, 1))
-              call lr_copy(sys%st, sys%gr%mesh, em_vars%lr(idir, 2, em_vars%nfactor), em_vars%lr(idir, 2, 1))
+              call lr_copy(sys%st, sys%gr, em_vars%lr(idir, 1, em_vars%nfactor), em_vars%lr(idir, 1, 1))
+              call lr_copy(sys%st, sys%gr, em_vars%lr(idir, 2, em_vars%nfactor), em_vars%lr(idir, 2, 1))
 
               if (em_vars%calc_hyperpol .and. use_kdotp) then
                 do idir2 = 1, sys%space%periodic_dim
-                  call lr_copy(sys%st, sys%gr%mesh, kdotp_em_lr2(idir, idir2, 1, em_vars%nfactor), &
+                  call lr_copy(sys%st, sys%gr, kdotp_em_lr2(idir, idir2, 1, em_vars%nfactor), &
                     kdotp_em_lr2(idir, idir2, 1, 1))
-                  call lr_copy(sys%st, sys%gr%mesh, kdotp_em_lr2(idir, idir2, 2, em_vars%nfactor), &
+                  call lr_copy(sys%st, sys%gr, kdotp_em_lr2(idir, idir2, 2, em_vars%nfactor), &
                     kdotp_em_lr2(idir, idir2, 2, 1))
                 end do
               end if
@@ -563,14 +573,14 @@ contains
           if (have_to_calculate .and. abs(frequency + last_omega) < M_EPSILON) then
 
             do idir = 1, sys%space%dim
-              call lr_copy(sys%st, sys%gr%mesh, em_vars%lr(idir, 1, em_vars%nfactor), em_vars%lr(idir, 2, 1))
-              call lr_copy(sys%st, sys%gr%mesh, em_vars%lr(idir, 2, em_vars%nfactor), em_vars%lr(idir, 1, 1))
+              call lr_copy(sys%st, sys%gr, em_vars%lr(idir, 1, em_vars%nfactor), em_vars%lr(idir, 2, 1))
+              call lr_copy(sys%st, sys%gr, em_vars%lr(idir, 2, em_vars%nfactor), em_vars%lr(idir, 1, 1))
 
               if (em_vars%calc_hyperpol .and. use_kdotp) then
                 do idir2 = 1, sys%space%periodic_dim
-                  call lr_copy(sys%st, sys%gr%mesh, kdotp_em_lr2(idir, idir2, 1, em_vars%nfactor), &
+                  call lr_copy(sys%st, sys%gr, kdotp_em_lr2(idir, idir2, 1, em_vars%nfactor), &
                     kdotp_em_lr2(idir, idir2, 2, 1))
-                  call lr_copy(sys%st, sys%gr%mesh, kdotp_em_lr2(idir, idir2, 2, em_vars%nfactor), &
+                  call lr_copy(sys%st, sys%gr, kdotp_em_lr2(idir, idir2, 2, em_vars%nfactor), &
                     kdotp_em_lr2(idir, idir2, 1, 1))
                 end do
               end if
@@ -587,10 +597,10 @@ contains
           exact_freq(:) = .false.
 
           if (states_are_real(sys%st)) then
-            call drun_sternheimer(em_vars, sys%namespace, sys%space, sys%gr, sys%kpoints, sys%st, sys%hm, sys%ks%xc, sys%mc, &
+            call drun_sternheimer(em_vars, sys%namespace, sys%space, sys%gr, sys%kpoints, sys%st, sys%hm, sys%mc, &
               sys%ions)
           else
-            call zrun_sternheimer(em_vars, sys%namespace, sys%space, sys%gr, sys%kpoints, sys%st, sys%hm, sys%ks%xc, sys%mc, &
+            call zrun_sternheimer(em_vars, sys%namespace, sys%space, sys%gr, sys%kpoints, sys%st, sys%hm, sys%mc, &
               sys%ions)
           end if
 
@@ -627,7 +637,7 @@ contains
     end do
 
     call sternheimer_end(sh)
-    call pert_end(em_vars%perturbation)
+    deallocate(em_vars%perturbation)
 
     if (use_kdotp) then
       do idir = 1, sys%space%periodic_dim
@@ -638,8 +648,8 @@ contains
     if (em_vars%calc_hyperpol .and. use_kdotp) then
       call sternheimer_end(sh_kdotp)
       call sternheimer_end(sh2)
-      call pert_end(pert_kdotp)
-      call pert_end(pert2_none)
+      SAFE_DEALLOCATE_P(pert_kdotp)
+      SAFE_DEALLOCATE_P(pert2_none)
       do idir = 1, sys%space%periodic_dim
         do idir2 = 1, sys%space%periodic_dim
           do sigma = 1, em_vars%nsigma
@@ -657,10 +667,9 @@ contains
       SAFE_DEALLOCATE_A(em_vars%alpha_k)
     end	if
 
-    if (em_vars%calc_magnetooptics .or. &
-      (pert_type(em_vars%perturbation) == PERTURBATION_MAGNETIC)) then
+    if (em_vars%calc_magnetooptics .or. magnetic_pert) then
       if (use_kdotp) then
-        call pert_end(pert2_none)
+        SAFE_DEALLOCATE_P(pert2_none)
         call sternheimer_end(sh_kmo)
         do idir = 1, sys%space%dim
           do idir2 = 1, sys%space%dim
@@ -696,7 +705,7 @@ contains
           SAFE_DEALLOCATE_A(em_vars%alpha_be_k)
         end if
       else
-        call pert_end(pert_b)
+        SAFE_DEALLOCATE_P(pert_b)
       end if
     end if
 
@@ -706,15 +715,6 @@ contains
       call Born_charges_end(em_vars%Born_charges(ifactor))
     end do
     call states_elec_deallocate_wfns(sys%st)
-
-    SAFE_DEALLOCATE_A(em_vars%alpha)
-    SAFE_DEALLOCATE_A(em_vars%alpha_be)
-    SAFE_DEALLOCATE_A(em_vars%alpha0)
-    SAFE_DEALLOCATE_A(em_vars%alpha_be0)
-    SAFE_DEALLOCATE_A(em_vars%beta)
-    SAFE_DEALLOCATE_A(em_vars%chi_para)
-    SAFE_DEALLOCATE_A(em_vars%chi_dia)
-    SAFE_DEALLOCATE_A(em_vars%magn)
 
     POP_SUB(em_resp_run_legacy)
   contains
@@ -854,9 +854,19 @@ contains
       call parse_variable(sys%namespace, 'EMPerturbationType', PERTURBATION_ELECTRIC, perturb_type)
       call messages_print_var_option('EMPerturbationType', perturb_type, namespace=sys%namespace)
 
-      call pert_init(em_vars%perturbation, sys%namespace, perturb_type, sys%ions)
+      select case(perturb_type)
+      case(PERTURBATION_ELECTRIC)
+        em_vars%perturbation => perturbation_electric_t(sys%namespace)
+      case(PERTURBATION_MAGNETIC)
+        em_vars%perturbation => perturbation_magnetic_t(sys%namespace, sys%ions)
+      case(PERTURBATION_NONE)
+        em_vars%perturbation => perturbation_none_t(sys%namespace)
+      case default
+        ASSERT(.false.)
+      end select
 
-      if (pert_type(em_vars%perturbation) == PERTURBATION_ELECTRIC) then
+      select type(ptr=>em_vars%perturbation)
+      type is(perturbation_electric_t)
         !%Variable EMCalcRotatoryResponse
         !%Type logical
         !%Default false
@@ -925,7 +935,7 @@ contains
 
         call parse_variable(sys%namespace, 'EMKPointOutput', .false., em_vars%kpt_output)
 
-      end if
+      end select
 
       !%Variable EMForceNoKdotP
       !%Type logical
@@ -991,16 +1001,17 @@ contains
 
       PUSH_SUB(em_resp_run_legacy.info)
 
-      call pert_info(em_vars%perturbation)
-      if (pert_type(em_vars%perturbation) == PERTURBATION_ELECTRIC) then
+      call em_vars%perturbation%info()
+      select type(ptr=>em_vars%perturbation)
+      type is(perturbation_electric_t)
         if (em_vars%calc_hyperpol) then
-          call messages_print_stress(msg='Linear-Response First-Order Hyperpolarizabilities', namespace=sys%namespace)
+          call messages_print_with_emphasis(msg='Linear-Response First-Order Hyperpolarizabilities', namespace=sys%namespace)
         else
-          call messages_print_stress(msg='Linear-Response Polarizabilities', namespace=sys%namespace)
+          call messages_print_with_emphasis(msg='Linear-Response Polarizabilities', namespace=sys%namespace)
         end if
-      else
-        call messages_print_stress(msg='Magnetic Susceptibilities', namespace=sys%namespace)
-      end if
+      class default
+        call messages_print_with_emphasis(msg='Magnetic Susceptibilities', namespace=sys%namespace)
+      end select
 
       if (states_are_real(sys%st)) then
         message(1) = 'Wavefunctions type: Real'
@@ -1012,7 +1023,7 @@ contains
       write(message(1),'(a,i3,a)') 'Calculating response for ', em_vars%nomega, ' frequencies.'
       call messages_info(1, namespace=sys%namespace)
 
-      call messages_print_stress(namespace=sys%namespace)
+      call messages_print_with_emphasis(namespace=sys%namespace)
 
       POP_SUB(em_resp_run_legacy.info)
 
@@ -1072,11 +1083,12 @@ contains
 
     call write_eta()
 
-    if (pert_type(em_vars%perturbation) == PERTURBATION_ELECTRIC) then
+    select type(ptr=>em_vars%perturbation)
+    type is(perturbation_electric_t)
       if ((.not. em_vars%calc_magnetooptics) .or. ifactor == 1) then
         call out_polarizability()
         if (em_vars%calc_Born) then
-          call out_Born_charges(em_vars%Born_charges(ifactor), ions, namespace, space%dim, dirname, &
+          call born_output_charges(em_vars%born_charges(ifactor), ions, namespace, space%dim, dirname, &
             write_real = em_vars%eta < M_EPSILON)
         end if
 
@@ -1093,9 +1105,9 @@ contains
         if (iomega == 1) call out_susceptibility()
       end if
 
-    else if (pert_type(em_vars%perturbation) == PERTURBATION_MAGNETIC) then
+    type is(perturbation_magnetic_t)
       call out_susceptibility()
-    end if
+    end select
 
     call out_wfn_and_densities()
 
@@ -1350,13 +1362,14 @@ contains
 
       PUSH_SUB(em_resp_output.out_susceptibility)
 
-      if (pert_type(em_vars%perturbation) == PERTURBATION_ELECTRIC) then
+      select type(ptr=>em_vars%perturbation)
+      type is(perturbation_electric_t)
         write(dirname1, '(a)') EM_RESP_DIR//'freq_0.0000'
         call io_mkdir(trim(dirname1), namespace)
         iunit = io_open(trim(dirname1)//'/susceptibility', namespace, action='write')
-      else
+      class default
         iunit = io_open(trim(dirname)//'/susceptibility', namespace, action='write')
-      end if
+      end select
 
       if (.not. em_vars%ok(ifactor)) write(iunit, '(a)') "# WARNING: not converged"
 
@@ -1424,7 +1437,7 @@ contains
             end if
           end if
           do isigma = 1, em_vars%nsigma
-            call zoutput_lr(outp, namespace, space, dirname, st, gr%mesh, em_vars%lr(idir, isigma, ifactor), idir, isigma, ions, &
+            call zoutput_lr(outp, namespace, space, dirname, st, gr, em_vars%lr(idir, isigma, ifactor), idir, isigma, ions, &
               units_out%force)
           end do
         else
@@ -1438,7 +1451,7 @@ contains
           end if
 
           do isigma = 1, em_vars%nsigma
-            call doutput_lr(outp, namespace, space, dirname, st, gr%mesh, em_vars%lr(idir, isigma, ifactor), idir, isigma, ions, &
+            call doutput_lr(outp, namespace, space, dirname, st, gr, em_vars%lr(idir, isigma, ifactor), idir, isigma, ions, &
               units_out%force)
           end do
 
@@ -1455,7 +1468,7 @@ contains
     !! Phys. Chem. Chem. Phys. 11, 4481 (2009)
     subroutine out_circular_dichroism()
 
-      type(pert_t) :: angular_momentum
+      type(perturbation_magnetic_t), pointer :: angular_momentum
       integer :: idir
       FLOAT :: ff
       CMPLX :: dic
@@ -1468,25 +1481,25 @@ contains
         message(1) = "Info: Calculating rotatory response."
         call messages_info(1, namespace=namespace)
 
-        call pert_init(angular_momentum, namespace, PERTURBATION_MAGNETIC, ions)
+        angular_momentum => perturbation_magnetic_t(namespace, ions)
 
-        SAFE_ALLOCATE(psi(1:gr%mesh%np_part, 1:st%d%dim, st%st_start:st%st_end, st%d%kpt%start:st%d%kpt%end))
+        SAFE_ALLOCATE(psi(1:gr%np_part, 1:st%d%dim, st%st_start:st%st_end, st%d%kpt%start:st%d%kpt%end))
 
-        call states_elec_get_state(st, gr%mesh, psi)
+        call states_elec_get_state(st, gr, psi)
 
         dic = M_ZERO
         do idir = 1, space%dim
-          call pert_setup_dir(angular_momentum, idir)
+          call angular_momentum%setup_dir(idir)
           dic = dic &
-            + zpert_expectation_value(angular_momentum, namespace, space, gr, hm, st, &
-            psi, em_vars%lr(idir, 1, ifactor)%zdl_psi) &
-            + zpert_expectation_value(angular_momentum, namespace, space, gr, hm, st, &
+            + angular_momentum%zexpectation_value(namespace, space, gr, hm, st, psi, &
+            em_vars%lr(idir, 1, ifactor)%zdl_psi) &
+            + angular_momentum%zexpectation_value(namespace, space, gr, hm, st, &
             em_vars%lr(idir, 2, ifactor)%zdl_psi, psi)
         end do
 
         SAFE_DEALLOCATE_A(psi)
 
-        call pert_end(angular_momentum)
+        SAFE_DEALLOCATE_P(angular_momentum)
 
         dic = dic*M_zI*M_HALF
 
@@ -1682,7 +1695,7 @@ contains
     character(len=*),   intent(in) :: dirname
     type(namespace_t),  intent(in) :: namespace
 
-    CMPLX :: bpar(box%dim), bper(box%dim), bk(box%dim)
+    CMPLX :: bpar(1:box%dim), bper(1:box%dim), bk(1:box%dim)
     CMPLX :: HRS_VV, HRS_HV
     integer :: ii, jj, kk, iunit
 

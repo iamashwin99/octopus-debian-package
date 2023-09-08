@@ -21,9 +21,9 @@
 !! must be called under a common interface: conjugate_gradients. It provides an
 !! approximate solution to the linear system problem  Ax = b.
 !! Solving a symmetric linear system, which is either real or complex symmetric or
-!! Hermitian the best choice is sym_conjugate_gradients (does not need A^\dagger)
+!! Hermitian the best choice is sym_conjugate_gradients (does not need \f$ A^\dagger \f$)
 !! Solving a real unsymmetric or a complex non-Hermitian system bi_conjugate_gradients
-!! has to be chosen (where one does need A^\dagger).
+!! has to be chosen (where one does need \f$ A^\dagger \f$).
 !!
 !! Note: the complex-valued versions (both CG and BiCG) work only with
 !!       symmetric operators but they may be non-Hermitian. This is a
@@ -41,33 +41,33 @@
 !!         FLOAT, intent(out) :: y(:)
 !!      end subroutine op
 !!    end interface                   => This should be a procedure that
-!!                                       computes Ax = y.
+!!                                       computes \f$ Ax = y \f$.
 !!    interface
 !!      subroutine opt(x, y)
 !!         FLOAT, intent(in)  :: x(:)
 !!         FLOAT, intent(out) :: y(:)
 !!      end subroutine opt
 !!    end interface                   => If present, this should be a procedure that
-!!                                       computes A^\dagger x = y.
+!!                                       computes \f$ A^\dagger x = y \f$.
 !!                                       Only useful for non-Hermitian operators.
 !!    interface
 !!      R_TYPE function dotp(x, y)
 !!      R_TYPE, intent(inout) :: x(:)
 !!      R_TYPE, intent(in)    :: y(:)
-!!    end function dotp               => Calculates the <x | y>.
+!!    end function dotp               => Calculates the \f$ <x | y> \f$.
 !!                                       Depending on the matrix A one should choose:
-!!                                       complex symmetric: <x | y> = x^T * y
-!!                                       hermitian:         <x | y> = x^\dagger * y
-!!                                       general:           <x | y> = x^\dagger * y
+!!                                       complex symmetric: \f$ <x | y> = x^T * y \f$
+!!                                       hermitian:         \f$ <x | y> = x^\dagger * y \f$
+!!                                       general:           \f$ <x | y> = x^\dagger * y \f$
 !!    integer, intent(inout) :: iter  => On input, the maximum number of iterations that
 !!                                       the procedure is allowed to take.
 !!                                       On output, the iterations it actually did.
 !!    FLOAT, intent(out) :: residue   => If present, it measures the final error:
-!!                                       residue = <Ax - b | Ax - b>.
+!!                                       residue = \f$ <Ax - b | Ax - b> \f$.
 !!    FLOAT, intent(in)  :: threshold => If present, it sets the required accuracy
 !!                                       threshold for the algorithm to stop. If not
 !!                                       present, this is set to 1.0e-6. [The algorithm
-!!                                       stops when <Ax - b | Ax - b> <= threshold, or
+!!                                       stops when \f$ <Ax - b | Ax - b> <= threshold \f$, or
 !!                                       iter iterations are reached.]
 !! end subroutine conjugate_gradients
 !!
@@ -82,8 +82,8 @@ subroutine X(sym_conjugate_gradients)(np, x, b, op, dotp, iter, residue, thresho
   interface
     subroutine op(x, y)
       implicit none
-      R_TYPE, intent(in)    :: x(:)
-      R_TYPE, intent(out)   :: y(:)
+      R_TYPE,             intent(in)    :: x(:)
+      R_TYPE, contiguous, intent(out)   :: y(:)
     end subroutine op
     R_TYPE function dotp(x, y) result(res)
       implicit none
@@ -247,7 +247,7 @@ subroutine X(qmr_sym_gen_dotu)(np, x, b, op, dotu, nrm2, prec, iter, &
     end subroutine op
   end interface
   interface
-    R_TYPE function dotu(x, y)    !< the dot product (must be x^T*y, not daggered)
+    R_TYPE function dotu(x, y)    !< the dot product (must be \f$ x^T*y \f$, not daggered)
       implicit none
       R_TYPE, intent(in) :: x(:)
       R_TYPE, intent(in) :: y(:)
@@ -796,27 +796,27 @@ function X(idrs)( b, s, &
   FLOAT                        :: nr, nt, rho, kappa
 
   ! Declarations:
-  integer               :: n                 ! dimension of the system
-  integer               :: nrhs              ! Number of RHS-vectors
-  integer               :: maxit             ! maximum number of iterations
-  integer               :: method            ! which IDR(s) variant?
-  FLOAT                 :: tol               ! actual tolerance
-  integer               :: info              ! convergence indicator
-  logical               :: out_flag          ! store flag
-  logical               :: out_relres        ! store relres
-  logical               :: out_iterations    ! store number of iterations
-  logical               :: inispace          ! initial search space
-  logical               :: user_omega        ! user defined omega present
-  integer               :: n_omega           ! number of user defined omegas
-  logical               :: out_resvec        ! store residual norms
-  logical               :: out_H             ! store iteration parameters in H
-  integer               :: nritz             ! Number of wanted ritz values
+  integer               :: n                  !< dimension of the system
+  integer               :: nrhs               !< Number of RHS-vectors
+  integer               :: maxit              !< maximum number of iterations
+  integer               :: method             !< which IDR(s) variant?
+  FLOAT                 :: tol                !< actual tolerance
+  integer               :: info               !< convergence indicator
+  logical               :: out_flag           !< store flag
+  logical               :: out_relres         !< store relres
+  logical               :: out_iterations     !< store number of iterations
+  logical               :: inispace           !< initial search space
+  logical               :: user_omega         !< user defined omega present
+  integer               :: n_omega            !< number of user defined omegas
+  logical               :: out_resvec         !< store residual norms
+  logical               :: out_H              !< store iteration parameters in H
+  integer               :: nritz              !< Number of wanted ritz values
 
-  integer               :: iter              ! number of iterations
-  integer               :: ii                ! inner iterations index
-  integer               :: jj                ! G-space index
-  FLOAT                 :: normb, normr, tolb! for tolerance check
-  integer               :: i,j,k,l           ! loop counters
+  integer               :: iter               !< number of iterations
+  integer               :: ii                 !< inner iterations index
+  integer               :: jj                 !< G-space index
+  FLOAT                 :: normb, normr, tolb !< for tolerance check
+  integer               :: i,j,k,l            !< loop counters
 
   ! Problem size:
   n    = size(b,1)
@@ -1126,8 +1126,8 @@ function X(idrs)( b, s, &
 
 contains
 
+  !> Trace inner product of complex matrices
   function dtrace_dot(v, w)
-    ! Trace inner product of complex matrices
     FLOAT, intent(in)      :: v(:,:), w(:,:)
     FLOAT                  :: dtrace_dot
     integer k
@@ -1137,8 +1137,8 @@ contains
     end do
   end function dtrace_dot
 
+  !> Trace inner product of complex matrices
   function ztrace_dot(v, w)
-    ! Trace inner product of complex matrices
     CMPLX, intent(in)      :: v(:,:), w(:,:)
     CMPLX                  :: ztrace_dot
     integer :: k
@@ -1148,8 +1148,8 @@ contains
     end do
   end function ztrace_dot
 
+  !> P inner product of complex matrices
   function X(p_dot)(P, R0, w, s)
-    ! P inner product of complex matrices
     FLOAT,    allocatable, intent(in) :: P(:,:,:)
     R_TYPE, allocatable, intent(in) :: R0(:,:)
     R_TYPE, intent(in)              :: w(:,:)
@@ -1202,8 +1202,8 @@ contains
     X(p_dot) = v
   end function X(p_dot)
 
+  !> Frobenius norm of complex matrix
   function dfrob_norm(v)
-    ! Frobenius norm of complex matrix
     FLOAT, intent(in) :: v(:,:)
     FLOAT             :: dfrob_norm
     integer :: k
@@ -1214,8 +1214,8 @@ contains
     dfrob_norm = sqrt(dfrob_norm)
   end function dfrob_norm
 
+  !> Frobenius norm of complex matrix
   function zfrob_norm(v)
-    ! Frobenius norm of complex matrix
     CMPLX, intent(in)      :: v(:,:)
     FLOAT                  :: zfrob_norm
     integer :: k

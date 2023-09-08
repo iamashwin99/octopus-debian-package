@@ -14,7 +14,7 @@ ExtraStates = 0
 
 BoxShape = parallelepiped
 acell = 8
-%Lsize 
+%Lsize
  acell | acell | acell | acell
 %
 Spacing = 1.0

@@ -94,7 +94,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-@COMPILE_OPENCL_TRUE@am__append_1 = $(top_builddir)/external_libs/fortrancl/libfortrancl.la @LIBS_CLBLAS@ @LIBS_CLFFT@ @CL_LIBS@
+@COMPILE_OPENCL_TRUE@am__append_1 = $(top_builddir)/external_libs/fortrancl/libfortrancl.la @LIBS_CLBLAS@ @LIBS_CLBLAST@ @LIBS_CLFFT@ @CL_LIBS@
 @COMPILE_OPENCL_TRUE@am__append_2 = @F90_MODULE_FLAG@$(top_builddir)/external_libs/fortrancl
 @COMPILE_METIS_TRUE@am__append_3 = $(top_builddir)/external_libs/metis-5.1/libmetis/libmetis.la \
 @COMPILE_METIS_TRUE@	$(top_builddir)/external_libs/metis-5.1/GKlib/libgk.la
@@ -209,23 +209,24 @@ am__objects_1 = main/invert_ks.lo main/static_pol.lo main/geom_opt.lo \
 am__objects_2 = basic/accel.lo basic/alloc_cache.lo basic/blacs.lo \
 	basic/blacs_proc_grid.lo basic/calc_mode_par.lo \
 	basic/cgal_polyhedra.lo basic/command_line.lo basic/comm.lo \
-	basic/cuda.lo basic/debug.lo basic/distributed.lo \
-	basic/gdlib.lo basic/global.lo basic/hardware.lo basic/heap.lo \
-	basic/iihash.lo basic/io_binary_f.lo basic/io_csv_f.lo \
-	basic/io.lo basic/kind.lo basic/lattice_vectors.lo \
-	basic/linked_list.lo basic/list_node.lo basic/loct.lo \
-	basic/lookup.lo basic/messages.lo basic/merge_sorted.lo \
-	basic/mpi_debug.lo basic/mpi.lo basic/mpi_lib.lo \
-	basic/mpi_test.lo basic/multicomm.lo basic/namespace.lo \
-	basic/nvtx.lo basic/parser.lo basic/profiling.lo \
-	basic/clock.lo basic/sihash.lo basic/sort.lo basic/space.lo \
-	basic/sphash.lo basic/string.lo basic/types.lo basic/unit.lo \
+	basic/clblas.lo basic/cuda.lo basic/debug.lo \
+	basic/distributed.lo basic/gdlib.lo basic/global.lo \
+	basic/hardware.lo basic/heap.lo basic/iihash.lo \
+	basic/io_binary_f.lo basic/io_csv_f.lo basic/io.lo \
+	basic/kind.lo basic/lattice_vectors.lo basic/linked_list.lo \
+	basic/list_node.lo basic/loct.lo basic/lookup.lo \
+	basic/messages.lo basic/merge_sorted.lo basic/mpi_debug.lo \
+	basic/mpi.lo basic/mpi_lib.lo basic/mpi_test.lo \
+	basic/multicomm.lo basic/namespace.lo basic/nvtx.lo \
+	basic/parser.lo basic/profiling.lo basic/clock.lo \
+	basic/sihash.lo basic/sort.lo basic/space.lo basic/sphash.lo \
+	basic/string.lo basic/types.lo basic/unit.lo \
 	basic/unit_system.lo basic/utils.lo basic/varinfo.lo \
 	basic/walltimer.lo basic/write_iter.lo
 am__objects_3 = basis_set/atomic_orbital.lo basis_set/loewdin.lo \
 	basis_set/orbitalbasis.lo basis_set/orbitalset.lo \
 	basis_set/orbitalset_utils.lo
-am__objects_4 = boxes/box.lo boxes/box_cylinder.lo \
+am__objects_4 = boxes/box.lo boxes/box_cgal.lo boxes/box_cylinder.lo \
 	boxes/box_factory.lo boxes/box_image.lo \
 	boxes/box_intersection.lo boxes/box_minimum.lo \
 	boxes/box_parallelepiped.lo boxes/box_shape.lo \
@@ -234,9 +235,11 @@ am__objects_4 = boxes/box.lo boxes/box_cylinder.lo \
 am__objects_5 = math/accel_blas.lo math/basis_vectors.lo math/blas.lo \
 	math/checksum_interface.lo math/compressed_sensing.lo \
 	math/fft.lo math/fftw.lo math/gauss_legendre.lo \
-	math/lalg_adv.lo math/lalg_basic.lo math/lapack.lo \
-	math/loct_math.lo math/math.lo math/maxwell_function.lo \
-	math/metis.lo math/minimizer.lo math/nfft.lo math/pblas.lo \
+	math/helmholtz_decomposition.lo \
+	math/helmholtz_decomposition_test.lo math/lalg_adv.lo \
+	math/lalg_basic.lo math/lapack.lo math/loct_math.lo \
+	math/math.lo math/maxwell_function.lo math/metis.lo \
+	math/minimizer.lo math/nfft.lo math/pblas.lo \
 	math/permutations.lo math/pfft.lo math/pnfft.lo math/qshep.lo \
 	math/quickrnd.lo math/root_solver.lo math/scalapack.lo \
 	math/sgfft.lo math/solvers.lo math/sparskit.lo \
@@ -248,9 +251,9 @@ am__objects_6 = species/atomic.lo species/element.lo species/logrid.lo \
 	species/ps_in_grid.lo species/ps_psf.lo species/ps_psf_file.lo \
 	species/ps_xml.lo species/pseudo.lo species/pseudo_set.lo \
 	species/share_directory.lo species/species.lo
-am__objects_7 = ions/atom.lo ions/ions.lo ions/ion_dynamics.lo \
-	ions/read_coords.lo ions/spglib_f08.lo ions/symmetries.lo \
-	ions/vibrations.lo
+am__objects_7 = ions/atom.lo ions/born_charges.lo ions/ions.lo \
+	ions/ion_dynamics.lo ions/read_coords.lo ions/spglib_f08.lo \
+	ions/symmetries.lo ions/vibrations.lo
 am__objects_8 = grid/affine_coordinates.lo \
 	grid/allocate_hardware_aware_f.lo grid/basins.lo \
 	grid/basis_set_abst.lo grid/batch.lo grid/batch_ops.lo \
@@ -265,12 +268,12 @@ am__objects_8 = grid/affine_coordinates.lo \
 	grid/mesh_interpolation.lo grid/mesh_partition.lo \
 	grid/modelmb_1part.lo grid/multigrid.lo grid/nl_operator.lo \
 	grid/operate_f.lo grid/partition.lo grid/partition_transfer.lo \
-	grid/par_vec.lo grid/restart.lo grid/stencil_cube.lo \
-	grid/stencil.lo grid/stencil_star.lo \
+	grid/par_vec.lo grid/regridding.lo grid/restart.lo \
+	grid/stencil_cube.lo grid/stencil.lo grid/stencil_star.lo \
 	grid/stencil_stargeneral.lo grid/stencil_starplus.lo \
 	grid/stencil_variational.lo grid/submesh.lo \
-	grid/symmetrizer.lo grid/transfer_table.lo grid/volume.lo \
-	grid/vtk.lo
+	grid/symmetrizer.lo grid/time_interpolation.lo \
+	grid/transfer_table.lo grid/volume.lo grid/vtk.lo
 am__objects_9 = poisson/photon_mode.lo poisson/photon_mode_mf.lo \
 	poisson/poisson_cg.lo poisson/poisson_corrections.lo \
 	poisson/poisson_cutoff.lo poisson/poisson.lo \
@@ -289,8 +292,7 @@ am__objects_10 = states/density.lo states/excited_states.lo \
 	states/states_elec_restart.lo states/states_mxll.lo \
 	states/states_mxll_restart.lo states/wfs_elec.lo
 am__objects_11 = hamiltonian/absorbing_boundaries.lo \
-	hamiltonian/berry.lo hamiltonian/born_charges.lo \
-	hamiltonian/energy.lo hamiltonian/epot.lo \
+	hamiltonian/berry.lo hamiltonian/energy.lo hamiltonian/epot.lo \
 	hamiltonian/exchange_operator.lo hamiltonian/xc_functional.lo \
 	hamiltonian/gauge_field.lo hamiltonian/hamiltonian_abst.lo \
 	hamiltonian/hamiltonian_elec_base.lo \
@@ -308,6 +310,7 @@ am__objects_11 = hamiltonian/absorbing_boundaries.lo \
 	hamiltonian/species_pot.lo hamiltonian/vdw_ts.lo \
 	hamiltonian/xc.lo
 am__objects_12 = multisystem/algorithm.lo \
+	multisystem/algorithm_factory.lo \
 	multisystem/convergence_criterion.lo \
 	multisystem/ghost_interaction.lo multisystem/interaction.lo \
 	multisystem/interaction_partner.lo \
@@ -315,20 +318,26 @@ am__objects_12 = multisystem/algorithm.lo \
 	multisystem/interactions_factory_abst.lo \
 	multisystem/multisystem.lo multisystem/multisystem_basic.lo \
 	multisystem/multisystem_debug.lo multisystem/propagator.lo \
+	multisystem/propagator_aetrs.lo \
 	multisystem/propagator_beeman.lo \
+	multisystem/propagator_bomd.lo \
 	multisystem/propagator_exp_mid.lo \
-	multisystem/propagator_static.lo \
+	multisystem/propagator_exp_mid_2step.lo \
+	multisystem/propagator_factory.lo \
+	multisystem/propagator_leapfrog.lo \
+	multisystem/propagator_rk4.lo multisystem/propagator_static.lo \
 	multisystem/propagator_verlet.lo multisystem/quantity.lo \
 	multisystem/system.lo multisystem/system_factory_abst.lo
 am__objects_13 = interactions/coulomb_force.lo \
 	interactions/density_interaction.lo \
 	interactions/external_potential.lo \
+	interactions/field_transfer.lo \
 	interactions/force_interaction.lo interactions/gravity.lo \
 	interactions/ion_electron_local_potential.lo \
 	interactions/interactions_factory.lo \
 	interactions/current_to_mxll_field.lo \
 	interactions/linear_medium_to_em_field.lo \
-	interactions/lorentz_force.lo \
+	interactions/lennard_jones.lo interactions/lorentz_force.lo \
 	interactions/mxll_field_to_medium.lo interactions/nlcc.lo \
 	interactions/potential_interaction.lo \
 	interactions/xc_interaction.lo
@@ -336,23 +345,31 @@ am__objects_14 = classical/charged_particle.lo \
 	classical/classical_particles.lo \
 	classical/propagator_data_classical_particles.lo \
 	classical/classical_particle.lo
-am__objects_15 = output/output.lo output/output_me.lo
+am__objects_15 = output/output.lo output/output_berkeleygw.lo \
+	output/output_me.lo output/output_modelmb.lo \
+	output/output_mxll.lo output/output_linear_medium.lo
 am__objects_16 = electrons/current.lo electrons/dos.lo \
-	electrons/eigen_cg.lo electrons/eigen_rmmdiis.lo \
+	electrons/eigen_cg.lo electrons/chebyshev_filter_bounds.lo \
+	electrons/eigen_chebyshev.lo electrons/eigen_rmmdiis.lo \
 	electrons/eigensolver.lo electrons/elf.lo \
 	electrons/energy_calc.lo electrons/exponential.lo \
 	electrons/forces.lo electrons/kpoints.lo \
 	electrons/linear_solver.lo electrons/magnetic.lo \
 	electrons/matter.lo electrons/partial_charges.lo \
-	electrons/pert.lo electrons/preconditioners.lo \
+	electrons/perturbation.lo electrons/perturbation_electric.lo \
+	electrons/perturbation_ionic.lo \
+	electrons/perturbation_kdotp.lo \
+	electrons/perturbation_magnetic.lo \
+	electrons/perturbation_none.lo electrons/preconditioners.lo \
 	electrons/stress.lo electrons/subspace.lo \
 	electrons/electrons.lo electrons/v_ks.lo \
-	electrons/xc_ks_inversion.lo electrons/xc_oep.lo
+	electrons/xc_ks_inversion.lo electrons/xc_oep.lo \
+	electrons/xc_sic.lo
 am__objects_17 = maxwell/maxwell_boundary_op.lo maxwell/energy_mxll.lo \
-	maxwell/external_densities.lo maxwell/hamiltonian_mxll.lo \
+	maxwell/external_densities.lo maxwell/external_source.lo \
+	maxwell/hamiltonian_mxll.lo maxwell/plane_wave.lo \
 	maxwell/propagator_mxll.lo maxwell/dispersive_medium.lo \
-	maxwell/linear_medium.lo maxwell/maxwell.lo \
-	maxwell/regridding.lo
+	maxwell/linear_medium.lo maxwell/maxwell.lo
 am__objects_18 = dftbplus/dftb.lo
 am__objects_19 = scf/criteria_factory.lo scf/density_criterion.lo \
 	scf/electrons_ground_state.lo scf/eigenval_criterion.lo \
@@ -384,12 +401,13 @@ am__objects_23 = $(am__objects_2) $(am__objects_3) $(am__objects_4) \
 	$(am__objects_17) $(am__objects_18) $(am__objects_19) \
 	$(am__objects_20) $(am__objects_21) $(am__objects_22)
 am__objects_24 = basic/alloc_cache_low.lo basic/cgal_polyhedra_low.lo \
-	basic/cublas.lo basic/cuda_low.lo basic/getopt_f.lo \
-	basic/iihash_low.lo basic/io_binary.lo basic/io_csv.lo \
-	basic/nvtx_low.lo basic/oct_f.lo basic/gdlib_f.lo \
-	basic/recipes.lo basic/signals.lo basic/sihash_low.lo \
-	basic/sort_low.lo basic/sphash_low.lo basic/varia.lo \
-	basic/varinfo_low.lo basic/write_iter_low.lo
+	basic/clblas_low.lo basic/clblast_low.lo basic/cublas.lo \
+	basic/cuda_low.lo basic/getopt_f.lo basic/iihash_low.lo \
+	basic/io_binary.lo basic/io_csv.lo basic/nvtx_low.lo \
+	basic/oct_f.lo basic/gdlib_f.lo basic/recipes.lo \
+	basic/signals.lo basic/sihash_low.lo basic/sort_low.lo \
+	basic/sphash_low.lo basic/varia.lo basic/varinfo_low.lo \
+	basic/write_iter_low.lo
 am__objects_25 = math/checksum.lo math/cufft.lo math/dablas.lo \
 	math/fftw_low.lo math/metis_f.lo math/minimizer_low.lo \
 	math/nfft_f.lo math/oct_gsl_f.lo math/spline_low.lo \
@@ -511,6 +529,7 @@ depcomp = $(SHELL) $(top_srcdir)/build-aux/depcomp
 am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = basic/$(DEPDIR)/alloc_cache_low.Plo \
 	basic/$(DEPDIR)/cgal_polyhedra_low.Plo \
+	basic/$(DEPDIR)/clblas_low.Plo basic/$(DEPDIR)/clblast_low.Plo \
 	basic/$(DEPDIR)/cublas.Plo basic/$(DEPDIR)/cuda_low.Plo \
 	basic/$(DEPDIR)/gdlib_f.Plo basic/$(DEPDIR)/getopt_f.Plo \
 	basic/$(DEPDIR)/iihash_low.Plo basic/$(DEPDIR)/io_binary.Plo \
@@ -665,6 +684,7 @@ CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
 CFLAGS_CLBLAS = @CFLAGS_CLBLAS@
+CFLAGS_CLBLAST = @CFLAGS_CLBLAST@
 CFLAGS_CLFFT = @CFLAGS_CLFFT@
 CFLAGS_CUDA = @CFLAGS_CUDA@
 CFLAGS_FFTW = @CFLAGS_FFTW@
@@ -742,6 +762,7 @@ LIBS_BERKELEYGW = @LIBS_BERKELEYGW@
 LIBS_BLACS = @LIBS_BLACS@
 LIBS_BLAS = @LIBS_BLAS@
 LIBS_CLBLAS = @LIBS_CLBLAS@
+LIBS_CLBLAST = @LIBS_CLBLAST@
 LIBS_CLFFT = @LIBS_CLFFT@
 LIBS_CUDA = @LIBS_CUDA@
 LIBS_DFTBPLUS = @LIBS_DFTBPLUS@
@@ -890,7 +911,7 @@ AM_CXXFLAGS = -I$(top_srcdir)/external_libs/rapidxml
 octopus_LIBS = 
 scalapack_LIBS = @LIBS_ELPA@ @LIBS_SCALAPACK@ @LIBS_BLACS@
 core_LIBS = \
-	@LIBS_FFTW@  @LIBS_LAPACK@ @LIBS_BLAS@                     \
+	@LIBS_FFTW@  @LIBS_LAPACK@ @LIBS_BLAS@ @LIBS_CLBLAST@            \
 	$(top_builddir)/liboct_parser/liboct_parser.la \
 	@GSL_LIBS@ @LIBS_LIBXC@ @FCEXTRALIBS@
 
@@ -942,11 +963,12 @@ noinst_HEADERS = include/global.h include/integer.F90 \
 	basis_set/atomic_orbital_inc.F90 basis_set/loewdin_inc.F90 \
 	basis_set/orbitalbasis_inc.F90 basis_set/orbitalset_inc.F90 \
 	basis_set/orbitalset_utils_inc.F90 math/accel_blas_inc.F90 \
-	math/fft_inc.F90 math/lalg_basic_blas_inc.F90 \
-	math/lalg_adv_lapack_inc.F90 math/math_inc.F90 \
-	math/nfft_inc.F90 math/pnfft_inc.F90 math/sparskit_inc.F90 \
-	math/solvers_inc.F90 math/symm_op_inc.F90 species/anygrid.hpp \
-	species/base.hpp species/element.hpp species/detect_format.hpp \
+	math/fft_inc.F90 math/helmholtz_decomposition_inc.F90 \
+	math/lalg_basic_blas_inc.F90 math/lalg_adv_lapack_inc.F90 \
+	math/math_inc.F90 math/nfft_inc.F90 math/pnfft_inc.F90 \
+	math/sparskit_inc.F90 math/solvers_inc.F90 \
+	math/symm_op_inc.F90 species/anygrid.hpp species/base.hpp \
+	species/element.hpp species/detect_format.hpp \
 	species/ps_pspio_inc.F90 species/psml.hpp species/psp8.hpp \
 	species/qso.hpp species/share_directory.hpp species/set.hpp \
 	species/spline.h species/upf.hpp species/upf1.hpp \
@@ -954,18 +976,19 @@ noinst_HEADERS = include/global.h include/integer.F90 \
 	grid/batch_inc.F90 grid/batch_ops_inc.F90 \
 	grid/boundaries_inc.F90 grid/cube_function_inc.F90 \
 	grid/derivatives_inc.F90 grid/fourier_space_inc.F90 \
-	grid/io_function_inc.F90 grid/mesh_batch_inc.F90 \
-	grid/mesh_function_inc.F90 grid/mesh_inc.F90 \
-	grid/mesh_interpolation_inc.F90 grid/multigrid_inc.F90 \
-	grid/nl_operator_inc.F90 grid/operate_inc.c \
-	grid/partition_transfer_inc.F90 grid/par_vec_inc.F90 \
+	grid/grid_inc.F90 grid/io_function_inc.F90 \
+	grid/mesh_batch_inc.F90 grid/mesh_function_inc.F90 \
+	grid/mesh_inc.F90 grid/mesh_interpolation_inc.F90 \
+	grid/multigrid_inc.F90 grid/nl_operator_inc.F90 \
+	grid/operate_inc.c grid/partition_transfer_inc.F90 \
+	grid/par_vec_inc.F90 grid/regridding_inc.F90 \
 	grid/restart_inc.F90 grid/submesh_inc.F90 \
-	grid/symmetrizer_inc.F90 grid/vtk_inc.F90 \
-	poisson/lazy_8_inc.F90 poisson/poisson_inc.F90 \
-	poisson/poisson_direct_sm_inc.F90 poisson/poisson_init_inc.F90 \
-	poisson/poisson_direct_inc.F90 poisson/poisson_fft_inc.F90 \
-	states/density_inc.F90 states/excited_states_inc.F90 \
-	states/linear_response_inc.F90 \
+	grid/symmetrizer_inc.F90 grid/time_interpolation_inc.F90 \
+	grid/vtk_inc.F90 poisson/lazy_8_inc.F90 \
+	poisson/poisson_inc.F90 poisson/poisson_direct_sm_inc.F90 \
+	poisson/poisson_init_inc.F90 poisson/poisson_direct_inc.F90 \
+	poisson/poisson_fft_inc.F90 states/density_inc.F90 \
+	states/excited_states_inc.F90 states/linear_response_inc.F90 \
 	states/modelmb_density_matrix_inc.F90 \
 	states/modelmb_exchange_syms_inc.F90 states/physics_op_inc.F90 \
 	states/states_elec_calc_inc.F90 states/states_elec_inc.F90 \
@@ -981,14 +1004,20 @@ noinst_HEADERS = include/global.h include/integer.F90 \
 	hamiltonian/xc_fxc_inc.F90 hamiltonian/xc_kxc_inc.F90 \
 	hamiltonian/xc_vxc_inc.F90 output/output_berkeleygw_inc.F90 \
 	output/output_etsf_inc.F90 output/output_h_inc.F90 \
-	output/output_linear_medium_inc.F90 \
 	output/output_linear_response_inc.F90 output/output_me_inc.F90 \
-	output/output_modelmb_inc.F90 output/output_mxll_inc.F90 \
-	output/output_states_inc.F90 electrons/eigensolver_inc.F90 \
-	electrons/eigen_cg_inc.F90 electrons/eigen_evolution_inc.F90 \
-	electrons/eigen_plan_inc.F90 electrons/eigen_rmmdiis_inc.F90 \
-	electrons/energy_calc_inc.F90 electrons/forces_inc.F90 \
-	electrons/linear_solver_inc.F90 electrons/pert_inc.F90 \
+	output/output_modelmb_inc.F90 output/output_states_inc.F90 \
+	electrons/eigensolver_inc.F90 electrons/eigen_cg_inc.F90 \
+	electrons/chebyshev_filter_bounds_inc.F90 \
+	electrons/eigen_chebyshev_inc.F90 \
+	electrons/eigen_evolution_inc.F90 electrons/eigen_plan_inc.F90 \
+	electrons/eigen_rmmdiis_inc.F90 electrons/energy_calc_inc.F90 \
+	electrons/forces_inc.F90 electrons/linear_solver_inc.F90 \
+	electrons/perturbation_inc.F90 \
+	electrons/perturbation_electric_inc.F90 \
+	electrons/perturbation_ionic_inc.F90 \
+	electrons/perturbation_kdotp_inc.F90 \
+	electrons/perturbation_magnetic_inc.F90 \
+	electrons/perturbation_none_inc.F90 \
 	electrons/preconditioners_inc.F90 electrons/subspace_inc.F90 \
 	electrons/xc_kli_inc.F90 electrons/xc_kli_pauli_inc.F90 \
 	electrons/xc_oep_inc.F90 electrons/xc_oep_qed_inc.F90 \
@@ -1028,6 +1057,7 @@ basic_f_srcs = \
 	basic/cgal_polyhedra.F90               \
 	basic/command_line.F90                 \
 	basic/comm.F90                         \
+        basic/clblas.F90                       \
 	basic/cuda.F90                         \
 	basic/debug.F90                        \
 	basic/distributed.F90                  \
@@ -1073,6 +1103,8 @@ basic_f_srcs = \
 basic_c_srcs = \
 	basic/alloc_cache_low.cc               \
 	basic/cgal_polyhedra_low.cc            \
+        basic/clblas_low.c                     \
+        basic/clblast_low.c                    \
 	basic/cublas.cc                        \
 	basic/cuda_low.cc                      \
 	basic/getopt_f.c                       \
@@ -1106,6 +1138,7 @@ basis_set_srcs = $(basis_set_f_srcs)
 # Sources in boxes
 boxes_f_srcs = \
 	boxes/box.F90                     \
+	boxes/box_cgal.F90                \
 	boxes/box_cylinder.F90            \
 	boxes/box_factory.F90             \
 	boxes/box_image.F90               \
@@ -1130,6 +1163,8 @@ math_f_srcs = \
 	math/fft.F90                          \
 	math/fftw.F90                         \
 	math/gauss_legendre.F90               \
+	math/helmholtz_decomposition.F90      \
+	math/helmholtz_decomposition_test.F90 \
 	math/lalg_adv.F90                     \
 	math/lalg_basic.F90                   \
 	math/lapack.F90                       \
@@ -1203,6 +1238,7 @@ species_srcs = $(species_f_srcs) $(species_c_srcs)
 # Sources in ions
 ions_f_srcs = \
 	ions/atom.F90                         \
+	ions/born_charges.F90                 \
 	ions/ions.F90                         \
 	ions/ion_dynamics.F90                 \
 	ions/read_coords.F90                  \
@@ -1253,6 +1289,7 @@ grid_f_srcs = \
 	grid/partition.F90                    \
 	grid/partition_transfer.F90           \
 	grid/par_vec.F90                      \
+        grid/regridding.F90                   \
 	grid/restart.F90                      \
 	grid/stencil_cube.F90                 \
 	grid/stencil.F90                      \
@@ -1262,6 +1299,7 @@ grid_f_srcs = \
 	grid/stencil_variational.F90          \
 	grid/submesh.F90                      \
 	grid/symmetrizer.F90                  \
+	grid/time_interpolation.F90           \
 	grid/transfer_table.F90               \
 	grid/volume.F90                       \
 	grid/vtk.F90
@@ -1323,7 +1361,6 @@ states_srcs = $(states_f_srcs)
 hamiltonian_f_srcs = \
 	hamiltonian/absorbing_boundaries.F90         \
 	hamiltonian/berry.F90                        \
-	hamiltonian/born_charges.F90                 \
 	hamiltonian/energy.F90                       \
 	hamiltonian/epot.F90                         \
         hamiltonian/exchange_operator.F90            \
@@ -1364,23 +1401,30 @@ hamiltonian_srcs = $(hamiltonian_f_srcs) $(hamiltonian_c_srcs)
 
 # Sources in multisystem
 multisystem_f_srcs = \
-	multisystem/algorithm.F90                    \
-        multisystem/convergence_criterion.F90        \
-	multisystem/ghost_interaction.F90            \
-	multisystem/interaction.F90                  \
-	multisystem/interaction_partner.F90          \
-	multisystem/interaction_with_partner.F90     \
-	multisystem/interactions_factory_abst.F90    \
-	multisystem/multisystem.F90                  \
-	multisystem/multisystem_basic.F90            \
-	multisystem/multisystem_debug.F90            \
-	multisystem/propagator.F90                   \
-	multisystem/propagator_beeman.F90            \
-	multisystem/propagator_exp_mid.F90           \
-	multisystem/propagator_static.F90            \
-	multisystem/propagator_verlet.F90            \
-	multisystem/quantity.F90                     \
-	multisystem/system.F90                       \
+	multisystem/algorithm.F90                      \
+	multisystem/algorithm_factory.F90              \
+        multisystem/convergence_criterion.F90          \
+	multisystem/ghost_interaction.F90              \
+	multisystem/interaction.F90                    \
+	multisystem/interaction_partner.F90            \
+	multisystem/interaction_with_partner.F90       \
+	multisystem/interactions_factory_abst.F90      \
+	multisystem/multisystem.F90                    \
+	multisystem/multisystem_basic.F90              \
+	multisystem/multisystem_debug.F90              \
+	multisystem/propagator.F90                     \
+	multisystem/propagator_aetrs.F90               \
+	multisystem/propagator_beeman.F90              \
+	multisystem/propagator_bomd.F90                \
+	multisystem/propagator_exp_mid.F90             \
+	multisystem/propagator_exp_mid_2step.F90       \
+	multisystem/propagator_factory.F90             \
+	multisystem/propagator_leapfrog.F90            \
+	multisystem/propagator_rk4.F90                 \
+	multisystem/propagator_static.F90              \
+	multisystem/propagator_verlet.F90              \
+	multisystem/quantity.F90                       \
+	multisystem/system.F90                         \
 	multisystem/system_factory_abst.F90
 
 multisystem_srcs = $(multisystem_f_srcs)
@@ -1390,12 +1434,14 @@ interactions_f_srcs = \
 	interactions/coulomb_force.F90                \
         interactions/density_interaction.F90          \
         interactions/external_potential.F90           \
+	interactions/field_transfer.F90               \
 	interactions/force_interaction.F90            \
 	interactions/gravity.F90                      \
         interactions/ion_electron_local_potential.F90 \
 	interactions/interactions_factory.F90         \
 	interactions/current_to_mxll_field.F90        \
 	interactions/linear_medium_to_em_field.F90    \
+	interactions/lennard_jones.F90                \
 	interactions/lorentz_force.F90                \
 	interactions/mxll_field_to_medium.F90         \
         interactions/nlcc.F90                         \
@@ -1416,7 +1462,11 @@ classical_srcs = $(classical_f_srcs)
 # Sources in output
 output_f_srcs = \
 	output/output.F90                       \
-	output/output_me.F90
+        output/output_berkeleygw.F90            \
+	output/output_me.F90                    \
+        output/output_modelmb.F90               \
+	output/output_mxll.F90                  \
+	output/output_linear_medium.F90
 
 output_srcs = $(output_f_srcs)
 
@@ -1425,6 +1475,8 @@ electrons_f_srcs = \
 	electrons/current.F90                      \
 	electrons/dos.F90                          \
 	electrons/eigen_cg.F90                     \
+	electrons/chebyshev_filter_bounds.F90      \
+	electrons/eigen_chebyshev.F90              \
 	electrons/eigen_rmmdiis.F90                \
 	electrons/eigensolver.F90                  \
 	electrons/elf.F90                          \
@@ -1436,14 +1488,20 @@ electrons_f_srcs = \
 	electrons/magnetic.F90                     \
 	electrons/matter.F90                       \
 	electrons/partial_charges.F90              \
-	electrons/pert.F90                         \
+	electrons/perturbation.F90                 \
+	electrons/perturbation_electric.F90        \
+        electrons/perturbation_ionic.F90           \
+	electrons/perturbation_kdotp.F90           \
+	electrons/perturbation_magnetic.F90        \
+	electrons/perturbation_none.F90            \
 	electrons/preconditioners.F90              \
 	electrons/stress.F90                       \
 	electrons/subspace.F90                     \
 	electrons/electrons.F90                    \
 	electrons/v_ks.F90                         \
 	electrons/xc_ks_inversion.F90              \
-	electrons/xc_oep.F90
+	electrons/xc_oep.F90                       \
+	electrons/xc_sic.F90
 
 electrons_srcs = $(electrons_f_srcs)
 
@@ -1452,12 +1510,13 @@ maxwell_f_srcs = \
 	maxwell/maxwell_boundary_op.F90          \
 	maxwell/energy_mxll.F90                  \
         maxwell/external_densities.F90           \
+	maxwell/external_source.F90              \
 	maxwell/hamiltonian_mxll.F90             \
+	maxwell/plane_wave.F90                   \
 	maxwell/propagator_mxll.F90              \
 	maxwell/dispersive_medium.F90            \
         maxwell/linear_medium.F90                \
-	maxwell/maxwell.F90                      \
-        maxwell/regridding.F90
+	maxwell/maxwell.F90
 
 maxwell_srcs = $(maxwell_f_srcs)
 
@@ -1807,6 +1866,7 @@ basic/cgal_polyhedra.lo: basic/$(am__dirstamp) \
 basic/command_line.lo: basic/$(am__dirstamp) \
 	basic/$(DEPDIR)/$(am__dirstamp)
 basic/comm.lo: basic/$(am__dirstamp) basic/$(DEPDIR)/$(am__dirstamp)
+basic/clblas.lo: basic/$(am__dirstamp) basic/$(DEPDIR)/$(am__dirstamp)
 basic/cuda.lo: basic/$(am__dirstamp) basic/$(DEPDIR)/$(am__dirstamp)
 basic/debug.lo: basic/$(am__dirstamp) basic/$(DEPDIR)/$(am__dirstamp)
 basic/distributed.lo: basic/$(am__dirstamp) \
@@ -1890,6 +1950,8 @@ boxes/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) boxes/$(DEPDIR)
 	@: > boxes/$(DEPDIR)/$(am__dirstamp)
 boxes/box.lo: boxes/$(am__dirstamp) boxes/$(DEPDIR)/$(am__dirstamp)
+boxes/box_cgal.lo: boxes/$(am__dirstamp) \
+	boxes/$(DEPDIR)/$(am__dirstamp)
 boxes/box_cylinder.lo: boxes/$(am__dirstamp) \
 	boxes/$(DEPDIR)/$(am__dirstamp)
 boxes/box_factory.lo: boxes/$(am__dirstamp) \
@@ -1930,6 +1992,10 @@ math/compressed_sensing.lo: math/$(am__dirstamp) \
 math/fft.lo: math/$(am__dirstamp) math/$(DEPDIR)/$(am__dirstamp)
 math/fftw.lo: math/$(am__dirstamp) math/$(DEPDIR)/$(am__dirstamp)
 math/gauss_legendre.lo: math/$(am__dirstamp) \
+	math/$(DEPDIR)/$(am__dirstamp)
+math/helmholtz_decomposition.lo: math/$(am__dirstamp) \
+	math/$(DEPDIR)/$(am__dirstamp)
+math/helmholtz_decomposition_test.lo: math/$(am__dirstamp) \
 	math/$(DEPDIR)/$(am__dirstamp)
 math/lalg_adv.lo: math/$(am__dirstamp) math/$(DEPDIR)/$(am__dirstamp)
 math/lalg_basic.lo: math/$(am__dirstamp) \
@@ -2011,6 +2077,8 @@ ions/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) ions/$(DEPDIR)
 	@: > ions/$(DEPDIR)/$(am__dirstamp)
 ions/atom.lo: ions/$(am__dirstamp) ions/$(DEPDIR)/$(am__dirstamp)
+ions/born_charges.lo: ions/$(am__dirstamp) \
+	ions/$(DEPDIR)/$(am__dirstamp)
 ions/ions.lo: ions/$(am__dirstamp) ions/$(DEPDIR)/$(am__dirstamp)
 ions/ion_dynamics.lo: ions/$(am__dirstamp) \
 	ions/$(DEPDIR)/$(am__dirstamp)
@@ -2085,6 +2153,8 @@ grid/partition.lo: grid/$(am__dirstamp) grid/$(DEPDIR)/$(am__dirstamp)
 grid/partition_transfer.lo: grid/$(am__dirstamp) \
 	grid/$(DEPDIR)/$(am__dirstamp)
 grid/par_vec.lo: grid/$(am__dirstamp) grid/$(DEPDIR)/$(am__dirstamp)
+grid/regridding.lo: grid/$(am__dirstamp) \
+	grid/$(DEPDIR)/$(am__dirstamp)
 grid/restart.lo: grid/$(am__dirstamp) grid/$(DEPDIR)/$(am__dirstamp)
 grid/stencil_cube.lo: grid/$(am__dirstamp) \
 	grid/$(DEPDIR)/$(am__dirstamp)
@@ -2099,6 +2169,8 @@ grid/stencil_variational.lo: grid/$(am__dirstamp) \
 	grid/$(DEPDIR)/$(am__dirstamp)
 grid/submesh.lo: grid/$(am__dirstamp) grid/$(DEPDIR)/$(am__dirstamp)
 grid/symmetrizer.lo: grid/$(am__dirstamp) \
+	grid/$(DEPDIR)/$(am__dirstamp)
+grid/time_interpolation.lo: grid/$(am__dirstamp) \
 	grid/$(DEPDIR)/$(am__dirstamp)
 grid/transfer_table.lo: grid/$(am__dirstamp) \
 	grid/$(DEPDIR)/$(am__dirstamp)
@@ -2192,8 +2264,6 @@ hamiltonian/absorbing_boundaries.lo: hamiltonian/$(am__dirstamp) \
 	hamiltonian/$(DEPDIR)/$(am__dirstamp)
 hamiltonian/berry.lo: hamiltonian/$(am__dirstamp) \
 	hamiltonian/$(DEPDIR)/$(am__dirstamp)
-hamiltonian/born_charges.lo: hamiltonian/$(am__dirstamp) \
-	hamiltonian/$(DEPDIR)/$(am__dirstamp)
 hamiltonian/energy.lo: hamiltonian/$(am__dirstamp) \
 	hamiltonian/$(DEPDIR)/$(am__dirstamp)
 hamiltonian/epot.lo: hamiltonian/$(am__dirstamp) \
@@ -2266,6 +2336,8 @@ multisystem/$(DEPDIR)/$(am__dirstamp):
 	@: > multisystem/$(DEPDIR)/$(am__dirstamp)
 multisystem/algorithm.lo: multisystem/$(am__dirstamp) \
 	multisystem/$(DEPDIR)/$(am__dirstamp)
+multisystem/algorithm_factory.lo: multisystem/$(am__dirstamp) \
+	multisystem/$(DEPDIR)/$(am__dirstamp)
 multisystem/convergence_criterion.lo: multisystem/$(am__dirstamp) \
 	multisystem/$(DEPDIR)/$(am__dirstamp)
 multisystem/ghost_interaction.lo: multisystem/$(am__dirstamp) \
@@ -2286,9 +2358,21 @@ multisystem/multisystem_debug.lo: multisystem/$(am__dirstamp) \
 	multisystem/$(DEPDIR)/$(am__dirstamp)
 multisystem/propagator.lo: multisystem/$(am__dirstamp) \
 	multisystem/$(DEPDIR)/$(am__dirstamp)
+multisystem/propagator_aetrs.lo: multisystem/$(am__dirstamp) \
+	multisystem/$(DEPDIR)/$(am__dirstamp)
 multisystem/propagator_beeman.lo: multisystem/$(am__dirstamp) \
 	multisystem/$(DEPDIR)/$(am__dirstamp)
+multisystem/propagator_bomd.lo: multisystem/$(am__dirstamp) \
+	multisystem/$(DEPDIR)/$(am__dirstamp)
 multisystem/propagator_exp_mid.lo: multisystem/$(am__dirstamp) \
+	multisystem/$(DEPDIR)/$(am__dirstamp)
+multisystem/propagator_exp_mid_2step.lo: multisystem/$(am__dirstamp) \
+	multisystem/$(DEPDIR)/$(am__dirstamp)
+multisystem/propagator_factory.lo: multisystem/$(am__dirstamp) \
+	multisystem/$(DEPDIR)/$(am__dirstamp)
+multisystem/propagator_leapfrog.lo: multisystem/$(am__dirstamp) \
+	multisystem/$(DEPDIR)/$(am__dirstamp)
+multisystem/propagator_rk4.lo: multisystem/$(am__dirstamp) \
 	multisystem/$(DEPDIR)/$(am__dirstamp)
 multisystem/propagator_static.lo: multisystem/$(am__dirstamp) \
 	multisystem/$(DEPDIR)/$(am__dirstamp)
@@ -2312,6 +2396,8 @@ interactions/density_interaction.lo: interactions/$(am__dirstamp) \
 	interactions/$(DEPDIR)/$(am__dirstamp)
 interactions/external_potential.lo: interactions/$(am__dirstamp) \
 	interactions/$(DEPDIR)/$(am__dirstamp)
+interactions/field_transfer.lo: interactions/$(am__dirstamp) \
+	interactions/$(DEPDIR)/$(am__dirstamp)
 interactions/force_interaction.lo: interactions/$(am__dirstamp) \
 	interactions/$(DEPDIR)/$(am__dirstamp)
 interactions/gravity.lo: interactions/$(am__dirstamp) \
@@ -2325,6 +2411,8 @@ interactions/current_to_mxll_field.lo: interactions/$(am__dirstamp) \
 	interactions/$(DEPDIR)/$(am__dirstamp)
 interactions/linear_medium_to_em_field.lo:  \
 	interactions/$(am__dirstamp) \
+	interactions/$(DEPDIR)/$(am__dirstamp)
+interactions/lennard_jones.lo: interactions/$(am__dirstamp) \
 	interactions/$(DEPDIR)/$(am__dirstamp)
 interactions/lorentz_force.lo: interactions/$(am__dirstamp) \
 	interactions/$(DEPDIR)/$(am__dirstamp)
@@ -2358,7 +2446,15 @@ output/$(DEPDIR)/$(am__dirstamp):
 	@: > output/$(DEPDIR)/$(am__dirstamp)
 output/output.lo: output/$(am__dirstamp) \
 	output/$(DEPDIR)/$(am__dirstamp)
+output/output_berkeleygw.lo: output/$(am__dirstamp) \
+	output/$(DEPDIR)/$(am__dirstamp)
 output/output_me.lo: output/$(am__dirstamp) \
+	output/$(DEPDIR)/$(am__dirstamp)
+output/output_modelmb.lo: output/$(am__dirstamp) \
+	output/$(DEPDIR)/$(am__dirstamp)
+output/output_mxll.lo: output/$(am__dirstamp) \
+	output/$(DEPDIR)/$(am__dirstamp)
+output/output_linear_medium.lo: output/$(am__dirstamp) \
 	output/$(DEPDIR)/$(am__dirstamp)
 electrons/$(am__dirstamp):
 	@$(MKDIR_P) electrons
@@ -2371,6 +2467,10 @@ electrons/current.lo: electrons/$(am__dirstamp) \
 electrons/dos.lo: electrons/$(am__dirstamp) \
 	electrons/$(DEPDIR)/$(am__dirstamp)
 electrons/eigen_cg.lo: electrons/$(am__dirstamp) \
+	electrons/$(DEPDIR)/$(am__dirstamp)
+electrons/chebyshev_filter_bounds.lo: electrons/$(am__dirstamp) \
+	electrons/$(DEPDIR)/$(am__dirstamp)
+electrons/eigen_chebyshev.lo: electrons/$(am__dirstamp) \
 	electrons/$(DEPDIR)/$(am__dirstamp)
 electrons/eigen_rmmdiis.lo: electrons/$(am__dirstamp) \
 	electrons/$(DEPDIR)/$(am__dirstamp)
@@ -2394,7 +2494,17 @@ electrons/matter.lo: electrons/$(am__dirstamp) \
 	electrons/$(DEPDIR)/$(am__dirstamp)
 electrons/partial_charges.lo: electrons/$(am__dirstamp) \
 	electrons/$(DEPDIR)/$(am__dirstamp)
-electrons/pert.lo: electrons/$(am__dirstamp) \
+electrons/perturbation.lo: electrons/$(am__dirstamp) \
+	electrons/$(DEPDIR)/$(am__dirstamp)
+electrons/perturbation_electric.lo: electrons/$(am__dirstamp) \
+	electrons/$(DEPDIR)/$(am__dirstamp)
+electrons/perturbation_ionic.lo: electrons/$(am__dirstamp) \
+	electrons/$(DEPDIR)/$(am__dirstamp)
+electrons/perturbation_kdotp.lo: electrons/$(am__dirstamp) \
+	electrons/$(DEPDIR)/$(am__dirstamp)
+electrons/perturbation_magnetic.lo: electrons/$(am__dirstamp) \
+	electrons/$(DEPDIR)/$(am__dirstamp)
+electrons/perturbation_none.lo: electrons/$(am__dirstamp) \
 	electrons/$(DEPDIR)/$(am__dirstamp)
 electrons/preconditioners.lo: electrons/$(am__dirstamp) \
 	electrons/$(DEPDIR)/$(am__dirstamp)
@@ -2410,6 +2520,8 @@ electrons/xc_ks_inversion.lo: electrons/$(am__dirstamp) \
 	electrons/$(DEPDIR)/$(am__dirstamp)
 electrons/xc_oep.lo: electrons/$(am__dirstamp) \
 	electrons/$(DEPDIR)/$(am__dirstamp)
+electrons/xc_sic.lo: electrons/$(am__dirstamp) \
+	electrons/$(DEPDIR)/$(am__dirstamp)
 maxwell/$(am__dirstamp):
 	@$(MKDIR_P) maxwell
 	@: > maxwell/$(am__dirstamp)
@@ -2422,7 +2534,11 @@ maxwell/energy_mxll.lo: maxwell/$(am__dirstamp) \
 	maxwell/$(DEPDIR)/$(am__dirstamp)
 maxwell/external_densities.lo: maxwell/$(am__dirstamp) \
 	maxwell/$(DEPDIR)/$(am__dirstamp)
+maxwell/external_source.lo: maxwell/$(am__dirstamp) \
+	maxwell/$(DEPDIR)/$(am__dirstamp)
 maxwell/hamiltonian_mxll.lo: maxwell/$(am__dirstamp) \
+	maxwell/$(DEPDIR)/$(am__dirstamp)
+maxwell/plane_wave.lo: maxwell/$(am__dirstamp) \
 	maxwell/$(DEPDIR)/$(am__dirstamp)
 maxwell/propagator_mxll.lo: maxwell/$(am__dirstamp) \
 	maxwell/$(DEPDIR)/$(am__dirstamp)
@@ -2431,8 +2547,6 @@ maxwell/dispersive_medium.lo: maxwell/$(am__dirstamp) \
 maxwell/linear_medium.lo: maxwell/$(am__dirstamp) \
 	maxwell/$(DEPDIR)/$(am__dirstamp)
 maxwell/maxwell.lo: maxwell/$(am__dirstamp) \
-	maxwell/$(DEPDIR)/$(am__dirstamp)
-maxwell/regridding.lo: maxwell/$(am__dirstamp) \
 	maxwell/$(DEPDIR)/$(am__dirstamp)
 dftbplus/$(am__dirstamp):
 	@$(MKDIR_P) dftbplus
@@ -2540,6 +2654,10 @@ sternheimer/vdw.lo: sternheimer/$(am__dirstamp) \
 basic/alloc_cache_low.lo: basic/$(am__dirstamp) \
 	basic/$(DEPDIR)/$(am__dirstamp)
 basic/cgal_polyhedra_low.lo: basic/$(am__dirstamp) \
+	basic/$(DEPDIR)/$(am__dirstamp)
+basic/clblas_low.lo: basic/$(am__dirstamp) \
+	basic/$(DEPDIR)/$(am__dirstamp)
+basic/clblast_low.lo: basic/$(am__dirstamp) \
 	basic/$(DEPDIR)/$(am__dirstamp)
 basic/cublas.lo: basic/$(am__dirstamp) basic/$(DEPDIR)/$(am__dirstamp)
 basic/cuda_low.lo: basic/$(am__dirstamp) \
@@ -2788,6 +2906,8 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@basic/$(DEPDIR)/alloc_cache_low.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@basic/$(DEPDIR)/cgal_polyhedra_low.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@basic/$(DEPDIR)/clblas_low.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@basic/$(DEPDIR)/clblast_low.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@basic/$(DEPDIR)/cublas.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@basic/$(DEPDIR)/cuda_low.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@basic/$(DEPDIR)/gdlib_f.Plo@am__quote@ # am--include-marker
@@ -3100,6 +3220,8 @@ clean-am: clean-binPROGRAMS clean-generic clean-libLTLIBRARIES \
 distclean: distclean-am
 		-rm -f basic/$(DEPDIR)/alloc_cache_low.Plo
 	-rm -f basic/$(DEPDIR)/cgal_polyhedra_low.Plo
+	-rm -f basic/$(DEPDIR)/clblas_low.Plo
+	-rm -f basic/$(DEPDIR)/clblast_low.Plo
 	-rm -f basic/$(DEPDIR)/cublas.Plo
 	-rm -f basic/$(DEPDIR)/cuda_low.Plo
 	-rm -f basic/$(DEPDIR)/gdlib_f.Plo
@@ -3185,6 +3307,8 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 		-rm -f basic/$(DEPDIR)/alloc_cache_low.Plo
 	-rm -f basic/$(DEPDIR)/cgal_polyhedra_low.Plo
+	-rm -f basic/$(DEPDIR)/clblas_low.Plo
+	-rm -f basic/$(DEPDIR)/clblast_low.Plo
 	-rm -f basic/$(DEPDIR)/cublas.Plo
 	-rm -f basic/$(DEPDIR)/cuda_low.Plo
 	-rm -f basic/$(DEPDIR)/gdlib_f.Plo
@@ -3267,14 +3391,14 @@ uninstall-am: uninstall-binPROGRAMS uninstall-libLTLIBRARIES
 # an object file and delete the intermediate file.
 .F90.o:
 	$(cpp_verbose)@FCCPP@ @CPPFLAGS@ $(AM_CPPFLAGS) -I. $< | \
-	  $(top_srcdir)/build/preprocess.pl - \
+	  $(top_srcdir)/scripts/preprocess.pl - \
 	  "@DEBUG@" "@F90_ACCEPTS_LINE_NUMBERS@" > $*_oct.f90
 	  $(fc_verbose)@FC@ $(FCFLAGS) $(FCFLAGS_MODS) -c @FCFLAGS_f90@ -o $@ $*_oct.f90
 	@rm -f $*_oct.f90
 
 .F90.lo:
 	$(cpp_verbose)@FCCPP@ @CPPFLAGS@ $(AM_CPPFLAGS) -I. $< | \
-	  $(top_srcdir)/build/preprocess.pl - \
+	  $(top_srcdir)/scripts/preprocess.pl - \
 	  "@DEBUG@" "@F90_ACCEPTS_LINE_NUMBERS@" > $*_oct.f90
 	$(fc_verbose)$(LIBTOOL) $(AM_V_lt) --tag=FC $(AM_LIBTOOLFLAGS) \
 	  $(LIBTOOLFLAGS) --mode=compile \
@@ -3286,7 +3410,7 @@ uninstall-am: uninstall-binPROGRAMS uninstall-libLTLIBRARIES
 # the .F90.o rule.
 .F90_oct.f90:
 	$(cpp_verbose)@FCCPP@ @CPPFLAGS@ $(AM_CPPFLAGS) -I. $< | \
-	  $(top_srcdir)/build/preprocess.pl - \
+	  $(top_srcdir)/scripts/preprocess.pl - \
 	  "@DEBUG@" "@F90_ACCEPTS_LINE_NUMBERS@" > $*_oct.f90
 
 # Local Variables:
@@ -3302,10 +3426,10 @@ include/config_F90.h: $(top_builddir)/config.h
 basic/global.lo: include/config_F90.h
 
 include/options.h: $(all_f_srcs) $(octopus_f_srcs) $(utils_f_srcs) $(noinst_HEADERS)
-	$(top_srcdir)/build/mk_varinfo.pl -s $(top_srcdir) -b $(top_builddir)
+	$(top_srcdir)/scripts/mk_varinfo.pl -s $(top_srcdir) -b $(top_builddir)
 
 include/defaults.h: $(all_f_srcs) $(octopus_f_srcs) $(utils_f_srcs) $(noinst_HEADERS)
-	$(top_srcdir)/build/mk_varinfo.pl -s $(top_srcdir) -b $(top_builddir)
+	$(top_srcdir)/scripts/mk_varinfo.pl -s $(top_srcdir) -b $(top_builddir)
 
 # debug files from MacOS gcc with -g
 clean-local: clean-fdep

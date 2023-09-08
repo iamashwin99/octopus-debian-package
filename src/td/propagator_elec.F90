@@ -53,6 +53,7 @@ module propagator_elec_oct_m
   use sparskit_oct_m
   use space_oct_m
   use states_elec_oct_m
+  use stress_oct_m
   use td_write_oct_m
   use v_ks_oct_m
   use varinfo_oct_m
@@ -241,12 +242,12 @@ contains
     case (PROP_EXPONENTIAL_MIDPOINT)
     case (PROP_CRANK_NICOLSON)
       ! set up pointer for zmf_dotu_aux, zmf_nrm2_aux
-      call mesh_init_mesh_aux(gr%mesh)
+      call mesh_init_mesh_aux(gr)
     case (PROP_RUNGE_KUTTA4)
       ! set up pointer for zmf_dotu_aux, zmf_nrm2_aux
-      call mesh_init_mesh_aux(gr%mesh)
+      call mesh_init_mesh_aux(gr)
       sp_distdot_mode = 3
-      tr%tdsk_size = 2 * st%d%dim * gr%mesh%np * (st%st_end - st%st_start + 1) * (st%d%kpt%end - st%d%kpt%start + 1)
+      tr%tdsk_size = 2 * st%d%dim * gr%np * (st%st_end - st%st_start + 1) * (st%d%kpt%end - st%d%kpt%start + 1)
       call sparskit_solver_init(namespace, tr%tdsk_size, tr%tdsk, .true.)
 
 #ifndef HAVE_SPARSKIT
@@ -260,9 +261,9 @@ contains
     case (PROP_RUNGE_KUTTA2)
 
       ! set up pointer for zmf_dotu_aux, zmf_nrm2_aux
-      call mesh_init_mesh_aux(gr%mesh)
+      call mesh_init_mesh_aux(gr)
       sp_distdot_mode = 2
-      tr%tdsk_size = st%d%dim * gr%mesh%np * (st%st_end - st%st_start + 1) * (st%d%kpt%end - st%d%kpt%start + 1)
+      tr%tdsk_size = st%d%dim * gr%np * (st%st_end - st%st_start + 1) * (st%d%kpt%end - st%d%kpt%start + 1)
       call sparskit_solver_init(namespace, tr%tdsk_size, tr%tdsk, .true.)
 
 #ifndef HAVE_SPARSKIT
@@ -275,10 +276,10 @@ contains
       call messages_experimental("Runge-Kutta 2 propagator", namespace=namespace)
     case (PROP_CRANK_NICOLSON_SPARSKIT)
       ! set up pointer for zmf_dotu_aux
-      call mesh_init_mesh_aux(gr%mesh)
+      call mesh_init_mesh_aux(gr)
       sp_distdot_mode = 1
-      tr%tdsk_size = st%d%dim*gr%mesh%np
-      call sparskit_solver_init(namespace, st%d%dim*gr%mesh%np, tr%tdsk, .true.)
+      tr%tdsk_size = st%d%dim*gr%np
+      call sparskit_solver_init(namespace, st%d%dim*gr%np, tr%tdsk, .true.)
 
 #ifndef HAVE_SPARSKIT
       message(1) = 'Octopus was not compiled with support for the SPARSKIT library. This'
@@ -292,7 +293,7 @@ contains
         message(1) = "Magnus propagator with MGGA"
         call messages_fatal(1, namespace=namespace)
       end if
-      SAFE_ALLOCATE(tr%vmagnus(1:gr%mesh%np, 1:st%d%nspin, 1:2))
+      SAFE_ALLOCATE(tr%vmagnus(1:gr%np, 1:st%d%nspin, 1:2))
     case (PROP_QOCT_TDDFT_PROPAGATOR)
       call messages_experimental("QOCT+TDDFT propagator", namespace=namespace)
     case (PROP_EXPLICIT_RUNGE_KUTTA4)
@@ -322,9 +323,9 @@ contains
 
     select case (tr%method)
     case (PROP_CFMAGNUS4)
-      call potential_interpolation_init(tr%vksold, gr%mesh%np, st%d%nspin, family_is_mgga_with_exc, order = 4)
+      call potential_interpolation_init(tr%vksold, gr%np, st%d%nspin, family_is_mgga_with_exc, order = 4)
     case default
-      call potential_interpolation_init(tr%vksold, gr%mesh%np, st%d%nspin, family_is_mgga_with_exc)
+      call potential_interpolation_init(tr%vksold, gr%np, st%d%nspin, family_is_mgga_with_exc)
     end select
 
     call exponential_init(tr%te, namespace) ! initialize propagator
@@ -445,13 +446,7 @@ contains
 
     PUSH_SUB(propagator_elec_run_zero_iter)
 
-    if (family_is_mgga_with_exc(hm%xc)) then
-      call potential_interpolation_run_zero_iter(tr%vksold, gr%mesh%np, hm%d%nspin, &
-        hm%vhxc, vtau = hm%vtau)
-    else
-      call potential_interpolation_run_zero_iter(tr%vksold, gr%mesh%np, hm%d%nspin, &
-        hm%vhxc)
-    end if
+    call potential_interpolation_run_zero_iter(tr%vksold, gr%np, hm%d%nspin, hm%vhxc, vtau=hm%vtau)
 
     POP_SUB(propagator_elec_run_zero_iter)
   end subroutine propagator_elec_run_zero_iter
@@ -461,7 +456,7 @@ contains
   !> Propagates st from time - dt to t.
   !! If dt<0, it propagates *backwards* from t+|dt| to t
   ! ---------------------------------------------------------
-  subroutine propagator_elec_dt(ks, namespace, space, hm, gr, st, tr, time, dt, ionic_scale, nt, &
+  subroutine propagator_elec_dt(ks, namespace, space, hm, gr, st, tr, time, dt, nt, &
     ions_dyn, ions, ext_partners, outp, write_handler, scsteps, update_energy, qcchi)
     type(v_ks_t),                        target, intent(inout) :: ks
     type(namespace_t),                           intent(in)    :: namespace
@@ -472,7 +467,6 @@ contains
     type(propagator_base_t),             target, intent(inout) :: tr
     FLOAT,                                       intent(in)    :: time
     FLOAT,                                       intent(in)    :: dt
-    FLOAT,                                       intent(in)    :: ionic_scale
     integer,                                     intent(in)    :: nt
     type(ion_dynamics_t),                        intent(inout) :: ions_dyn
     type(ions_t),                                intent(inout) :: ions
@@ -483,50 +477,42 @@ contains
     logical,                   optional,         intent(in)    :: update_energy
     type(opt_control_state_t), optional, target, intent(inout) :: qcchi
 
-    logical :: generate, update_energy_, move_ions
     type(gauge_field_t), pointer :: gfield
+    logical :: generate, update_energy_
     type(profile_t), save :: prof
 
     call profiling_in(prof, "TD_PROPAGATOR")
     PUSH_SUB(propagator_elec_dt)
 
-    move_ions = ion_dynamics_ions_move(ions_dyn)
-
     update_energy_ = optional_default(update_energy, .true.)
 
-    if (family_is_mgga_with_exc(hm%xc)) then
-      call potential_interpolation_new(tr%vksold, gr%mesh%np, st%d%nspin, time, dt, &
-        hm%vhxc, vtau = hm%vtau)
-    else
-      call potential_interpolation_new(tr%vksold, gr%mesh%np, st%d%nspin, time, dt, &
-        hm%vhxc)
-    end if
+    call potential_interpolation_new(tr%vksold, gr%np, st%d%nspin, time, dt, hm%vhxc, vtau=hm%vtau)
 
     if (present(scsteps)) scsteps = 1
 
     select case (tr%method)
     case (PROP_ETRS)
       if (self_consistent_step()) then
-        call td_etrs_sc(ks, namespace, space, hm, ext_partners, gr, st, tr, time, dt, ionic_scale, &
-          ions_dyn, ions, move_ions, tr%scf_threshold, scsteps)
+        call td_etrs_sc(ks, namespace, space, hm, ext_partners, gr, st, tr, time, dt, &
+          ions_dyn, ions, tr%scf_threshold, scsteps)
       else
-        call td_etrs(ks, namespace, space, hm, ext_partners, gr, st, tr, time, dt, ionic_scale, &
-          ions_dyn, ions, move_ions)
+        call td_etrs(ks, namespace, space, hm, ext_partners, gr, st, tr, time, dt, &
+          ions_dyn, ions)
       end if
     case (PROP_AETRS)
-      call td_aetrs(namespace, space, hm, gr, st, tr, time, dt, ionic_scale, ions_dyn, ions, ext_partners, move_ions)
+      call td_aetrs(namespace, space, hm, gr, st, tr, time, dt, ions_dyn, ions, ext_partners)
     case (PROP_CAETRS)
-      call td_caetrs(ks, namespace, space, hm, ext_partners, gr, st, tr, time, dt, ionic_scale, ions_dyn, ions, move_ions)
+      call td_caetrs(ks, namespace, space, hm, ext_partners, gr, st, tr, time, dt, ions_dyn, ions)
     case (PROP_EXPONENTIAL_MIDPOINT)
-      call exponential_midpoint(hm, namespace, space, gr, st, tr, time, dt, ionic_scale, ions_dyn, ions, ext_partners, move_ions)
+      call exponential_midpoint(hm, namespace, space, gr, st, tr, time, dt, ions_dyn, ions, ext_partners)
     case (PROP_CRANK_NICOLSON)
-      call td_crank_nicolson(hm, namespace, space, gr, st, tr, time, dt, ionic_scale, ions_dyn, ions, ext_partners, .false.)
+      call td_crank_nicolson(hm, namespace, space, gr, st, tr, time, dt, ions_dyn, ions, ext_partners, .false.)
     case (PROP_RUNGE_KUTTA4)
       call td_runge_kutta4(ks, namespace, space, hm, gr, st, tr, time, dt, ions_dyn, ions, ext_partners)
     case (PROP_RUNGE_KUTTA2)
       call td_runge_kutta2(ks, namespace, space, hm, gr, st, tr, time, dt, ions_dyn, ions, ext_partners)
     case (PROP_CRANK_NICOLSON_SPARSKIT)
-      call td_crank_nicolson(hm, namespace, space, gr, st, tr, time, dt, ionic_scale, ions_dyn, ions, ext_partners, .true.)
+      call td_crank_nicolson(hm, namespace, space, gr, st, tr, time, dt, ions_dyn, ions, ext_partners, .true.)
     case (PROP_MAGNUS)
       call td_magnus(hm, ext_partners, gr, st, tr, namespace, time, dt)
     case (PROP_QOCT_TDDFT_PROPAGATOR)
@@ -542,9 +528,9 @@ contains
     end select
 
     generate = .false.
-    if (move_ions) then
+    if (ion_dynamics_ions_move(ions_dyn)) then
       if (.not. propagator_elec_ions_are_propagated(tr)) then
-        call ion_dynamics_propagate(ions_dyn, ions, abs(nt*dt), ionic_scale*dt, namespace)
+        call ion_dynamics_propagate(ions_dyn, ions, abs(nt*dt), ions_dyn%ionic_scale*dt, namespace)
         generate = .true.
       end if
     end if
@@ -552,7 +538,7 @@ contains
     gfield => list_get_gauge_field(ext_partners)
     if(associated(gfield)) then
       if (gauge_field_is_propagated(gfield) .and. .not. propagator_elec_ions_are_propagated(tr)) then
-        call gauge_field_do_td(gfield, OP_VERLET_COMPUTE_ACC, dt, time)
+        call gauge_field_do_algorithmic_operation(gfield, OP_VERLET_COMPUTE_ACC, dt, time)
       end if
     end if
 
@@ -566,15 +552,18 @@ contains
     if (update_energy_) call energy_calc_total(namespace, space, hm, gr, st, ext_partners, iunit = -1)
 
     ! Recalculate forces, update velocities...
-    if (move_ions .and. tr%method .ne. PROP_EXPLICIT_RUNGE_KUTTA4) then
+    if (ion_dynamics_ions_move(ions_dyn) .and. tr%method .ne. PROP_EXPLICIT_RUNGE_KUTTA4) then
       call forces_calculate(gr, namespace, ions, hm, ext_partners, st, ks, t = abs(nt*dt), dt = dt)
       call ion_dynamics_propagate_vel(ions_dyn, ions, atoms_moved = generate)
-      if (generate) call hamiltonian_elec_epot_generate(hm, namespace, space, gr, ions, ext_partners, st, time = abs(nt*dt))
       call ions%update_kinetic_energy()
     else
       if (outp%what(OPTION__OUTPUT__FORCES) .or. write_handler%out(OUT_SEPARATE_FORCES)%write) then
         call forces_calculate(gr, namespace, ions, hm, ext_partners, st, ks, t = abs(nt*dt), dt = dt)
       end if
+    end if
+
+    if (outp%what(OPTION__OUTPUT__STRESS)) then
+      call stress_calculate(namespace, gr, hm, st, ions, ks, ext_partners)
     end if
 
     if(associated(gfield)) then
@@ -584,12 +573,12 @@ contains
         else
           call gauge_field_get_force(gfield, gr, st%d%spin_channels, st%current)
         endif
-        call gauge_field_do_td(gfield, OP_VERLET_COMPUTE_VEL, dt, time)
-     end if
+        call gauge_field_do_algorithmic_operation(gfield, OP_VERLET_COMPUTE_VEL, dt, time)
+      end if
     end if
 
     !We update the occupation matrices
-    call lda_u_update_occ_matrices(hm%lda_u, namespace, gr%mesh, st, hm%hm_base, hm%energy)
+    call lda_u_update_occ_matrices(hm%lda_u, namespace, gr, st, hm%hm_base, hm%energy)
 
     POP_SUB(propagator_elec_dt)
     call profiling_out(prof)
@@ -656,7 +645,7 @@ contains
     gfield => list_get_gauge_field(ext_partners)
     if(associated(gfield)) then
       if (gauge_field_is_propagated(gfield)) then
-        call gauge_field_do_td(gfield, OP_VERLET_COMPUTE_ACC, dt, iter*dt)
+        call gauge_field_do_algorithmic_operation(gfield, OP_VERLET_COMPUTE_ACC, dt, iter*dt)
       end if
     end if
 
@@ -680,7 +669,7 @@ contains
 
     if(associated(gfield)) then
       if (gauge_field_is_propagated(gfield)) then
-        call gauge_field_do_td(gfield, OP_VERLET_COMPUTE_VEL, dt, iter*dt)
+        call gauge_field_do_algorithmic_operation(gfield, OP_VERLET_COMPUTE_VEL, dt, iter*dt)
       end if
     end if
 

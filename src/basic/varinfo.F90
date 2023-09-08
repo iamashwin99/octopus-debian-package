@@ -68,8 +68,8 @@ module varinfo_oct_m
     subroutine varinfo_getopt(var, opt)
       use iso_c_binding
       implicit none
-      type(c_ptr), intent(in)  :: var
-      type(c_ptr), intent(out) :: opt
+      type(c_ptr), intent(in)    :: var
+      type(c_ptr), intent(inout) :: opt
     end subroutine varinfo_getopt
 
     subroutine varinfo_opt_getinfo(opt, name, val, desc)

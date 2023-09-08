@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML-full"></script>
 <style>
-   BODY {background-color: white; 
+   BODY {background-color: white;
          font-size: 10pt; font-family: verdana,helvetica;}
    A  {text-decoration: none;color: blue}
 </style>
@@ -22,6 +22,8 @@
 <br/><br> When this variable is set to true, <tt>Octopus</tt> will perform a
  calculation from the beginning, without looking for restart
  information.
+ NOTE: If available, mesh partitioning information will be used for
+ initializing the calculation regardless of the set value for this variable.
 
 </p><hr width='30%' align='left'/>
 
@@ -107,7 +109,7 @@
  implementation is CUDA-aware (i.e., it supports communication using device pointers),
  this switch can be set to true to use the CUDA-aware MPI features. The advantage
  of this approach is that it can do, e.g., peer-to-peer copies between devices without
- going through the host memmory.
+ going through the host memory.
  The default is false, except when the configure switch --enable-cudampi is set, in which
  case this variable is set to true.
 
@@ -121,6 +123,14 @@
 <br/><br> If Octopus was compiled with OpenCL or CUDA support, it will
  try to initialize and use an accelerator device. By setting this
  variable to <tt>yes</tt> you force Octopus not to use an accelerator even it is available.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='InitializeGPUBuffers'></a>InitializeGPUBuffers</b>
+<br/><i>Section</i>: Execution::Accel
+<br/><i>Type</i>: logical
+<br/><br> Initialize new GPU buffers to zero on creation (use only for debugging, as it has a performance impact!).
 
 </p><hr width='30%' align='left'/>
 
@@ -675,46 +685,12 @@
 </p><hr width='30%' align='left'/>
 
 
-<p><b><a name='OperateComplexSingle'></a>OperateComplexSingle</b>
-<br/><i>Section</i>: Execution::Optimization
-<br/><i>Type</i>: integer
-<br/><i>Default</i>: optimized
-<br/><br> This variable selects the subroutine used to apply non-local
- operators over the grid for single-precision complex functions.
-
-<br/><i>Options</i>:
-<ul>
-<li><b>fortran</b>:  The standard Fortran function.
-</li>
-<li><b>optimized</b>:  This version is optimized using vector primitives (if available).
-</li>
-</ul>
-</p><hr width='30%' align='left'/>
-
-
 <p><b><a name='OperateDouble'></a>OperateDouble</b>
 <br/><i>Section</i>: Execution::Optimization
 <br/><i>Type</i>: integer
 <br/><i>Default</i>: optimized
 <br/><br> This variable selects the subroutine used to apply non-local
  operators over the grid for real functions.
-
-<br/><i>Options</i>:
-<ul>
-<li><b>fortran</b>:  The standard Fortran function.
-</li>
-<li><b>optimized</b>:  This version is optimized using vector primitives (if available).
-</li>
-</ul>
-</p><hr width='30%' align='left'/>
-
-
-<p><b><a name='OperateSingle'></a>OperateSingle</b>
-<br/><i>Section</i>: Execution::Optimization
-<br/><i>Type</i>: integer
-<br/><i>Default</i>: optimized
-<br/><br> This variable selects the subroutine used to apply non-local
- operators over the grid for single-precision real functions.
 
 <br/><i>Options</i>:
 <ul>
@@ -867,7 +843,7 @@
 <ul>
 <li><b>metis</b>:  METIS library.
 </li>
-<li><b>parmetis</b>:  (Experimental) Use ParMETIS libary to perform the mesh partition.
+<li><b>parmetis</b>:  (Experimental) Use ParMETIS library to perform the mesh partition.
  Only available if the code was compiled with ParMETIS support.
 </li>
 <li><b>part_hilbert</b>:  Use the ordering along the Hilbert curve for partitioning.

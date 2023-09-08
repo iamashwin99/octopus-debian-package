@@ -1,6 +1,5 @@
-FromScratch = yes
-
 CalculationMode = gs
+FromScratch = yes
 
 PeriodicDimensions = 3
 
@@ -19,11 +18,11 @@ BoxShape = parallelepiped
   "Si" |   0.1       | -0.05     | 0.075
   "Si" |   1/2       | 1/2       | 0.0
   "Si" |   1/2       | 0.0       | 1/2
-  "Si" |   0.0       | 1/2       | 1/2 
-  "Si" |   1/4       | 1/4       | 1/4 
+  "Si" |   0.0       | 1/2       | 1/2
+  "Si" |   1/4       | 1/4       | 1/4
   "Si" |   1/4 + 1/2 | 1/4 + 1/2 | 1/4
   "Si" |   1/4 + 1/2 | 1/4       | 1/4 + 1/2
-  "Si" |   1/4       | 1/4 + 1/2 | 1/4 + 1/2 
+  "Si" |   1/4       | 1/4 + 1/2 | 1/4 + 1/2
 %
 
 %KPointsGrid
@@ -39,6 +38,4 @@ ExtraStates = 1
 ConvRelDens = 1e-8
 EigensolverTolerance = 1e-9
 ConvEigenError = yes
-
-SCFCalculateStress = no
 

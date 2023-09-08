@@ -87,8 +87,6 @@ contains
     SAFE_ALLOCATE(this%partner_quantities(1:this%n_partner_quantities))
     this%partner_quantities(1) = POSITION
     this%partner_quantities(2) = MASS
-    this%partner%quantities(POSITION)%required = .true.
-    this%partner%quantities(MASS)%required = .true.
     this%intra_interaction = intra_interaction
 
     POP_SUB(gravity_constructor)
@@ -108,8 +106,6 @@ contains
     this%dim = dim
     this%system_np = system_np
     SAFE_ALLOCATE(this%force(1:dim, 1:system_np))
-    system_quantities(POSITION)%required = .true.
-    system_quantities(MASS)%required = .true.
     this%system_mass => system_mass
     this%system_pos => system_pos
 

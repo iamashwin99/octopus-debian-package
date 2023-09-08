@@ -1,4 +1,4 @@
-! Note: this file is generated automatically by build/mk_functionals_list.pl
+! Note: this file is generated automatically by scripts/mk_functionals_list.pl
 !
 !%Variable XCFunctional
 !%Type integer
@@ -8,8 +8,8 @@
 !% specified as a sum of an exchange functional and a
 !% correlation functional, or a single exchange-correlation functional
 !% (<i>e.g.</i> <tt>hyb_gga_xc_pbeh</tt>). For more information on the functionals, see
-!% <a href=https://gitlab.com/libxc/libxc/wikis/Functionals-list-4.0.4>
-!% Libxc documentation</a>. The list provided here is from libxc 4; if you have
+!% <a href=https://www.tddft.org/programs/libxc/functionals/previous/libxc-5.2.3/>
+!% Libxc documentation</a>. The list provided here is from libxc 5; if you have
 !% linked against a different libxc version, you may have a somewhat different set
 !% of available functionals. Note that kinetic-energy functionals are not supported.
 !%
@@ -19,7 +19,7 @@
 !% generate the pseudopotential, or the pseudopotential functionals
 !% are inconsistent, Octopus will use the following defaults:
 !%
-!% <br>1D: <tt>lda_x_1d + lda_c_1d_csc</tt>
+!% <br>1D: <tt>lda_x_1d_soft + lda_c_1d_csc</tt>
 !% <br>2D: <tt>lda_x_2d + lda_c_2d_amgb</tt>
 !% <br>3D: <tt>lda_x + lda_c_pz_mod</tt>
 !%Option lda_x               1
@@ -62,7 +62,7 @@
 !% Exchange in 2D
 !%Option lda_xc_teter93               20000
 !% Teter 93 parametrization
-!%Option lda_x_1d               21
+!%Option lda_x_1d_soft          21
 !% Exchange in 1D
 !%Option lda_c_ml1               22000
 !% Modified LSD (version 1) of Proynov and Salahub
@@ -834,14 +834,8 @@
 !% Slater approximation to the exact exchange (not from libxc).
 !%Option fbe_x                    903
 !% Exchange functional based on the force balance equation (not from libxc).
-!%Option ks_inversion             801
+!%Option ks_inversion             904
 !% Inversion of KS potential (not from libxc).
-!%Option lda_xc_cmplx             701
-!% Complex-scaled LDA exchange and correlation (not from libxc).
-!%Option pbe_xc_cmplx             702
-!% Complex-scaled PBE exchange and correlation (not from libxc).
-!%Option lb94_xc_cmplx            703
-!% Complex-scaled LB94 exchange and correlation (not from libxc).
 !%Option rdmft_xc_m               601
 !% RDMFT Mueller functional (not from libxc).
 !%Option xc_half_hartree          917

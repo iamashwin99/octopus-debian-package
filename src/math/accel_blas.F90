@@ -19,10 +19,13 @@
 #include <global.h>
 
 module accel_blas_oct_m
-#ifdef HAVE_OPENCL
-  use clblas
+#if defined(HAVE_CLBLAS) || defined(HAVE_CLBLAST)
+  use clblas_oct_m
 #endif
   use accel_oct_m
+#ifdef HAVE_CUDA
+  use cuda_oct_m
+#endif
   use debug_oct_m
   use global_oct_m
   use iso_c_binding
@@ -50,23 +53,6 @@ module accel_blas_oct_m
     daccel_gemv,                   &
     zaccel_gemv
 
-  integer, parameter, public ::                      &
-    CUBLAS_DIAG_NON_UNIT = 0,                        &
-    CUBLAS_DIAG_UNIT     = 1
-
-  integer, parameter, public ::                      &
-    CUBLAS_OP_N = 0,                                 &
-    CUBLAS_OP_T = 1,                                 &
-    CUBLAS_OP_C = 2
-
-  integer, parameter, public ::                      &
-    CUBLAS_FILL_MODE_LOWER = 0,                      &
-    CUBLAS_FILL_MODE_UPPER = 1
-
-  integer, parameter, public ::                      &
-    CUBLAS_SIDE_LEFT  = 0,                           &
-    CUBLAS_SIDE_RIGHT = 1
-
 #ifdef HAVE_OPENCL
   integer, parameter, public ::                      &
     ACCEL_BLAS_LEFT  = clblasLeft,                   &
@@ -84,7 +70,7 @@ module accel_blas_oct_m
   integer, parameter, public ::                      &
     ACCEL_BLAS_DIAG_NON_UNIT = clblasNonUnit,        &
     ACCEL_BLAS_DIAG_UNIT     = clblasUnit
-#else
+#elif HAVE_CUDA
   integer, parameter, public ::                      &
     ACCEL_BLAS_LEFT  = CUBLAS_SIDE_LEFT,             &
     ACCEL_BLAS_RIGHT = CUBLAS_SIDE_RIGHT
@@ -101,6 +87,24 @@ module accel_blas_oct_m
   integer, parameter, public ::                      &
     ACCEL_BLAS_DIAG_NON_UNIT = CUBLAS_DIAG_NON_UNIT, &
     ACCEL_BLAS_DIAG_UNIT     = CUBLAS_DIAG_UNIT
+#else
+  integer, parameter, public ::                      &
+    ACCEL_BLAS_LEFT  = 0,                            &
+    ACCEL_BLAS_RIGHT = 1
+
+  integer, parameter, public ::                      &
+    ACCEL_BLAS_LOWER = 0,                            &
+    ACCEL_BLAS_UPPER = 1
+
+  integer, parameter, public ::                      &
+    ACCEL_BLAS_N = 0,                      &
+    ACCEL_BLAS_T = 1,                      &
+    ACCEL_BLAS_C = 2
+
+  integer, parameter, public ::                      &
+    ACCEL_BLAS_DIAG_NON_UNIT = 0, &
+    ACCEL_BLAS_DIAG_UNIT     = 1
+
 #endif
 
   ! DOT

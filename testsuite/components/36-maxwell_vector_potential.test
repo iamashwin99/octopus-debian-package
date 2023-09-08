@@ -1,0 +1,20 @@
+# -*- coding: utf-8 mode: shell-script -*-
+
+Test       : Oct-test maxwell vector potential
+Program    : octopus
+TestGroups : short-run, components
+Enabled    : Yes
+
+Processors: 1
+Input: 36-maxwell_vector_potential.inp
+Precision : 8.0e-6
+match ; error norm2  x dir           ; GREPFIELD(out, 'j, norm2(delta)           1', 2) ; 0.0000000000000000
+match ; error norm2  z dir           ; GREPFIELD(out, 'j, norm2(delta)           3', 2) ; 5.0754570936379475E-003
+Precision : 8.0e-9
+match ; vecpot analytic y dir ; LINEFIELD(vector_potential_analytical-y.z\=0,   6413, 3) ; -0.00000000000000E+000
+match ; vecpot analytic z dir ; LINEFIELD(vector_potential_analytical-z.z\=0,   6413, 3) ; -4.04402229253549E-005
+match ; vecpot magnetic z dir ; LINEFIELD(vector_potential_mag-x.z\=0,   6500, 3) ;  2.16646290153542E-018
+Precision : 1.82e-17
+match ; deviation x direction ; LINEFIELD(deviation_from_analytical_formulation-x.z\=0,   45, 3) ;  2.37647314886757E-018
+match ;  deviation z direction  ; LINEFIELD(deviation_from_analytical_formulation-z.z\=0, 45, 3) ; -5.15387954871484e-17
+match ;  deviation z direction  ; LINEFIELD(deviation_from_analytical_formulation-z.z\=0, 278, 3) ; -1.85866158429334e-15

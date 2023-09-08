@@ -47,6 +47,15 @@ inline double2 complex_mul(const double2 a, const double2 b){
 #endif
 }
 
+inline double2 complex_dotp(const double2 a, const double2 b){
+#ifdef CUDA
+  return double2(a.x*b.x + a.y*b.y,-a.y*b.x + a.x*b.y);
+#else
+  return (double2)(a.x*b.x + a.y*b.y,-a.y*b.x + a.x*b.y);
+#endif
+}
+
+
 inline double2 complex_div(const double2 a, const double2 b){
   double2 c = b*b;
   return complex_mul(a, complex_conj(b))/(c.x + c.y);

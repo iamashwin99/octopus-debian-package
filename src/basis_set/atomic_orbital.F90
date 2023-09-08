@@ -23,8 +23,8 @@ module atomic_orbital_oct_m
   use box_sphere_oct_m
   use debug_oct_m
   use global_oct_m
-  use ions_oct_m
   use lalg_basic_oct_m
+  use lattice_vectors_oct_m
   use loct_math_oct_m
   use math_oct_m
   use mesh_oct_m
@@ -33,6 +33,7 @@ module atomic_orbital_oct_m
   use orbitalset_oct_m
   use profiling_oct_m
   use ps_oct_m
+  use space_oct_m
   use species_oct_m
   use splines_oct_m
   use submesh_oct_m
@@ -59,19 +60,17 @@ module atomic_orbital_oct_m
 contains
 
   ! ---------------------------------------------------------
-  FLOAT function atomic_orbital_get_radius(ions, mesh, ia, iorb, ispin, truncation, threshold) result(radius)
-    type(ions_t),     target, intent(in)   :: ions
+  FLOAT function atomic_orbital_get_radius(spec, mesh, iorb, ispin, truncation, threshold) result(radius)
+    type(species_t),          intent(in)   :: spec
     type(mesh_t),             intent(in)   :: mesh
-    integer,                  intent(in)   :: ia, iorb, ispin
+    integer,                  intent(in)   :: iorb, ispin
     integer(i8),              intent(in)   :: truncation
     FLOAT,                    intent(in)   :: threshold
 
-    type(species_t), pointer :: spec
     integer :: ii, ll, mm
 
     PUSH_SUB(atomic_orbital_get_radius)
 
-    spec => ions%atom(ia)%species
     call species_iwf_ilm(spec, iorb, ispin, ii, ll, mm)
 
     if (truncation == OPTION__AOTRUNCATION__AO_FULL) then

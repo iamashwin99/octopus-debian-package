@@ -51,7 +51,6 @@ module exponential_oct_m
     exponential_t,               &
     exponential_init,            &
     exponential_copy,            &
-    exponential_apply_batch,     &
     exponential_apply,           &
     exponential_apply_all
 
@@ -66,6 +65,8 @@ module exponential_oct_m
     FLOAT           :: lanczos_tol !< tolerance for the Lanczos method
     integer, public :: exp_order   !< order to which the propagator is expanded
     integer         :: arnoldi_gs  !< Orthogonalization scheme used for Arnoldi
+  contains
+    procedure :: apply_batch => exponential_apply_batch
   end type exponential_t
 
 contains
@@ -228,7 +229,7 @@ contains
   subroutine exponential_apply(te, namespace, mesh, hm, zpsi, ist, ik, deltat, order, vmagnus, imag_time)
     type(exponential_t),      intent(inout) :: te
     type(namespace_t),        intent(in)    :: namespace
-    type(mesh_t),             intent(in)    :: mesh
+    class(mesh_t),            intent(in)    :: mesh
     type(hamiltonian_elec_t), intent(in)    :: hm
     integer,                  intent(in)    :: ist
     integer,                  intent(in)    :: ik
@@ -421,7 +422,7 @@ contains
     ! ---------------------------------------------------------
 
     ! ---------------------------------------------------------
-    !TODO: Add a reference
+    ! See the batch routine for the reference
     subroutine lanczos()
       integer ::  iter, l, idim
       CMPLX, allocatable :: hamilt(:,:), v(:,:,:), expo(:,:), psi(:, :)
@@ -578,9 +579,9 @@ contains
   !! \f]
   ! ---------------------------------------------------------
   subroutine exponential_apply_batch(te, namespace, mesh, hm, psib, deltat, psib2, deltat2, vmagnus, imag_time, inh_psib)
-    type(exponential_t),                intent(inout) :: te
+    class(exponential_t),               intent(inout) :: te
     type(namespace_t),                  intent(in)    :: namespace
-    type(mesh_t),                       intent(in)    :: mesh
+    class(mesh_t),                      intent(in)    :: mesh
     class(hamiltonian_abst_t),          intent(inout) :: hm
     class(batch_t),                     intent(inout) :: psib
     FLOAT,                              intent(in)    :: deltat
@@ -676,7 +677,7 @@ contains
   subroutine exponential_taylor_series_batch(te, namespace, mesh, hm, psib, deltat, psib2, deltat2, vmagnus, inh_psib)
     type(exponential_t),                intent(inout) :: te
     type(namespace_t),                  intent(in)    :: namespace
-    type(mesh_t),                       intent(in)    :: mesh
+    class(mesh_t),                      intent(in)    :: mesh
     class(hamiltonian_abst_t),          intent(inout) :: hm
     class(batch_t),                     intent(inout) :: psib
     CMPLX,                              intent(in)    :: deltat
@@ -756,11 +757,16 @@ contains
   end subroutine exponential_taylor_series_batch
 
   ! ---------------------------------------------------------
-  !TODO: Add a reference
+  ! Some details of the implementation can be understood from
+  ! Saad, Y. (1992). Analysis of some Krylov subspace approximations to the matrix exponential operator.
+  ! SIAM Journal on Numerical Analysis, 29(1), 209-228.
+  !
+  ! A pdf can be accessed here https://www-users.cse.umn.edu/~saad/PDF/RIACS-90-ExpTh.pdf
+  ! Equation numbers below refer to this paper
   subroutine exponential_lanczos_batch(te, namespace, mesh, hm, psib, deltat, vmagnus, inh_psib)
     type(exponential_t),                intent(inout) :: te
     type(namespace_t),                  intent(in)    :: namespace
-    type(mesh_t),                       intent(in)    :: mesh
+    class(mesh_t),                      intent(in)    :: mesh
     class(hamiltonian_abst_t),          intent(inout) :: hm
     class(batch_t),                     intent(inout) :: psib
     CMPLX,                              intent(in)    :: deltat
@@ -812,20 +818,24 @@ contains
     ! This is the Lanczos loop...
     do iter = 1, te%exp_order
 
-      !to apply the Hamiltonian
+      ! to apply the Hamiltonian
       call operate_batch(hm, namespace, mesh, vb(iter), vb(iter+1), vmagnus)
 
+      ! We use either the Lanczos method (Hermitian case) or the Arnoldi method
       if (hm%is_hermitian()) then
         l = max(1, iter - 1)
       else
         l = 1
       end if
 
-      !orthogonalize against previous vectors
+      ! Orthogonalize against previous vectors
       call zmesh_batch_orthogonalization(mesh, iter - l + 1, vb(l:iter), vb(iter+1), &
         normalize = .false., overlap = hamilt(l:iter, iter, 1:psib%nst), norm = hamilt(iter + 1, iter, 1:psib%nst), &
         gs_scheme = te%arnoldi_gs)
 
+      ! We now need to compute exp(Hm), where Hm is the projection of the linear transformation
+      ! of the Hamiltonian onto the Krylov subspace Km
+      ! See Eq. 4
       do ii = 1, psib%nst
         if (present(inh_psib)) then
           call zlalg_phi(iter, -M_zI*deltat, hamilt(:,:,ii), expo(:,:,ii), hm%is_hermitian())
@@ -836,8 +846,9 @@ contains
         res(ii) = abs(hamilt(iter + 1, iter, ii) * abs(expo(iter, 1, ii)))
       end do !ii
 
+      ! We now estimate the error we made. This is given by the formula denoted Er2 in Sec. 5.2
       if (all(abs(hamilt(iter + 1, iter, :)) < CNST(1.0e4)*M_EPSILON)) exit ! "Happy breakdown"
-      !We normalize only if the norm is non-zero
+      ! We normalize only if the norm is non-zero
       ! see http://www.netlib.org/utk/people/JackDongarra/etemplates/node216.html#alg:arn0
       norm = M_ONE
       do ist = 1, psib%nst
@@ -862,13 +873,14 @@ contains
         call batch_axpy(mesh%np, TOFLOAT(deltat)*beta(1:psib%nst)*expo(ii,1,1:psib%nst), vb(ii), psib, a_full = .false.)
       end do
     else
+      ! See Eq. 4 for the expression here
       ! zpsi = nrm * V * expo(1:iter, 1) = nrm * V * expo * V^(T) * zpsi
       call batch_scal(mesh%np, expo(1,1,1:psib%nst), psib, a_full = .false.)
-      !TODO: We should have a routine batch_gemv fro improve performances
+      ! TODO: We should have a routine batch_gemv fro improve performances
       do ii = 2, iter
         call batch_axpy(mesh%np, beta(1:psib%nst)*expo(ii,1,1:psib%nst), vb(ii), psib, a_full = .false.)
-        !In order to apply the two exponentials, we mush store the eigenvales and eigenvectors given by zlalg_exp
-        !And to recontruct here the exp(i*dt*H) for deltat2
+        ! In order to apply the two exponentials, we must store the eigenvalues and eigenvectors given by zlalg_exp
+        ! And to recontruct here the exp(i*dt*H) for deltat2
       end do
     end if
 
@@ -909,7 +921,7 @@ contains
   subroutine exponential_cheby_batch(te, namespace, mesh, hm, psib, deltat, vmagnus)
     type(exponential_t),                intent(inout) :: te
     type(namespace_t),                  intent(in)    :: namespace
-    type(mesh_t),                       intent(in)    :: mesh
+    class(mesh_t),                      intent(in)    :: mesh
     class(hamiltonian_abst_t),          intent(inout) :: hm
     class(batch_t),                     intent(inout) :: psib
     FLOAT,                              intent(in)    :: deltat
@@ -962,7 +974,7 @@ contains
   subroutine operate_batch(hm, namespace, mesh, psib, hpsib, vmagnus)
     class(hamiltonian_abst_t),          intent(inout) :: hm
     type(namespace_t),                  intent(in)    :: namespace
-    type(mesh_t),                       intent(in)    :: mesh
+    class(mesh_t),                      intent(in)    :: mesh
     class(batch_t),                     intent(inout) :: psib
     class(batch_t),                     intent(inout) :: hpsib
     FLOAT,                    optional, intent(in)    :: vmagnus(:, :, :)
@@ -985,7 +997,7 @@ contains
   subroutine exponential_apply_all(te, namespace, mesh, hm, st, deltat, order)
     type(exponential_t),      intent(inout) :: te
     type(namespace_t),        intent(in)    :: namespace
-    type(mesh_t),             intent(inout) :: mesh
+    class(mesh_t),            intent(inout) :: mesh
     type(hamiltonian_elec_t), intent(inout) :: hm
     type(states_elec_t),      intent(inout) :: st
     FLOAT,                    intent(in)    :: deltat

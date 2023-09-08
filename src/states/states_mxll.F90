@@ -19,6 +19,8 @@
 
 module states_mxll_oct_m
   use accel_oct_m
+  use batch_oct_m
+  use batch_ops_oct_m
   use blacs_proc_grid_oct_m
   use comm_oct_m
   use debug_oct_m
@@ -26,6 +28,7 @@ module states_mxll_oct_m
   use distributed_oct_m
   use global_oct_m
   use grid_oct_m
+  use helmholtz_decomposition_m
   use math_oct_m
   use mesh_oct_m
   use mesh_function_oct_m
@@ -37,6 +40,7 @@ module states_mxll_oct_m
   use omp_lib
 #endif
   use parser_oct_m
+  use poisson_oct_m
   use profiling_oct_m
   use restart_oct_m
   use space_oct_m
@@ -75,7 +79,11 @@ module states_mxll_oct_m
     get_divergence_field,             &
     get_poynting_vector,              &
     get_poynting_vector_plane_waves,  &
-    get_orbital_angular_momentum
+    get_orbital_angular_momentum,     &
+    get_rs_state_batch_selected_points,&
+    get_transverse_rs_state,          &
+    mxll_set_batch,                   &
+    mxll_get_batch
 
   type :: states_mxll_t
     ! Components are public by default
@@ -88,6 +96,7 @@ module states_mxll_oct_m
 
     CMPLX, allocatable           :: rs_state_plane_waves(:,:)
     CMPLX, allocatable           :: rs_state(:,:)
+    CMPLX, allocatable           :: rs_state_prev(:,:)
     CMPLX, allocatable           :: rs_state_trans(:,:)
     CMPLX, allocatable           :: rs_state_long(:,:)
     CMPLX, allocatable           :: rs_current_density_t1(:,:)
@@ -96,6 +105,11 @@ module states_mxll_oct_m
     logical                      :: rs_current_density_restart = .false.
     CMPLX, allocatable           :: rs_current_density_restart_t1(:,:)
     CMPLX, allocatable           :: rs_current_density_restart_t2(:,:)
+
+    type(batch_t)                :: rs_stateb
+    type(batch_t)                :: rs_state_prevb
+    type(batch_t)                :: inhomogeneousb
+    type(batch_t)                :: rs_state_plane_wavesb
 
     FLOAT, allocatable           :: ep(:)
     FLOAT, allocatable           :: mu(:)
@@ -133,6 +147,7 @@ module states_mxll_oct_m
     integer                      :: boundary_points_number
     integer, allocatable         :: boundary_points_map(:)
     logical, allocatable         :: boundary_points_mask(:)
+    type(accel_mem_t)            :: buff_inner_points_map, buff_boundary_points_map
 
     integer                      :: surface_points_number(MAX_DIM)
     integer, allocatable         :: surface_points_map(:,:,:)
@@ -151,6 +166,8 @@ module states_mxll_oct_m
     CMPLX, allocatable           :: selected_points_rs_state(:,:)
     CMPLX, allocatable           :: selected_points_rs_state_long(:,:)
     CMPLX, allocatable           :: selected_points_rs_state_trans(:,:)
+    integer, allocatable         :: selected_points_map(:)
+    type(accel_mem_t)            :: buff_selected_points_map
     FLOAT                        :: rs_state_trans_var
 
     FLOAT, allocatable           :: grid_rho(:,:)
@@ -187,7 +204,14 @@ module states_mxll_oct_m
     integer                     :: st_start, st_end
     integer, allocatable        :: node(:)
 
+    type(poisson_t)             :: poisson
+    integer                     :: transverse_field_mode
+
   end type states_mxll_t
+
+  integer, public, parameter ::      &
+    TRANSVERSE_FROM_HELMHOLTZ = 1,   &
+    TRANSVERSE_AS_TOTAL_MINUS_LONG = 2
 
 contains
 
@@ -228,8 +252,8 @@ contains
     st%parallel_in_states = .false.
     st%packed = .false.
 
-    ! The variable StatesPack is documented in states_elec.F90. 
-    ! We cannot include the documentation twice. 
+    ! The variable StatesPack is documented in states_elec.F90.
+    ! We cannot include the documentation twice.
     ! TODO: We should think whether these variables could be moved to a higher (abstract) class.
 
     call parse_variable(namespace, 'StatesPack', .true., st%pack_states)
@@ -273,6 +297,7 @@ contains
       SAFE_ALLOCATE(st%selected_points_rs_state(1:st%dim,1:nlines))
       SAFE_ALLOCATE(st%selected_points_rs_state_long(1:st%dim,1:nlines))
       SAFE_ALLOCATE(st%selected_points_rs_state_trans(1:st%dim,1:nlines))
+      SAFE_ALLOCATE(st%selected_points_map(1:nlines))
       do il = 1, nlines
         ncols = parse_block_cols(blk,0)
         if (ncols < 3 .or. ncols > 3) then
@@ -293,10 +318,12 @@ contains
       SAFE_ALLOCATE(st%selected_points_rs_state(1:st%dim, 1))
       SAFE_ALLOCATE(st%selected_points_rs_state_long(1:st%dim, 1))
       SAFE_ALLOCATE(st%selected_points_rs_state_trans(1:st%dim, 1))
+      SAFE_ALLOCATE(st%selected_points_map(1))
       st%selected_points_coordinate(:,:) = M_ZERO
       st%selected_points_rs_state(:,:) = M_z0
       st%selected_points_rs_state_long(:,:) = M_z0
       st%selected_points_rs_state_trans(:,:) = M_z0
+      st%selected_points_map(:) = -1
     end if
 
     SAFE_DEALLOCATE_A(pos)
@@ -311,6 +338,20 @@ contains
     SAFE_ALLOCATE(st%surface_grid_center(1:2, 1:st%dim, 1:ix_max, 1:iy_max))
     SAFE_ALLOCATE(st%surface_grid_points_number(1:st%dim, 1:ix_max, 1:iy_max))
 
+    !%Variable TransverseFieldCalculation
+    !%Type integer
+    !%Default no
+    !%Section Maxwell
+    !%Description
+    !% This variable selects the method for the calculation of the transverse field.
+    !%Option helmholtz 1
+    !% Transverse field calculated from Helmholtz decompisition (unreliable at the moment).
+    !%Option total_minus_long 2
+    !% Total field minus longitudinal field.
+    !%End
+    call parse_variable(namespace, 'TransverseFieldCalculation', TRANSVERSE_FROM_HELMHOLTZ, &
+      st%transverse_field_mode)
+
     call profiling_out(prof)
 
     POP_SUB(states_mxll_init)
@@ -321,7 +362,7 @@ contains
   !> Allocates the Maxwell states defined within a states_mxll_t structure.
   subroutine states_mxll_allocate(st, mesh)
     type(states_mxll_t),    intent(inout)   :: st
-    type(mesh_t),           intent(in)      :: mesh
+    class(mesh_t),          intent(in)      :: mesh
 
     type(profile_t), save :: prof
 
@@ -331,6 +372,9 @@ contains
 
     SAFE_ALLOCATE(st%rs_state(1:mesh%np_part, 1:st%dim))
     st%rs_state(:,:) = M_z0
+
+    SAFE_ALLOCATE(st%rs_state_prev(1:mesh%np_part, 1:st%dim))
+    st%rs_state_prev(:,:) = M_z0
 
     SAFE_ALLOCATE(st%rs_state_trans(1:mesh%np_part, 1:st%dim))
     st%rs_state_trans(:,:) = M_z0
@@ -374,6 +418,7 @@ contains
     call profiling_in(prof, 'STATES_MXLL_END')
 
     SAFE_DEALLOCATE_A(st%rs_state)
+    SAFE_DEALLOCATE_A(st%rs_state_prev)
     SAFE_DEALLOCATE_A(st%rs_state_trans)
     SAFE_DEALLOCATE_A(st%selected_points_coordinate)
     SAFE_DEALLOCATE_A(st%selected_points_rs_state)
@@ -401,6 +446,11 @@ contains
     SAFE_DEALLOCATE_A(st%boundary_points_mask)
     SAFE_DEALLOCATE_A(st%ep)
     SAFE_DEALLOCATE_A(st%mu)
+    if (accel_is_enabled()) then
+      call accel_release_buffer(st%buff_inner_points_map)
+      call accel_release_buffer(st%buff_boundary_points_map)
+      call accel_release_buffer(st%buff_selected_points_map)
+    end if
 #ifdef HAVE_SCALAPACK
     call blacs_proc_grid_end(st%dom_st_proc_grid)
 #endif
@@ -463,7 +513,7 @@ contains
     FLOAT,             intent(in)    :: e_field(:,:), b_field(:,:)
     CMPLX,             intent(inout) :: rs_state(:,:)
     integer,           intent(in)    :: rs_sign
-    type(mesh_t),      intent(in)    :: mesh
+    class(mesh_t),     intent(in)    :: mesh
     FLOAT,   optional, intent(in)    :: ep_field(:)
     FLOAT,   optional, intent(in)    :: mu_field(:)
     integer, optional, intent(in)    :: np
@@ -530,7 +580,7 @@ contains
   !----------------------------------------------------------
   subroutine build_rs_current_state(current_state, mesh, rs_current_state, ep_field, np)
     FLOAT,             intent(in)    :: current_state(:,:)
-    type(mesh_t),      intent(in)    :: mesh
+    class(mesh_t),     intent(in)    :: mesh
     CMPLX,             intent(inout) :: rs_current_state(:,:)
     FLOAT,   optional, intent(in)    :: ep_field(:)
     integer, optional, intent(in)    :: np
@@ -602,7 +652,7 @@ contains
   !----------------------------------------------------------
   subroutine get_electric_field_state(rs_state, mesh, electric_field, ep_field, np)
     CMPLX,             intent(in)    :: rs_state(:,:)
-    type(mesh_t),      intent(in)    :: mesh
+    class(mesh_t),     intent(in)    :: mesh
     FLOAT,             intent(inout) :: electric_field(:,:)
     FLOAT,   optional, intent(in)    :: ep_field(:)
     integer, optional, intent(in)    :: np
@@ -634,7 +684,7 @@ contains
   !----------------------------------------------------------
   subroutine get_magnetic_field_state(rs_state, mesh, rs_sign, magnetic_field, mu_field, np)
     CMPLX,             intent(in)    :: rs_state(:,:)
-    type(mesh_t),      intent(in)    :: mesh
+    class(mesh_t),     intent(in)    :: mesh
     integer,           intent(in)    :: rs_sign
     FLOAT,             intent(inout) :: magnetic_field(:,:)
     FLOAT,   optional, intent(in)    :: mu_field(:)
@@ -649,20 +699,21 @@ contains
 
     np_ = optional_default(np, mesh%np)
 
-    do ip = 1, np_
-      if (present(mu_field)) then
+    if (present(mu_field)) then
+      do ip = 1, np_
         magnetic_field(ip, :) = sqrt(M_TWO*mu_field(ip)) * rs_sign * aimag(rs_state(ip, :))
-      else
+      end do
+    else
+      do ip = 1, np_
         magnetic_field(ip, :) = sqrt(M_TWO*P_mu) * rs_sign * aimag(rs_state(ip, :))
-      end if
-    end do
+      end do
+    end if
 
     call profiling_out(prof)
 
     POP_SUB(get_magnetic_field_state)
 
   end subroutine get_magnetic_field_state
-
 
   !----------------------------------------------------------
   subroutine get_current_element(rs_current_element, current_element, ep_element)
@@ -703,7 +754,7 @@ contains
     CMPLX,             intent(in)    :: rs_current_field(:,:)
     FLOAT,             intent(inout) :: current_field(:,:)
     FLOAT,   optional, intent(in)    :: ep_field(:)
-    type(mesh_t),      intent(in)    :: mesh
+    class(mesh_t),     intent(in)    :: mesh
     integer, optional, intent(in)    :: np
 
     integer :: ip, np_
@@ -732,7 +783,7 @@ contains
     CMPLX,               intent(in)      :: rs_state(:,:)
     FLOAT,               intent(in)      :: pos(:,:)
     type(states_mxll_t), intent(in)      :: st
-    type(mesh_t),        intent(in)      :: mesh
+    class(mesh_t),       intent(in)      :: mesh
 
     integer :: ip, pos_index, rankmin
     FLOAT   :: dmin
@@ -761,11 +812,71 @@ contains
 
 
   !----------------------------------------------------------
+  subroutine get_rs_state_batch_selected_points(rs_state_point, rs_stateb, st)
+    CMPLX,               intent(inout)   :: rs_state_point(:,:)
+    type(batch_t),       intent(in)      :: rs_stateb
+    type(states_mxll_t), intent(in)      :: st
+
+    integer :: ip_in, ip
+    CMPLX :: rs_state_tmp(1:st%dim, 1:st%selected_points_number)
+    type(accel_kernel_t), save :: kernel
+    type(accel_mem_t) :: buff_points
+    integer(i8) :: localsize, dim3, dim2
+
+    PUSH_SUB(get_rs_state_batch_selected_points)
+
+    rs_state_tmp(:,:) = M_z0
+
+    select case (rs_stateb%status())
+    case (BATCH_NOT_PACKED)
+      do ip_in = 1, st%selected_points_number
+        ip = st%selected_points_map(ip_in)
+        if (ip >= 0) then
+          rs_state_tmp(1:st%dim, ip_in) = rs_stateb%zff_linear(ip, 1:st%dim)
+        end if
+      end do
+    case (BATCH_PACKED)
+      do ip_in = 1, st%selected_points_number
+        ip = st%selected_points_map(ip_in)
+        if (ip >= 0) then
+          rs_state_tmp(1:st%dim, ip_in) = rs_stateb%zff_pack(1:st%dim, ip)
+        end if
+      end do
+    case (BATCH_DEVICE_PACKED)
+      call accel_kernel_start_call(kernel, 'get_points.cl', 'get_selected_points')
+
+      call accel_create_buffer(buff_points, ACCEL_MEM_READ_WRITE, TYPE_CMPLX, &
+        st%selected_points_number*st%dim)
+      call accel_set_buffer_to_zero(buff_points, TYPE_INTEGER, st%selected_points_number*st%dim)
+
+      call accel_set_kernel_arg(kernel, 0, st%selected_points_number)
+      call accel_set_kernel_arg(kernel, 1, st%buff_selected_points_map)
+      call accel_set_kernel_arg(kernel, 2, rs_stateb%ff_device)
+      call accel_set_kernel_arg(kernel, 3, log2(int(rs_stateb%pack_size_real(1), i4)))
+      call accel_set_kernel_arg(kernel, 4, buff_points)
+      call accel_set_kernel_arg(kernel, 5, st%dim)
+
+      localsize = accel_kernel_workgroup_size(kernel)/rs_stateb%pack_size_real(1)
+
+      dim3 = st%selected_points_number/(accel_max_size_per_dim(2)*localsize) + 1
+      dim2 = min(accel_max_size_per_dim(2)*localsize, pad(st%selected_points_number, localsize))
+
+      call accel_kernel_run(kernel, (/rs_stateb%pack_size_real(1), dim2, dim3/), (/rs_stateb%pack_size_real(1), localsize, 1_i8/))
+      call accel_read_buffer(buff_points, st%selected_points_number*st%dim, rs_state_tmp)
+      call accel_release_buffer(buff_points)
+    end select
+
+    call st%mpi_grp%allreduce(rs_state_tmp, rs_state_point, st%selected_points_number, MPI_CMPLX, MPI_SUM)
+
+    POP_SUB(get_rs_state_batch_selected_points)
+  end subroutine get_rs_state_batch_selected_points
+
+  !----------------------------------------------------------
   subroutine get_divergence_field(gr, field, field_div, charge_density)
-    type(grid_t),    intent(in)    :: gr
-    FLOAT,           intent(inout) :: field(:,:)
-    FLOAT,           intent(inout) :: field_div(:)
-    logical,         intent(in)    :: charge_density
+    type(grid_t),      intent(in)    :: gr
+    FLOAT, contiguous, intent(inout) :: field(:,:)
+    FLOAT, contiguous, intent(inout) :: field_div(:)
+    logical,           intent(in)    :: charge_density
 
     PUSH_SUB(get_divergence_field)
 
@@ -781,7 +892,7 @@ contains
 
   ! ---------------------------------------------------------
   subroutine get_poynting_vector(mesh, st, rs_state, rs_sign, poynting_vector, ep_field, mu_field)
-    type(mesh_t),             intent(in)    :: mesh
+    class(mesh_t),            intent(in)    :: mesh
     type(states_mxll_t),      intent(in)    :: st
     CMPLX,                    intent(in)    :: rs_state(:,:)
     integer,                  intent(in)    :: rs_sign
@@ -814,7 +925,7 @@ contains
 
   ! ---------------------------------------------------------
   subroutine get_poynting_vector_plane_waves(mesh, st, rs_sign, poynting_vector)
-    type(mesh_t),             intent(in)    :: mesh
+    class(mesh_t),            intent(in)    :: mesh
     type(states_mxll_t),      intent(in)    :: st
     integer,                  intent(in)    :: rs_sign
     FLOAT,                    intent(inout) :: poynting_vector(:,:)
@@ -851,6 +962,77 @@ contains
 
     POP_SUB(get_orbital_angular_momentum)
   end subroutine get_orbital_angular_momentum
+
+  ! ---------------------------------------------------------
+  subroutine mxll_set_batch(rs_stateb, rs_state, np, dim, offset)
+    type(batch_t),     intent(inout) :: rs_stateb
+    CMPLX,             intent(in)    :: rs_state(:, :)
+    integer,           intent(in)    :: np
+    integer,           intent(in)    :: dim
+    integer, optional, intent(in)    :: offset
+
+    integer :: offset_, idir
+
+    PUSH_SUB(mxll_set_batch)
+
+    offset_ = optional_default(offset, 1)
+
+    do idir = offset_, offset_ + dim - 1
+      call batch_set_state(rs_stateb, idir, np, rs_state(:, idir))
+    end do
+
+    POP_SUB(mxll_set_batch)
+  end subroutine mxll_set_batch
+
+  ! ---------------------------------------------------------
+  subroutine mxll_get_batch(rs_stateb, rs_state, np, dim, offset)
+    type(batch_t),     intent(in)    :: rs_stateb
+    CMPLX,             intent(inout) :: rs_state(:, :)
+    integer,           intent(in)    :: np
+    integer,           intent(in)    :: dim
+    integer, optional, intent(in)    :: offset
+
+    integer :: offset_, idir
+
+    PUSH_SUB(mxll_get_batch)
+
+    offset_ = optional_default(offset, 1)
+
+    do idir = offset_, offset_ + dim - 1
+      call batch_get_state(rs_stateb, idir, np, rs_state(:, idir))
+    end do
+
+    POP_SUB(mxll_get_batch)
+  end subroutine mxll_get_batch
+
+  !----------------------------------------------------------
+  subroutine get_transverse_rs_state(helmholtz, st, namespace)
+    type(helmholtz_decomposition_t), intent(inout) :: helmholtz
+    type(states_mxll_t),             intent(inout) :: st
+    type(namespace_t),               intent(in)    :: namespace
+
+    type(profile_t), save :: prof
+
+    PUSH_SUB(get_transverse_rs_state)
+
+    call profiling_in(prof, 'GET_TRANSVERSE_RS_STATE')
+
+    select case (st%transverse_field_mode)
+    case (TRANSVERSE_FROM_HELMHOLTZ)
+      call helmholtz%get_trans_field(namespace, st%rs_state_trans, total_field=st%rs_state)
+    case (TRANSVERSE_AS_TOTAL_MINUS_LONG)
+      call helmholtz%get_long_field(namespace, st%rs_state_long, total_field=st%rs_state)
+      st%rs_state_trans = st%rs_state - st%rs_state_long
+    case default
+      message(1) = 'Unknown transverse field calculation mode.'
+      call messages_fatal(1, namespace=namespace)
+    end select
+
+    call profiling_out(prof)
+
+    POP_SUB(get_transverse_rs_state)
+
+  end subroutine get_transverse_rs_state
 
 
 end module states_mxll_oct_m

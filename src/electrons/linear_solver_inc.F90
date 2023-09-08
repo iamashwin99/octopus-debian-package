@@ -24,11 +24,11 @@ subroutine X(linear_solver_solve_HXeY) (this, namespace, hm, mesh, st, ist, ik, 
   type(linear_solver_t),    target, intent(inout) :: this
   type(namespace_t),        target, intent(in)    :: namespace
   type(hamiltonian_elec_t), target, intent(in)    :: hm
-  type(mesh_t),             target, intent(in)    :: mesh
+  class(mesh_t),            target, intent(in)    :: mesh
   type(states_elec_t),      target, intent(in)    :: st
   integer,                          intent(in)    :: ist
   integer,                          intent(in)    :: ik
-  R_TYPE,                           intent(inout) :: x(:,:)   !< x(mesh%np_part, d%dim)
+  R_TYPE, contiguous,               intent(inout) :: x(:,:)   !< x(mesh%np_part, d%dim)
   R_TYPE,                           intent(in)    :: y(:,:)   !< y(mesh%np, d%dim)
   R_TYPE,                           intent(in)    :: shift
   FLOAT,                            intent(in)    :: tol
@@ -116,7 +116,7 @@ subroutine X(linear_solver_solve_HXeY_batch) (this, namespace, hm, mesh, st, xb,
   type(linear_solver_t),    target, intent(inout) :: this
   type(namespace_t),                intent(in)    :: namespace
   type(hamiltonian_elec_t), target, intent(in)    :: hm
-  type(mesh_t),             target, intent(in)    :: mesh
+  class(mesh_t),            target, intent(in)    :: mesh
   type(states_elec_t),      target, intent(in)    :: st
   type(wfs_elec_t),                 intent(inout) :: xb
   type(wfs_elec_t),                 intent(inout) :: yb
@@ -136,13 +136,13 @@ subroutine X(linear_solver_solve_HXeY_batch) (this, namespace, hm, mesh, st, xb,
 
     call profiling_in(prof_batch, TOSTRING(X(LINEAR_SOLVER_BATCH)))
 
-    if (hamiltonian_elec_apply_packed(hm)) then
+    if (hm%apply_packed()) then
       call xb%do_pack()
       call yb%do_pack()
     end if
     call X(linear_solver_qmr_dotp)(this, namespace, hm, mesh, st, xb, yb, shift, iter_used, &
       residue, tol, use_initial_guess)
-    if (hamiltonian_elec_apply_packed(hm)) then
+    if (hm%apply_packed()) then
       call yb%do_unpack()
       call xb%do_unpack()
     end if
@@ -166,11 +166,11 @@ subroutine X(linear_solver_cg) (ls, namespace, hm, mesh, st, ist, ik, x, y, shif
   type(linear_solver_t),    intent(inout) :: ls
   type(namespace_t),        intent(in)    :: namespace
   type(hamiltonian_elec_t), intent(in)    :: hm
-  type(mesh_t),             intent(in)    :: mesh
+  class(mesh_t),            intent(in)    :: mesh
   type(states_elec_t),      intent(in)    :: st
   integer,                  intent(in)    :: ist
   integer,                  intent(in)    :: ik
-  R_TYPE,                   intent(inout) :: x(:,:)   !< x(mesh%np, st%d%dim)
+  R_TYPE, contiguous,       intent(inout) :: x(:,:)   !< x(mesh%np, st%d%dim)
   R_TYPE,                   intent(in)    :: y(:,:)   !< y(mesh%np, st%d%dim)
   R_TYPE,                   intent(in)    :: shift
   FLOAT,                    intent(in)    :: tol
@@ -255,7 +255,7 @@ end subroutine X(linear_solver_cg)
 subroutine X(linear_solver_idrs) (ls, namespace, mesh, st, x, y, tol, residue, iter_used)
   type(linear_solver_t), intent(inout) :: ls
   type(namespace_t),     intent(in)    :: namespace
-  type(mesh_t),          intent(in)    :: mesh
+  class(mesh_t),         intent(in)    :: mesh
   type(states_elec_t),   intent(in)    :: st
   R_TYPE,                intent(inout) :: x(:,:)   !< x(mesh%np, st%d%dim)
   R_TYPE,                intent(in)    :: y(:,:)   !< y(mesh%np, st%d%dim)
@@ -302,7 +302,7 @@ subroutine X(linear_solver_bicgstab) (ls, namespace, hm, mesh, st, ist, ik, x, y
   type(linear_solver_t),    intent(inout) :: ls
   type(namespace_t),        intent(in)    :: namespace
   type(hamiltonian_elec_t), intent(in)    :: hm
-  type(mesh_t),             intent(in)    :: mesh
+  class(mesh_t),            intent(in)    :: mesh
   type(states_elec_t),      intent(in)    :: st
   integer,                  intent(in)    :: ist
   integer,                  intent(in)    :: ik
@@ -454,7 +454,7 @@ subroutine X(linear_solver_multigrid) (ls, namespace, hm, mesh, st, ist, ik, x, 
   type(linear_solver_t),    intent(inout) :: ls
   type(namespace_t),        intent(in)    :: namespace
   type(hamiltonian_elec_t), intent(in)    :: hm
-  type(mesh_t),             intent(in)    :: mesh
+  class(mesh_t),            intent(in)    :: mesh
   type(states_elec_t),      intent(in)    :: st
   integer,                  intent(in)    :: ist
   integer,                  intent(in)    :: ik
@@ -549,12 +549,12 @@ end subroutine X(linear_solver_multigrid)
 subroutine X(linear_solver_operator) (hm, namespace, mesh, st, ist, ik, shift, x, hx)
   type(hamiltonian_elec_t), intent(in)    :: hm
   type(namespace_t),        intent(in)    :: namespace
-  type(mesh_t),             intent(in)    :: mesh
+  class(mesh_t),            intent(in)    :: mesh
   type(states_elec_t),      intent(in)    :: st
   integer,                  intent(in)    :: ist
   integer,                  intent(in)    :: ik
-  R_TYPE,                   intent(inout) :: x(:,:)   !<  x(mesh%np_part, st%d%dim)
-  R_TYPE,                   intent(out)   :: Hx(:,:)  !< Hx(mesh%np, st%d%dim)
+  R_TYPE, contiguous,       intent(inout) :: x(:,:)   !<  x(mesh%np_part, st%d%dim)
+  R_TYPE, contiguous,       intent(out)   :: Hx(:,:)  !< Hx(mesh%np, st%d%dim)
   R_TYPE,                   intent(in)    :: shift
 
   integer :: jst
@@ -599,7 +599,7 @@ end subroutine X(linear_solver_operator)
 subroutine X(linear_solver_operator_batch) (hm, namespace, mesh, st, shift, xb, hxb)
   type(hamiltonian_elec_t), intent(in)    :: hm
   type(namespace_t),        intent(in)    :: namespace
-  type(mesh_t),             intent(in)    :: mesh
+  class(mesh_t),            intent(in)    :: mesh
   type(states_elec_t),      intent(in)    :: st
   R_TYPE,                   intent(in)    :: shift(:)
   type(wfs_elec_t),         intent(inout) :: xb
@@ -607,6 +607,7 @@ subroutine X(linear_solver_operator_batch) (hm, namespace, mesh, st, shift, xb, 
 
   integer :: ii
   R_TYPE, allocatable :: shift_ist_indexed(:)
+  R_TYPE, allocatable :: xx(:, :), hx(:, :)
 
   PUSH_SUB(X(linear_solver_operator_batch))
 
@@ -625,11 +626,25 @@ subroutine X(linear_solver_operator_batch) (hm, namespace, mesh, st, shift, xb, 
     SAFE_DEALLOCATE_A(shift_ist_indexed)
 
   else
+    if(xb%status() == BATCH_NOT_PACKED) then
+      do ii = 1, xb%nst
+        call X(linear_solver_operator)(hm, namespace, mesh, st, xb%ist(ii), xb%ik, shift(ii), xb%X(ff)(:,:,ii), &
+          hxb%X(ff)(:,:,ii))
+      end do
+    else
 
-    do ii = 1, xb%nst
-      call X(linear_solver_operator)(hm, namespace, mesh, st, xb%ist(ii), xb%ik, shift(ii), xb%X(ff)(:,:,ii), &
-        hxb%X(ff)(:,:,ii))
-    end do
+      SAFE_ALLOCATE(xx(1:mesh%np_part, st%d%dim))
+      SAFE_ALLOCATE(hx(1:mesh%np, st%d%dim))
+      do ii = 1, xb%nst
+        call batch_get_state(xb, ii, mesh%np, xx)
+        call batch_get_state(hxb, ii, mesh%np, hx)
+        call X(linear_solver_operator)(hm, namespace, mesh, st, xb%ist(ii), xb%ik, shift(ii), xx, hx)
+        call batch_set_state(xb, ii, mesh%np, xx)
+        call batch_set_state(hxb, ii, mesh%np, hx)
+      end do
+      SAFE_DEALLOCATE_A(xx)
+      SAFE_DEALLOCATE_A(hx)
+    end if
 
   end if
 
@@ -734,7 +749,7 @@ end subroutine X(linear_solver_preconditioner)
 subroutine X(linear_solver_sos) (hm, namespace, mesh, st, ist, ik, x, y, shift, residue, iter_used)
   type(hamiltonian_elec_t),       intent(in)    :: hm
   type(namespace_t),              intent(in)    :: namespace
-  type(mesh_t),                   intent(in)    :: mesh
+  class(mesh_t),                  intent(in)    :: mesh
   type(states_elec_t),            intent(in)    :: st
   integer,                        intent(in)    :: ist
   integer,                        intent(in)    :: ik
@@ -793,7 +808,7 @@ subroutine X(linear_solver_qmr_dotp)(this, namespace, hm, mesh, st, xb, bb, shif
   type(linear_solver_t),    intent(inout) :: this
   type(namespace_t),        intent(in)    :: namespace
   type(hamiltonian_elec_t), intent(in)    :: hm
-  type(mesh_t),             intent(in)    :: mesh
+  class(mesh_t),            intent(in)    :: mesh
   type(states_elec_t),      intent(in)    :: st
   type(wfs_elec_t),         intent(inout) :: xb
   type(wfs_elec_t),         intent(in)    :: bb
@@ -807,7 +822,7 @@ subroutine X(linear_solver_qmr_dotp)(this, namespace, hm, mesh, st, xb, bb, shif
   integer             :: ii, iter
   FLOAT, allocatable  :: rho(:), oldrho(:), norm_b(:), xsi(:), gamma(:), alpha(:), theta(:), oldtheta(:), saved_res(:)
   FLOAT, allocatable  :: oldgamma(:)
-  R_TYPE, allocatable :: eta(:), beta(:), delta(:), eps(:), exception_saved(:, :, :)
+  R_TYPE, allocatable :: eta(:), beta(:), delta(:), eps(:), exception_saved(:, :, :), scal(:)
   integer, allocatable :: status(:), saved_iter(:)
 
   integer, parameter ::        &
@@ -836,6 +851,7 @@ subroutine X(linear_solver_qmr_dotp)(this, namespace, hm, mesh, st, xb, bb, shif
   SAFE_ALLOCATE(delta(1:xb%nst))
   SAFE_ALLOCATE(eps(1:xb%nst))
   SAFE_ALLOCATE(saved_res(1:xb%nst))
+  SAFE_ALLOCATE(scal(1:xb%nst))
 
   SAFE_ALLOCATE(status(1:xb%nst))
   SAFE_ALLOCATE(saved_iter(1:xb%nst))
@@ -930,13 +946,17 @@ subroutine X(linear_solver_qmr_dotp)(this, namespace, hm, mesh, st, xb, bb, shif
         saved_res(ii) = residue(ii)
       end if
 
-      alpha(ii) = alpha(ii)*xsi(ii)/rho(ii)
+      if(.not.abs(rho(ii)) < M_EPSILON) then
+        alpha(ii) = alpha(ii)*xsi(ii)/rho(ii)
+      else
+        alpha(ii) = M_ZERO
+      end if
     end do
 
     ! v^(i) = v^(i) / \rho_i
-    call batch_scal(mesh%np, M_ONE/rho, vvb, a_full = .false.)
+    call batch_scal(mesh%np, M_ONE/SAFE_TOL(rho,CNST(1e-20)), vvb, a_full = .false.)
     ! z^(i) = z^(i) / \xsi_i
-    call batch_scal(mesh%np, M_ONE/xsi, zzb, a_full = .false.)
+    call batch_scal(mesh%np, M_ONE/SAFE_TOL(xsi,CNST(1e-20)), zzb, a_full = .false.)
     ! \delta_i = v^(i)\ldotp z^(i)
     call X(mesh_batch_dotp_vector)(mesh, vvb, zzb, delta)
 
@@ -955,7 +975,14 @@ subroutine X(linear_solver_qmr_dotp)(this, namespace, hm, mesh, st, xb, bb, shif
       call zzb%copy_data_to(mesh%np, qqb)
     else
       ! q^(i) = z^(i) - (\rho_i\delta_i)/(\eps_{i-1})q^(i-1)
-      call batch_xpay(mesh%np, zzb, -rho*delta/eps, qqb, a_full = .false.)
+      do ii = 1, xb%nst
+        if(abs(rho(ii)) > M_EPSILON) then
+          scal(ii) = -rho(ii)*delta(ii)/eps(ii)
+        else
+          scal(ii) = M_ZERO
+        end if
+      end do
+      call batch_xpay(mesh%np, zzb, scal, qqb, a_full = .false.)
     end if
 
     ! ppb = (H-shift)*qqb
@@ -975,7 +1002,11 @@ subroutine X(linear_solver_qmr_dotp)(this, namespace, hm, mesh, st, xb, bb, shif
         saved_res(ii) = residue(ii)
       end if
 
-      beta(ii) = eps(ii)/delta(ii)
+      if(abs(delta(ii)) > M_EPSILON*abs(eps(ii))) then
+        beta(ii) = eps(ii)/delta(ii)
+      else
+        beta(ii) = M_ZERO
+      end if
     end do
 
     ! v^(i+1) = p^(i) - \beta_i v^(i)
@@ -991,7 +1022,7 @@ subroutine X(linear_solver_qmr_dotp)(this, namespace, hm, mesh, st, xb, bb, shif
     ! z^{i+1} = P v^{i+1}
     call X(preconditioner_apply_batch)(this%pre, namespace, mesh, hm, vvb, zzb, 1, omega = shift)
     ! z^{i+1} = P v^{i+1}/ \alpha^{i+1}
-    call batch_scal(mesh%np, M_ONE/alpha, zzb, a_full = .false.)
+    call batch_scal(mesh%np, M_ONE/SAFE_TOL(alpha, CNST(1e-20)), zzb, a_full = .false.)
 
     ! \xsi_{i+1} = ||z^{i+1}||_2
     call mesh_batch_nrm2(mesh, zzb, xsi)
@@ -1000,7 +1031,11 @@ subroutine X(linear_solver_qmr_dotp)(this, namespace, hm, mesh, st, xb, bb, shif
 
       oldtheta(ii) = theta(ii)
       ! \theta_i = \rho_{i+1}/(\gamma_{i-1} |\beta_i|)
-      theta(ii) = rho(ii)/(gamma(ii)*abs(beta(ii)))
+      if(abs(rho(ii)) > M_EPSILON) then
+        theta(ii) = rho(ii)/(gamma(ii)*abs(beta(ii)))
+      else ! zero-norm state
+        theta(ii) = M_ZERO
+      end if
 
       oldgamma(ii) = gamma(ii)
       ! \gamma_i = 1/sqrt(1+\theta_i^2)
@@ -1015,7 +1050,11 @@ subroutine X(linear_solver_qmr_dotp)(this, namespace, hm, mesh, st, xb, bb, shif
       end if
 
       ! \eta_i = -\eta_{i-1}\rho_i \gamma_i^2/ (\beta_i \gamma_{i-1}^2)
-      eta(ii) = -eta(ii)*oldrho(ii)*gamma(ii)**2/(beta(ii)*oldgamma(ii)**2)
+      if (abs(oldrho(ii))> M_EPSILON) then
+        eta(ii) = -eta(ii)*oldrho(ii)*gamma(ii)**2/(beta(ii)*oldgamma(ii)**2)
+      else
+        eta(ii) = M_ZERO
+      end if
     end do
 
     if (iter == 1) then
@@ -1050,7 +1089,9 @@ subroutine X(linear_solver_qmr_dotp)(this, namespace, hm, mesh, st, xb, bb, shif
     ! We compute the norm of the residual
     call mesh_batch_nrm2(mesh, res, residue)
     do ii = 1, xb%nst
-      residue(ii) = residue(ii)/norm_b(ii)
+      if(abs(norm_b(ii)) > M_EPSILON) then
+        residue(ii) = residue(ii)/norm_b(ii)
+      end if
     end do
 
     ! Convergence is reached once the residues are smaller than the threshold
@@ -1119,6 +1160,7 @@ subroutine X(linear_solver_qmr_dotp)(this, namespace, hm, mesh, st, xb, bb, shif
   SAFE_DEALLOCATE_A(beta)
   SAFE_DEALLOCATE_A(delta)
   SAFE_DEALLOCATE_A(eps)
+  SAFE_DEALLOCATE_A(scal)
 
   SAFE_DEALLOCATE_A(status)
   SAFE_DEALLOCATE_A(saved_res)

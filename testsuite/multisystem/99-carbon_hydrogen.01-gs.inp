@@ -1,5 +1,5 @@
 CalculationMode = gs
-fromScratch = yes
+FromScratch = yes
 
 %Systems
  "Carbon"   | electronic
@@ -28,4 +28,3 @@ Carbon.ExtraStates = 2
 # This leads to a warning that we capture
 Hydrogen.EigensolverMaxIter = 5000
 FlushMessages = yes
-

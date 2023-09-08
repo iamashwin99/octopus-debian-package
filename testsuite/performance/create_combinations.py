@@ -67,7 +67,7 @@ def get_combinations(test_name, path='tests'):
         # check environment variable to override
         variable = 'OPRT_' + parameter
         if variable in os.environ:
-            print("Information: {} is overridden by environment variable"
+            print('Information: {} is overridden by environment variable'
                   .format(parameter))
             combinations_dict[parameter] = yaml.safe_load(os.environ[variable])
     combinations_list = modify_combinations(
@@ -104,11 +104,11 @@ def write_input_files(combinations, test_name, template, test_path):
         mkdir_p(timing_path)
         with open(os.path.join(timing_path,
                                'process_timings.sh'), 'w') as inputfile:
-            inputfile.write("head -n2 time.000000.yaml > time.yaml\n")
+            inputfile.write('head -n2 time.000000.yaml > time.yaml\n')
             for tag in timing_tags:
-                inputfile.write("grep {} time.000000.yaml >> time.yaml\n"
+                inputfile.write('grep {} time.000000.yaml >> time.yaml\n'
                                 .format(tag))
-            inputfile.write("echo > /dev/null\n")
+            inputfile.write('echo > /dev/null\n')
     combination_list = []
     for hash, combination in combinations.items():
         combination_list.append({'hash': hash, **combination})
@@ -132,7 +132,7 @@ def create_test(test_name, test_path):
     template = get_template(test_name, test_path)
     write_input_files(combinations, test_name, template, test_path)
     write_make_targets(combinations, test_name)
-    print("Created {} runs for test {}.".format(
+    print('Created {} runs for test {}.'.format(
         len(combinations), test_name))
 
 
@@ -152,13 +152,13 @@ def create_central_targets():
 
 
 if __name__ == '__main__':
-    if "testsuite" in os.environ:
-        test_path = os.path.join(os.environ["testsuite"], "tests")
+    if 'testsuite' in os.environ:
+        test_path = os.path.join(os.environ['testsuite'], 'tests')
     else:
-        test_path = "tests"
+        test_path = 'tests'
     if not os.path.exists(test_path):
-        raise FileNotFoundError("Directory containing tests not found. Please "
-                                "set the testsuite environment variable.")
+        raise FileNotFoundError('Directory containing tests not found. Please '
+                                'set the testsuite environment variable.')
     if len(sys.argv) == 1:
         test_names = get_test_names(path=test_path)
     elif sys.argv[1] == 'all':

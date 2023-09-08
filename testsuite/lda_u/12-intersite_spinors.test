@@ -29,5 +29,3 @@ Input      : 12-intersite_spinors.02-Na2_td.inp
 Precision : 6e-8
 match ; Total current [step  20] ; LINEFIELD(td.general/total_current, -31, 6) ; 3.157023370350e-08
 match ; Total current [step  50] ; LINEFIELD(td.general/total_current, -1, 6) ; 2.007654737654e-08
-
-

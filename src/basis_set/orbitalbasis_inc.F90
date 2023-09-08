@@ -22,37 +22,40 @@ subroutine X(orbitalbasis_build)(this, namespace, ions, mesh, kpt, ndim, skip_s_
   type(orbitalbasis_t), target, intent(inout)    :: this
   type(namespace_t),            intent(in)       :: namespace
   type(ions_t),         target, intent(in)       :: ions
-  type(mesh_t),                 intent(in)       :: mesh
+  class(mesh_t),                intent(in)       :: mesh
   type(distributed_t),          intent(in)       :: kpt
   integer,                      intent(in)       :: ndim
   logical,                      intent(in)       :: skip_s_orb
   logical,                      intent(in)       :: use_all_orb
   logical, optional,            intent(in)       :: verbose
 
-  integer :: ia, ja, iorb, norb, offset, ios
+  integer :: ia, ja, iorb, norb, offset, ios, np
   integer :: hubbardl, ii, nn, ll, mm, work, work2, iorbset
   FLOAT   :: hubbardj, jj
   integer :: n_s_orb
   type(orbitalset_t), pointer :: os
   logical :: hasjdependence
   logical :: verbose_, use_mesh
+#ifdef R_TCOMPLEX
+  integer :: ik
+#endif
 
   PUSH_SUB(X(orbitalbasis_build))
 
   verbose_ = optional_default(verbose,.true.)
 
   !Do we use a mesh or a submesh to store the orbitals
-  use_mesh = .not. this%submesh
+  use_mesh = .not. this%use_submesh
 #ifdef R_TCOMPLEX
   ! In case of a phase, we want to use a submesh, to avoid problem
   ! with periodic systems and self-overlapping submeshes
-  ! This does only apply to X(orb). eorb_mesh/eorb_submesh are 
+  ! This does only apply to X(orb). eorb_mesh/eorb_submesh are
   ! still stored according to the user choice.
   use_mesh = .false.
 #endif
 
   if (verbose_) then
-    write(message(1),'(a)')    'Building the LDA+U localized orbital basis.'
+    write(message(1),'(a)')    'Building the DFT+U localized orbital basis.'
     call messages_info(1)
   end if
 
@@ -148,15 +151,17 @@ subroutine X(orbitalbasis_build)(this, namespace, ions, mesh, kpt, ndim, skip_s_
         iorbset = iorbset + 1
         os => this%orbsets(iorbset)
         norb = 0
-        do iorb = 1, species_niwfs(ions%atom(ia)%species)
-          call species_iwf_ilm(ions%atom(ia)%species, iorb, 1, ii, ll, mm)
-          call species_iwf_n(ions%atom(ia)%species, iorb, 1, nn)
-          call species_iwf_j(ions%atom(ia)%species, iorb, jj)
+        os%spec => ions%atom(ia)%species
+        do iorb = 1, species_niwfs(os%spec)
+          call species_iwf_ilm(os%spec, iorb, 1, ii, ll, mm)
+          call species_iwf_n(os%spec, iorb, 1, nn)
+          call species_iwf_j(os%spec, iorb, jj)
           if (ll .eq. hubbardl .and. hubbardj == jj) then
             norb = norb + 1
             call orbitalset_set_jln(os, jj, hubbardl, nn)
             os%ii = ii
-            os%radius = atomic_orbital_get_radius(ions, mesh, ia, iorb, 1, &
+            if (species_is_full(ions%atom(ia)%species)) os%ii = nn
+            os%radius = atomic_orbital_get_radius(os%spec, mesh, iorb, 1, &
               this%truncation, this%threshold)
           end if
         end do
@@ -169,8 +174,7 @@ subroutine X(orbitalbasis_build)(this, namespace, ions, mesh, kpt, ndim, skip_s_
         end if
         os%Ueff = species_hubbard_u(ions%atom(ia)%species)
         os%alpha = species_hubbard_alpha(ions%atom(ia)%species)
-        os%submesh = this%submesh
-        os%spec => ions%atom(ia)%species
+        os%use_submesh = this%use_submesh
         ! In order to have the ACBN0 working for antiferromagnets like NiO with symmetries,
         ! we need to combine the screening for all atoms of the same atomic number.
         ! This allows to have Ni1 and Ni2 in the input file and to use symmetries.
@@ -186,16 +190,18 @@ subroutine X(orbitalbasis_build)(this, namespace, ions, mesh, kpt, ndim, skip_s_
         !j = l-1/2
         iorbset = iorbset + 1
         os => this%orbsets(iorbset)
+        os%spec => ions%atom(ia)%species
         norb = 0
-        do iorb = 1, species_niwfs(ions%atom(ia)%species)
-          call species_iwf_ilm(ions%atom(ia)%species, iorb, 1, ii, ll, mm)
-          call species_iwf_n(ions%atom(ia)%species, iorb, 1, nn)
-          call species_iwf_j(ions%atom(ia)%species, iorb, jj)
+        do iorb = 1, species_niwfs(os%spec)
+          call species_iwf_ilm(os%spec, iorb, 1, ii, ll, mm)
+          call species_iwf_n(os%spec, iorb, 1, nn)
+          call species_iwf_j(os%spec, iorb, jj)
           if (ll .eq. hubbardl .and. jj < ll) then
             norb = norb + 1
             call orbitalset_set_jln(os, jj, hubbardl, nn)
             os%ii = ii
-            os%radius = atomic_orbital_get_radius(ions, mesh, ia, iorb, 1, &
+            if (species_is_full(ions%atom(ia)%species)) os%ii = nn
+            os%radius = atomic_orbital_get_radius(os%spec, mesh, iorb, 1, &
               this%truncation, this%threshold)
           end if
         end do
@@ -203,8 +209,7 @@ subroutine X(orbitalbasis_build)(this, namespace, ions, mesh, kpt, ndim, skip_s_
         os%norbs = norb-1
         os%Ueff = species_hubbard_u(ions%atom(ia)%species)
         os%alpha = species_hubbard_alpha(ions%atom(ia)%species)
-        os%submesh = this%submesh
-        os%spec => ions%atom(ia)%species
+        os%use_submesh = this%use_submesh
         ! In order to have the ACBN0 working for antiferromagnets like NiO with symmetries,
         ! we need to combine the screening for all atoms of the same atomic number.
         ! This allows to have Ni1 and Ni2 in the input file and to use symmetries.
@@ -220,16 +225,17 @@ subroutine X(orbitalbasis_build)(this, namespace, ions, mesh, kpt, ndim, skip_s_
         !j = l+1/2
         iorbset = iorbset + 1
         os => this%orbsets(iorbset)
+        os%spec => ions%atom(ia)%species
         norb = 0
-        do iorb = 1, species_niwfs(ions%atom(ia)%species)
-          call species_iwf_ilm(ions%atom(ia)%species, iorb, 1, ii, ll, mm)
-          call species_iwf_n(ions%atom(ia)%species, iorb, 1, nn)
-          call species_iwf_j(ions%atom(ia)%species, iorb, jj)
+        do iorb = 1, species_niwfs(os%spec)
+          call species_iwf_ilm(os%spec, iorb, 1, ii, ll, mm)
+          call species_iwf_n(os%spec, iorb, 1, nn)
+          call species_iwf_j(os%spec, iorb, jj)
           if (ll .eq. hubbardl .and. jj > ll) then
             norb = norb + 1
             call orbitalset_set_jln(os, jj, hubbardl, nn)
             os%ii = ii
-            os%radius = atomic_orbital_get_radius(ions, mesh, ia, iorb, 1, &
+            os%radius = atomic_orbital_get_radius(os%spec, mesh, iorb, 1, &
               this%truncation, this%threshold)
           end if
         end do
@@ -237,8 +243,7 @@ subroutine X(orbitalbasis_build)(this, namespace, ions, mesh, kpt, ndim, skip_s_
         os%norbs = norb+1
         os%Ueff = species_hubbard_u(ions%atom(ia)%species)
         os%alpha = species_hubbard_alpha(ions%atom(ia)%species)
-        os%submesh = this%submesh
-        os%spec => ions%atom(ia)%species
+        os%use_submesh = this%use_submesh
         ! In order to have the ACBN0 working for antiferromagnets like NiO with symmetries,
         ! we need to combine the screening for all atoms of the same atomic number.
         ! This allows to have Ni1 and Ni2 in the input file and to use symmetries.
@@ -269,17 +274,19 @@ subroutine X(orbitalbasis_build)(this, namespace, ions, mesh, kpt, ndim, skip_s_
       !We loop over the orbital sets of the atom ia
       do norb = 1, work
         os => this%orbsets(iorbset+norb)
+        os%spec => ions%atom(ia)%species
         !We count the number of orbital for this orbital set
         work2 = 0
-        do iorb = 1, species_niwfs(ions%atom(ia)%species)
-          call species_iwf_ilm(ions%atom(ia)%species, iorb, 1, ii, ll, mm)
-          call species_iwf_n(ions%atom(ia)%species, iorb, 1, nn)
-          call species_iwf_j(ions%atom(ia)%species, iorb, jj)
+        do iorb = 1, species_niwfs(os%spec)
+          call species_iwf_ilm(os%spec, iorb, 1, ii, ll, mm)
+          call species_iwf_n(os%spec, iorb, 1, nn)
+          call species_iwf_j(os%spec, iorb, jj)
           if (ii == norb+offset .and. hubbardj == jj) then
             work2 = work2 + 1
             call orbitalset_set_jln(os, jj, ll, nn)
             os%ii = ii
-            os%radius = atomic_orbital_get_radius(ions, mesh, ia, iorb, 1, &
+            if (species_is_full(ions%atom(ia)%species)) os%ii = nn
+            os%radius = atomic_orbital_get_radius(os%spec, mesh, iorb, 1, &
               this%truncation, this%threshold)
           end if
         end do
@@ -287,8 +294,7 @@ subroutine X(orbitalbasis_build)(this, namespace, ions, mesh, kpt, ndim, skip_s_
         os%ndim = 1
         os%Ueff = species_hubbard_u(ions%atom(ia)%species)
         os%alpha = species_hubbard_alpha(ions%atom(ia)%species)
-        os%submesh = this%submesh
-        os%spec => ions%atom(ia)%species
+        os%use_submesh = this%use_submesh
         ! In order to have the ACBN0 working for antiferromagnets like NiO with symmetries,
         ! we need to combine the screening for all atoms of the same atomic number.
         ! This allows to have Ni1 and Ni2 in the input file and to use symmetries.
@@ -315,7 +321,7 @@ subroutine X(orbitalbasis_build)(this, namespace, ions, mesh, kpt, ndim, skip_s_
 #ifdef R_TCOMPLEX
     SAFE_ALLOCATE(os%phase(1:os%sphere%np, kpt%start:kpt%end))
     os%phase(:,:) = M_ZERO
-    if (.not. this%submesh) then
+    if (.not. this%use_submesh) then
       SAFE_ALLOCATE(os%eorb_mesh(1:mesh%np, 1:os%norbs, 1:os%ndim, kpt%start:kpt%end))
       os%eorb_mesh(:,:,:,:) = M_ZERO
     else
@@ -328,6 +334,42 @@ subroutine X(orbitalbasis_build)(this, namespace, ions, mesh, kpt, ndim, skip_s_
     ! to apply the phase in lda_u_apply
     if (os%sphere%np > this%max_np) this%max_np = os%sphere%np
   end do
+
+  ! If we use GPUs, we need to transfer the orbitals on the device
+  ! This is done once for the entire calculation
+  ! We also initialize the mapping of the submesh here
+  if (accel_is_enabled() .and. os%ndim == 1) then
+    do iorbset = 1, this%norbsets
+      os => this%orbsets(iorbset)
+
+      np = os%sphere%np
+      if(.not. this%use_submesh) np = os%sphere%mesh%np
+      os%ldorbs = max(pad_pow2(np), 1)
+
+      call accel_create_buffer(os%X(buff_orb), ACCEL_MEM_READ_ONLY, R_TYPE_VAL, os%ldorbs*os%norbs)
+      ! In case we force the use of the submesh for X(orb) (for periodic systems), we do not want
+      ! to write to X(buff_orb), as it has not the same size as X(orb) and will not be used anyway
+      if(.not. this%use_submesh .eqv. use_mesh) then
+        do iorb = 1, os%norbs
+          call accel_write_buffer(os%X(buff_orb), np, os%X(orb)(:, 1, iorb), offset = (iorb - 1)*os%ldorbs)
+        end do
+      end if
+
+      if(.not. use_mesh) then
+        call accel_create_buffer(os%sphere%buff_map, ACCEL_MEM_READ_ONLY, TYPE_INTEGER, max(os%sphere%np, 1))
+        call accel_write_buffer(os%sphere%buff_map, os%sphere%np, os%sphere%map)
+      end if
+
+#ifdef R_TCOMPLEX
+      SAFE_ALLOCATE(os%buff_eorb(kpt%start:kpt%end))
+
+      do ik= kpt%start, kpt%end
+        call accel_create_buffer(os%buff_eorb(ik), ACCEL_MEM_READ_ONLY, TYPE_CMPLX, os%ldorbs*os%norbs)
+      end do
+#endif
+    end do
+  end if
+
 
   do ios = 1, this%norbsets
     if (this%orbsets(ios)%sphere%np == -1) then
@@ -371,12 +413,13 @@ end subroutine X(orbitalbasis_build)
 ! ---------------------------------------------------------
 !> This routine constructd an empty orbital basis.
 ! ---------------------------------------------------------
-subroutine X(orbitalbasis_build_empty)(this, mesh, kpt, ndim, nstates, verbose)
+subroutine X(orbitalbasis_build_empty)(this, mesh, kpt, ndim, norbsets, map_os, verbose)
   type(orbitalbasis_t), target, intent(inout)    :: this
   type(distributed_t),          intent(in)       :: kpt
-  type(mesh_t),         target, intent(in)       :: mesh
+  class(mesh_t),        target, intent(in)       :: mesh
   integer,                      intent(in)       :: ndim
-  integer,                      intent(in)       :: nstates
+  integer,                      intent(in)       :: norbsets
+  integer,                      intent(in)       :: map_os(:)
   logical, optional,            intent(in)       :: verbose
 
   integer :: ios, iorb, offset
@@ -388,42 +431,47 @@ subroutine X(orbitalbasis_build_empty)(this, mesh, kpt, ndim, nstates, verbose)
   verbose_ = optional_default(verbose,.true.)
 
   if (verbose_) then
-    write(message(1),'(a)')    'Building an empty LDA+U orbital basis.'
+    write(message(1),'(a)')    'Building an empty DFT+U orbital basis.'
     call messages_info(1)
   end if
 
-  ASSERT(nstates > 0)
+  ASSERT(norbsets > 0)
 
-  this%norbsets = 1
-  SAFE_ALLOCATE(this%orbsets(1))
-  call orbitalset_init(this%orbsets(1))
-  os => this%orbsets(1)
-  os%ii = -1
-  os%radius = M_ZERO
-  os%ndim = ndim
-  os%norbs = nstates
-  os%Ueff = M_ZERO
-  os%alpha = M_ZERO
-  os%submesh = .false.
-  os%sphere%mesh => mesh
-  nullify(os%spec)
-  os%spec_index = 1
-  os%iatom = -1
-  SAFE_ALLOCATE(os%X(orb)(1:mesh%np, 1:os%ndim, 1:os%norbs))
-  os%X(orb)(:,:,:) = R_TOTYPE(M_ZERO)
-
-  this%maxnorbs = nstates
   this%max_np = mesh%np
 
-  ! In case of complex wavefunction, we allocate the array for the phase correction
-#ifdef R_TCOMPLEX
-  SAFE_ALLOCATE(os%phase(1:mesh%np, kpt%start:kpt%end))
-  os%phase(:,:) = M_ZERO
-  SAFE_ALLOCATE(os%eorb_mesh(1:mesh%np, 1:os%norbs, 1:os%ndim, kpt%start:kpt%end))
-  os%eorb_mesh(:,:,:,:) = M_ZERO
-#endif
+  this%norbsets = norbsets
+  SAFE_ALLOCATE(this%orbsets(norbsets))
 
-  this%size = nstates
+  do ios = 1, norbsets
+    call orbitalset_init(this%orbsets(ios))
+    this%orbsets(ios)%norbs = 0
+  end do
+
+  ! We attribute the orbitals
+  do iorb = 1, ubound(map_os, dim=1)
+    this%orbsets(map_os(iorb))%norbs = this%orbsets(map_os(iorb))%norbs + 1
+  end do
+
+  this%maxnorbs = 0
+  do ios = 1, norbsets
+    os => this%orbsets(ios)
+    os%ii = -1
+    os%radius = M_ZERO
+    os%ndim = ndim
+    this%maxnorbs = max(this%maxnorbs, os%norbs)
+
+    os%Ueff = M_ZERO
+    os%alpha = M_ZERO
+    os%use_submesh = .false.
+    os%sphere%mesh => mesh
+    nullify(os%spec)
+    os%spec_index = 1
+    os%iatom = -1
+    SAFE_ALLOCATE(os%X(orb)(1:mesh%np, 1:os%ndim, 1:os%norbs))
+    os%X(orb)(:,:,:) = R_TOTYPE(M_ZERO)
+  end do
+
+  this%size = 0
   do ios = 1, this%norbsets
     this%size = this%size + this%orbsets(ios)%norbs
   end do

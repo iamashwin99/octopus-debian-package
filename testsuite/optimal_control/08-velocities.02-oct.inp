@@ -63,11 +63,11 @@ stime  = 100.0
 TDPropagationTime = stime
 TDPropagator = crank_nicolson
 
-%TDOutput 
- multipoles 
- laser 
+%TDOutput
+ multipoles
+ laser
  geometry
-% 
+%
 
 AbsorbingBoundaries = cap
 AbWidth = 4.0
@@ -91,7 +91,7 @@ OCTControlFunctionRepresentation = control_zero_fourier_series_h
 OCTInitialState = oct_is_groundstate
 OCTTargetOperator = oct_tg_velocity
 
-%OCTVelocityTarget 
+%OCTVelocityTarget
 "((v[1,1]-v[2,1])*1836.15)^2"
 %
 

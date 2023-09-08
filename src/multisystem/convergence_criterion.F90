@@ -146,7 +146,7 @@ contains
     nullify(this%norm)
     nullify(this%unit)
     if (allocated(this%label)) then
-      ! No safe_dealloate here, because it was not allocated with safe_allocate.
+      ! No safe_deallocate here, because it was not allocated with safe_allocate.
       deallocate(this%label)
     end if
 

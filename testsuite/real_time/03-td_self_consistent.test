@@ -10,12 +10,16 @@ Processors : 1
 Input      : 03-td_self_consistent.01-gs.inp
 Precision  : 1.0e-6
 match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
-match ; Initial energy ; GREPFIELD(static/info, 'Total       =', 3) ; -10.60766050
+Precision: 5.30e-08
+match ;  Initial energy  ; GREPFIELD(static/info, 'Total       =', 3) ; -10.60684242
 
 Processors : 4
 Input      : 03-td_self_consistent.02-etrs.inp
-Precision  : 3.0e-6
-match ; Multipoles [step  1] ; LINEFIELD(td.general/multipoles, -21, 4)   ; -1.304789926007e-13
-match ; Multipoles [step 20] ; LINEFIELD(td.general/multipoles,  -1, 4)   ; -1.265552801371e-01
-match ; Forces     [step  1] ; LINEFIELD(td.general/coordinates, -21, 15) ;  8.598160714157e-02
-match ; Forces     [step 20] ; LINEFIELD(td.general/coordinates, -1, 15)  ;  8.015296832453e-02
+Precision: 4.71e-15
+match ;  Multipoles [step  1]  ; LINEFIELD(td.general/multipoles, -21, 4) ; -2.34180049009662e-15
+Precision: 6.33e-15
+match ;  Multipoles [step 20]  ; LINEFIELD(td.general/multipoles, -1, 4) ; -0.126554127729815
+Precision: 4.27e-15
+match ;  Forces     [step  1]  ; LINEFIELD(td.general/coordinates, -21, 15) ; 0.08537492460197621
+Precision: 3.98e-15
+match ;  Forces     [step 20]  ; LINEFIELD(td.general/coordinates, -1, 15) ; 0.079667715272192

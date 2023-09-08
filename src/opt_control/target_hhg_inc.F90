@@ -132,18 +132,18 @@ subroutine target_init_hhgnew(gr, namespace, tg, td, ions, ep)
     call messages_fatal(1, namespace=namespace)
   end if
 
-  SAFE_ALLOCATE(tg%grad_local_pot(1:ions%natoms, 1:gr%mesh%np, 1:gr%box%dim))
-  SAFE_ALLOCATE(vl(1:gr%mesh%np_part))
-  SAFE_ALLOCATE(vl_grad(1:gr%mesh%np, 1:gr%box%dim))
-  SAFE_ALLOCATE(tg%rho(1:gr%mesh%np))
+  SAFE_ALLOCATE(tg%grad_local_pot(1:ions%natoms, 1:gr%np, 1:gr%box%dim))
+  SAFE_ALLOCATE(vl(1:gr%np_part))
+  SAFE_ALLOCATE(vl_grad(1:gr%np, 1:gr%box%dim))
+  SAFE_ALLOCATE(tg%rho(1:gr%np))
 
   vl(:) = M_ZERO
   vl_grad(:,:) = M_ZERO
-  call epot_local_potential(ep, namespace, ions%space, ions%latt, gr%mesh, ions%atom(1)%species, &
+  call epot_local_potential(ep, namespace, ions%space, ions%latt, gr, ions%atom(1)%species, &
     ions%pos(:, 1), 1, vl)
   call dderivatives_grad(gr%der, vl, vl_grad)
   do jst=1, gr%box%dim
-    do ist = 1, gr%mesh%np
+    do ist = 1, gr%np
       tg%grad_local_pot(1, ist, jst) = vl_grad(ist, jst)
     end do
   end do
@@ -346,19 +346,19 @@ subroutine target_tdcalc_hhgnew(tg, gr, psi, time, max_time)
   ! If the ions move, the tg is computed in the propagation routine.
   if (.not. target_move_ions(tg)) then
 
-    SAFE_ALLOCATE(opsi(1:gr%mesh%np_part, 1))
-    SAFE_ALLOCATE(zpsi(1:gr%mesh%np_part, 1))
+    SAFE_ALLOCATE(opsi(1:gr%np_part, 1))
+    SAFE_ALLOCATE(zpsi(1:gr%np_part, 1))
 
     opsi = M_z0
     ! WARNING This does not work for spinors.
     ! The following is a temporary hack. It assumes only one atom at the origin.
     do ik = 1, psi%d%nik
       do ist = 1, psi%nst
-        call states_elec_get_state(psi, gr%mesh, ist, ik, zpsi)
+        call states_elec_get_state(psi, gr, ist, ik, zpsi)
         do idim = 1, gr%box%dim
-          opsi(1:gr%mesh%np, 1) = tg%grad_local_pot(1, 1:gr%mesh%np, idim)*zpsi(1:gr%mesh%np, 1)
-          acc(idim) = acc(idim) + TOFLOAT( psi%occ(ist, ik) * zmf_dotp(gr%mesh, psi%d%dim, opsi, zpsi))
-          tg%acc(time+1, idim) = tg%acc(time+1, idim) + psi%occ(ist, ik)*zmf_dotp(gr%mesh, psi%d%dim, opsi, zpsi)
+          opsi(1:gr%np, 1) = tg%grad_local_pot(1, 1:gr%np, idim)*zpsi(1:gr%np, 1)
+          acc(idim) = acc(idim) + TOFLOAT( psi%occ(ist, ik) * zmf_dotp(gr, psi%d%dim, opsi, zpsi))
+          tg%acc(time+1, idim) = tg%acc(time+1, idim) + psi%occ(ist, ik)*zmf_dotp(gr, psi%d%dim, opsi, zpsi)
         end do
       end do
     end do

@@ -31,7 +31,7 @@ ABCapHeight = -1.0
 #############################
 PhotoElectronSpectrum = pes_flux
 
-PES_Flux_Shape  = cub 
+PES_Flux_Shape  = cub
 PES_Flux_Lsize = 15
 PES_Flux_UseSymmetries = yes
 PES_Flux_Face_Dens = 1/2
@@ -71,4 +71,3 @@ TDExponentialMethod = lanczos
 TDExpOrder = 20
 
 TDPropagationTime = ntot*tc
-

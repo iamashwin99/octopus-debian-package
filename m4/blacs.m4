@@ -24,7 +24,7 @@ if test $acx_blacs_ok = no; then
   esac
 fi
 
-dnl Backup LIBS 
+dnl Backup LIBS
 acx_blacs_save_LIBS="$LIBS"
 LIBS="$LIBS_BLACS $LIBS_LAPACK $LIBS_BLAS $LIBS $FLIBS"
 
@@ -59,7 +59,7 @@ dnl Finally, execute ACTION-IF-FOUND/ACTION-IF-NOT-FOUND:
 if test x"$acx_blacs_ok" = xyes; then
   AC_DEFINE(HAVE_BLACS,1,[Defined if you have BLACS library.])
 else
-  AC_MSG_WARN([Could not find BLACS library (required for ScaLAPACK). 
+  AC_MSG_WARN([Could not find BLACS library (required for ScaLAPACK).
                *** Will compile without ScaLAPACK support])
   LIBS_BLACS=""
 fi

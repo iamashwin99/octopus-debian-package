@@ -5,7 +5,7 @@ ExperimentalFeatures = yes
 
 a = 4.0485*angstrom
 %Species
- 'Al' | species_pseudo | file | '09-basis_from_states.fhi' | lmax | 2 | lloc | 0 |hubbard_l | 1 
+ 'Al' | species_pseudo | file | '09-basis_from_states.fhi' | lmax | 2 | lloc | 0 |hubbard_l | 1
 %
 
 %LatticeParameters
@@ -23,7 +23,7 @@ a = 4.0485*angstrom
 %
 
 Spacing = 0.4
-Smearing = 0.1
+Smearing = 0.1*eV
 SmearingFunction = fermi_dirac
 
 FromScratch = yes
@@ -35,4 +35,3 @@ ExtraStates = 3
 
 MeshBlockSize = 16
 ConvRelDens = 1e-6
-

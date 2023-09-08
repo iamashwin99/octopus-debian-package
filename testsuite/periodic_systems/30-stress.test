@@ -1,0 +1,358 @@
+# -*- coding: utf-8 mode: shell-script -*-
+
+Test       : Stress tensor
+Program    : octopus
+TestGroups : short-run, periodic_systems
+Enabled    : Yes
+
+
+Processors : 4
+Precision  : 1e-7
+
+# TODO: UPDATE THE REFERENCE VALUES AFTER FIXING THE INDEPENDENT PARTICLE RUN https://gitlab.com/octopus-code/octopus/-/issues/696
+# Input      : 30-stress.01-independent.inp
+
+# match ;     Stress (11)      ; GREPFIELD(static/info, 'Total stress tensor', 2, 2) ; -0.005645947312
+# match ;     Stress (12)      ; GREPFIELD(static/info, 'Total stress tensor', 3, 2) ; -0.006088082498
+# match ;     Stress (13)      ; GREPFIELD(static/info, 'Total stress tensor', 4, 2) ; -0.00586914639
+# match ;     Stress (21)      ; GREPFIELD(static/info, 'Total stress tensor', 2, 3) ; -0.00039022221429999996
+# match ;     Stress (22)      ; GREPFIELD(static/info, 'Total stress tensor', 3, 3) ; -0.001457407419
+# match ;     Stress (23)      ; GREPFIELD(static/info, 'Total stress tensor', 4, 3) ; -0.0005861471761
+# match ;     Stress (31)      ; GREPFIELD(static/info, 'Total stress tensor', 2, 4) ; -0.0021573512889999998
+# match ;     Stress (32)      ; GREPFIELD(static/info, 'Total stress tensor', 3, 4) ; 0.0007357126078
+# match ;     Stress (33)      ; GREPFIELD(static/info, 'Total stress tensor', 4, 4) ; 0.0001390268731
+
+# match ;   Pressure (H/b^3)   ; GREPFIELD(static/info, 'Pressure \[H/b^3\]', 4) ; 0.0058677254
+# match ;   Pressure (GPa)     ; GREPFIELD(static/info, 'Pressure \[GPa\]', 8) ; 172.63450439
+
+# match ;  Kinetic stress (11) ; GREPFIELD(static/stress, 'Kinetic stress tensor', 2, 2) ; 1.222914757E-02
+# match ;  Kinetic stress (12) ; GREPFIELD(static/stress, 'Kinetic stress tensor', 3, 2) ; 7.178671366E-05
+# match ;  Kinetic stress (13) ; GREPFIELD(static/stress, 'Kinetic stress tensor', 4, 2) ; -5.529174315E-05
+# match ;  Kinetic stress (21) ; GREPFIELD(static/stress, 'Kinetic stress tensor', 2, 3) ; 7.178671366E-05
+# match ;  Kinetic stress (22) ; GREPFIELD(static/stress, 'Kinetic stress tensor', 3, 3) ; 1.228532386E-02
+# match ;  Kinetic stress (23) ; GREPFIELD(static/stress, 'Kinetic stress tensor', 4, 3) ; 6.562294732E-05
+# match ;  Kinetic stress (31) ; GREPFIELD(static/stress, 'Kinetic stress tensor', 2, 4) ; -5.529174315E-05
+# match ;  Kinetic stress (32) ; GREPFIELD(static/stress, 'Kinetic stress tensor', 3, 4) ; 6.562294732E-05
+# match ;  Kinetic stress (33) ; GREPFIELD(static/stress, 'Kinetic stress tensor', 4, 4) ; 1.226402391E-02
+
+# match ;  Hartree stress (11) ; GREPFIELD(static/stress, 'Hartree stress tensor', 2, 2) ; 0.000686624679
+# match ;  Hartree stress (12) ; GREPFIELD(static/stress, 'Hartree stress tensor', 3, 2) ; 0.000110529178
+# match ;  Hartree stress (13) ; GREPFIELD(static/stress, 'Hartree stress tensor', 4, 2) ; -6.586250444e-05
+# match ;  Hartree stress (21) ; GREPFIELD(static/stress, 'Hartree stress tensor', 2, 3) ; 0.000110529178
+# match ;  Hartree stress (22) ; GREPFIELD(static/stress, 'Hartree stress tensor', 3, 3) ; 0.0008987790436999999
+# match ;  Hartree stress (23) ; GREPFIELD(static/stress, 'Hartree stress tensor', 4, 3) ; 0.0001595756753
+# match ;  Hartree stress (31) ; GREPFIELD(static/stress, 'Hartree stress tensor', 2, 4) ; -6.586250444e-05
+# match ;  Hartree stress (32) ; GREPFIELD(static/stress, 'Hartree stress tensor', 3, 4) ; 0.0001595756753
+# match ;  Hartree stress (33) ; GREPFIELD(static/stress, 'Hartree stress tensor', 4, 4) ; 0.000809552841
+
+# match ;  XC stress (11)      ; GREPFIELD(static/stress, 'XC stress tensor', 2, 2) ; -9.675418234E-04
+# match ;  XC stress (12)      ; GREPFIELD(static/stress, 'XC stress tensor', 3, 2) ; 0
+# match ;  XC stress (13)      ; GREPFIELD(static/stress, 'XC stress tensor', 4, 2) ; 0
+# match ;  XC stress (21)      ; GREPFIELD(static/stress, 'XC stress tensor', 2, 3) ; 0
+# match ;  XC stress (22)      ; GREPFIELD(static/stress, 'XC stress tensor', 3, 3) ; -9.675418234E-04
+# match ;  XC stress (23)      ; GREPFIELD(static/stress, 'XC stress tensor', 4, 3) ; 0
+# match ;  XC stress (31)      ; GREPFIELD(static/stress, 'XC stress tensor', 2, 4) ; 0
+# match ;  XC stress (32)      ; GREPFIELD(static/stress, 'XC stress tensor', 3, 4) ; 0
+# match ;  XC stress (33)      ; GREPFIELD(static/stress, 'XC stress tensor', 4, 4) ; -9.675418234E-04
+
+# match ; Pseudopotential stress (11) ; GREPFIELD(static/stress, 'Pseudopotential stress tensor', 2, 2) ; 0.006049504587
+# match ; Pseudopotential stress (12) ; GREPFIELD(static/stress, 'Pseudopotential stress tensor', 3, 2) ; -0.0009211717667000001
+# match ; Pseudopotential stress (13) ; GREPFIELD(static/stress, 'Pseudopotential stress tensor', 4, 2) ; 0.00051617285
+# match ; Pseudopotential stress (21) ; GREPFIELD(static/stress, 'Pseudopotential stress tensor', 2, 3) ; 0.000146013438
+# match ; Pseudopotential stress (22) ; GREPFIELD(static/stress, 'Pseudopotential stress tensor', 3, 3) ; 0.005097509393
+# match ; Pseudopotential stress (23) ; GREPFIELD(static/stress, 'Pseudopotential stress tensor', 4, 3) ; -0.0013618088610000002
+# match ; Pseudopotential stress (31) ; GREPFIELD(static/stress, 'Pseudopotential stress tensor', 2, 4) ; -8.051288476e-05
+# match ; Pseudopotential stress (32) ; GREPFIELD(static/stress, 'Pseudopotential stress tensor', 3, 4) ; 0.0002093952519
+# match ; Pseudopotential stress (33) ; GREPFIELD(static/stress, 'Pseudopotential stress tensor', 4, 4) ; 0.005499784882999999
+
+# match ;  Ion-ion stress (11) ; GREPFIELD(static/stress, 'Ion-ion stress tensor', 2, 2) ; -1.235178770E-02    
+# match ;  Ion-ion stress (12) ; GREPFIELD(static/stress, 'Ion-ion stress tensor', 3, 2) ; 1.129036311E-03 
+# match ;  Ion-ion stress (13) ; GREPFIELD(static/stress, 'Ion-ion stress tensor', 4, 2) ; -5.340350017E-04
+# match ;  Ion-ion stress (21) ; GREPFIELD(static/stress, 'Ion-ion stress tensor', 2, 3) ;  1.129036311E-03    
+# match ;  Ion-ion stress (22) ; GREPFIELD(static/stress, 'Ion-ion stress tensor', 3, 3) ;  -1.122598798E-02
+# match ;  Ion-ion stress (23) ; GREPFIELD(static/stress, 'Ion-ion stress tensor', 4, 3) ;1.722698484E-03
+# match ;  Ion-ion stress (31) ; GREPFIELD(static/stress, 'Ion-ion stress tensor', 2, 4) ; -5.340350017E-04   
+# match ;  Ion-ion stress (32) ; GREPFIELD(static/stress, 'Ion-ion stress tensor', 3, 4) ; 1.722698484E-03 
+# match ;  Ion-ion stress (33) ; GREPFIELD(static/stress, 'Ion-ion stress tensor', 4, 4) ;  -1.173667342E-02
+
+
+Input      : 30-stress.02-gamma_point.inp 
+
+Precision: 2.55e-11
+match ;    Pressure (H/b^3)    ; GREPFIELD(static/info, 'Pressure \[H/b^3\]', 4) ; 0.000510082594
+Precision: 7.50e-07
+match ;    Pressure (GPa)      ; GREPFIELD(static/info, 'Pressure \[GPa\]', 8) ; 15.007153500000001
+Precision: 1.00e-07
+match ;   Kinetic stress (11)  ; GREPFIELD(static/stress, 'Kinetic stress tensor', 2, 2) ; 0.009023519412
+Precision: 1.00e-07
+match ;   Kinetic stress (12)  ; GREPFIELD(static/stress, 'Kinetic stress tensor', 3, 2) ; -3.17329496e-15
+Precision: 1.00e-07
+match ;   Kinetic stress (13)  ; GREPFIELD(static/stress, 'Kinetic stress tensor', 4, 2) ; 3.918400326e-15
+Precision: 1.00e-07
+match ;   Kinetic stress (21)  ; GREPFIELD(static/stress, 'Kinetic stress tensor', 2, 3) ; -3.17329496e-15
+Precision: 1.00e-07
+match ;   Kinetic stress (22)  ; GREPFIELD(static/stress, 'Kinetic stress tensor', 3, 3) ; 0.009023519412
+Precision: 1.00e-07
+match ;   Kinetic stress (23)  ; GREPFIELD(static/stress, 'Kinetic stress tensor', 4, 3) ; -9.48369161e-15
+Precision: 1.00e-07
+match ;   Kinetic stress (31)  ; GREPFIELD(static/stress, 'Kinetic stress tensor', 2, 4) ; 3.918400326e-15
+Precision: 1.00e-07
+match ;   Kinetic stress (32)  ; GREPFIELD(static/stress, 'Kinetic stress tensor', 3, 4) ; -9.48369161e-15
+Precision: 1.00e-07
+match ;   Kinetic stress (33)  ; GREPFIELD(static/stress, 'Kinetic stress tensor', 4, 4) ; 0.009023519412
+Precision: 1.00e-07
+match ;   Hartree stress (11)  ; GREPFIELD(static/stress, 'Hartree stress tensor', 2, 2) ; 0.0008199097876
+Precision: 1.00e-07
+match ;   Hartree stress (12)  ; GREPFIELD(static/stress, 'Hartree stress tensor', 3, 2) ; 5.083111337e-20
+Precision: 1.00e-07
+match ;   Hartree stress (13)  ; GREPFIELD(static/stress, 'Hartree stress tensor', 4, 2) ; -2.719041979e-21
+Precision: 1.00e-07
+match ;   Hartree stress (21)  ; GREPFIELD(static/stress, 'Hartree stress tensor', 2, 3) ; 5.083111337e-20
+Precision: 1.00e-07
+match ;   Hartree stress (22)  ; GREPFIELD(static/stress, 'Hartree stress tensor', 3, 3) ; 0.0008199097876
+Precision: 1.00e-07
+match ;   Hartree stress (23)  ; GREPFIELD(static/stress, 'Hartree stress tensor', 4, 3) ; -3.976337293e-22
+Precision: 1.00e-07
+match ;   Hartree stress (31)  ; GREPFIELD(static/stress, 'Hartree stress tensor', 2, 4) ; -2.719041979e-21
+Precision: 1.00e-07
+match ;   Hartree stress (32)  ; GREPFIELD(static/stress, 'Hartree stress tensor', 3, 4) ; -3.976337293e-22
+Precision: 1.00e-07
+match ;   Hartree stress (33)  ; GREPFIELD(static/stress, 'Hartree stress tensor', 4, 4) ; 0.0008199097876
+Precision: 1.82e-11
+match ;   XC stress (11)       ; GREPFIELD(static/stress, 'XC stress tensor', 2, 2) ; -0.0036380885759999997
+Precision: 1.00e-07
+match ;   XC stress (12)       ; GREPFIELD(static/stress, 'XC stress tensor', 3, 2) ; 0.0
+Precision: 1.00e-07
+match ;   XC stress (13)       ; GREPFIELD(static/stress, 'XC stress tensor', 4, 2) ; 0.0
+Precision: 1.00e-07
+match ;   XC stress (21)       ; GREPFIELD(static/stress, 'XC stress tensor', 2, 3) ; 0.0
+Precision: 1.82e-11
+match ;   XC stress (22)       ; GREPFIELD(static/stress, 'XC stress tensor', 3, 3) ; -0.0036380885759999997
+Precision: 1.00e-07
+match ;   XC stress (23)       ; GREPFIELD(static/stress, 'XC stress tensor', 4, 3) ; 0.0
+Precision: 1.00e-07
+match ;   XC stress (31)       ; GREPFIELD(static/stress, 'XC stress tensor', 2, 4) ; 0.0
+Precision: 1.00e-07
+match ;   XC stress (32)       ; GREPFIELD(static/stress, 'XC stress tensor', 3, 4) ; 0.0
+Precision: 1.82e-11
+match ;   XC stress (33)       ; GREPFIELD(static/stress, 'XC stress tensor', 4, 4) ; -0.0036380885759999997
+Precision: 1.00e-07
+match ;  Pseudopotential stress (11)  ; GREPFIELD(static/stress, 'Pseudopotential stress tensor', 2, 2) ; 0.003283303674
+Precision: 1.00e-07
+match ;  Pseudopotential stress (12)  ; GREPFIELD(static/stress, 'Pseudopotential stress tensor', 3, 2) ; 3.13574937e-17
+Precision: 1.00e-07
+match ;  Pseudopotential stress (13)  ; GREPFIELD(static/stress, 'Pseudopotential stress tensor', 4, 2) ; -3.010628796e-15
+Precision: 1.00e-07
+match ;  Pseudopotential stress (21)  ; GREPFIELD(static/stress, 'Pseudopotential stress tensor', 2, 3) ; 3.137972609e-17
+Precision: 1.00e-07
+match ;  Pseudopotential stress (22)  ; GREPFIELD(static/stress, 'Pseudopotential stress tensor', 3, 3) ; 0.003283303674
+Precision: 1.00e-07
+match ;  Pseudopotential stress (23)  ; GREPFIELD(static/stress, 'Pseudopotential stress tensor', 4, 3) ; 6.907277312e-15
+Precision: 1.00e-07
+match ;  Pseudopotential stress (31)  ; GREPFIELD(static/stress, 'Pseudopotential stress tensor', 2, 4) ; -3.010580118e-15
+Precision: 1.00e-07
+match ;  Pseudopotential stress (32)  ; GREPFIELD(static/stress, 'Pseudopotential stress tensor', 3, 4) ; 6.907342906e-15
+Precision: 1.00e-07
+match ;  Pseudopotential stress (33)  ; GREPFIELD(static/stress, 'Pseudopotential stress tensor', 4, 4) ; 0.003283303674
+Precision: 1.00e-07
+match ;   Ion-ion stress (11)  ; GREPFIELD(static/stress, 'Ion-ion stress tensor', 2, 2) ; -0.008978561705
+Precision: 1.00e-07
+match ;   Ion-ion stress (12)  ; GREPFIELD(static/stress, 'Ion-ion stress tensor', 3, 2) ; -4.451112881e-19
+Precision: 1.00e-07
+match ;   Ion-ion stress (13)  ; GREPFIELD(static/stress, 'Ion-ion stress tensor', 4, 2) ; 6.623349638e-20
+Precision: 1.00e-07
+match ;   Ion-ion stress (21)  ; GREPFIELD(static/stress, 'Ion-ion stress tensor', 2, 3) ; -4.451248145e-19
+Precision: 1.00e-07
+match ;   Ion-ion stress (22)  ; GREPFIELD(static/stress, 'Ion-ion stress tensor', 3, 3) ; -0.008978561705
+Precision: 1.00e-07
+match ;   Ion-ion stress (23)  ; GREPFIELD(static/stress, 'Ion-ion stress tensor', 4, 3) ; -1.22990697e-19
+Precision: 1.00e-07
+match ;   Ion-ion stress (31)  ; GREPFIELD(static/stress, 'Ion-ion stress tensor', 2, 4) ; 6.623180208e-20
+Precision: 1.00e-07
+match ;   Ion-ion stress (32)  ; GREPFIELD(static/stress, 'Ion-ion stress tensor', 3, 4) ; -1.229906706e-19
+Precision: 1.00e-07
+match ;   Ion-ion stress (33)  ; GREPFIELD(static/stress, 'Ion-ion stress tensor', 4, 4) ; -0.008978561705
+Precision: 2.55e-12
+match ;      Stress (11)       ; GREPFIELD(static/info, 'Total stress tensor', 2, 2) ; -0.0005100825937
+Precision: 1.00e-07
+match ;      Stress (12)       ; GREPFIELD(static/info, 'Total stress tensor', 3, 2) ; 3.142331747e-15
+Precision: 1.00e-07
+match ;      Stress (13)       ; GREPFIELD(static/info, 'Total stress tensor', 4, 2) ; -9.078350444e-16
+Precision: 1.00e-07
+match ;      Stress (21)       ; GREPFIELD(static/info, 'Total stress tensor', 2, 3) ; 3.142331747e-15
+Precision: 2.55e-12
+match ;      Stress (22)       ; GREPFIELD(static/info, 'Total stress tensor', 3, 3) ; -0.0005100825937
+Precision: 1.00e-07
+match ;      Stress (23)       ; GREPFIELD(static/info, 'Total stress tensor', 4, 3) ; 2.576537686e-15
+Precision: 1.00e-07
+match ;      Stress (31)       ; GREPFIELD(static/info, 'Total stress tensor', 2, 4) ; -9.078837213e-16
+Precision: 1.00e-07
+match ;      Stress (32)       ; GREPFIELD(static/info, 'Total stress tensor', 3, 4) ; 2.576472092e-15
+Precision: 2.55e-12
+match ;      Stress (33)       ; GREPFIELD(static/info, 'Total stress tensor', 4, 4) ; -0.0005100825937
+
+Input      : 30-stress.03-par_kpoints.inp
+
+Precision: 9.66e-11
+match ;    Pressure (H/b^3)    ; GREPFIELD(static/info, 'Pressure \[H/b^3\]', 4) ; 0.00193201726
+Precision: 2.84e-09
+match ;    Pressure (GPa)      ; GREPFIELD(static/info, 'Pressure \[GPa\]', 8) ; 56.84193094
+Precision: 1.00e-07
+match ;   Kinetic stress (11)  ; GREPFIELD(static/stress, 'Kinetic stress tensor', 2, 2) ; 0.01222914757
+Precision: 1.00e-07
+match ;   Kinetic stress (12)  ; GREPFIELD(static/stress, 'Kinetic stress tensor', 3, 2) ; 7.178671366e-05
+Precision: 1.00e-07
+match ;   Kinetic stress (13)  ; GREPFIELD(static/stress, 'Kinetic stress tensor', 4, 2) ; -5.529174315e-05
+Precision: 1.00e-07
+match ;   Kinetic stress (21)  ; GREPFIELD(static/stress, 'Kinetic stress tensor', 2, 3) ; 7.178671366e-05
+Precision: 1.00e-07
+match ;   Kinetic stress (22)  ; GREPFIELD(static/stress, 'Kinetic stress tensor', 3, 3) ; 0.01228532386
+Precision: 1.00e-07
+match ;   Kinetic stress (23)  ; GREPFIELD(static/stress, 'Kinetic stress tensor', 4, 3) ; 6.562294732e-05
+Precision: 1.00e-07
+match ;   Kinetic stress (31)  ; GREPFIELD(static/stress, 'Kinetic stress tensor', 2, 4) ; -5.529174315e-05
+Precision: 1.00e-07
+match ;   Kinetic stress (32)  ; GREPFIELD(static/stress, 'Kinetic stress tensor', 3, 4) ; 6.562294732e-05
+Precision: 1.00e-07
+match ;   Kinetic stress (33)  ; GREPFIELD(static/stress, 'Kinetic stress tensor', 4, 4) ; 0.01226402391
+Precision: 1.00e-07
+match ;   Hartree stress (11)  ; GREPFIELD(static/stress, 'Hartree stress tensor', 2, 2) ; 0.000686624679
+Precision: 1.00e-07
+match ;   Hartree stress (12)  ; GREPFIELD(static/stress, 'Hartree stress tensor', 3, 2) ; 0.000110529178
+Precision: 1.00e-07
+match ;   Hartree stress (13)  ; GREPFIELD(static/stress, 'Hartree stress tensor', 4, 2) ; -6.586250444e-05
+Precision: 1.00e-07
+match ;   Hartree stress (21)  ; GREPFIELD(static/stress, 'Hartree stress tensor', 2, 3) ; 0.000110529178
+Precision: 1.00e-07
+match ;   Hartree stress (22)  ; GREPFIELD(static/stress, 'Hartree stress tensor', 3, 3) ; 0.0008987790436999999
+Precision: 1.00e-07
+match ;   Hartree stress (23)  ; GREPFIELD(static/stress, 'Hartree stress tensor', 4, 3) ; 0.0001595756753
+Precision: 1.00e-07
+match ;   Hartree stress (31)  ; GREPFIELD(static/stress, 'Hartree stress tensor', 2, 4) ; -6.586250444e-05
+Precision: 1.00e-07
+match ;   Hartree stress (32)  ; GREPFIELD(static/stress, 'Hartree stress tensor', 3, 4) ; 0.0001595756753
+Precision: 1.00e-07
+match ;   Hartree stress (33)  ; GREPFIELD(static/stress, 'Hartree stress tensor', 4, 4) ; 0.000809552841
+Precision: 2.45e-11
+match ;   XC stress (11)       ; GREPFIELD(static/stress, 'XC stress tensor', 2, 2) ; -0.004897296979
+Precision: 7.80e-19
+match ;   XC stress (12)       ; GREPFIELD(static/stress, 'XC stress tensor', 3, 2) ; -1.5594112600000003e-05
+Precision: 4.52e-14
+match ;   XC stress (13)       ; GREPFIELD(static/stress, 'XC stress tensor', 4, 2) ; 9.037034398e-06
+Precision: 7.80e-19
+match ;   XC stress (21)       ; GREPFIELD(static/stress, 'XC stress tensor', 2, 3) ; -1.5594112600000003e-05
+Precision: 2.45e-11
+match ;   XC stress (22)       ; GREPFIELD(static/stress, 'XC stress tensor', 3, 3) ; -0.004908872541
+Precision: 1.11e-13
+match ;   XC stress (23)       ; GREPFIELD(static/stress, 'XC stress tensor', 4, 3) ; -2.229282094e-05
+Precision: 4.52e-14
+match ;   XC stress (31)       ; GREPFIELD(static/stress, 'XC stress tensor', 2, 4) ; 9.037034398e-06
+Precision: 1.11e-13
+match ;   XC stress (32)       ; GREPFIELD(static/stress, 'XC stress tensor', 3, 4) ; -2.229282094e-05
+Precision: 2.45e-11
+match ;   XC stress (33)       ; GREPFIELD(static/stress, 'XC stress tensor', 4, 4) ; -0.004903580373
+Precision: 1.00e-07
+match ;  Pseudopotential stress (11)  ; GREPFIELD(static/stress, 'Pseudopotential stress tensor', 2, 2) ; 0.006049504587
+Precision: 1.00e-07
+match ;  Pseudopotential stress (12)  ; GREPFIELD(static/stress, 'Pseudopotential stress tensor', 3, 2) ; -0.0009211717667000001
+Precision: 1.00e-07
+match ;  Pseudopotential stress (13)  ; GREPFIELD(static/stress, 'Pseudopotential stress tensor', 4, 2) ; 0.00051617285
+Precision: 4.61e-12
+match ;  Pseudopotential stress (21)  ; GREPFIELD(static/stress, 'Pseudopotential stress tensor', 2, 3) ; -0.0009211717667000001
+Precision: 1.00e-07
+match ;  Pseudopotential stress (22)  ; GREPFIELD(static/stress, 'Pseudopotential stress tensor', 3, 3) ; 0.005097509393
+Precision: 1.00e-07
+match ;  Pseudopotential stress (23)  ; GREPFIELD(static/stress, 'Pseudopotential stress tensor', 4, 3) ; -0.0013618088610000002
+Precision: 2.58e-10
+match ;  Pseudopotential stress (31)  ; GREPFIELD(static/stress, 'Pseudopotential stress tensor', 2, 4) ; 0.00051617285
+Precision: 6.81e-12
+match ;  Pseudopotential stress (32)  ; GREPFIELD(static/stress, 'Pseudopotential stress tensor', 3, 4) ; -0.0013618088610000002
+Precision: 1.00e-07
+match ;  Pseudopotential stress (33)  ; GREPFIELD(static/stress, 'Pseudopotential stress tensor', 4, 4) ; 0.005499784882999999
+Precision: 1.00e-07
+match ;   Ion-ion stress (11)  ; GREPFIELD(static/stress, 'Ion-ion stress tensor', 2, 2) ; -0.0123517877
+Precision: 1.00e-07
+match ;   Ion-ion stress (12)  ; GREPFIELD(static/stress, 'Ion-ion stress tensor', 3, 2) ; 0.001129036311
+Precision: 1.00e-07
+match ;   Ion-ion stress (13)  ; GREPFIELD(static/stress, 'Ion-ion stress tensor', 4, 2) ; -0.0005340350017
+Precision: 1.00e-07
+match ;   Ion-ion stress (21)  ; GREPFIELD(static/stress, 'Ion-ion stress tensor', 2, 3) ; 0.001129036311
+Precision: 1.00e-07
+match ;   Ion-ion stress (22)  ; GREPFIELD(static/stress, 'Ion-ion stress tensor', 3, 3) ; -0.01122598798
+Precision: 1.00e-07
+match ;   Ion-ion stress (23)  ; GREPFIELD(static/stress, 'Ion-ion stress tensor', 4, 3) ; 0.001722698484
+Precision: 1.00e-07
+match ;   Ion-ion stress (31)  ; GREPFIELD(static/stress, 'Ion-ion stress tensor', 2, 4) ; -0.0005340350017
+Precision: 1.00e-07
+match ;   Ion-ion stress (32)  ; GREPFIELD(static/stress, 'Ion-ion stress tensor', 3, 4) ; 0.001722698484
+Precision: 1.00e-07
+match ;   Ion-ion stress (33)  ; GREPFIELD(static/stress, 'Ion-ion stress tensor', 4, 4) ; -0.01173667342
+Precision: 8.58e-12
+match ;      Stress (11)       ; GREPFIELD(static/info, 'Total stress tensor', 2, 2) ; -0.001716192156
+Precision: 1.87e-12
+match ;      Stress (12)       ; GREPFIELD(static/info, 'Total stress tensor', 3, 2) ; -0.0003746281017
+Precision: 6.50e-13
+match ;      Stress (13)       ; GREPFIELD(static/info, 'Total stress tensor', 4, 2) ; 0.0001299898387
+Precision: 1.87e-12
+match ;      Stress (21)       ; GREPFIELD(static/info, 'Total stress tensor', 2, 3) ; -0.0003746281017
+Precision: 1.07e-10
+match ;      Stress (22)       ; GREPFIELD(static/info, 'Total stress tensor', 3, 3) ; -0.00214675178
+Precision: 5.64e-18
+match ;      Stress (23)       ; GREPFIELD(static/info, 'Total stress tensor', 4, 3) ; -0.0005638543552
+Precision: 6.50e-13
+match ;      Stress (31)       ; GREPFIELD(static/info, 'Total stress tensor', 2, 4) ; 0.0001299898387
+Precision: 5.64e-18
+match ;      Stress (32)       ; GREPFIELD(static/info, 'Total stress tensor', 3, 4) ; -0.0005638543552
+Precision: 9.67e-11
+match ;      Stress (33)       ; GREPFIELD(static/info, 'Total stress tensor', 4, 4) ; -0.0019331078400000002
+
+Input      : 30-stress.04-kpoint_sym.inp
+
+Precision: 9.02e-12
+match ;        Stress (11)         ; GREPFIELD(static/info, 'Total stress tensor', 2, 2) ; -0.0018040204509999999
+Precision: 1.12e-11
+match ;        Stress (22)         ; GREPFIELD(static/info, 'Total stress tensor', 3, 3) ; -0.002240085253
+Precision: 5.50e-13
+match ;        Stress (33)         ; GREPFIELD(static/info, 'Total stress tensor', 4, 4) ; -0.0020154781115
+Precision: 1.84e-12
+match ;        Stress (12)         ; GREPFIELD(static/info, 'Total stress tensor', 3, 2) ; -0.00036828102019999996
+Precision: 1.84e-12
+match ;        Stress (21)         ; GREPFIELD(static/info, 'Total stress tensor', 2, 3) ; -0.00036828102019999996
+Precision: 2.82e-12
+match ;        Stress (23)         ; GREPFIELD(static/info, 'Total stress tensor', 4, 3) ; -0.0005637511861
+Precision: 2.82e-12
+match ;        Stress (32)         ; GREPFIELD(static/info, 'Total stress tensor', 3, 4) ; -0.0005637511861
+Precision: 6.02e-13
+match ;        Stress (31)         ; GREPFIELD(static/info, 'Total stress tensor', 2, 4) ; 0.0001203631593
+Precision: 6.02e-13
+match ;        Stress (13)         ; GREPFIELD(static/info, 'Total stress tensor', 4, 2) ; 0.0001203631593
+Precision: 1.01e-10
+match ;      Pressure (H/b^3)      ; GREPFIELD(static/info, 'Pressure \[H/b^3\]', 4) ; 0.0020198612699999998
+Precision: 2.97e-07
+match ;      Pressure (GPa)        ; GREPFIELD(static/info, 'Pressure \[GPa\]', 8) ; 59.426391980000005
+
+Input      : 30-stress.05-output_scf.inp
+Precision: 1e-7
+
+Precision: 2.55e-11
+match ;     Pressure (H/b^3)     ; GREPFIELD(static/info, 'Pressure \[H/b^3\]', 4) ; 0.000510082594
+Precision: 7.50e-07
+match ;     Pressure (GPa)       ; GREPFIELD(static/info, 'Pressure \[GPa\]', 8) ; 15.007153500000001
+Precision: 2.55e-12
+match ;          Stress (xx)           ; GREPFIELD(static/info, 'T_{ij}', 2, 1) ; -0.0005100825937
+Precision: 2.55e-12
+match ;          Stress (yy)           ; GREPFIELD(static/info, 'T_{ij}', 3, 2) ; -0.0005100825937
+Precision: 2.55e-12
+match ;          Stress (zz)           ; GREPFIELD(static/info, 'T_{ij}', 4, 3) ; -0.0005100825937
+Precision: 4.37e-15
+match ;          Stress (xy)           ; GREPFIELD(static/info, 'T_{ij}', 3, 1) ; 1.67713115e-17
+Precision: 4.37e-15
+match ;          Stress (yx)           ; GREPFIELD(static/info, 'T_{ij}', 2, 2) ; 1.6771318e-17
+Precision: 6.28e-15
+match ;          Stress (yz)           ; GREPFIELD(static/info, 'T_{ij}', 4, 2) ; -8.5679154e-17
+Precision: 6.28e-15
+match ;          Stress (zy)           ; GREPFIELD(static/info, 'T_{ij}', 3, 3) ; -8.5679154e-17
+Precision: 7.44e-15
+match ;          Stress (zx)           ; GREPFIELD(static/info, 'T_{ij}', 2, 3) ; 1.98836949e-15
+Precision: 7.44e-15
+match ;          Stress (xz)           ; GREPFIELD(static/info, 'T_{ij}', 4, 1) ; 1.98836949e-15

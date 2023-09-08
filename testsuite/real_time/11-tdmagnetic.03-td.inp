@@ -15,14 +15,13 @@ dist = 3.0
 %
 
 %Coordinates
-"qd" | 0 | 0 | 0 
+"qd" | 0 | 0 | 0
 %
 
 BoxShape = sphere
 Radius = 9.5
 Spacing = 0.23
 
-DerivativesOrder = 4
 TheoryLevel = independent_particles
 
 magfield = 3.0
@@ -42,14 +41,14 @@ magnetic_field | 0 | 0 |  -1 | 0.0 | "envelope_function"
 "envelope_function" | tdf_trapezoidal | P_c*1.15 | 150 | 100 | 25
 %
 
-%Output 
+%Output
  wfs | axis_x
 %
-%TDOutput 
- energy 
- laser 
- td_occup 
- multipoles 
+%TDOutput
+ energy
+ laser
+ td_occup
+ multipoles
  populations
 %
 
@@ -66,4 +65,3 @@ TDTimeStep = 0.05
 OutputInterval = 200
 
 AbsorbingBoundaries = no
-

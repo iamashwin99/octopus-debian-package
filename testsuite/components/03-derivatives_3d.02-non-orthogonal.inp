@@ -27,7 +27,3 @@ StatesBlockSize = 2
 TestRepetitions = 1
 
 TestMaxBlockSize = 32
-
-
-
-

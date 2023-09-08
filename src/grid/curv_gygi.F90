@@ -207,7 +207,7 @@ contains
   end function curv_gygi_to_cartesian
 
   ! ---------------------------------------------------------
-  function curv_gygi_from_cartesian(this, xx) result(chi)
+  pure function curv_gygi_from_cartesian(this, xx) result(chi)
     class(curv_gygi_t), target, intent(in)  :: this
     FLOAT,                      intent(in)  :: xx(:)    !< xx(dim)
     FLOAT :: chi(1:this%dim)
@@ -228,7 +228,6 @@ contains
       end do
     end do
 
-    POP_SUB(curv_gygi_from_cartesian)
   end function curv_gygi_from_cartesian
 
   ! ---------------------------------------------------------
@@ -279,7 +278,7 @@ contains
   end function curv_gygi_surface_element
 
   ! ---------------------------------------------------------
-  subroutine curv_gygi_jacobian(this, xx, chi, jac, natoms)
+  pure subroutine curv_gygi_jacobian(this, xx, chi, jac, natoms)
     class(curv_gygi_t), intent(in)  :: this
     FLOAT,              intent(in)  :: xx(:)       !< x(dim)
     FLOAT,              intent(out) :: chi(:)     !< chi(dim)
@@ -321,7 +320,7 @@ contains
   end subroutine curv_gygi_jacobian
 
   ! ---------------------------------------------------------
-  subroutine getf(y, f, jf)
+  pure subroutine getf(y, f, jf)
     FLOAT, intent(in)    :: y(:)
     FLOAT, intent(out)   :: f(:), jf(:, :)
 

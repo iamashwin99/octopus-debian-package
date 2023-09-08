@@ -30,6 +30,7 @@ module em_resp_calc_oct_m
   use hamiltonian_elec_oct_m
   use ions_oct_m
   use kpoints_oct_m
+  use lalg_basic_oct_m
   use lattice_vectors_oct_m
   use linear_response_oct_m
   use magnetic_oct_m
@@ -37,9 +38,11 @@ module em_resp_calc_oct_m
   use mesh_batch_oct_m
   use mesh_function_oct_m
   use messages_oct_m
-  use mpi_oct_m
   use namespace_oct_m
-  use pert_oct_m
+  use perturbation_oct_m
+  use perturbation_electric_oct_m
+  use perturbation_kdotp_oct_m
+  use perturbation_magnetic_oct_m
   use profiling_oct_m
   use space_oct_m
   use states_abst_oct_m
@@ -116,13 +119,13 @@ contains
     PUSH_SUB(lr_calc_current)
 
     if (.not. allocated(lr%dl_j)) then
-      SAFE_ALLOCATE(lr%dl_j(1:gr%mesh%np, 1:space%dim, 1:st%d%nspin))
+      SAFE_ALLOCATE(lr%dl_j(1:gr%np, 1:space%dim, 1:st%d%nspin))
     end if
 
-    np = gr%mesh%np
+    np = gr%np
     ndim = space%dim
 
-    SAFE_ALLOCATE(psi(1:gr%mesh%np_part, 1:ndim))
+    SAFE_ALLOCATE(psi(1:gr%np_part, 1:ndim))
     SAFE_ALLOCATE(gpsi(1:np, 1:ndim))
     SAFE_ALLOCATE(gdl_psi(1:np, 1:ndim))
     if (present(lr_m)) then
@@ -134,7 +137,7 @@ contains
     do ispin = 1, st%d%nspin
       do ist = 1, st%nst
 
-        call states_elec_set_state(st, gr%mesh, ist, ispin, psi)
+        call states_elec_set_state(st, gr, ist, ispin, psi)
 
         do idim = 1, st%d%dim
 

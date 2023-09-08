@@ -24,7 +24,7 @@ L<SEE ALSO> section below.
 
 =over
 
-=item B<-h> 
+=item B<-h>
 
 Prints out a short help message.
 

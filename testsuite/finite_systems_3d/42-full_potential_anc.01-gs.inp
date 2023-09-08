@@ -1,0 +1,18 @@
+CalculationMode = gs
+
+FromScratch = yes
+TheoryLevel = independent_particles
+
+AllElectronType = full_anc
+AllElectronANCParam = 4
+
+%Coordinates
+ 'H' | 0 | 0 | 0
+%
+
+Radius = 8.0
+Spacing = 0.2
+
+ExtraStates = 2
+
+

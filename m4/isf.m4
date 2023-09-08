@@ -27,13 +27,13 @@ case $with_isf_prefix in
   yes | "") ;;
   no) acx_isf_ok=disable ;;
   *.a | *.so | *.so.* | *.o) LIBS_ISF=$with_isf_prefix ;
-     xpath=${with_isf_prefix%/lib/*} 
-     FCFLAGS_ISF="$ax_cv_f90_modflag$xpath/include";;  
-  *) LIBS_ISF="-L$with_isf_prefix/lib"; 
+     xpath=${with_isf_prefix%/lib/*}
+     FCFLAGS_ISF="$ax_cv_f90_modflag$xpath/include";;
+  *) LIBS_ISF="-L$with_isf_prefix/lib";
      FCFLAGS_ISF="$ax_cv_f90_modflag$with_isf_prefix/include" ;;
 esac
 
-dnl The include dir must be specified when the library is given with a 
+dnl The include dir must be specified when the library is given with a
 dnl specified file to be compiled static (i.e. *.a etc.)
 AC_ARG_WITH(isf-include, [AS_HELP_STRING([--with-isf-include=DIR], [ISF Fortran include files directory])])
 case $with_isf_include in
@@ -57,7 +57,7 @@ FCFLAGS="$FCFLAGS_ISF $acx_isf_save_FCFLAGS"
 
 # some symbols below will not be defined for version 1.0.4, making sure
 # we have a version that is able to work in our code
-testprogram="AC_LANG_PROGRAM([],[ 
+testprogram="AC_LANG_PROGRAM([],[
     use Poisson_Solver
 
     implicit none
@@ -81,7 +81,7 @@ if test x"$acx_isf_ok" = xno; then
 fi
 
 
-dnl Generic ISF library 
+dnl Generic ISF library
 if test $acx_isf_ok = no; then
   AC_MSG_CHECKING([for isf library with -lPSolver-1])
   if test "$LIBS_ISF" = ""; then
@@ -89,8 +89,8 @@ if test $acx_isf_ok = no; then
     AC_LINK_IFELSE($testprogram, [acx_isf_ok=yes; LIBS_ISF="-lPSolver-1 -lwrappers -lflib -lyaml -lrt"], [])
   else
     LIBS="$LIBS_ISF -lPSolver-1 -lwrappers -lflib -lyaml -lrt $LIBS_LAPACK $LIBS_BLAS $acx_isf_save_LIB"
-    AC_LINK_IFELSE($testprogram, [acx_isf_ok=yes; 
-                                  LIBS_ISF="$LIBS_ISF -lPSolver-1 -lwrappers -lflib -lyaml -lrt "], [])  
+    AC_LINK_IFELSE($testprogram, [acx_isf_ok=yes;
+                                  LIBS_ISF="$LIBS_ISF -lPSolver-1 -lwrappers -lflib -lyaml -lrt "], [])
   fi
   if test $acx_isf_ok = no; then
     AC_MSG_RESULT([$acx_isf_ok])
@@ -105,10 +105,10 @@ if test x"$acx_isf_ok" = xyes; then
   AC_DEFINE(HAVE_LIBISF,1,[Defined if you have ISF library.])
 
 else
-  AC_MSG_WARN([Could not find ISF library. 
+  AC_MSG_WARN([Could not find ISF library.
                *** Will compile internal ISF taken from BigDFT 1.7.6])
   LIBS_ISF=""
-  FCFLAGS_ISF=""  
+  FCFLAGS_ISF=""
   HAVE_COMP_ISF=1
   AC_DEFINE(HAVE_COMP_ISF, 1, [This is defined when we link with an external ISF library.])
 fi

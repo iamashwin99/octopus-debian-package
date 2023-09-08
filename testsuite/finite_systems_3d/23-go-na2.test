@@ -6,38 +6,62 @@ TestGroups : long-run, finite_systems_3d
 Enabled    : Yes
 
 Input      : 23-go-na2.01-steep.inp
-match ; Total energy ; GREPFIELD(static/info, 'Total       =', 3) ; -0.41784559 
-match ; Force    [1] ; GREPFIELD(static/info, 'Forces on the ions', 5, 2) ; -0.000732
-match ; Force    [2] ; GREPFIELD(static/info, 'Forces on the ions', 5, 3) ; 0.000732
-match ; Geometry [1] ; LINEFIELD(min.xyz, 3, 4) ; -1.449083
-match ; Geometry [2] ; LINEFIELD(min.xyz, 4, 4) ; 1.449083
+Precision: 2.09e-07
+match ;  Total energy  ; GREPFIELD(static/info, 'Total       =', 3) ; -0.41773055
+Precision: 2.35e-08
+match ;  Force    [1]  ; GREPFIELD(static/info, 'Forces on the ions', 5, 2) ; -0.000742072774
+Precision: 2.35e-08
+match ;  Force    [2]  ; GREPFIELD(static/info, 'Forces on the ions', 5, 3) ; 0.000742072774
+Precision: 7.25e-08
+match ;  Geometry [1]  ; LINEFIELD(min.xyz, 3, 4) ; -1.449083
+Precision: 7.25e-08
+match ;  Geometry [2]  ; LINEFIELD(min.xyz, 4, 4) ; 1.449083
 
 # the results differ because we stop simplex before it converges
 Input      : 23-go-na2.02-simplex.inp
-match ; Total energy ; GREPFIELD(static/info, 'Total       =', 3) ; -0.41759614 
-match ; Force    [1] ; GREPFIELD(static/info, 'Forces on the ions', 5, 2) ; 0.002584
-match ; Force    [2] ; GREPFIELD(static/info, 'Forces on the ions', 5, 3) ; -0.002584
-match ; Geometry [1] ; LINEFIELD(min.xyz, 3, 4) ; -1.526284
-match ; Geometry [2] ; LINEFIELD(min.xyz, 4, 4) ; 1.384190
+Precision: 2.09e-07
+match ;  Total energy  ; GREPFIELD(static/info, 'Total       =', 3) ; -0.4174826
+Precision: 1.39e-08
+match ;  Force    [1]  ; GREPFIELD(static/info, 'Forces on the ions', 5, 2) ; 0.00256722049
+Precision: 1.39e-08
+match ;  Force    [2]  ; GREPFIELD(static/info, 'Forces on the ions', 5, 3) ; -0.00256722049
+Precision: 7.63e-06
+match ;  Geometry [1]  ; LINEFIELD(min.xyz, 3, 4) ; -1.526284
+Precision: 6.92e-05
+match ;  Geometry [2]  ; LINEFIELD(min.xyz, 4, 4) ; 1.3841899999999998
 
 Input      : 23-go-na2.03-fire.inp
-match ; Total energy ; GREPFIELD(static/info, 'Total       =', 3) ; -0.41711495
-match ; Force    [1] ; GREPFIELD(static/info, 'Forces on the ions', 5, 2) ; 0.003867
-match ; Force    [2] ; GREPFIELD(static/info, 'Forces on the ions', 5, 3) ; -0.003867
-match ; Geometry [1] ; LINEFIELD(min.xyz, 3, 4) ; -1.565704
-match ; Geometry [2] ; LINEFIELD(min.xyz, 4, 4) ;  1.565704
+Precision: 2.08e-07
+match ;  Total energy  ; GREPFIELD(static/info, 'Total       =', 3) ; -0.416994
+Precision: 9.57e-09
+match ;  Force    [1]  ; GREPFIELD(static/info, 'Forces on the ions', 5, 2) ; 0.00384976111
+Precision: 9.57e-09
+match ;  Force    [2]  ; GREPFIELD(static/info, 'Forces on the ions', 5, 3) ; -0.00384976111
+Precision: 7.83e-06
+match ;  Geometry [1]  ; LINEFIELD(min.xyz, 3, 4) ; -1.565792
+Precision: 7.83e-06
+match ;  Geometry [2]  ; LINEFIELD(min.xyz, 4, 4) ; 1.565792
 
 Input      : 23-go-na2.04-fire_restart.inp
-match ; Total energy ; GREPFIELD(static/info, 'Total       =', 3) ; -0.41787822
-match ; Force    [1] ; GREPFIELD(static/info, 'Forces on the ions', 5, 2) ; 0.000487
-match ; Force    [2] ; GREPFIELD(static/info, 'Forces on the ions', 5, 3) ; -0.000487
-match ; Geometry [1] ; LINEFIELD(min.xyz, 3, 4) ; -1.474885
-match ; Geometry [2] ; LINEFIELD(min.xyz, 4, 4) ;  1.474885
+Precision: 2.09e-07
+match ;  Total energy  ; GREPFIELD(static/info, 'Total       =', 3) ; -0.4177745
+Precision: 1.60e-09
+match ;  Force    [1]  ; GREPFIELD(static/info, 'Forces on the ions', 5, 2) ; 0.0004960720165
+Precision: 1.60e-09
+match ;  Force    [2]  ; GREPFIELD(static/info, 'Forces on the ions', 5, 3) ; -0.0004960720165
+Precision: 7.38e-06
+match ;  Geometry [1]  ; LINEFIELD(min.xyz, 3, 4) ; -1.4753450000000001
+Precision: 5.50e-07
+match ;  Geometry [2]  ; LINEFIELD(min.xyz, 4, 4) ; 1.4753455
 
 Input      : 23-go-na2.05-constrains.inp
-match ; Total energy ; GREPFIELD(static/info, 'Total       =', 3) ; -0.41619666
-match ; Force    [1] ; GREPFIELD(static/info, 'Forces on the ions', 4, 2) ; -0.000997
-match ; Force    [2] ; GREPFIELD(static/info, 'Forces on the ions', 5, 3) ; -0.005158
-match ; Geometry [1] ; LINEFIELD(min.xyz, 3, 3) ;  0.308447
-match ; Geometry [2] ; LINEFIELD(min.xyz, 4, 4) ;  1.587532
-
+Precision: 2.08e-07
+match ;  Total energy  ; GREPFIELD(static/info, 'Total       =', 3) ; -0.41608631
+Precision: 2.28e-10
+match ;  Force    [1]  ; GREPFIELD(static/info, 'Forces on the ions', 4, 2) ; -0.000997048964
+Precision: 8.13e-09
+match ;  Force    [2]  ; GREPFIELD(static/info, 'Forces on the ions', 5, 3) ; -0.00514510979
+Precision: 1.55e-05
+match ;  Geometry [1]  ; LINEFIELD(min.xyz, 3, 3) ; 0.309402
+Precision: 7.94e-06
+match ;  Geometry [2]  ; LINEFIELD(min.xyz, 4, 4) ; 1.5875320000000002

@@ -18,10 +18,9 @@
 
 ! ---------------------------------------------------------
 ! TODO: Merge this with the two_body routine in system/output_me_inc.F90
-subroutine compute_complex_coulomb_integrals (this, mesh, der, st, psolver, namespace, space)
+subroutine compute_complex_coulomb_integrals (this, gr, st, psolver, namespace, space)
   type(lda_u_t),       intent(inout) :: this
-  type(mesh_t),        intent(in)    :: mesh
-  type(derivatives_t), intent(in)    :: der
+  type(grid_t),        intent(in)    :: gr
   type(states_elec_t), intent(in)    :: st
   type(poisson_t),     intent(in)    :: psolver
   type(namespace_t),   intent(in)    :: namespace
@@ -40,14 +39,13 @@ subroutine compute_complex_coulomb_integrals (this, mesh, der, st, psolver, name
   PUSH_SUB(compute_complex_coulomb_integrals)
 
   ASSERT(.not. st%parallel_in_states)
-  if (mesh%parallel_in_domains) then
+  if (gr%parallel_in_domains) then
     call messages_not_implemented("Coulomb integrals parallel in domains", namespace=namespace)
   end if
 
   SAFE_ALLOCATE(nn(1:this%max_np,st%d%dim))
   SAFE_ALLOCATE(vv(1:this%max_np,st%d%dim))
   SAFE_ALLOCATE(tmp(1:this%max_np))
-  SAFE_ALLOCATE(this%zcoulomb(1:this%maxnorbs,1:this%maxnorbs,1:this%maxnorbs,1:this%maxnorbs,1:st%d%dim,1:st%d%dim,1:this%norbsets))
   this%zcoulomb(1:this%maxnorbs, 1:this%maxnorbs, 1:this%maxnorbs, 1:this%maxnorbs, &
     1:st%d%dim, 1:st%d%dim, 1:this%norbsets) = M_ZERO
 
@@ -70,13 +68,13 @@ subroutine compute_complex_coulomb_integrals (this, mesh, der, st, psolver, name
 
     select case (this%sm_poisson)
     case (SM_POISSON_DIRECT)
-      call poisson_init_sm(os%poisson, namespace, space, psolver, der, os%sphere, method = POISSON_DIRECT_SUM)
+      call poisson_init_sm(os%poisson, namespace, space, psolver, gr%der, os%sphere, method = POISSON_DIRECT_SUM)
     case (SM_POISSON_ISF)
-      call poisson_init_sm(os%poisson, namespace, space, psolver, der, os%sphere, method = POISSON_ISF)
+      call poisson_init_sm(os%poisson, namespace, space, psolver, gr%der, os%sphere, method = POISSON_ISF)
     case (SM_POISSON_PSOLVER)
-      call poisson_init_sm(os%poisson, namespace, space, psolver, der, os%sphere, method = POISSON_PSOLVER)
+      call poisson_init_sm(os%poisson, namespace, space, psolver, gr%der, os%sphere, method = POISSON_PSOLVER)
     case (SM_POISSON_FFT)
-      call poisson_init_sm(os%poisson, namespace, space, psolver, der, os%sphere, method = POISSON_FFT, force_cmplx=.true.)
+      call poisson_init_sm(os%poisson, namespace, space, psolver, gr%der, os%sphere, method = POISSON_FFT, force_cmplx=.true.)
     end select
 
     ijst=0
@@ -110,16 +108,7 @@ subroutine compute_complex_coulomb_integrals (this, mesh, der, st, psolver, name
                 end do
                 !$omp end parallel do
 
-                this%zcoulomb(ist,jst,kst,lst,is1,is2,ios) = zsm_integrate(mesh, os%sphere, tmp(1:np_sphere))
-              end do !is2
-            end do !is1
-
-            do is1 = 1, st%d%dim
-              do is2 = 1, st%d%dim
-                if (abs(this%zcoulomb(ist,jst,kst,lst,is1,is2,ios))<CNST(1.0e-12)) then
-                  this%zcoulomb(ist,jst,kst,lst,is1,is2,ios) = M_ZERO
-                end if
-
+                this%zcoulomb(ist,jst,kst,lst,is1,is2,ios) = zsm_integrate(gr, os%sphere, tmp(1:np_sphere))
               end do !is2
             end do !is1
 
@@ -268,5 +257,3 @@ subroutine compute_ACBNO_U_noncollinear(this, ios, namespace)
 
   POP_SUB(compute_ACBNO_U_noncollinear)
 end subroutine compute_ACBNO_U_noncollinear
-
-

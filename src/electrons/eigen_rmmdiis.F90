@@ -79,7 +79,7 @@ contains
 
     if(debug%info) then
       write(message(1), '(2(a,i4),4(a,es12.5))') &
-      'Debug: RMMDIIS Eigensolver - ik', ik, ' ist ', ist, &
+        'Debug: RMMDIIS Eigensolver - ik', ik, ' ist ', ist, &
         ' lambda= ', lambda, ' a= ', ca, ' b= ', cb, ' c= ', cc
       call messages_info(1)
     end if
@@ -90,7 +90,7 @@ contains
     ! residue is also changed
     if (abs(lambda) > CNST(1000.0)) lambda = sign(CNST(1000.0),lambda)
     if (abs(lambda) < CNST(0.1)) lambda = sign(CNST(0.1),lambda)
- 
+
     POP_SUB(find_lambda)
   end subroutine find_lambda
 

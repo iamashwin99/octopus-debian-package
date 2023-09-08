@@ -1,0 +1,28 @@
+# -*- coding: utf-8 mode: shell-script -*-
+
+Test       : Carbon
+Program    : octopus
+TestGroups : long-run, finite_systems_3d
+Enabled    : Yes
+
+ExtraFile: 38-carbon_atom_cgal_box.01-gs.sphere.off
+Input: 38-carbon_atom_cgal_box.01-gs.inp
+if(available cgal); then
+  match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
+  Precision: 7.34e-07
+  match ;  Total energy        ; GREPFIELD(static/info, 'Total       =', 3) ; -146.7349182
+  Precision: 7.22e-06
+  match ;  Eigenvalue   [1up]  ; GREPFIELD(static/info, '1   up', 3) ; -14.440887
+  Precision: 1.00e-01
+  match ;  Occupation   [1up]  ; GREPFIELD(static/info, '1   up', 4) ; 1.0
+  Precision: 1.83e-05
+  match ;  Eigenvalue [4down]  ; GREPFIELD(static/info, '4   dn', 3) ; -3.650064
+  Precision: 1.00e-04
+  match ;  Occupation [4down]  ; GREPFIELD(static/info, '4   dn', 4) ; 0.0
+  Precision: 2.26e+01
+  match ;  inner points        ; GREPFIELD(out, 'inner mesh', 5) ; 45177.0
+  Precision: 3.48e+01
+  match ;  total points        ; GREPFIELD(out, 'total mesh', 5) ; 69609.0
+else
+  match ; Error cgal_not_linked        ; GREPCOUNT(err, 'CGAL'); 1
+endif

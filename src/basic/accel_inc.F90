@@ -61,7 +61,7 @@ subroutine X(accel_write_buffer_0)(this, size, data, offset, async)
     if (ierr /= CL_SUCCESS) call opencl_print_error(ierr, "EnqueueWriteBuffer")
 #endif
 #ifdef HAVE_CUDA
-    call cuda_memcpy_htod(this%mem, data, fsize, offset_, async_)
+    call cuda_memcpy_htod(this%mem, data, fsize, offset_)
 #endif
 
     call profiling_count_transfers(size, data)
@@ -76,11 +76,15 @@ end subroutine X(accel_write_buffer_0)
 subroutine X(accel_write_buffer_1)(this, size, data, offset, async)
   type(accel_mem_t),                intent(inout) :: this
   integer(i8),                      intent(in)    :: size
-  R_TYPE,                           intent(in)    :: data(:)
+  R_TYPE, contiguous,               intent(in)    :: data(:)
   integer(i8),            optional, intent(in)    :: offset
   logical,                optional, intent(in)    :: async
 
+  if (size == 0) return
+
   PUSH_SUB(X(accel_write_buffer_1))
+
+  ASSERT(ubound(data, dim=1) >= size)
 
   call X(accel_write_buffer_0)(this, size, data(1), offset, async)
 
@@ -91,11 +95,16 @@ end subroutine X(accel_write_buffer_1)
 subroutine X(accel_write_buffer_2)(this, size, data, offset, async)
   type(accel_mem_t),                intent(inout) :: this
   integer(i8),                      intent(in)    :: size
-  R_TYPE,                           intent(in)    :: data(:, :)
+  R_TYPE, contiguous,               intent(in)    :: data(:, :)
   integer(i8),            optional, intent(in)    :: offset
   logical,                optional, intent(in)    :: async
 
+  if (size == 0) return
+
   PUSH_SUB(X(accel_write_buffer_2))
+
+  ASSERT(ubound(data, dim=1) >= 1)
+  ASSERT(ubound(data, dim=2) >= 1)
 
   call X(accel_write_buffer_0)(this, size, data(1, 1), offset, async)
 
@@ -106,11 +115,17 @@ end subroutine X(accel_write_buffer_2)
 subroutine X(accel_write_buffer_3)(this, size, data, offset, async)
   type(accel_mem_t),                intent(inout) :: this
   integer(i8),                      intent(in)    :: size
-  R_TYPE,                           intent(in)    :: data(:, :, :)
+  R_TYPE, contiguous,               intent(in)    :: data(:, :, :)
   integer(i8),            optional, intent(in)    :: offset
   logical,                optional, intent(in)    :: async
 
+  if (size == 0) return
+
   PUSH_SUB(X(accel_write_buffer_3))
+
+  ASSERT(ubound(data, dim=1) >= 1)
+  ASSERT(ubound(data, dim=2) >= 1)
+  ASSERT(ubound(data, dim=3) >= 1)
 
   call X(accel_write_buffer_0)(this, size, data(1, 1, 1), offset, async)
 
@@ -140,7 +155,7 @@ end subroutine X(accel_write_buffer_0_i4)
 subroutine X(accel_write_buffer_1_i4)(this, size, data, offset, async)
   type(accel_mem_t),                intent(inout) :: this
   integer,                          intent(in)    :: size
-  R_TYPE,                           intent(in)    :: data(:)
+  R_TYPE, contiguous,               intent(in)    :: data(:)
   integer,                optional, intent(in)    :: offset
   logical,                optional, intent(in)    :: async
 
@@ -159,7 +174,7 @@ end subroutine X(accel_write_buffer_1_i4)
 subroutine X(accel_write_buffer_2_i4)(this, size, data, offset, async)
   type(accel_mem_t),                intent(inout) :: this
   integer,                          intent(in)    :: size
-  R_TYPE,                           intent(in)    :: data(:, :)
+  R_TYPE, contiguous,               intent(in)    :: data(:, :)
   integer,                optional, intent(in)    :: offset
   logical,                optional, intent(in)    :: async
 
@@ -178,7 +193,7 @@ end subroutine X(accel_write_buffer_2_i4)
 subroutine X(accel_write_buffer_3_i4)(this, size, data, offset, async)
   type(accel_mem_t),                intent(inout) :: this
   integer,                          intent(in)    :: size
-  R_TYPE,                           intent(in)    :: data(:, :, :)
+  R_TYPE, contiguous,               intent(in)    :: data(:, :, :)
   integer,                optional, intent(in)    :: offset
   logical,                optional, intent(in)    :: async
 
@@ -225,7 +240,7 @@ subroutine X(accel_read_buffer_0)(this, size, data, offset, async)
     if (ierr /= CL_SUCCESS) call opencl_print_error(ierr, "EnqueueReadBuffer")
 #endif
 #ifdef HAVE_CUDA
-    call cuda_memcpy_dtoh(this%mem, data, fsize, offset_, async_)
+    call cuda_memcpy_dtoh(this%mem, data, fsize, offset_)
 #endif
 
     call profiling_count_transfers(size, data)
@@ -240,11 +255,15 @@ end subroutine X(accel_read_buffer_0)
 subroutine X(accel_read_buffer_1)(this, size, data, offset, async)
   type(accel_mem_t),                intent(in)    :: this
   integer(i8),                      intent(in)    :: size
-  R_TYPE,                           intent(out)   :: data(:)
+  R_TYPE, contiguous,               intent(out)   :: data(:)
   integer(i8),            optional, intent(in)    :: offset
   logical,                optional, intent(in)    :: async
 
+  if(size == 0) return
+
   PUSH_SUB(X(accel_read_buffer_1))
+
+  ASSERT(ubound(data, dim=1) >= size)
 
   call X(accel_read_buffer_0)(this, size, data(1), offset, async)
 
@@ -255,11 +274,16 @@ end subroutine X(accel_read_buffer_1)
 subroutine X(accel_read_buffer_2)(this, size, data, offset, async)
   type(accel_mem_t),                intent(in)    :: this
   integer(i8),                      intent(in)    :: size
-  R_TYPE,                           intent(out)   :: data(:, :)
+  R_TYPE, contiguous,               intent(out)   :: data(:, :)
   integer(i8),            optional, intent(in)    :: offset
   logical,                optional, intent(in)    :: async
 
+  if(size == 0) return
+
   PUSH_SUB(X(accel_read_buffer_2))
+
+  ASSERT(ubound(data, dim=1) >= 1)
+  ASSERT(ubound(data, dim=2) >= 1)
 
   call X(accel_read_buffer_0)(this, size, data(1, 1), offset, async)
 
@@ -270,11 +294,17 @@ end subroutine X(accel_read_buffer_2)
 subroutine X(accel_read_buffer_3)(this, size, data, offset, async)
   type(accel_mem_t),                intent(in)    :: this
   integer(i8),                      intent(in)    :: size
-  R_TYPE,                           intent(out)   :: data(:, :, :)
+  R_TYPE, contiguous,               intent(out)   :: data(:, :, :)
   integer(i8),            optional, intent(in)    :: offset
   logical,                optional, intent(in)    :: async
 
+  if(size == 0) return
+
   PUSH_SUB(X(accel_read_buffer_3))
+
+  ASSERT(ubound(data, dim=1) >= 1)
+  ASSERT(ubound(data, dim=2) >= 1)
+  ASSERT(ubound(data, dim=3) >= 1)
 
   call X(accel_read_buffer_0)(this, size, data(1, 1, 1), offset, async)
 
@@ -304,7 +334,7 @@ end subroutine X(accel_read_buffer_0_i4)
 subroutine X(accel_read_buffer_1_i4)(this, size, data, offset, async)
   type(accel_mem_t),                intent(in)    :: this
   integer,                          intent(in)    :: size
-  R_TYPE,                           intent(out)   :: data(:)
+  R_TYPE, contiguous,               intent(out)   :: data(:)
   integer,                optional, intent(in)    :: offset
   logical,                optional, intent(in)    :: async
 
@@ -323,7 +353,7 @@ end subroutine X(accel_read_buffer_1_i4)
 subroutine X(accel_read_buffer_2_i4)(this, size, data, offset, async)
   type(accel_mem_t),                intent(in)    :: this
   integer,                          intent(in)    :: size
-  R_TYPE,                           intent(out)   :: data(:, :)
+  R_TYPE, contiguous,               intent(out)   :: data(:, :)
   integer,                optional, intent(in)    :: offset
   logical,                optional, intent(in)    :: async
 
@@ -342,7 +372,7 @@ end subroutine X(accel_read_buffer_2_i4)
 subroutine X(accel_read_buffer_3_i4)(this, size, data, offset, async)
   type(accel_mem_t),                intent(in)    :: this
   integer,                          intent(in)    :: size
-  R_TYPE,                           intent(out)   :: data(:, :, :)
+  R_TYPE, contiguous,               intent(out)   :: data(:, :, :)
   integer,                optional, intent(in)    :: offset
   logical,                optional, intent(in)    :: async
 
@@ -367,6 +397,8 @@ subroutine X(accel_set_kernel_arg_data)(kernel, narg, data)
   integer :: ierr
 #endif
 
+  PUSH_SUB(X(accel_set_kernel_arg_data))
+
   ! no push_sub, called too frequently
 #ifdef HAVE_CUDA
   call cuda_kernel_set_arg_value(kernel%arguments, data, narg, types_get_size(R_TYPE_VAL))
@@ -377,6 +409,7 @@ subroutine X(accel_set_kernel_arg_data)(kernel, narg, data)
   if (ierr /= CL_SUCCESS) call opencl_print_error(ierr, "set_kernel_arg_data")
 #endif
 
+  POP_SUB(X(accel_set_kernel_arg_data))
 end subroutine X(accel_set_kernel_arg_data)
 
 
@@ -385,13 +418,20 @@ subroutine X(accel_get_device_pointer_1)(host_pointer, device_pointer, dimension
   type(accel_mem_t), intent(in)    :: device_pointer
   integer,           intent(in)    :: dimensions(:)
 
+#ifdef HAVE_CUDA
   type(c_ptr) :: tmp_pointer
+#endif
 
   PUSH_SUB(X(accel_get_device_pointer_1))
 
+#ifdef HAVE_CUDA
   ! move device pointer to fortran pointer for usage with CUDA-aware MPI
   call cuda_deref(device_pointer%mem, tmp_pointer)
   call c_f_pointer(tmp_pointer, host_pointer, dimensions)
+#else
+  ASSERT(.false.)
+#endif
+
 
   POP_SUB(X(accel_get_device_pointer_1))
 end subroutine X(accel_get_device_pointer_1)
@@ -402,13 +442,19 @@ subroutine X(accel_get_device_pointer_2)(host_pointer, device_pointer, dimension
   type(accel_mem_t), intent(in)    :: device_pointer
   integer,           intent(in)    :: dimensions(:)
 
+#ifdef HAVE_CUDA
   type(c_ptr) :: tmp_pointer
+#endif
 
   PUSH_SUB(X(accel_get_device_pointer_2))
 
+#ifdef HAVE_CUDA
   ! move device pointer to fortran pointer for usage with CUDA-aware MPI
   call cuda_deref(device_pointer%mem, tmp_pointer)
   call c_f_pointer(tmp_pointer, host_pointer, dimensions)
+#else
+  ASSERT(.false.)
+#endif
 
   POP_SUB(X(accel_get_device_pointer_2))
 end subroutine X(accel_get_device_pointer_2)
@@ -418,17 +464,89 @@ subroutine X(accel_get_device_pointer_3)(host_pointer, device_pointer, dimension
   type(accel_mem_t), intent(in)    :: device_pointer
   integer,           intent(in)    :: dimensions(:)
 
+#ifdef HAVE_CUDA
   type(c_ptr) :: tmp_pointer
+#endif
 
   PUSH_SUB(X(accel_get_device_pointer_3))
 
+#ifdef HAVE_CUDA
   ! move device pointer to fortran pointer for usage with CUDA-aware MPI
   call cuda_deref(device_pointer%mem, tmp_pointer)
   call c_f_pointer(tmp_pointer, host_pointer, dimensions)
+#else
+  ASSERT(.false.)
+#endif
 
   POP_SUB(X(accel_get_device_pointer_3))
 end subroutine X(accel_get_device_pointer_3)
 
+subroutine X(accel_get_device_pointer_1l)(host_pointer, device_pointer, dimensions)
+  R_TYPE, pointer,   intent(inout) :: host_pointer(:)
+  type(accel_mem_t), intent(in)    :: device_pointer
+  integer(i8),       intent(in)    :: dimensions(:)
+
+#ifdef HAVE_CUDA
+  type(c_ptr) :: tmp_pointer
+#endif
+
+  PUSH_SUB(X(accel_get_device_pointer_1l))
+
+#ifdef HAVE_CUDA
+  ! move device pointer to fortran pointer for usage with CUDA-aware MPI
+  call cuda_deref(device_pointer%mem, tmp_pointer)
+  call c_f_pointer(tmp_pointer, host_pointer, dimensions)
+#else
+  ASSERT(.false.)
+#endif
+
+  POP_SUB(X(accel_get_device_pointer_1l))
+end subroutine X(accel_get_device_pointer_1l)
+
+
+subroutine X(accel_get_device_pointer_2l)(host_pointer, device_pointer, dimensions)
+  R_TYPE, pointer,   intent(inout) :: host_pointer(:, :)
+  type(accel_mem_t), intent(in)    :: device_pointer
+  integer(i8),       intent(in)    :: dimensions(:)
+
+#ifdef HAVE_CUDA
+  type(c_ptr) :: tmp_pointer
+#endif
+
+  PUSH_SUB(X(accel_get_device_pointer_2l))
+
+#ifdef HAVE_CUDA
+  ! move device pointer to fortran pointer for usage with CUDA-aware MPI
+  call cuda_deref(device_pointer%mem, tmp_pointer)
+  call c_f_pointer(tmp_pointer, host_pointer, dimensions)
+#else
+  ASSERT(.false.)
+#endif
+
+  POP_SUB(X(accel_get_device_pointer_2l))
+end subroutine X(accel_get_device_pointer_2l)
+
+subroutine X(accel_get_device_pointer_3l)(host_pointer, device_pointer, dimensions)
+  R_TYPE, pointer,   intent(inout) :: host_pointer(:, :, :)
+  type(accel_mem_t), intent(in)    :: device_pointer
+  integer(i8),       intent(in)    :: dimensions(:)
+
+#ifdef HAVE_CUDA
+  type(c_ptr) :: tmp_pointer
+#endif
+
+  PUSH_SUB(X(accel_get_device_pointer_3l))
+
+#ifdef HAVE_CUDA
+  ! move device pointer to fortran pointer for usage with CUDA-aware MPI
+  call cuda_deref(device_pointer%mem, tmp_pointer)
+  call c_f_pointer(tmp_pointer, host_pointer, dimensions)
+#else
+  ASSERT(.false.)
+#endif
+
+  POP_SUB(X(accel_get_device_pointer_3l))
+end subroutine X(accel_get_device_pointer_3l)
 
 !! Local Variables:
 !! mode: f90

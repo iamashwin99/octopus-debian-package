@@ -8,92 +8,101 @@ Enabled    : Yes
 Processors : 1
 Input      : 14-absorption-spinors.01-gs.inp
 match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
-match ; Initial energy ; GREPFIELD(static/info, 'Total       =', 3) ; -6.13605224
+Precision: 3.07e-07
+match ;  Initial energy  ; GREPFIELD(static/info, 'Total       =', 3) ; -6.13621493
 
 Processors : 4
 Input      : 14-absorption-spinors.02-td.inp
-match ; Energy [step   1] ; LINEFIELD(td.general/energy, -101, 3) ; -6.135997407500e+00
-match ; Energy [step  25] ; LINEFIELD(td.general/energy, -76, 3) ;  -6.135616399421e+00
-match ; Energy [step  50] ; LINEFIELD(td.general/energy, -51, 3) ;  -6.135616383658e+00
-match ; Energy [step  75] ; LINEFIELD(td.general/energy, -26, 3) ;  -6.135616366429e+00
-match ; Energy [step 100] ; LINEFIELD(td.general/energy, -1, 3) ;   -6.135616343204e+00
+Precision: 3.07e-11
+match ;  Energy [step   1]  ; LINEFIELD(td.general/energy, -101, 3) ; -6.136214933349
+Precision: 3.07e-11
+match ;  Energy [step  25]  ; LINEFIELD(td.general/energy, -76, 3) ; -6.135833925262
+Precision: 3.07e-11
+match ;  Energy [step  50]  ; LINEFIELD(td.general/energy, -51, 3) ; -6.135833909497
+Precision: 3.07e-11
+match ;  Energy [step  75]  ; LINEFIELD(td.general/energy, -26, 3) ; -6.135833892273
+Precision: 3.07e-11
+match ;  Energy [step 100]  ; LINEFIELD(td.general/energy, -1, 3) ; -6.135833869049
 
 Processors : 4
 Input      : 14-absorption-spinors.03-td-restart.inp
-match ; Energy [step 100] ; LINEFIELD(td.general/energy, -101, 3) ; -6.135616343204e+00
-match ; Energy [step 125] ; LINEFIELD(td.general/energy, -76, 3) ;  -6.135616328469e+00
-match ; Energy [step 150] ; LINEFIELD(td.general/energy, -51, 3) ;  -6.135616305020e+00
-match ; Energy [step 175] ; LINEFIELD(td.general/energy, -26, 3) ;  -6.135616289873e+00
-match ; Energy [step 200] ; LINEFIELD(td.general/energy, -1, 3) ;   -6.135616268231e+00
-
+Precision: 3.07e-11
+match ;  Energy [step 100]  ; LINEFIELD(td.general/energy, -101, 3) ; -6.135833869049
+Precision: 3.07e-11
+match ;  Energy [step 125]  ; LINEFIELD(td.general/energy, -76, 3) ; -6.135833854308
+Precision: 3.07e-11
+match ;  Energy [step 150]  ; LINEFIELD(td.general/energy, -51, 3) ; -6.135833830866
+Precision: 5.50e-13
+match ;  Energy [step 175]  ; LINEFIELD(td.general/energy, -26, 3) ; -6.1358338157215
+Precision: 3.07e-11
+match ;  Energy [step 200]  ; LINEFIELD(td.general/energy, -1, 3) ; -6.135833794076
 
 Util       : oct-propagation_spectrum
 Input      : 14-absorption-spinors.04-spectrum.inp
-Precision: 9.61e-16
-match ;   Electronic sum rule   ; GREPFIELD(cross_section_vector.1, 'Electronic sum rule', 6) ; 0.960636
-Precision: 1.56e-14
-match ;   Static polarizability   ; GREPFIELD(cross_section_vector.1, 'Static polarizability (from sum rule)', 8) ; 15.576779
-Precision: 1.00e-15
+Precision: 4.80e-05
+match ;   Electronic sum rule   ; GREPFIELD(cross_section_vector.1, 'Electronic sum rule', 6) ; 0.960639
+Precision: 7.79e-06
+match ;   Static polarizability   ; GREPFIELD(cross_section_vector.1, 'Static polarizability (from sum rule)', 8) ; 15.576976
+Precision: 1.00e-01
 match ;   Energy      1   ; LINEFIELD(cross_section_tensor, -91, 1) ; 1.0
-Precision: 5.63e-17
-match ;   Sigma       1   ; LINEFIELD(cross_section_tensor, -91, 2) ; 0.056267181
-Precision: 6.38e-17
-match ;   Anisotropy  1   ; LINEFIELD(cross_section_tensor, -91, 3) ; 0.063758346
-Precision: 2.00e-15
+Precision: 2.81e-08
+match ;   Sigma       1   ; LINEFIELD(cross_section_tensor, -91, 2) ; 0.0562680810
+Precision: 3.19e-08
+match ;   Anisotropy  1   ; LINEFIELD(cross_section_tensor, -91, 3) ; 0.06375581000000001
+Precision: 1.00e-01
 match ;   Energy      2   ; LINEFIELD(cross_section_tensor, -81, 1) ; 2.0
-Precision: 1.96e-16
-match ;   Sigma       2   ; LINEFIELD(cross_section_tensor, -81, 2) ; 0.19591338
-Precision: 2.11e-16
-match ;   Anisotropy  2   ; LINEFIELD(cross_section_tensor, -81, 3) ; 0.21110938
-Precision: 3.00e-15
+Precision: 9.80e-08
+match ;   Sigma       2   ; LINEFIELD(cross_section_tensor, -81, 2) ; 0.19591639
+Precision: 1.06e-06
+match ;   Anisotropy  2   ; LINEFIELD(cross_section_tensor, -81, 3) ; 0.2111039
+Precision: 1.00e-01
 match ;   Energy      3   ; LINEFIELD(cross_section_tensor, -71, 1) ; 3.0
-Precision: 3.36e-16
-match ;   Sigma       3   ; LINEFIELD(cross_section_tensor, -71, 2) ; 0.33564208
-Precision: 3.39e-16
-match ;   Anisotropy  3   ; LINEFIELD(cross_section_tensor, -71, 3) ; 0.33927139
-Precision: 4.00e-15
+Precision: 1.68e-07
+match ;   Sigma       3   ; LINEFIELD(cross_section_tensor, -71, 2) ; 0.33564665
+Precision: 1.70e-07
+match ;   Anisotropy  3   ; LINEFIELD(cross_section_tensor, -71, 3) ; 0.33926872
+Precision: 1.00e-01
 match ;   Energy      4   ; LINEFIELD(cross_section_tensor, -61, 1) ; 4.0
-Precision: 3.76e-16
-match ;   Sigma       4   ; LINEFIELD(cross_section_tensor, -61, 2) ; 0.37639051
-Precision: 3.57e-16
-match ;   Anisotropy  4   ; LINEFIELD(cross_section_tensor, -61, 3) ; 0.35724799
-Precision: 5.00e-15
+Precision: 1.88e-07
+match ;   Sigma       4   ; LINEFIELD(cross_section_tensor, -61, 2) ; 0.37639408
+Precision: 1.79e-07
+match ;   Anisotropy  4   ; LINEFIELD(cross_section_tensor, -61, 3) ; 0.35725065
+Precision: 1.00e-01
 match ;   Energy      5   ; LINEFIELD(cross_section_tensor, -51, 1) ; 5.0
-Precision: 2.83e-16
-match ;   Sigma       5   ; LINEFIELD(cross_section_tensor, -51, 2) ; 0.28302828
-Precision: 2.54e-16
-match ;   Anisotropy  5   ; LINEFIELD(cross_section_tensor, -51, 3) ; 0.25442278
-Precision: 6.00e-15
+Precision: 1.42e-07
+match ;   Sigma       5   ; LINEFIELD(cross_section_tensor, -51, 2) ; 0.28302834
+Precision: 1.27e-07
+match ;   Anisotropy  5   ; LINEFIELD(cross_section_tensor, -51, 3) ; 0.25442576
+Precision: 1.00e-01
 match ;   Energy      6   ; LINEFIELD(cross_section_tensor, -41, 1) ; 6.0
-Precision: 1.26e-16
-match ;   Sigma       6   ; LINEFIELD(cross_section_tensor, -41, 2) ; 0.12587402
-Precision: 1.09e-16
-match ;   Anisotropy  6   ; LINEFIELD(cross_section_tensor, -41, 3) ; 0.10912794
-Precision: 7.00e-15
+Precision: 6.29e-08
+match ;   Sigma       6   ; LINEFIELD(cross_section_tensor, -41, 2) ; 0.12587082
+Precision: 5.46e-08
+match ;   Anisotropy  6   ; LINEFIELD(cross_section_tensor, -41, 3) ; 0.10912577
+Precision: 1.00e-01
 match ;   Energy      7   ; LINEFIELD(cross_section_tensor, -31, 1) ; 7.0
-Precision: 1.51e-17
-match ;   Sigma       7   ; LINEFIELD(cross_section_tensor, -31, 2) ; 0.015073012
-Precision: 1.60e-17
-match ;   Anisotropy  7   ; LINEFIELD(cross_section_tensor, -31, 3) ; 0.015954549
-Precision: 8.00e-15
+Precision: 7.53e-09
+match ;   Sigma       7   ; LINEFIELD(cross_section_tensor, -31, 2) ; 0.015069426
+Precision: 7.97e-09
+match ;   Anisotropy  7   ; LINEFIELD(cross_section_tensor, -31, 3) ; 0.015947912
+Precision: 1.00e-01
 match ;   Energy      8   ; LINEFIELD(cross_section_tensor, -21, 1) ; 8.0
-Precision: 6.92e-18
-match ;   Sigma       8   ; LINEFIELD(cross_section_tensor, -21, 2) ; -0.006917501
-Precision: 9.04e-18
-match ;   Anisotropy  8   ; LINEFIELD(cross_section_tensor, -21, 3) ; 0.0090446666
-Precision: 9.00e-15
+Precision: 3.46e-09
+match ;   Sigma       8   ; LINEFIELD(cross_section_tensor, -21, 2) ; -0.0069189954
+Precision: 4.52e-09
+match ;   Anisotropy  8   ; LINEFIELD(cross_section_tensor, -21, 3) ; 0.0090464839
+Precision: 1.00e-01
 match ;   Energy      9   ; LINEFIELD(cross_section_tensor, -11, 1) ; 9.0
-Precision: 1.35e-17
-match ;   Sigma       9   ; LINEFIELD(cross_section_tensor, -11, 2) ; 0.013467333
-Precision: 2.07e-17
-match ;   Anisotropy  9   ; LINEFIELD(cross_section_tensor, -11, 3) ; 0.020662555
-Precision: 1.00e-14
+Precision: 6.73e-09
+match ;   Sigma       9   ; LINEFIELD(cross_section_tensor, -11, 2) ; 0.013467592
+Precision: 1.03e-07
+match ;   Anisotropy  9   ; LINEFIELD(cross_section_tensor, -11, 3) ; 0.02066263
+Precision: 1.00e-01
 match ;   Energy     10   ; LINEFIELD(cross_section_tensor, -1, 1) ; 10.0
-Precision: 1.90e-17
-match ;   Sigma      10   ; LINEFIELD(cross_section_tensor, -1, 2) ; 0.018981769
-Precision: 1.96e-17
-match ;   Anisotropy 10   ; LINEFIELD(cross_section_tensor, -1, 3) ; 0.019629929
-
+Precision: 9.49e-08
+match ;   Sigma      10   ; LINEFIELD(cross_section_tensor, -1, 2) ; 0.018981990000000004
+Precision: 9.82e-09
+match ;   Anisotropy 10   ; LINEFIELD(cross_section_tensor, -1, 3) ; 0.019630649
 
 Util       : oct-propagation_spectrum
 Input      : 14-absorption-spinors.05-spectrum_compressed_sensing.inp

@@ -1,17 +1,22 @@
+# snippet_start calc_mode
 # ----- Calculation mode and parallelization ------------------------------------------------------
 
  CalculationMode   = td
  RestartWrite = no
  ExperimentalFeatures = yes
  FromScratch = yes
+#snippet_end
 
+# snippet_start systems
 %Systems
   'Maxwell' | maxwell
 %
 
  Maxwell.ParDomains = auto
  Maxwell.ParStates  = no
+# snippet_end
 
+# snippet_start box
 # ----- Maxwell box variables ---------------------------------------------------------------------
 
  # free maxwell box limit of 10.0 plus 2.0 for the incident wave boundaries with
@@ -29,12 +34,14 @@
  %Maxwell.Spacing
   dx_mx | dx_mx | dx_mx
  %
+# snippet_end
 
 
 # ----- Maxwell calculation variables -------------------------------------------------------------
 
  MaxwellHamiltonianOperator = faraday_ampere
 
+# snippet_start boundaries
  %MaxwellBoundaryConditions
   plane_waves | plane_waves | plane_waves
  %
@@ -42,38 +49,42 @@
  %MaxwellAbsorbingBoundaries
   not_absorbing | not_absorbing | not_absorbing
  %
+# snippet_end
 
-
+# snippet_start output
 # ----- Output variables --------------------------------------------------------------------------
 
  OutputFormat = plane_x + plane_y + plane_z + vtk + axis_x
 
-
 # ----- Maxwell output variables ------------------------------------------------------------------
 
- %MaxwellOutput 
-  electric_field 
-  magnetic_field 
+ %MaxwellOutput
+  electric_field
+  magnetic_field
   maxwell_energy_density
   poynting_vector | plane_z
   orbital_angular_momentum | plane_z
  %
 
- MaxwellOutputInterval = 50
- MaxwellTDOutput       = maxwell_energy + maxwell_total_e_field + maxwell_total_b_field + maxwell_transverse_e_field + maxwell_transverse_b_field
-
  %MaxwellFieldsCoordinate
    0.00 | 0.00 | 0.00
  %
 
+ MaxwellOutputInterval = 50
+ MaxwellTDOutput       = maxwell_energy + maxwell_total_e_field + maxwell_total_b_field + maxwell_transverse_e_field + maxwell_transverse_b_field
 
+# snippet_end
+
+
+# snippet_start timestep
 # ----- Time step variables -----------------------------------------------------------------------
 
- TDSystemPropagator = exp_mid
+ TDSystemPropagator = prop_expmid
  TDTimeStep                        = 0.002
  TDPropagationTime                 = 0.2
+# snippet_end
 
-
+# snippet_start field
 # ----- Maxwell field variables -------------------------------------------------------------------
 
  lambda = 10.0
@@ -90,4 +101,4 @@
  %MaxwellFunctions
    "plane_waves_function" | mxf_cosinoidal_wave | kx | 0 | 0 | p_s | 0 | 0 | pw
  %
-
+# snippet_end

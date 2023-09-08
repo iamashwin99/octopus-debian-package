@@ -22,6 +22,7 @@ module logrid_oct_m
   use debug_oct_m
   use global_oct_m
   use messages_oct_m
+  use namespace_oct_m
   use profiling_oct_m
 
   implicit none
@@ -34,6 +35,7 @@ module logrid_oct_m
     logrid_copy,    &
     logrid_index,   &
     logrid_radius,  &
+    logrid_find_parameters, &
     derivative_in_log_grid
 
   integer, parameter, public :: &
@@ -207,6 +209,63 @@ contains
 
     radius = grid%rofi(grid%nrval)
   end function logrid_radius
+
+
+  subroutine logrid_find_parameters(namespace, zz, aa, bb, np)
+    type(namespace_t),  intent(in)  :: namespace
+    integer,            intent(in)  :: zz
+    FLOAT,              intent(out) :: aa, bb
+    integer,            intent(out) :: np
+
+    FLOAT :: xmin, xmax, a1, a2, f1, fm
+
+    PUSH_SUB(logrid_find_parameters)
+
+    ! Initializes the logarithmic grid.
+    ! Parameters are obtained using the default values for the first non-zero point xmin,
+    ! the last point xmax, and the number of points np
+    ! These values have a default value obtained from the atomic number
+    ! Adapted from APE
+    xmin = sqrt(TOFLOAT(zz))*CNST(1e-5)
+    xmax = sqrt(TOFLOAT(zz))*CNST(30.0)
+    np = floor(sqrt(TOFLOAT(zz))*CNST(200))
+    ! The code wants np to be an odd number
+    np = floor(np/M_TWO)*2+1
+
+    a1 = CNST(1e-8)
+    f1 = func(xmin, xmax, TOFLOAT(np), a1)
+    a2 = M_ONE
+    do
+      aa = (a2 + a1)*M_HALF
+      fm = func(xmin, xmax, TOFLOAT(np), aa)
+      if (M_HALF*abs(a1 - a2) < CNST(1.0e-16)) exit
+      if (fm*f1 > M_ZERO) then
+        a1 = aa
+        f1 = fm
+      else
+        a2 = aa
+      end if
+    end do
+
+    bb = xmin/(exp(aa)-M_ONE)
+
+    if (debug%info) then
+      write(message(1), '(a,es13.6,a,es13.6,a,i4)') 'Debug: Log grid parameters: a = ', aa, &
+        ' b = ', bb, ' np = ', np
+      call messages_info(1, namespace=namespace)
+    end if
+
+    POP_SUB(logrid_find_parameters)
+  contains
+    FLOAT function func(r1, rn, n, a)
+      FLOAT, intent(in) :: r1, rn, a, n
+      if((n-M_ONE)*a < M_MAX_EXP_ARG) then ! To avoid FPE
+        func = exp((n-M_ONE)*a)*r1 - M_ONE*r1 - rn*exp(a) + rn*M_ONE
+      else
+        func = M_HUGE*r1 - M_ONE*r1 - rn*exp(a) + rn*M_ONE
+      end if
+    end function func
+  end subroutine logrid_find_parameters
 
 end module logrid_oct_m
 

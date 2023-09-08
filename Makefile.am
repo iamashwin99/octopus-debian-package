@@ -20,13 +20,9 @@
 
 ACLOCAL_AMFLAGS = -I m4
 
-if ENABLE_PERL
-  PERL_DIR = scripts
-endif
-
 SUBDIRS =        \
-	build external_libs liboct_parser \
-	src share doc testsuite $(PERL_DIR)
+	external_libs liboct_parser \
+	src share doc testsuite scripts
 
 EXTRA_DIST =     \
 	ChangeLog PACKAGING \
@@ -40,7 +36,6 @@ DISTCLEANFILES = \
 DEB_DIR = deb-work
 
 check-unittests:
-	$(MAKE) -C build check
 	$(MAKE) -C external_libs check
 	$(MAKE) -C liboct_parser check
 	$(MAKE) -C src check
@@ -49,7 +44,6 @@ check-unittests:
 	$(MAKE) -C testsuite check-unittests
 
 check-short:
-	$(MAKE) -C build check
 	$(MAKE) -C external_libs check
 	$(MAKE) -C liboct_parser check
 	$(MAKE) -C src check
@@ -58,7 +52,6 @@ check-short:
 	$(MAKE) -C testsuite check-short
 
 check-long:
-	$(MAKE) -C build check
 	$(MAKE) -C external_libs check
 	$(MAKE) -C liboct_parser check
 	$(MAKE) -C src check
@@ -69,19 +62,6 @@ check-long:
 check-performance:
 	$(MAKE) -C share check
 	$(MAKE) -C testsuite check-performance
-
-rpm: dist
-	@topdir=`rpmbuild --showrc | @GREP@ ': *_topdir' | cut -f 2`; \
-	mv -f $(PACKAGE)-$(VERSION).tar.gz $$topdir/SOURCES; \
-	cp build/$(PACKAGE).spec $$topdir/SPECS; \
-	rpmbuild -ba $$topdir/SPECS/$(PACKAGE).spec; \
-	echo "-------------------------------------------------------------"; \
-	echo "  RPMs are built, and are located under:"; \
-	echo "       $$topdir/RPMS/<arch>"; \
-	echo "       $$topdir/SRPMS"; \
-	echo "-------------------------------------------------------------"
-#	scp $(RPM_DIR)/RPMS/*/octopus*.rpm \
-		marques@nautilus.fis.uc.pt:/server/www/tddft.org/programs/octopus/download/
 
 deb: dist
 	rm -rf $(DEB_DIR)

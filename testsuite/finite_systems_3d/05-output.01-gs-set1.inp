@@ -1,7 +1,7 @@
 # -*- coding: utf-8 mode: shell-script -*-
 
 CalculationMode = gs
-fromScratch = yes
+FromScratch = yes
 
 UnitsOutput = ev_angstrom
 
@@ -12,7 +12,7 @@ Spacing = 0.4
   "H" | 0 | 0 | 0
 %
 
-%Output 
+%Output
   potential              | "output_interval" | 2
   density                | "output_interval" | 3
   wfs                    | "output_interval" | 5
@@ -35,7 +35,7 @@ Spacing = 0.4
   PES_wfs                | "output_interval" | 71
 %
 %OutputMatrixElements
- momentum 
+ momentum
 %
 OutputFormat = xcrysden
 

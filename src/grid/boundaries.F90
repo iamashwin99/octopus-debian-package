@@ -178,6 +178,10 @@ contains
       end if
 
       SAFE_ALLOCATE(this%per_points(1:2, 1:max(this%nper, 1)))
+      !$omp parallel do
+      do ip = 1, this%nper
+        this%per_points(1:2, ip) = -1
+      end do
 
       if (mesh%parallel_in_domains) then
         SAFE_ALLOCATE(this%per_recv(1:max(nper_recv, 1), 1:max(mesh%pv%npart, 1)))
@@ -321,18 +325,21 @@ contains
 
   ! -------------------------------------------------------
 
-  subroutine boundaries_set_batch(this, mesh, ffb, phase_correction)
+  subroutine boundaries_set_batch(this, mesh, ffb, phase_correction, buff_phase_corr, offset)
     type(boundaries_t), intent(in)    :: this
-    type(mesh_t),       intent(in)    :: mesh
+    class(mesh_t),      intent(in)    :: mesh
     class(batch_t),     intent(inout) :: ffb
     CMPLX, optional,    intent(in)    :: phase_correction(:)
+    type(accel_mem_t), optional,intent(in)    :: buff_phase_corr
+    integer, optional,          intent(in)    :: offset
+
 
     PUSH_SUB(boundaries_set_batch)
 
     if (ffb%type() == TYPE_FLOAT) then
-      call dboundaries_set_batch(this, mesh, ffb, phase_correction)
+      call dboundaries_set_batch(this, mesh, ffb, phase_correction, buff_phase_corr, offset)
     else if (ffb%type() == TYPE_CMPLX) then
-      call zboundaries_set_batch(this, mesh, ffb, phase_correction)
+      call zboundaries_set_batch(this, mesh, ffb, phase_correction, buff_phase_corr, offset)
     else
       ASSERT(.false.)
     end if

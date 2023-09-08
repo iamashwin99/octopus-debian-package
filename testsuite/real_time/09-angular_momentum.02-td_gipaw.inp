@@ -28,8 +28,8 @@ TDPolarizationDirection = 1
 TDDeltaStrength = 0.1
 
 %TDOutput
- energy 
- angular 
+ energy
+ angular
  multipoles
 %
 MagneticGaugeCorrection = gipaw

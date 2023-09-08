@@ -14,14 +14,14 @@ BoxShape = parallelepiped
 Spacing = a/14
 
 %ReducedCoordinates
-  "Si" |   0.0       | 0.0       | 0.0 
+  "Si" |   0.0       | 0.0       | 0.0
   "Si" |   1/2       | 1/2       | 0.0
   "Si" |   1/2       | 0.0       | 1/2
-  "Si" |   0.0       | 1/2       | 1/2 
-  "Si" |   1/4       | 1/4       | 1/4 
+  "Si" |   0.0       | 1/2       | 1/2
+  "Si" |   1/4       | 1/4       | 1/4
   "Si" |   1/4 + 1/2 | 1/4 + 1/2 | 1/4
   "Si" |   1/4 + 1/2 | 1/4       | 1/4 + 1/2
-  "Si" |   1/4       | 1/4 + 1/2 | 1/4 + 1/2 
+  "Si" |   1/4       | 1/4 + 1/2 | 1/4 + 1/2
 %
 
 ExperimentalFeatures = yes
@@ -42,5 +42,3 @@ UnfoldMode = unfold_setup
  0.0 | 0.5 | 0.5 # X point
  1.0 | 1.0 | 1.0 # Another Gamma point
 %
-
-

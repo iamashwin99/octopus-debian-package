@@ -25,7 +25,7 @@ ExperimentalFeatures = YES
 OnlyUserDefinedInitialStates = YES
 
 BoxShape = sphere
-Radius = 10  
+Radius = 10
 Spacing = 0.2
 
 TheoryLevel = independent_particles
@@ -66,8 +66,3 @@ omega = 1.5
 %TDFunctions
  "ramp" | tdf_trapezoidal | amplitude | 50 | 29.3 | 4.2
 %
-
-
-
-
-

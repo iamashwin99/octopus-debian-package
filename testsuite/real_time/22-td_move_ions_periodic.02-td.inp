@@ -1,0 +1,42 @@
+FromScratch=yes
+PeriodicDimensions = 3
+CalculationMode = td
+%LatticeParameters
+ 10 | 10 | 10
+%
+
+%Coordinates
+ "H" | -0.5 | 0.0 | 0.0
+ "H" |  0.5 | 0.0 | 0.0
+%
+%Velocities
+ "H" | -0.01 | 0.0 | 0.0
+ "H" |  0.01 | 0.0 | 0.0
+%
+
+Spacing=0.55
+
+UnitsOutput = eV_Angstrom
+
+TDTimeStep = 0.1
+TDMaxSteps = 100
+
+MoveIons = yes
+
+%TDOutput
+ total_current
+ energy
+%
+
+wp = 15*eV
+A0 = 1
+tau = 6.283185307179586/wp
+tauL = 2 * tau
+
+%TDExternalFields
+  vector_potential | 0.5 | 0.5 | 0.5 | wp | "pump"
+%
+
+%TDFunctions
+  "pump" | tdf_from_expr | "A0*(cos(3.1415927*(t - tauL/2)/tauL))^2*(1-step(t-tauL))"
+%

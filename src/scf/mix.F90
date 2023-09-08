@@ -363,6 +363,7 @@ contains
         end do
       end do
 
+      call nl_operator_update_gpu_buffers(smix%preconditioner)
       call nl_operator_output_weights(smix%preconditioner)
 
     end subroutine init_preconditioner
@@ -412,7 +413,7 @@ contains
     type(restart_t),   intent(in)  :: restart
     type(mix_t),       intent(in)  :: smix
     type(space_t),     intent(in)  :: space
-    type(mesh_t),      intent(in)  :: mesh
+    class(mesh_t),     intent(in)  :: mesh
     integer,           intent(out) :: ierr
 
     integer :: iunit, id2, id3, id4, err, err2(4)
@@ -517,7 +518,7 @@ contains
     type(restart_t),   intent(in)    :: restart
     type(mix_t),       intent(inout) :: smix
     type(space_t),     intent(in)    :: space
-    type(mesh_t),      intent(in)    :: mesh
+    class(mesh_t),     intent(in)    :: mesh
     integer,           intent(out)   :: ierr
 
     integer :: iunit, err, err2(4)

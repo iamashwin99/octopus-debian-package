@@ -42,7 +42,8 @@ __kernel void boundaries_periodic_corr(const int nper,
                __global double2 * __restrict ff,
                const int ldff,
                __global double2 * __restrict phase_correction,
-               const int np){
+               const int np,
+	       const int offset){
   const int ist  = get_global_id(0);
   const int iper = get_global_id(1);
   
@@ -51,7 +52,7 @@ __kernel void boundaries_periodic_corr(const int nper,
   const int ip_bnd = per_points[iper*2    ] - 1;
   const int ip_inn = per_points[iper*2 + 1] - 1;
 
-  ff[(ip_bnd<<ldff) + ist] = complex_mul( ff[(ip_inn<<ldff) + ist], phase_correction[ip_bnd - np]);
+  ff[(ip_bnd<<ldff) + ist] = complex_mul( ff[(ip_inn<<ldff) + ist], phase_correction[ip_bnd - np + offset]);
 
 }
 
@@ -106,7 +107,8 @@ __kernel void boundaries_periodic_recv_corr(const int maxrecv,
                __global double2 * __restrict ff,
                const int ldff,
                __global double2 * __restrict phase_correction,
-               const int np){
+               const int np,
+	       const int offset){
 
   const int ist   = get_global_id(0);
   const int ip    = get_global_id(1);
@@ -118,7 +120,7 @@ __kernel void boundaries_periodic_recv_corr(const int maxrecv,
   
   const int ip_recv = per_recv[ldper_recv*ipart + ip] - 1;
 
-  ff[(ip_recv<<ldff) + ist] = complex_mul(recvbuffer[((maxrecv*ipart + ip)<<ldff) + ist], phase_correction[ip_recv-np]);
+  ff[(ip_recv<<ldff) + ist] = complex_mul(recvbuffer[((maxrecv*ipart + ip)<<ldff) + ist], phase_correction[ip_recv-np+offset]);
   
 }
 

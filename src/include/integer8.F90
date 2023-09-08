@@ -19,7 +19,11 @@
 
 #define R_TINTEGER8  1
 
+#ifdef __GFORTRAN__
+#define X(x)        l/**/x
+#else
 #define X(x)        l ## x
+#endif
 
 #define R_TYPE      integer(i8)
 #define R_BASE      integer(i8)

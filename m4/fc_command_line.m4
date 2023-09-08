@@ -54,7 +54,7 @@ do
 acx_cl_usemodule=""
 acx_cl_includeheader=""
 
-case $acx_command_line_source in 
+case $acx_command_line_source in
      intrinsic) ;;
      lib3f.h)   acx_cl_includeheader="include 'lib3f.h'" ;;
      *)         acx_cl_usemodule="use "$acx_command_line_source ;;
@@ -83,7 +83,7 @@ case $acx_command_line_arguments in
      none)      ;;
      intrinsic)
      AC_DEFINE(FC_COMMAND_LINE_INTRINSIC, 1, [iargc and getarg are intrinsic]);;
-     lib3f.h)   
+     lib3f.h)
      AC_DEFINE_UNQUOTED(FC_COMMAND_LINE_INCLUDE, '$acx_command_line_arguments', [iargc and getarg are defined in a include file]);;
      *)
      AC_DEFINE_UNQUOTED(FC_COMMAND_LINE_MODULE, $acx_command_line_arguments, [iargc and getar are defined in a module]);;
@@ -97,24 +97,24 @@ if test "$acx_command_line_arguments" == "none" ; then
 AC_LINK_IFELSE(
     AC_LANG_PROGRAM( [], [
 
-    implicit none 
+    implicit none
 
-    interface iargc 
-    integer function iargc() 
-    end function iargc 
-    end interface 
+    interface iargc
+    integer function iargc()
+    end function iargc
+    end interface
 
-    interface getarg 
+    interface getarg
     subroutine getarg(c, a)
     integer :: c
     character(len=*) :: a
     end subroutine getarg
     end interface
- 
-    integer :: i 
-    character(len=32) :: arg 
-    i = iargc() 
-    call getarg(0, arg) 
+
+    integer :: i
+    character(len=32) :: arg
+    i = iargc()
+    call getarg(0, arg)
     ]),
     [
     acx_command_line_arguments=implicit

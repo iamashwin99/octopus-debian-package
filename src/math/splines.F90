@@ -493,6 +493,8 @@ contains
 
     !No PUSH SUB, called too often
 
+    ASSERT(nrc > 0)
+
     spl%x_limit(1) = rofi(1)
     spl%x_limit(2) = rofi(nrc)
     call oct_spline_fit(nrc, rofi(1), ffit(1), spl%spl, spl%acc)
@@ -509,20 +511,24 @@ contains
 
 
   !------------------------------------------------------------
-  pure subroutine spline_eval8_array(spl, nn, xf)
+  subroutine spline_eval8_array(spl, nn, xf)
     type(spline_t), intent(in)    :: spl
     integer,        intent(in)    :: nn
     real(r8),       intent(inout) :: xf(:)
+
+    ASSERT(nn > 0)
 
     call oct_spline_eval_array(nn, xf(1), spl%spl, spl%acc)
   end subroutine spline_eval8_array
 
 
   !------------------------------------------------------------
-  pure subroutine spline_evalz_array(spl, nn, xf)
+  subroutine spline_evalz_array(spl, nn, xf)
     type(spline_t), intent(in)    :: spl
     integer,        intent(in)    :: nn
     complex(r8),    intent(inout) :: xf(:)
+
+    ASSERT(nn > 0)
 
     call oct_spline_eval_arrayz(nn, xf(1), spl%spl, spl%acc)
   end subroutine spline_evalz_array
@@ -539,6 +545,7 @@ contains
     PUSH_SUB(spline_sum)
 
     npoints = oct_spline_npoints(spl1%spl, spl1%acc)
+    ASSERT(npoints > 0)
 
     SAFE_ALLOCATE( x(1:npoints))
     SAFE_ALLOCATE( y(1:npoints))
@@ -573,6 +580,8 @@ contains
     PUSH_SUB(spline_times)
 
     npoints = oct_spline_npoints(spl%spl, spl%acc)
+    ASSERT(npoints > 0)
+
     SAFE_ALLOCATE(x(1:npoints))
     SAFE_ALLOCATE(y(1:npoints))
 
@@ -625,6 +634,8 @@ contains
     PUSH_SUB(spline_dotp)
 
     npoints = oct_spline_npoints(spl1%spl, spl1%acc)
+    ASSERT(npoints > 0)
+
     SAFE_ALLOCATE(x(1:npoints))
     SAFE_ALLOCATE(y(1:npoints))
 
@@ -659,6 +670,8 @@ contains
     PUSH_SUB(spline_3dft)
 
     npoints = oct_spline_npoints(spl%spl, spl%acc)
+    ASSERT(npoints > 0)
+
     SAFE_ALLOCATE( x(1:npoints))
     SAFE_ALLOCATE( y(1:npoints))
     SAFE_ALLOCATE(y2(1:npoints))
@@ -733,6 +746,8 @@ contains
     PUSH_SUB(spline_besselft)
 
     npoints = oct_spline_npoints(spl%spl, spl%acc)
+    ASSERT(npoints > 0)
+
     SAFE_ALLOCATE( x(1:npoints))
     SAFE_ALLOCATE( y(1:npoints))
     SAFE_ALLOCATE(y2(1:npoints))
@@ -798,6 +813,8 @@ contains
     PUSH_SUB(spline_cut)
 
     npoints = oct_spline_npoints(spl%spl, spl%acc)
+    ASSERT(npoints > 0)
+
     SAFE_ALLOCATE(x(1:npoints))
     SAFE_ALLOCATE(y(1:npoints))
 
@@ -838,6 +855,7 @@ contains
     PUSH_SUB(spline_div)
 
     npoints = oct_spline_npoints(spla%spl, spla%acc)
+    ASSERT(npoints > 0)
 
     SAFE_ALLOCATE(x(1:npoints))
     SAFE_ALLOCATE(y(1:npoints))
@@ -874,6 +892,7 @@ contains
     PUSH_SUB(spline_force_pos)
 
     npoints = oct_spline_npoints(spl%spl, spl%acc)
+    ASSERT(npoints > 0)
 
     SAFE_ALLOCATE(x(1:npoints))
     SAFE_ALLOCATE(y(1:npoints))
@@ -907,6 +926,10 @@ contains
     PUSH_SUB(spline_mult)
 
     npoints = oct_spline_npoints(spla%spl, spla%acc)
+    if(npoints <= 0) then
+      POP_SUB(spline_mult)
+      return
+    end if
 
     SAFE_ALLOCATE(x(1:npoints))
     SAFE_ALLOCATE(y(1:npoints))
@@ -948,11 +971,13 @@ contains
     ! Use the grid of dspl if it is present, otherwise use the same one of spl.
     if (.not. c_associated(dspl%spl)) then ! use the grid of spl
       npoints = oct_spline_npoints(spl%spl, spl%acc)
+      ASSERT(npoints > 0)
       SAFE_ALLOCATE(x(1:npoints))
       SAFE_ALLOCATE(y(1:npoints))
       call oct_spline_x(spl%spl, spl%acc, x(1))
     else ! use the grid of dspl
       npoints = oct_spline_npoints(dspl%spl, dspl%acc)
+      ASSERT(npoints > 0)
       SAFE_ALLOCATE(x(1:npoints))
       SAFE_ALLOCATE(y(1:npoints))
       call oct_spline_x(dspl%spl, dspl%acc, x(1))
@@ -982,11 +1007,13 @@ contains
     ! Use the grid of dspl if it is present, otherwise use the same one of spl.
     if (.not. c_associated(dspl%spl)) then ! use the grid of spl
       npoints = oct_spline_npoints(spl%spl, spl%acc)
+      ASSERT(npoints > 0)
       SAFE_ALLOCATE(x(1:npoints))
       SAFE_ALLOCATE(y(1:npoints))
       call oct_spline_x(spl%spl, spl%acc, x(1))
     else ! use the grid of dspl
       npoints = oct_spline_npoints(dspl%spl, dspl%acc)
+      ASSERT(npoints > 0)
       SAFE_ALLOCATE(x(1:npoints))
       SAFE_ALLOCATE(y(1:npoints))
       call oct_spline_x(dspl%spl, dspl%acc, x(1))
@@ -1014,6 +1041,7 @@ contains
     PUSH_SUB(spline_print_0)
 
     np = oct_spline_npoints(spl%spl, spl%acc)
+    ASSERT(np > 0)
     SAFE_ALLOCATE(x(1:np))
     SAFE_ALLOCATE(y(1:np))
 

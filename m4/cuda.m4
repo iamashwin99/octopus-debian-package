@@ -82,7 +82,7 @@ AC_DEFUN([ACX_CUDA],
 dnl Do automatic detection of CUDA-aware MPI for OpenMPI if not enabled by hand
     if test x"$enable_mpi" == x"yes"; then
       AC_MSG_CHECKING([for CUDA-aware MPI])
-  
+
       AC_LANG_PUSH([C])
       AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
       #include "mpi.h"
@@ -92,7 +92,7 @@ dnl Do automatic detection of CUDA-aware MPI for OpenMPI if not enabled by hand
       #endif
       ]])], [acx_cudampi="yes"], [acx_cudampi="no"])
       AC_LANG_POP([C])
-  
+
       if test x"${acx_cudampi}" == x"yes" ; then
         AC_DEFINE(HAVE_CUDA_MPI, 1, [defined if cuda-aware MPI is enabled])
         AC_MSG_RESULT([yes])

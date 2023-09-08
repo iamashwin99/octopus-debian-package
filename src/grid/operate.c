@@ -18,7 +18,6 @@
 
 */
 
-
 #include <config.h>
 
 #include <stddef.h>
@@ -38,24 +37,21 @@
  * @param[out] fo
  *
  */
-void FC_FUNC_(doperate_ri_vec,DOPERATE_RI_VEC)(const int * opn, 
-                                               const double * restrict w, 
-                                               const int * opnri,
-                                               const int * opri,
-                                               const int * rimap_inv,
-                                               const int * rimap_inv_max,
-                                               const double * restrict fi,
-                                               const int * ldfp,
-                                               double * restrict fo) {
+void FC_FUNC_(doperate_ri_vec,
+              DOPERATE_RI_VEC)(const int *opn, const double *restrict w,
+                               const int *opnri, const int *opri,
+                               const int *rimap_inv, const int *rimap_inv_max,
+                               const double *restrict fi, const int *ldfp,
+                               double *restrict fo) {
   const size_t ldf = ldfp[0];
 
   /* check whether we got aligned vectors or not */
   int aligned = 1;
-  aligned = aligned && (((long long) fi)%(8*VEC_SIZE) == 0);
-  aligned = aligned && (((long long) fo)%(8*VEC_SIZE) == 0);
-  aligned = aligned && ((1<<ldf)%VEC_SIZE == 0);
+  aligned = aligned && (((long long)fi) % (8 * VEC_SIZE) == 0);
+  aligned = aligned && (((long long)fo) % (8 * VEC_SIZE) == 0);
+  aligned = aligned && ((1 << ldf) % VEC_SIZE == 0);
 
-  if(aligned){
+  if (aligned) {
 #define ALIGNED
 #include "operate_inc.c"
 #undef ALIGNED
@@ -64,52 +60,45 @@ void FC_FUNC_(doperate_ri_vec,DOPERATE_RI_VEC)(const int * opn,
     /* not aligned */
 #include "operate_inc.c"
   }
-
 }
 
-/* the same as doperate_ri_vec, but allows giving each an appropriate Fortan interface
-   in which fi and fo are actually complex in Fortran 
-   Could be inline, but in that case pgcc will not put it in the symbol table. */
-void FC_FUNC_(zoperate_ri_vec,ZOPERATE_RI_VEC)(const int * opn, 
-                                                      const double * restrict w, 
-                                                      const int * opnri,
-                                                      const int * opri,
-                                                      const int * rimap_inv,
-                                                      const int * rimap_inv_max,
-                                                      const double * restrict fi,
-                                                      const int * ldfp,
-                                                      double * restrict fo) {
-  FC_FUNC_(doperate_ri_vec,DOPERATE_RI_VEC)(opn, w, opnri, opri, rimap_inv, rimap_inv_max, fi, ldfp, fo);
+/* the same as doperate_ri_vec, but allows giving each an appropriate Fortan
+   interface in which fi and fo are actually complex in Fortran Could be inline,
+   but in that case pgcc will not put it in the symbol table. */
+void FC_FUNC_(zoperate_ri_vec,
+              ZOPERATE_RI_VEC)(const int *opn, const double *restrict w,
+                               const int *opnri, const int *opri,
+                               const int *rimap_inv, const int *rimap_inv_max,
+                               const double *restrict fi, const int *ldfp,
+                               double *restrict fo) {
+  FC_FUNC_(doperate_ri_vec, DOPERATE_RI_VEC)
+  (opn, w, opnri, opri, rimap_inv, rimap_inv_max, fi, ldfp, fo);
 }
 
-void FC_FUNC_(dgauss_seidel,DGAUSS_SEIDEL)(const int * opn, 
-				           const double * restrict w, 
-				           const int * opnri,
-				           const int * opri,
-				           const int * rimap_inv,
-				           const int * rimap_inv_max,
-					   const double * restrict factor,
-				           double * pot, 
-				           const double * restrict rho){
+void FC_FUNC_(dgauss_seidel,
+              DGAUSS_SEIDEL)(const int *opn, const double *restrict w,
+                             const int *opnri, const int *opri,
+                             const int *rimap_inv, const int *rimap_inv_max,
+                             const double *restrict factor, double *pot,
+                             const double *restrict rho) {
 
   const int n = opn[0];
   const int nri = opnri[0];
 
   int l, i, j;
-  const int * index;
+  const int *index;
   register double a0;
   register const double fac = *factor;
 
-  for (l = 0; l < nri ; l++) {
-    index = opri + n*l;
+  for (l = 0; l < nri; l++) {
+    index = opri + n * l;
     i = rimap_inv[l];
 
-    for (; i < rimap_inv_max[l]; i++){
+    for (; i < rimap_inv_max[l]; i++) {
       a0 = 0.0;
-      for(j = 0; j < n; j++) a0 += w[j]*pot[i + index[j]];
-      pot[i] += fac*(a0 - rho[i]);
+      for (j = 0; j < n; j++)
+        a0 += w[j] * pot[i + index[j]];
+      pot[i] += fac * (a0 - rho[i]);
     }
-
   }
-
 }

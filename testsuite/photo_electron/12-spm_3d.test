@@ -20,8 +20,10 @@ Input      : 12-spm_3d.02-Na_td.inp
 if(available cuda); then
   match ; Error match ; GREPCOUNT(err, 'Calculation will not be continued.') ; 1
 else
-  match ; PES [val  1] ; LINEFIELD(td.general/PES_spm.power.sum, 40, 2) ; 0.6331292402E-007
-  match ; PES [val  2] ; LINEFIELD(td.general/PES_spm.power.sum, 41, 2) ; 0.8936768177E-007
-  match ; PES [val  3] ; LINEFIELD(td.general/PES_spm.power.sum, 42, 2) ; 0.6310381259E-007
+  Precision: 1.05e-12
+  match ;  PES [val  1]  ; LINEFIELD(td.general/PES_spm.power.sum, 40, 2) ; 3.7823576404999995e-08
+  Precision: 5.10e-13
+  match ;  PES [val  2]  ; LINEFIELD(td.general/PES_spm.power.sum, 41, 2) ; 7.683984842e-08
+  Precision: 6.62e-13
+  match ;  PES [val  3]  ; LINEFIELD(td.general/PES_spm.power.sum, 42, 2) ; 7.868319748e-08
 endif
-

@@ -20,3 +20,4 @@ Spacing = 0.3
 
 Radius = 8
 
+PoissonSolver = isf

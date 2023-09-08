@@ -19,6 +19,8 @@
 
 #include "global.h"
 
+!> @brief This module defines the meshes, which are used in Octopus
+!!
 module mesh_oct_m
   use basis_set_abst_oct_m
   use box_oct_m
@@ -30,7 +32,6 @@ module mesh_oct_m
   use index_oct_m
   use io_oct_m
   use io_binary_oct_m
-  use mesh_cube_map_oct_m
   use messages_oct_m
   use mpi_oct_m
   use mpi_lib_oct_m
@@ -75,7 +76,7 @@ module mesh_oct_m
     mesh_local2global,             &
     mesh_global2local
 
-  !> Describes mesh distribution to nodes.
+  !> @brief Describes mesh distribution to nodes.
   !!
   !! Some general things:
   !! All members of type(mesh_t) are equal on all
@@ -92,16 +93,14 @@ module mesh_oct_m
 
     FLOAT :: spacing(MAX_DIM)         !< the (constant) spacing between the points
 
-    !> When running serially, the local number of points is
-    !! equal to the global number of points.
-    !! Otherwise, the next two are different on each node.
+    ! When running serially, the local number of points is
+    ! equal to the global number of points.
+    ! Otherwise, the next two are different on each node.
     integer      :: np               !< Local number of points in mesh
     integer      :: np_part          !< Local points plus ghost points plus boundary points.
     integer(i8)  :: np_global        !< Global number of points in mesh.
     integer(i8)  :: np_part_global   !< Global number of inner points and boundary points.
-    !> will I run parallel in domains?
-    !! yes or no??
-    logical         :: parallel_in_domains
+    logical         :: parallel_in_domains !< will I run parallel in domains?
     type(mpi_grp_t) :: mpi_grp             !< the mpi group describing parallelization in domains
     type(par_vec_t) :: pv                  !< describes parallel vectors defined on the mesh.
     type(partition_t) :: partition         !< describes how the inner points are assigned to the domains
@@ -109,8 +108,6 @@ module mesh_oct_m
     FLOAT,   allocatable :: x(:,:)            !< The (local) \b points
     FLOAT                :: volume_element    !< The global volume element.
     FLOAT,   allocatable :: vol_pp(:)         !< Element of volume for curvilinear coordinates.
-
-    type(mesh_cube_map_t) :: cube_map
 
     logical :: masked_periodic_boundaries
     character(len=256) :: periodic_boundary_mask
@@ -132,7 +129,9 @@ module mesh_oct_m
     generic :: allreduce => dmesh_allreduce_5, zmesh_allreduce_5, imesh_allreduce_5
   end type mesh_t
 
-  !> This data type defines a plane, and a regular grid defined on
+  !> @brief define a grid on a plane.
+  !!
+  !! This data type defines a plane, and a regular grid defined on
   !! this plane (or, rather, on a portion of this plane)
   !! n should be a unit vector, that determines the normal of the plane.
   !! Origin is a point belonging to the plane
@@ -142,9 +141,9 @@ module mesh_oct_m
   !! for nu <= i <= mu and nv <= j <= mv
   type mesh_plane_t
     ! Components are public by default
-    FLOAT :: n(MAX_DIM)
-    FLOAT :: u(MAX_DIM), v(MAX_DIM)
-    FLOAT :: origin(MAX_DIM)
+    FLOAT :: n(MAX_DIM)             !< normal vector (unit vector)
+    FLOAT :: u(MAX_DIM), v(MAX_DIM) !< unit vectors, spanning the plane
+    FLOAT :: origin(MAX_DIM)        !< origin of the plane
     FLOAT :: spacing
     integer :: nu, mu, nv, mv
   end type mesh_plane_t
@@ -153,9 +152,9 @@ module mesh_oct_m
   !! line (or rather, on a portion of this line).
   type mesh_line_t
     ! Components are public by default
-    FLOAT :: n(MAX_DIM)
-    FLOAT :: u(MAX_DIM)
-    FLOAT :: origin(MAX_DIM)
+    FLOAT :: n(MAX_DIM)          !< normal vector (unit vector)
+    FLOAT :: u(MAX_DIM)          !< direction of the line
+    FLOAT :: origin(MAX_DIM)     !< origin of the line
     FLOAT :: spacing
     integer :: nu, mu
   end type mesh_line_t
@@ -232,11 +231,11 @@ contains
 
   ! ---------------------------------------------------------
   subroutine mesh_r(mesh, ip, rr, origin, coords)
-    type(mesh_t), intent(in)  :: mesh
-    integer,      intent(in)  :: ip
-    FLOAT,        intent(out) :: rr
-    FLOAT,        intent(in),  optional :: origin(:) !< origin(sb%dim)
-    FLOAT,        intent(out), optional :: coords(:) !< coords(sb%dim)
+    class(mesh_t), intent(in)  :: mesh
+    integer,       intent(in)  :: ip
+    FLOAT,         intent(out) :: rr
+    FLOAT,         intent(in),  optional :: origin(:) !< origin(sb%dim)
+    FLOAT,         intent(out), optional :: coords(:) !< coords(sb%dim)
 
     FLOAT :: xx(1:mesh%box%dim)
 
@@ -260,7 +259,7 @@ contains
   !! ind if the mesh is partitioned.
   ! ----------------------------------------------------------------------
   integer function mesh_nearest_point(mesh, pos, dmin, rankmin) result(ind)
-    type(mesh_t), intent(in)  :: mesh
+    class(mesh_t),intent(in)  :: mesh
     FLOAT,        intent(in)  :: pos(:)
     FLOAT,        intent(out) :: dmin
     integer,      intent(out) :: rankmin
@@ -271,7 +270,7 @@ contains
 
     PUSH_SUB(mesh_nearest_point)
 
-    !find the point of the grid that is closer to the atom
+    ! find the point of the grid that is closer to the atom
     dmin = M_ZERO
     do ip = 1, mesh%np
       dd = sum((pos(1:mesh%box%dim) - mesh%x(ip, 1:mesh%box%dim))**2)
@@ -302,7 +301,7 @@ contains
   !! grid, it is M_PI/spacing.
   ! --------------------------------------------------------------
   FLOAT function mesh_gcutoff(mesh) result(gmax)
-    type(mesh_t), intent(in) :: mesh
+    class(mesh_t), intent(in) :: mesh
 
     PUSH_SUB(mesh_gcutoff)
     gmax = M_PI / (maxval(mesh%spacing))
@@ -540,8 +539,6 @@ contains
 
     PUSH_SUB(mesh_end)
 
-    call mesh_cube_map_end(this%cube_map)
-
 #ifdef HAVE_MPI
     call lmpi_destroy_shared_memory_window(this%idx%window_grid_to_spatial)
     call lmpi_destroy_shared_memory_window(this%idx%window_spatial_to_grid)
@@ -571,7 +568,7 @@ contains
   !! global point number when parallelization in domains is used.
   ! ---------------------------------------------------------
   integer(i8) function mesh_periodic_point(mesh, space, ip) result(ipg)
-    type(mesh_t),  intent(in)    :: mesh
+    class(mesh_t), intent(in)    :: mesh
     type(space_t), intent(in)    :: space
     integer,       intent(in)    :: ip     !< local point for which periodic copy is searched
 
@@ -603,7 +600,7 @@ contains
 
   ! ---------------------------------------------------------
   FLOAT pure function mesh_global_memory(mesh) result(memory)
-    type(mesh_t), intent(in) :: mesh
+    class(mesh_t), intent(in) :: mesh
 
     ! 2 global index arrays
     memory = SIZEOF_UNSIGNED_LONG_LONG * TOFLOAT(mesh%np_part_global) * 2
@@ -613,7 +610,7 @@ contains
 
   ! ---------------------------------------------------------
   FLOAT pure function mesh_local_memory(mesh) result(memory)
-    type(mesh_t), intent(in) :: mesh
+    class(mesh_t), intent(in) :: mesh
 
     memory = M_ZERO
 
@@ -626,7 +623,7 @@ contains
 
   ! ---------------------------------------------------------
   function mesh_x_global(mesh, ipg) result(xx)
-    type(mesh_t),       intent(in) :: mesh
+    class(mesh_t),      intent(in) :: mesh
     integer(i8),        intent(in) :: ipg
     FLOAT                          :: xx(1:mesh%box%dim)
 
@@ -654,7 +651,7 @@ contains
 
   ! ---------------------------------------------------------
   subroutine mesh_check_symmetries(mesh, symm, periodic_dim)
-    type(mesh_t),        intent(in) :: mesh
+    class(mesh_t),       intent(in) :: mesh
     type(symmetries_t),  intent(in) :: symm
     integer,             intent(in) :: periodic_dim
 
@@ -737,7 +734,7 @@ contains
   !> This function returns the true _global_ index of the point for a given
   !! vector of integer coordinates.
   integer(i8) function mesh_global_index_from_coords(mesh, ix) result(index)
-    type(mesh_t),  intent(in)    :: mesh
+    class(mesh_t), intent(in)    :: mesh
     integer,       intent(in)    :: ix(:)
 
     index = index_from_coords(mesh%idx, ix)

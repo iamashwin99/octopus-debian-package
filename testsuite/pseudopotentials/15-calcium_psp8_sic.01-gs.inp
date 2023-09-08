@@ -1,6 +1,7 @@
 CalculationMode = gs
+FromScratch = yes
 
-%Coordinates 
+%Coordinates
  'Ca' | 0.0 | 0.0 | 0.0
 %
 
@@ -10,8 +11,6 @@ CalculationMode = gs
 
 ExtraStates = 3
 
-ExperimentalFeatures = yes
-
 Radius = 5.0
 Spacing = 0.3
 
@@ -20,8 +19,4 @@ ConvRelDens = 1e-9
 EigensolverTolerance = 1e-10
 EigensolverMaxIter = 50
 
-FromScratch = yes
-
 SICCorrection = sic_amaldi
-
-

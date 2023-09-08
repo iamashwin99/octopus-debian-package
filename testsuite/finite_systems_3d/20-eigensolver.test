@@ -9,74 +9,116 @@ Enabled    : Yes
 
 Input: 20-eigensolver.01-cg.inp
 match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
-match ; Eigenvalue  1 ; GREPFIELD(static/info, ' 1   --', 3) ; -14.539741
-match ; Eigenvalue  2 ; GREPFIELD(static/info, ' 2   --', 3) ; -8.142336
-match ; Eigenvalue  3 ; GREPFIELD(static/info, ' 3   --', 3) ; -8.142336
-match ; Eigenvalue  4 ; GREPFIELD(static/info, ' 4   --', 3) ; -8.107426
-match ; Partial charge 1 ; GREPFIELD(static/info, 'Partial ionic charges', 3, 2) ; 4.157
-match ; Partial charge 2 ; GREPFIELD(static/info, 'Partial ionic charges', 3, 3) ; 0.961
-match ; Partial charge 3 ; GREPFIELD(static/info, 'Partial ionic charges', 3, 4) ; 0.961
-match ; Partial charge 4 ; GREPFIELD(static/info, 'Partial ionic charges', 3, 5) ; 0.961
+match ;  Eigenvalue  1  ; GREPFIELD(static/info, ' 1   --', 3) ; -14.538253
+Precision: 4.07e-05
+match ;  Eigenvalue  2  ; GREPFIELD(static/info, ' 2   --', 3) ; -8.140946
+Precision: 4.07e-05
+match ;  Eigenvalue  3  ; GREPFIELD(static/info, ' 3   --', 3) ; -8.140946
+Precision: 4.05e-05
+match ;  Eigenvalue  4  ; GREPFIELD(static/info, ' 4   --', 3) ; -8.106232
+Precision: 2.08e-02
+match ;  Partial charge 1  ; GREPFIELD(static/info, 'Partial ionic charges', 3, 2) ; 4.157
+Precision: 4.81e-02
+match ;  Partial charge 2  ; GREPFIELD(static/info, 'Partial ionic charges', 3, 3) ; 0.961
+Precision: 4.81e-02
+match ;  Partial charge 3  ; GREPFIELD(static/info, 'Partial ionic charges', 3, 4) ; 0.961
+Precision: 4.81e-02
+match ;  Partial charge 4  ; GREPFIELD(static/info, 'Partial ionic charges', 3, 5) ; 0.961
 
 Input: 20-eigensolver.02-cg_new.inp
 match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
-Precision: 2.22e-04
-match ;   Eigenvalue  1   ; GREPFIELD(static/info, ' 1   --', 3) ; -14.53971
-match ;   Eigenvalue  2   ; GREPFIELD(static/info, ' 2   --', 3) ; -8.1423165
-match ;   Eigenvalue  3   ; GREPFIELD(static/info, ' 3   --', 3) ; -8.1423130
-match ;   Eigenvalue  4   ; GREPFIELD(static/info, ' 4   --', 3) ; -8.1074055
-Precision: 5.e-15
+Precision: 7.27e-06
+match ;   Eigenvalue  1   ; GREPFIELD(static/info, ' 1   --', 3) ; -14.538251999999998
+Precision: 4.07e-05
+match ;   Eigenvalue  2   ; GREPFIELD(static/info, ' 2   --', 3) ; -8.140945
+Precision: 4.07e-05
+match ;   Eigenvalue  3   ; GREPFIELD(static/info, ' 3   --', 3) ; -8.140945
+Precision: 4.05e-05
+match ;   Eigenvalue  4   ; GREPFIELD(static/info, ' 4   --', 3) ; -8.106232
+Precision: 2.08e-02
 match ;   Partial charge 1   ; GREPFIELD(static/info, 'Partial ionic charges', 3, 2) ; 4.157
+Precision: 4.81e-02
 match ;   Partial charge 2   ; GREPFIELD(static/info, 'Partial ionic charges', 3, 3) ; 0.961
+Precision: 4.81e-02
 match ;   Partial charge 3   ; GREPFIELD(static/info, 'Partial ionic charges', 3, 4) ; 0.961
+Precision: 4.81e-02
 match ;   Partial charge 4   ; GREPFIELD(static/info, 'Partial ionic charges', 3, 5) ; 0.961
 
 Input: 20-eigensolver.03-plan.inp
 match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
-Precision: 0.00011
-match ; Eigenvalue  1 ; GREPFIELD(static/info, ' 1   --', 3) ; -14.539719
-Precision: 0.0001
-match ; Eigenvalue  2 ; GREPFIELD(static/info, ' 2   --', 3) ; -8.1423505
-match ; Eigenvalue  3 ; GREPFIELD(static/info, ' 3   --', 3) ; -8.142282
-match ; Eigenvalue  4 ; GREPFIELD(static/info, ' 4   --', 3) ; -8.107378
-match ; Partial charge 1 ; GREPFIELD(static/info, 'Partial ionic charges', 3, 2) ; 4.157
-match ; Partial charge 2 ; GREPFIELD(static/info, 'Partial ionic charges', 3, 3) ; 0.961
-match ; Partial charge 3 ; GREPFIELD(static/info, 'Partial ionic charges', 3, 4) ; 0.961
-match ; Partial charge 4 ; GREPFIELD(static/info, 'Partial ionic charges', 3, 5) ; 0.961
+Precision: 1.65e-06
+match ;  Eigenvalue  1  ; GREPFIELD(static/info, ' 1   --', 3) ; -14.5382525
+Precision: 1.10e-06
+match ;  Eigenvalue  2  ; GREPFIELD(static/info, ' 2   --', 3) ; -8.140946
+Precision: 1.65e-06
+match ;  Eigenvalue  3  ; GREPFIELD(static/info, ' 3   --', 3) ; -8.1409455
+Precision: 1.10e-06
+match ;  Eigenvalue  4  ; GREPFIELD(static/info, ' 4   --', 3) ; -8.106231999999999
+Precision: 2.08e-02
+match ;  Partial charge 1  ; GREPFIELD(static/info, 'Partial ionic charges', 3, 2) ; 4.157
+Precision: 4.81e-02
+match ;  Partial charge 2  ; GREPFIELD(static/info, 'Partial ionic charges', 3, 3) ; 0.961
+Precision: 4.81e-02
+match ;  Partial charge 3  ; GREPFIELD(static/info, 'Partial ionic charges', 3, 4) ; 0.961
+Precision: 4.81e-02
+match ;  Partial charge 4  ; GREPFIELD(static/info, 'Partial ionic charges', 3, 5) ; 0.961
 
 Input: 20-eigensolver.04-evolution.inp
 match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
-match ; Eigenvalue  1 ; GREPFIELD(static/info, ' 1   --', 3) ; -14.539769
-match ; Eigenvalue  2 ; GREPFIELD(static/info, ' 2   --', 3) ; -8.142283
-match ; Eigenvalue  3 ; GREPFIELD(static/info, ' 3   --', 3) ; -8.142283
-match ; Eigenvalue  4 ; GREPFIELD(static/info, ' 4   --', 3) ; -8.107373
-match ; Partial charge 1 ; GREPFIELD(static/info, 'Partial ionic charges', 3, 2) ; 4.157
-match ; Partial charge 2 ; GREPFIELD(static/info, 'Partial ionic charges', 3, 3) ; 0.961
-match ; Partial charge 3 ; GREPFIELD(static/info, 'Partial ionic charges', 3, 4) ; 0.961
-match ; Partial charge 4 ; GREPFIELD(static/info, 'Partial ionic charges', 3, 5) ; 0.961
+Precision: 7.27e-07
+match ;  Eigenvalue  1  ; GREPFIELD(static/info, ' 1   --', 3) ; -14.538241
+Precision: 4.07e-04
+match ;  Eigenvalue  2  ; GREPFIELD(static/info, ' 2   --', 3) ; -8.14098
+Precision: 4.07e-04
+match ;  Eigenvalue  3  ; GREPFIELD(static/info, ' 3   --', 3) ; -8.14098
+Precision: 4.05e-05
+match ;  Eigenvalue  4  ; GREPFIELD(static/info, ' 4   --', 3) ; -8.106264
+Precision: 2.08e-02
+match ;  Partial charge 1  ; GREPFIELD(static/info, 'Partial ionic charges', 3, 2) ; 4.157
+Precision: 4.81e-02
+match ;  Partial charge 2  ; GREPFIELD(static/info, 'Partial ionic charges', 3, 3) ; 0.961
+Precision: 4.81e-02
+match ;  Partial charge 3  ; GREPFIELD(static/info, 'Partial ionic charges', 3, 4) ; 0.961
+Precision: 4.81e-02
+match ;  Partial charge 4  ; GREPFIELD(static/info, 'Partial ionic charges', 3, 5) ; 0.961
 
 Processors : 3
 Input: 20-eigensolver.05-rmmdiis.inp
-Precision : 0.00015
 match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
-match ; Eigenvalue  1 ; GREPFIELD(static/info, ' 1   --', 3) ; -14.539769
-match ; Eigenvalue  2 ; GREPFIELD(static/info, ' 2   --', 3) ; -8.142283
-match ; Eigenvalue  3 ; GREPFIELD(static/info, ' 3   --', 3) ; -8.142283
-match ; Eigenvalue  4 ; GREPFIELD(static/info, ' 4   --', 3) ; -8.107373
-match ; Partial charge 1 ; GREPFIELD(static/info, 'Partial ionic charges', 3, 2) ; 4.157
-match ; Partial charge 2 ; GREPFIELD(static/info, 'Partial ionic charges', 3, 3) ; 0.961
-match ; Partial charge 3 ; GREPFIELD(static/info, 'Partial ionic charges', 3, 4) ; 0.961
-match ; Partial charge 4 ; GREPFIELD(static/info, 'Partial ionic charges', 3, 5) ; 0.961
+Precision: 7.27e-13
+match ;  Eigenvalue  1  ; GREPFIELD(static/info, ' 1   --', 3) ; -14.538253
+Precision: 4.07e-05
+match ;  Eigenvalue  2  ; GREPFIELD(static/info, ' 2   --', 3) ; -8.140947
+Precision: 4.07e-05
+match ;  Eigenvalue  3  ; GREPFIELD(static/info, ' 3   --', 3) ; -8.140947
+Precision: 4.05e-05
+match ;  Eigenvalue  4  ; GREPFIELD(static/info, ' 4   --', 3) ; -8.106233
+Precision: 2.08e-02
+match ;  Partial charge 1  ; GREPFIELD(static/info, 'Partial ionic charges', 3, 2) ; 4.157
+Precision: 4.81e-02
+match ;  Partial charge 2  ; GREPFIELD(static/info, 'Partial ionic charges', 3, 3) ; 0.961
+Precision: 4.81e-02
+match ;  Partial charge 3  ; GREPFIELD(static/info, 'Partial ionic charges', 3, 4) ; 0.961
+Precision: 4.81e-02
+match ;  Partial charge 4  ; GREPFIELD(static/info, 'Partial ionic charges', 3, 5) ; 0.961
 
 Processors : 3
 Input: 20-eigensolver.06-rmmdiis-noscalapack.inp
-Precision : 0.00015
 match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
-match ; Eigenvalue  1 ; GREPFIELD(static/info, ' 1   --', 3) ; -14.539769
-match ; Eigenvalue  2 ; GREPFIELD(static/info, ' 2   --', 3) ; -8.142283
-match ; Eigenvalue  3 ; GREPFIELD(static/info, ' 3   --', 3) ; -8.142283
-match ; Eigenvalue  4 ; GREPFIELD(static/info, ' 4   --', 3) ; -8.107373
-match ; Partial charge 1 ; GREPFIELD(static/info, 'Partial ionic charges', 3, 2) ; 4.157
-match ; Partial charge 2 ; GREPFIELD(static/info, 'Partial ionic charges', 3, 3) ; 0.961
-match ; Partial charge 3 ; GREPFIELD(static/info, 'Partial ionic charges', 3, 4) ; 0.961
-match ; Partial charge 4 ; GREPFIELD(static/info, 'Partial ionic charges', 3, 5) ; 0.961
+
+Precision: 7.27e-13
+match ;  Eigenvalue  1  ; GREPFIELD(static/info, ' 1   --', 3) ; -14.538253
+Precision: 4.07e-05
+match ;  Eigenvalue  2  ; GREPFIELD(static/info, ' 2   --', 3) ; -8.140947
+Precision: 4.07e-05
+match ;  Eigenvalue  3  ; GREPFIELD(static/info, ' 3   --', 3) ; -8.140947
+Precision: 4.05e-05
+match ;  Eigenvalue  4  ; GREPFIELD(static/info, ' 4   --', 3) ; -8.106233
+Precision: 2.08e-02
+match ;  Partial charge 1  ; GREPFIELD(static/info, 'Partial ionic charges', 3, 2) ; 4.157
+Precision: 4.81e-02
+match ;  Partial charge 2  ; GREPFIELD(static/info, 'Partial ionic charges', 3, 3) ; 0.961
+Precision: 4.81e-02
+match ;  Partial charge 3  ; GREPFIELD(static/info, 'Partial ionic charges', 3, 4) ; 0.961
+Precision: 4.81e-02
+match ;  Partial charge 4  ; GREPFIELD(static/info, 'Partial ionic charges', 3, 5) ; 0.961

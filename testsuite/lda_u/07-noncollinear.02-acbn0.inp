@@ -1,5 +1,4 @@
 CalculationMode = gs
-DisableAccel = yes
 
 PeriodicDimensions = 3
 
@@ -7,6 +6,7 @@ BoxShape = parallelepiped
 
 ExperimentalFeatures = yes
 
+ConvRelDens = 1e-7
 EigenSolver = cg
 EigensolverTolerance = 1e-8
 ExtraStates = 4

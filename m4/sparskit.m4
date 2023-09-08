@@ -11,7 +11,7 @@ case $with_sparskit in
   *) LIBS_SPARSKIT="-l$with_sparskit" ;;
 esac
 
-dnl Backup LIBS 
+dnl Backup LIBS
 acx_sparskit_save_LIBS="$LIBS"
 
 testprog="
@@ -58,7 +58,7 @@ if test x"$acx_sparskit_ok" = xyes; then
   AC_DEFINE(HAVE_SPARSKIT,1,[Defined if you have SPARSKIT library.])
 else
   if test $acx_sparskit_ok != disable; then
-    AC_MSG_WARN([Could not find SPARSKIT library. 
+    AC_MSG_WARN([Could not find SPARSKIT library.
                 *** Will compile without SPARSKIT support])
   fi
 fi

@@ -73,7 +73,7 @@ subroutine target_init_density(gr, kpoints, namespace, space, tg, stin, td, rest
 
   if (parse_is_defined(namespace, 'OCTTargetDensity')) then
     tg%density_weight = M_ONE
-    SAFE_ALLOCATE(tg%rho(1:gr%mesh%np))
+    SAFE_ALLOCATE(tg%rho(1:gr%np))
     tg%rho = M_ZERO
     call parse_variable(namespace, 'OCTTargetDensity', "0", expression)
 
@@ -82,7 +82,7 @@ subroutine target_init_density(gr, kpoints, namespace, space, tg, stin, td, rest
       if (parse_block(namespace, 'OCTTargetDensityFromState', blk) == 0) then
         call states_elec_copy(tmp_st, tg%st)
         call states_elec_deallocate_wfns(tmp_st)
-        call states_elec_look_and_load(restart, namespace, space, tmp_st, gr%mesh, kpoints)
+        call states_elec_look_and_load(restart, namespace, space, tmp_st, gr, kpoints)
 
         SAFE_ALLOCATE(rotation_matrix(1:tmp_st%nst, 1:tmp_st%nst))
 
@@ -94,19 +94,19 @@ subroutine target_init_density(gr, kpoints, namespace, space, tg, stin, td, rest
           end do
         end do
 
-        SAFE_ALLOCATE(psi(1:gr%mesh%np, 1:tg%st%d%dim))
+        SAFE_ALLOCATE(psi(1:gr%np, 1:tg%st%d%dim))
 
         do iqn = tg%st%d%kpt%start, tg%st%d%kpt%end
 
           if (states_are_real(tg%st)) then
-            call states_elec_rotate(tmp_st, namespace, gr%mesh, TOFLOAT(rotation_matrix), iqn)
+            call states_elec_rotate(tmp_st, namespace, gr, TOFLOAT(rotation_matrix), iqn)
           else
-            call states_elec_rotate(tmp_st, namespace, gr%mesh, rotation_matrix, iqn)
+            call states_elec_rotate(tmp_st, namespace, gr, rotation_matrix, iqn)
           end if
 
           do ist = tg%st%st_start, tg%st%st_end
-            call states_elec_get_state(tmp_st, gr%mesh, ist, iqn, psi)
-            call states_elec_set_state(tg%st, gr%mesh, ist, iqn, psi)
+            call states_elec_get_state(tmp_st, gr, ist, iqn, psi)
+            call states_elec_set_state(tg%st, gr, ist, iqn, psi)
           end do
 
         end do
@@ -116,7 +116,7 @@ subroutine target_init_density(gr, kpoints, namespace, space, tg, stin, td, rest
         call states_elec_end(tmp_st)
 
         call density_calc(tg%st, gr, tg%st%rho)
-        do ip = 1, gr%mesh%np
+        do ip = 1, gr%np
           tg%rho(ip) = sum(tg%st%rho(ip, 1:tg%st%d%spin_channels))
         end do
         call parse_block_end(blk)
@@ -127,14 +127,14 @@ subroutine target_init_density(gr, kpoints, namespace, space, tg, stin, td, rest
     else
 
       call conv_to_C_string(expression)
-      do ip = 1, gr%mesh%np
-        call mesh_r(gr%mesh, ip, rr, coords = xx)
+      do ip = 1, gr%np
+        call mesh_r(gr, ip, rr, coords = xx)
         ! parse user-defined expression
         call parse_expression(psi_re, psi_im, space%dim, xx, rr, M_ZERO, expression)
         tg%rho(ip) = psi_re
       end do
       ! Normalize
-      rr = dmf_integrate(gr%mesh, tg%rho)
+      rr = dmf_integrate(gr, tg%rho)
       tg%rho = (-tg%st%val_charge) * tg%rho/rr
     end if
 
@@ -227,7 +227,7 @@ subroutine target_init_density(gr, kpoints, namespace, space, tg, stin, td, rest
   case (oct_no_curr)
   case (oct_curr_square, oct_max_curr_ring, oct_curr_square_td)
     if (.not. allocated(stin%current)) then
-      SAFE_ALLOCATE(stin%current( 1:gr%mesh%np_part, 1:space%dim, 1:stin%d%nspin))
+      SAFE_ALLOCATE(stin%current( 1:gr%np_part, 1:space%dim, 1:stin%d%nspin))
       stin%current= M_ZERO
     end if
   end select
@@ -256,9 +256,9 @@ subroutine target_init_density(gr, kpoints, namespace, space, tg, stin, td, rest
 
   if (parse_is_defined(namespace, 'OCTSpatialCurrWeight')) then
     if (parse_block(namespace, 'OCTSpatialCurrWeight', blk) == 0) then
-      SAFE_ALLOCATE(tg%spatial_curr_wgt(1:gr%mesh%np_part))
-      SAFE_ALLOCATE(xp(1:gr%mesh%np_part))
-      SAFE_ALLOCATE(tmp_box(1:gr%mesh%np_part, 1:space%dim))
+      SAFE_ALLOCATE(tg%spatial_curr_wgt(1:gr%np_part))
+      SAFE_ALLOCATE(xp(1:gr%np_part))
+      SAFE_ALLOCATE(tmp_box(1:gr%np_part, 1:space%dim))
 
       no_constraint = parse_block_n(blk)
       tmp_box = M_ZERO
@@ -272,7 +272,7 @@ subroutine target_init_density(gr, kpoints, namespace, space, tg, stin, td, rest
           call messages_fatal(3, namespace=namespace)
         end if
         cstr_dim(idim) = 1
-        xp(1:gr%mesh%np_part) = gr%mesh%x(1:gr%mesh%np_part, idim)
+        xp(1:gr%np_part) = gr%x(1:gr%np_part, idim)
 
         call parse_block_float(blk, ib - 1, 1, fact)
 
@@ -293,7 +293,7 @@ subroutine target_init_density(gr, kpoints, namespace, space, tg, stin, td, rest
             call messages_fatal(2, namespace=namespace)
           end if
 
-          do ip = 1, gr%mesh%np_part
+          do ip = 1, gr%np_part
             tmp_box(ip,idim) = tmp_box(ip,idim) + M_ONE/(M_ONE+exp(-fact*(xp(ip)-xstart))) -  &
               M_ONE/(M_ONE+exp(-fact*(xp(ip)-xend)))
           end do
@@ -304,7 +304,7 @@ subroutine target_init_density(gr, kpoints, namespace, space, tg, stin, td, rest
       do idim = 1, space%dim
         if (cstr_dim(idim) == 0) tmp_box(:,idim) = M_ONE
       end do
-      tg%spatial_curr_wgt(1:gr%mesh%np_part) = product(tmp_box(1:gr%mesh%np_part, 1:space%dim),2)
+      tg%spatial_curr_wgt(1:gr%np_part) = product(tmp_box(1:gr%np_part, 1:space%dim),2)
       SAFE_DEALLOCATE_A(xp)
       SAFE_DEALLOCATE_A(tmp_box)
 
@@ -341,7 +341,7 @@ subroutine target_output_density(tg, namespace, space, mesh, dir, ions, outp)
   type(target_t),    intent(in) :: tg
   type(namespace_t), intent(in) :: namespace
   type(space_t),     intent(in) :: space
-  type(mesh_t),      intent(in) :: mesh
+  class(mesh_t),     intent(in) :: mesh
   character(len=*),  intent(in) :: dir
   type(ions_t),      intent(in) :: ions
   type(output_t),    intent(in) :: outp
@@ -353,7 +353,7 @@ subroutine target_output_density(tg, namespace, space, mesh, dir, ions, outp)
 
   if (tg%density_weight > M_ZERO) then
     call dio_function_output(outp%how(0), trim(dir), 'density_target', namespace, space, mesh, &
-      tg%rho, units_out%length**(-space%dim), ierr, ions = ions)
+      tg%rho, units_out%length**(-space%dim), ierr, pos=ions%pos, atoms=ions%atom)
   end if
 
 
@@ -377,11 +377,11 @@ FLOAT function target_j1_density(gr, kpoints, tg, psi) result(j1)
   PUSH_SUB(target_j1_density)
 
   if (tg%density_weight > M_ZERO) then
-    SAFE_ALLOCATE(local_function(1:gr%mesh%np))
-    do ip = 1, gr%mesh%np
+    SAFE_ALLOCATE(local_function(1:gr%np))
+    do ip = 1, gr%np
       local_function(ip) = - ( sqrt(psi%rho(ip, 1)) - sqrt(tg%rho(ip)) )**2
     end do
-    j1 = tg%density_weight * dmf_integrate(gr%mesh, local_function)
+    j1 = tg%density_weight * dmf_integrate(gr, local_function)
     SAFE_DEALLOCATE_A(local_function)
   else
     j1 = M_ZERO
@@ -439,24 +439,24 @@ subroutine target_chi_density(tg, gr, kpoints, psi_in, chi_out)
     case (UNPOLARIZED)
       ASSERT(psi_in%d%nik == 1)
 
-      SAFE_ALLOCATE(zpsi(1:gr%mesh%np, 1))
+      SAFE_ALLOCATE(zpsi(1:gr%np, 1))
 
       if (no_electrons == 1) then
 
-        call states_elec_get_state(psi_in, gr%mesh, 1, 1, zpsi)
+        call states_elec_get_state(psi_in, gr, 1, 1, zpsi)
 
-        do ip = 1, gr%mesh%np
+        do ip = 1, gr%np
           zpsi(ip, 1) = sqrt(tg%rho(ip))*exp(M_zI*atan2(aimag(zpsi(ip, 1)), TOFLOAT(zpsi(ip, 1))))
         end do
 
-        call states_elec_set_state(chi_out, gr%mesh, 1, 1, zpsi)
+        call states_elec_set_state(chi_out, gr, 1, 1, zpsi)
 
       else
         do ist = psi_in%st_start, psi_in%st_end
 
-          call states_elec_get_state(psi_in, gr%mesh, ist, 1, zpsi)
+          call states_elec_get_state(psi_in, gr, ist, 1, zpsi)
 
-          do ip = 1, gr%mesh%np
+          do ip = 1, gr%np
             if (psi_in%rho(ip, 1) > CNST(1.0e-8)) then
               zpsi(ip, 1) = psi_in%occ(ist, 1)*sqrt(tg%rho(ip)/psi_in%rho(ip, 1))*zpsi(ip, 1)
             else
@@ -464,7 +464,7 @@ subroutine target_chi_density(tg, gr, kpoints, psi_in, chi_out)
             end if
           end do
 
-          call states_elec_set_state(chi_out, gr%mesh, ist, 1, zpsi)
+          call states_elec_set_state(chi_out, gr, ist, 1, zpsi)
 
         end do
       end if
@@ -527,7 +527,7 @@ FLOAT function jcurr_functional(tg, gr, kpoints, psi) result(jcurr)
 
   jcurr = M_ZERO
   ASSERT(psi%d%nik == 1)
-  SAFE_ALLOCATE(semilocal_function(1:gr%mesh%np))
+  SAFE_ALLOCATE(semilocal_function(1:gr%np))
   semilocal_function = M_ZERO
 
   select case (tg%curr_functional)
@@ -535,22 +535,22 @@ FLOAT function jcurr_functional(tg, gr, kpoints, psi) result(jcurr)
     semilocal_function = M_ZERO
 
   case (oct_curr_square,oct_curr_square_td)
-    call states_elec_calc_quantities(gr%der, psi, kpoints, .false., paramagnetic_current=psi%current)
-    do ip = 1, gr%mesh%np
+    call states_elec_calc_quantities(gr, psi, kpoints, .false., paramagnetic_current=psi%current)
+    do ip = 1, gr%np
       semilocal_function(ip) =  sum(psi%current(ip, 1:gr%box%dim, 1)**2)
     end do
 
   case (oct_max_curr_ring)
-    call states_elec_calc_quantities(gr%der, psi, kpoints, .false., paramagnetic_current=psi%current)
+    call states_elec_calc_quantities(gr, psi, kpoints, .false., paramagnetic_current=psi%current)
 
     if (gr%box%dim /= M_TWO) then
       call messages_not_implemented('Target for dimension != 2')
     end if
 
-    do ip = 1, gr%mesh%np
+    do ip = 1, gr%np
       ! func = j_y * x - j_x * y
-      semilocal_function (ip) = psi%current(ip, 2, 1) *  gr%mesh%x(ip,1) -  &
-        psi%current(ip, 1, 1) * gr%mesh%x(ip,2)
+      semilocal_function (ip) = psi%current(ip, 2, 1) *  gr%x(ip,1) -  &
+        psi%current(ip, 1, 1) * gr%x(ip,2)
     end do
   case default
     message(1) = 'Error in target.jcurr_functional: chosen target does not exist'
@@ -559,12 +559,12 @@ FLOAT function jcurr_functional(tg, gr, kpoints, psi) result(jcurr)
 
 
   if (is_spatial_curr_wgt(tg)) then
-    do ip = 1, gr%mesh%np
+    do ip = 1, gr%np
       semilocal_function(ip) = semilocal_function(ip) * tg%spatial_curr_wgt(ip)
     end do
   end if
 
-  jcurr = tg%curr_weight * dmf_integrate(gr%mesh, semilocal_function)
+  jcurr = tg%curr_weight * dmf_integrate(gr, semilocal_function)
 
   SAFE_DEALLOCATE_A(semilocal_function)
 
@@ -589,10 +589,10 @@ subroutine chi_current(tg, gr, kpoints, factor, psi_in, chi)
 
   PUSH_SUB(chi_current)
 
-  SAFE_ALLOCATE(grad_psi_in(1:gr%mesh%np_part, 1:gr%mesh%box%dim, 1))
+  SAFE_ALLOCATE(grad_psi_in(1:gr%np_part, 1:gr%box%dim, 1))
 
   if (target_mode(tg) == oct_targetmode_td) then
-    call states_elec_calc_quantities(gr%der, psi_in, kpoints, .false., paramagnetic_current=psi_in%current)
+    call states_elec_calc_quantities(gr, psi_in, kpoints, .false., paramagnetic_current=psi_in%current)
   end if
 
   select case (tg%curr_functional)
@@ -604,36 +604,36 @@ subroutine chi_current(tg, gr, kpoints, factor, psi_in, chi)
     ! since needed for the divergence of current.
     if (is_spatial_curr_wgt(tg)) then
       do idim = 1, gr%box%dim
-        do ip = 1, gr%mesh%np_part
+        do ip = 1, gr%np_part
           psi_in%current(ip, idim, 1) = psi_in%current(ip, idim, 1) * tg%spatial_curr_wgt(ip)
         end do
       end do
     end if
 
-    SAFE_ALLOCATE(div_curr_psi_in(1:gr%mesh%np_part, 1))
-    SAFE_ALLOCATE(zpsi(1:gr%mesh%np_part, 1:psi_in%d%dim))
-    SAFE_ALLOCATE(zchi(1:gr%mesh%np_part, 1:psi_in%d%dim))
+    SAFE_ALLOCATE(div_curr_psi_in(1:gr%np_part, 1))
+    SAFE_ALLOCATE(zpsi(1:gr%np_part, 1:psi_in%d%dim))
+    SAFE_ALLOCATE(zchi(1:gr%np_part, 1:psi_in%d%dim))
 
-    call dderivatives_div(gr%der, psi_in%current(1:gr%mesh%np_part, 1:gr%box%dim, 1), &
-      div_curr_psi_in(1:gr%mesh%np_part,1))
+    call dderivatives_div(gr%der, psi_in%current(1:gr%np_part, 1:gr%box%dim, 1), &
+      div_curr_psi_in(1:gr%np_part,1))
 
     ! the boundary condition
     do ist = psi_in%st_start, psi_in%st_end
 
-      call states_elec_get_state(psi_in, gr%mesh, ist, 1, zpsi)
-      call states_elec_get_state(chi, gr%mesh, ist, 1, zchi)
+      call states_elec_get_state(psi_in, gr, ist, 1, zpsi)
+      call states_elec_get_state(chi, gr, ist, 1, zchi)
 
-      call zderivatives_grad(gr%der, zpsi(:, 1), grad_psi_in(1:gr%mesh%np_part, 1:gr%mesh%box%dim,1))
+      call zderivatives_grad(gr%der, zpsi(:, 1), grad_psi_in(1:gr%np_part, 1:gr%box%dim,1))
 
       do idim = 1, psi_in%d%dim
-        do ip = 1, gr%mesh%np
+        do ip = 1, gr%np
           zchi(ip, idim) = zchi(ip, idim) - factor*M_zI*tg%curr_weight* &
             (M_TWO*sum(psi_in%current(ip, 1:gr%box%dim, 1)*grad_psi_in(ip, 1:gr%box%dim, 1)) + &
             div_curr_psi_in(ip, 1)*zpsi(ip, idim))
         end do
       end do
 
-      call states_elec_set_state(chi, gr%mesh, ist, 1, zchi)
+      call states_elec_set_state(chi, gr, ist, 1, zchi)
 
     end do
 
@@ -643,33 +643,33 @@ subroutine chi_current(tg, gr, kpoints, factor, psi_in, chi)
 
   case (oct_max_curr_ring)
 
-    SAFE_ALLOCATE(zpsi(1:gr%mesh%np_part, 1:psi_in%d%dim))
-    SAFE_ALLOCATE(zchi(1:gr%mesh%np_part, 1:psi_in%d%dim))
+    SAFE_ALLOCATE(zpsi(1:gr%np_part, 1:psi_in%d%dim))
+    SAFE_ALLOCATE(zchi(1:gr%np_part, 1:psi_in%d%dim))
 
     do ist = psi_in%st_start, psi_in%st_end
 
-      call states_elec_get_state(psi_in, gr%mesh, ist, 1, zpsi)
-      call states_elec_get_state(chi, gr%mesh, ist, 1, zchi)
+      call states_elec_get_state(psi_in, gr, ist, 1, zpsi)
+      call states_elec_get_state(chi, gr, ist, 1, zchi)
 
       call zderivatives_grad(gr%der, zpsi(:, 1), grad_psi_in(:, :, 1))
 
       if (is_spatial_curr_wgt(tg)) then
 
-        do ip = 1, gr%mesh%np
+        do ip = 1, gr%np
           zchi(ip, 1) = zchi(ip, 1) + factor*M_zI*tg%curr_weight*tg%spatial_curr_wgt(ip)* &
-            (grad_psi_in(ip, 1, 1)*gr%mesh%x(ip,2) - grad_psi_in(ip, 2, 1)*gr%mesh%x(ip, 1))
+            (grad_psi_in(ip, 1, 1)*gr%x(ip,2) - grad_psi_in(ip, 2, 1)*gr%x(ip, 1))
         end do
 
       else
 
-        do ip = 1, gr%mesh%np
+        do ip = 1, gr%np
           zchi(ip, 1) = zchi(ip, 1) + factor*M_zI*tg%curr_weight* &
-            (grad_psi_in(ip, 1, 1)*gr%mesh%x(ip,2) - grad_psi_in(ip, 2, 1)*gr%mesh%x(ip, 1))
+            (grad_psi_in(ip, 1, 1)*gr%x(ip,2) - grad_psi_in(ip, 2, 1)*gr%x(ip, 1))
         end do
 
       end if
 
-      call states_elec_set_state(chi, gr%mesh, ist, 1, zchi)
+      call states_elec_set_state(chi, gr, ist, 1, zchi)
 
     end do
 

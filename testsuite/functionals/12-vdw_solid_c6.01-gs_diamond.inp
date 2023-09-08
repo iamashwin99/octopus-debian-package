@@ -31,6 +31,6 @@ Spacing = 0.4
 %
 KPointsUseSymmetries = yes
 
-PseudopotentialSet= sg15 
+PseudopotentialSet= sg15
 VDWCorrection = vdw_ts
 VDW_TS_cutoff = 40

@@ -6,12 +6,12 @@ TestGroups : long-run, optimal_control
 Enabled    : no-GPU
 
 # The test checks several optimal-control algorithms, all of them based on the NLOPT library.
-# It calculates the optimal laser field that transfers the ground state to the first excited state. 
-# 
+# It calculates the optimal laser field that transfers the ground state to the first excited state.
+#
 # We do the following intermediate steps:
 # First, the two lowest eigenstates of the box
 # V(x) = -5*step(x+5)*step(5-x),
-# are calculated. 
+# are calculated.
 Input: 04-box.01-ground_state.inp
 if (available nlopt); then
 # skip
@@ -21,7 +21,7 @@ endif
 
 Input: 04-box.02-unocc.inp
 if (available nlopt); then
-# skip 
+# skip
 else
     match ; Error nlopt ; GREPCOUNT(err, "nlopt library has been compiled") ; 1
 endif

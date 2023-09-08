@@ -23,6 +23,7 @@ module box_oct_m
   use debug_oct_m
   use global_oct_m
   use linked_list_oct_m
+  use messages_oct_m
   use namespace_oct_m
 
   implicit none
@@ -36,7 +37,9 @@ module box_oct_m
   integer, parameter, public :: BOX_INFO_LEN=200
   FLOAT, parameter, public :: BOX_BOUNDARY_DELTA = CNST(1e-12)
 
-  !> The purpose of a box is to tell if something is inside or outside of it.
+  !> @brief class to tell whether a point is inside or outside
+  !!
+  !! The purpose of a box is to tell if something is inside or outside of it.
   !! To do that it provides a function that tells if a given list of points are
   !! inside or outside the box. Furthermore, a box might be turned inside out,
   !! i.e., in that case what is usually considered inside becomes outside and
@@ -49,10 +52,12 @@ module box_oct_m
     !!                                                 box. Note that this box always contains the origin
     !!                                                 and is symmetrical with respect to it.
   contains
-    procedure(box_contains_points),  deferred :: contains_points
-    procedure(box_bounds),           deferred :: bounds
-    procedure(box_write_info),       deferred :: write_info
-    procedure(box_short_info),       deferred :: short_info
+    procedure(box_contains_points),        deferred :: contains_points
+    procedure(box_bounds),                 deferred :: bounds
+    procedure(box_write_info),             deferred :: write_info
+    procedure(box_short_info),             deferred :: short_info
+    procedure :: get_surface_points => box_get_surface_points
+    procedure :: get_surface_point_info => box_get_surface_point_info
     procedure, non_overridable :: contains_point => box_contains_point
     procedure, non_overridable :: is_inside_out => box_is_inside_out
     procedure, non_overridable :: turn_inside_out => box_turn_inside_out
@@ -79,7 +84,7 @@ module box_oct_m
       import :: basis_vectors_t
       class(box_t),                     intent(in)  :: this
       class(basis_vectors_t), optional, intent(in)  :: axes
-      FLOAT :: bounds(2, this%dim) !< minimum and maximum coordinates along each axis.
+      FLOAT                                         :: bounds(2, this%dim) !< minimum and maximum coordinates along each axis.
     end function box_bounds
 
     !> Write the complete information about the box to a file.
@@ -150,6 +155,36 @@ contains
     contained = points_contained(1)
 
   end function box_contains_point
+
+  !--------------------------------------------------------------
+  function box_get_surface_points(this, namespace, mesh_spacing, nn, xx, number_of_layers) result(surface_points)
+    class(box_t),         intent(in)  :: this
+    type(namespace_t),    intent(in)  :: namespace
+    FLOAT,                intent(in)  :: mesh_spacing(:)
+    integer,              intent(in)  :: nn
+    FLOAT,                intent(in)  :: xx(:,:)
+    integer, optional,    intent(in)  :: number_of_layers
+    logical :: surface_points(1:nn)
+
+    surface_points = .false.
+    call messages_not_implemented("get_surface_points for box shape")
+
+  end function box_get_surface_points
+
+  !--------------------------------------------------------------
+  subroutine box_get_surface_point_info(this, point_coordinates, mesh_spacing, normal_vector, surface_element)
+    class(box_t), intent(in)  :: this
+    FLOAT,        intent(in)  :: point_coordinates(:) !< (x,y,z) coordinates of the point
+    FLOAT,        intent(in)  :: mesh_spacing(:)      !< spacing of the mesh
+    FLOAT,        intent(out) :: normal_vector(:)     !< normal vector to the surface point
+    FLOAT,        intent(out) :: surface_element      !< surface element (needed to compute the surface integral)
+
+    PUSH_SUB(box_get_surface_point_info)
+
+    call messages_not_implemented("get_surface_point_info for box shape")
+
+    POP_SUB(box_get_surface_point_info)
+  end subroutine box_get_surface_point_info
 
   ! ---------------------------------------------------------
   subroutine box_list_add_node(this, box)

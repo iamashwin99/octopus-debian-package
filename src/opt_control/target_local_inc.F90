@@ -42,12 +42,12 @@ subroutine target_init_local(gr, namespace, tg, td)
   !% the variable <tt>OCTLocalTarget</tt>.
   !%End
   if (parse_is_defined(namespace, 'OCTLocalTarget')) then
-    SAFE_ALLOCATE(tg%rho(1:gr%mesh%np))
+    SAFE_ALLOCATE(tg%rho(1:gr%np))
     tg%rho = M_ZERO
     call parse_variable(namespace, 'OCTLocalTarget', "0", expression)
     call conv_to_C_string(expression)
-    do ip = 1, gr%mesh%np
-      call mesh_r(gr%mesh, ip, rr, coords = xx)
+    do ip = 1, gr%np
+      call mesh_r(gr, ip, rr, coords = xx)
       ! parse user-defined expression
       call parse_expression(psi_re, psi_im, gr%box%dim, xx, rr, M_ZERO, expression)
       tg%rho(ip) = psi_re
@@ -80,7 +80,7 @@ subroutine target_output_local(tg, namespace, space, mesh, dir, ions, outp)
   type(target_t),    intent(in) :: tg
   type(namespace_t), intent(in) :: namespace
   type(space_t),     intent(in) :: space
-  type(mesh_t),      intent(in) :: mesh
+  class(mesh_t),     intent(in) :: mesh
   character(len=*),  intent(in) :: dir
   type(ions_t),      intent(in) :: ions
   type(output_t),    intent(in) :: outp
@@ -90,7 +90,7 @@ subroutine target_output_local(tg, namespace, space, mesh, dir, ions, outp)
 
   call io_mkdir(trim(dir), namespace)
   call dio_function_output(outp%how(0), trim(dir), 'local_target', namespace, space, mesh, &
-    tg%rho, units_out%length**(-space%dim), ierr, ions = ions)
+    tg%rho, units_out%length**(-space%dim), ierr, pos=ions%pos, atoms=ions%atom)
 
 
   POP_SUB(target_output_local)
@@ -101,7 +101,7 @@ end subroutine target_output_local
  ! ----------------------------------------------------------------------
  !>
 FLOAT function target_j1_local(mesh, tg, psi) result(j1)
-  type(mesh_t),        intent(in) :: mesh
+  class(mesh_t),       intent(in) :: mesh
   type(target_t),      intent(in) :: tg
   type(states_elec_t), intent(in) :: psi
 
@@ -121,7 +121,7 @@ end function target_j1_local
  !>
 subroutine target_chi_local(tg, mesh, psi_in, chi_out)
   type(target_t),      intent(in)    :: tg
-  type(mesh_t),        intent(in)    :: mesh
+  class(mesh_t),       intent(in)    :: mesh
   type(states_elec_t), intent(in)    :: psi_in
   type(states_elec_t), intent(inout) :: chi_out
 

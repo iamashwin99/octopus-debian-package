@@ -60,7 +60,7 @@ contains
   ! ---------------------------------------------------------
   subroutine symmetrizer_init(this, mesh, symm)
     type(symmetrizer_t),         intent(out) :: this
-    type(mesh_t),                intent(in)  :: mesh
+    class(mesh_t),               intent(in)  :: mesh
     type(symmetries_t),  target, intent(in)  :: symm
 
     integer :: nops, ip, iop, idir, idx(MAX_DIM)

@@ -567,7 +567,7 @@ contains
 
 
   ! ---------------------------------------------------------
-  !> This function is defined as \int_{-infty}^x y delta(y) dy
+  !> This function is defined as \f$ \int_{-infty}^x y delta(y) dy \f$
   FLOAT function smear_entropy_function(this, xx) result(entropyf)
     type(smear_t), intent(in) :: this
     FLOAT,         intent(in) ::  xx

@@ -34,7 +34,7 @@ OCTTargetOperator = oct_tg_gstransformation
 
 
 OCTScheme  = oct_zbr98
-OCTDoubleCheck = No	
+OCTDoubleCheck = No
 
 #----------------------------
 # Laser field = Initial guess

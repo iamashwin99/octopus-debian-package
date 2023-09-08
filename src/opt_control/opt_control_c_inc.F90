@@ -171,7 +171,7 @@ subroutine opt_control_cg_write_info(iter, n, val, maxdx, maxdf, x)
   j1 = j - j2
 
   write(message(1), '(a,i5)') 'CG optimization iteration #', iter
-  call messages_print_stress(msg=trim(message(1)), namespace=sys_%namespace)
+  call messages_print_with_emphasis(msg=trim(message(1)), namespace=sys_%namespace)
 
   write(message(1), '(6x,a,f12.5)')    " => J1       = ", j1
   write(message(2), '(6x,a,f12.5)')    " => J        = ", j
@@ -179,7 +179,7 @@ subroutine opt_control_cg_write_info(iter, n, val, maxdx, maxdf, x)
   write(message(4), '(6x,a,f12.5)')    " => Fluence  = ", fluence
   write(message(5), '(6x,a,f12.5)')    " => Delta    = ", maxdx
   call messages_info(5)
-  call messages_print_stress(namespace=sys_%namespace)
+  call messages_print_with_emphasis(namespace=sys_%namespace)
 
   call iteration_manager_main(iterator, j, j1, j2, TOFLOAT(maxdx))
 
@@ -252,7 +252,7 @@ subroutine opt_control_direct_message_info(iter, n, val, maxdx, x)
   j1 = j - j2
 
   write(message(1), '(a,i5)') 'Direct optimization iteration #', iter
-  call messages_print_stress(msg=trim(message(1)), namespace=sys_%namespace)
+  call messages_print_with_emphasis(msg=trim(message(1)), namespace=sys_%namespace)
 
   write(message(1), '(6x,a,f12.5)')    " => J1       = ", j1
   write(message(2), '(6x,a,f12.5)')    " => J        = ", j
@@ -260,7 +260,7 @@ subroutine opt_control_direct_message_info(iter, n, val, maxdx, x)
   write(message(4), '(6x,a,f12.5)')    " => Fluence  = ", fluence
   write(message(5), '(6x,a,f12.5)')    " => Delta    = ", maxdx
   call messages_info(5)
-  call messages_print_stress(namespace=sys_%namespace)
+  call messages_print_with_emphasis(namespace=sys_%namespace)
 
   call iteration_manager_main(iterator, j, j1, j2, TOFLOAT(maxdx))
 

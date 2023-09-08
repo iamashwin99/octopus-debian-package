@@ -30,7 +30,6 @@ program oct_floquet
   use grid_oct_m
   use hamiltonian_elec_oct_m
   use io_oct_m
-  use ions_oct_m
   use lalg_adv_oct_m
   use mesh_oct_m
   use messages_oct_m
@@ -64,7 +63,7 @@ program oct_floquet
   integer :: Forder, Fdim, m0, n0, n1, nst, ii, jj, lim_nst
   FLOAT :: dt, Tcycle,omega
   logical :: downfolding = .false.
-  type(mesh_t) :: mesh
+  class(mesh_t), pointer :: mesh
   type(restart_t) :: restart
 
   ! the usual initializations
@@ -79,8 +78,8 @@ program oct_floquet
   call profiling_init(global_namespace)
 
   call print_header()
-  call messages_print_stress(msg="Non-interacting Floquet", namespace=global_namespace)
-  call messages_print_stress(namespace=global_namespace)
+  call messages_print_with_emphasis(msg="Non-interacting Floquet", namespace=global_namespace)
+  call messages_print_with_emphasis(namespace=global_namespace)
 
   call messages_experimental("oct-floquet utility")
   call fft_all_init(global_namespace)
@@ -96,14 +95,13 @@ program oct_floquet
   ! generate the full hamiltonian following the sequence in td_init
   call hamiltonian_elec_epot_generate(sys%hm, global_namespace, sys%space, sys%gr, sys%ions, &
     sys%ext_partners, st, time=M_ZERO)
-  call hamiltonian_elec_update(sys%hm, sys%gr%mesh, global_namespace, sys%space, &
-    sys%ext_partners, time = M_ZERO)
+  call sys%hm%update(sys%gr, global_namespace, sys%space, sys%ext_partners, time = M_ZERO)
 
-  call states_elec_allocate_wfns(st, sys%gr%mesh)
+  call states_elec_allocate_wfns(st, sys%gr)
 
-  call restart_init(restart, global_namespace, RESTART_GS, RESTART_TYPE_LOAD, sys%mc, ierr, mesh=sys%gr%mesh, exact=.true.)
+  call restart_init(restart, global_namespace, RESTART_GS, RESTART_TYPE_LOAD, sys%mc, ierr, mesh=sys%gr, exact=.true.)
   if (ierr == 0) then
-    call states_elec_load(restart, global_namespace, sys%space, st, sys%gr%mesh, sys%kpoints, ierr, label = ": gs")
+    call states_elec_load(restart, global_namespace, sys%space, st, sys%gr, sys%kpoints, ierr, label = ": gs")
   end if
   if (ierr /= 0) then
     message(1) = 'Unable to read ground-state wavefunctions.'
@@ -113,8 +111,7 @@ program oct_floquet
   call density_calc(st, sys%gr, st%rho)
   call v_ks_calc(sys%ks, global_namespace, sys%space, sys%hm, st, sys%ions, sys%ext_partners, &
     calc_eigenval=.true., time = M_ZERO)
-  call hamiltonian_elec_update(sys%hm, sys%gr%mesh, global_namespace, sys%space, sys%ext_partners, & 
-    time = M_ZERO)
+  call sys%hm%update(sys%gr, global_namespace, sys%space, sys%ext_partners, time = M_ZERO)
 
   call floquet_init()
 
@@ -142,7 +139,7 @@ contains
     PUSH_SUB(floquet_init)
 
     !for now no domain distribution allowed
-    ASSERT(sys%gr%mesh%np == sys%gr%mesh%np_global)
+    ASSERT(sys%gr%np == sys%gr%np_global)
 
     ! variables documented in td/td_write.F90
     call parse_variable(global_namespace, 'TDFloquetFrequency', M_ZERO, omega, units_inp%energy)
@@ -184,7 +181,7 @@ contains
 
     PUSH_SUB(floquet_solve_non_interacting)
 
-    mesh = sys%gr%mesh
+    mesh => sys%gr
     nst = st%nst
 
     SAFE_ALLOCATE(hmss(1:nst,1:nst))
@@ -210,10 +207,10 @@ contains
     ! perform time-integral over one cycle
     do it = 1, nT
       ! get non-interacting Hamiltonian at time (offset by one cycle to allow for ramp)
-      call hamiltonian_elec_update(sys%hm, sys%gr%mesh, global_namespace, sys%space, sys%ext_partners, &
+      call sys%hm%update(sys%gr, global_namespace, sys%space, sys%ext_partners, &
         time=Tcycle+it*dt)
       ! get hpsi
-      call zhamiltonian_elec_apply_all(sys%hm, global_namespace, sys%gr%mesh, st, hm_st)
+      call zhamiltonian_elec_apply_all(sys%hm, global_namespace, sys%gr, st, hm_st)
 
       ! project Hamiltonian into grounstates for zero weight k-points
       ik_count = 0
@@ -361,8 +358,7 @@ contains
     end if
 
     ! reset time in Hamiltonian
-    call hamiltonian_elec_update(sys%hm, sys%gr%mesh, global_namespace, sys%space, &
-      sys%ext_partners, time=M_ZERO)
+    call sys%hm%update(sys%gr, global_namespace, sys%space, sys%ext_partners, time=M_ZERO)
 
     SAFE_DEALLOCATE_A(hmss)
     SAFE_DEALLOCATE_A(psi)

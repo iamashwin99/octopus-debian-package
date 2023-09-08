@@ -19,6 +19,7 @@
 #include "global.h"
 
 module dos_oct_m
+  use accel_oct_m
   use atomic_orbital_oct_m
   use box_oct_m
   use comm_oct_m
@@ -28,6 +29,7 @@ module dos_oct_m
   use io_oct_m
   use ions_oct_m
   use kpoints_oct_m
+  use math_oct_m
   use mesh_oct_m
   use messages_oct_m
   use mpi_oct_m
@@ -41,6 +43,7 @@ module dos_oct_m
   use states_elec_oct_m
   use states_elec_dim_oct_m
   use submesh_oct_m
+  use types_oct_m
   use unit_oct_m
   use unit_system_oct_m
 
@@ -137,8 +140,8 @@ contains
     !% atomic orbitals character. As a consequence, the sum of the different PDOS does not integrate
     !% to the total DOS.
     !%
-    !% The radii of the orbitals are controled by the threshold defined by <tt>AOThreshold<\tt>,
-    !% and the fact that they are normalized or not by <tt>AONormalize<\tt>.
+    !% The radii of the orbitals are controled by the threshold defined by <tt>AOThreshold</tt>,
+    !% and the fact that they are normalized or not by <tt>AONormalize</tt>.
     !%End
     call parse_variable(namespace, 'DOSComputePDOS', .false., this%computepdos)
 
@@ -155,7 +158,7 @@ contains
     type(states_elec_t),      intent(in) :: st
     class(box_t),             intent(in) :: box
     type(ions_t),     target, intent(in) :: ions
-    type(mesh_t),             intent(in) :: mesh
+    class(mesh_t),            intent(in) :: mesh
     type(hamiltonian_elec_t), intent(in) :: hm
     type(namespace_t),        intent(in) :: namespace
 
@@ -301,41 +304,43 @@ contains
 
       do ia = 1, ions%natoms
         !We first count how many orbital set we have
-        work = orbitalset_utils_count(ions, ia)
+        work = orbitalset_utils_count(ions%atom(ia)%species)
 
         !We loop over the orbital sets of the atom ia
         do norb = 1, work
           call orbitalset_init(os)
+          os%spec => ions%atom(ia)%species
 
           !We count the orbitals
           work2 = 0
-          do iorb = 1, species_niwfs(ions%atom(ia)%species)
-            call species_iwf_ilm(ions%atom(ia)%species, iorb, 1, ii, ll, mm)
-            call species_iwf_n(ions%atom(ia)%species, iorb, 1, nn)
+          do iorb = 1, species_niwfs(os%spec)
+            call species_iwf_ilm(os%spec, iorb, 1, ii, ll, mm)
+            call species_iwf_n(os%spec, iorb, 1, nn)
             if (ii == norb) then
               os%ll = ll
               os%nn = nn
               os%ii = ii
-              os%radius = atomic_orbital_get_radius(ions, mesh, ia, iorb, 1, &
+              os%radius = atomic_orbital_get_radius(os%spec, mesh, iorb, 1, &
                 OPTION__AOTRUNCATION__AO_FULL, threshold)
               work2 = work2 + 1
             end if
           end do
           os%norbs = work2
           os%ndim = 1
-          os%submesh = .false.
-          os%spec => ions%atom(ia)%species
+          os%use_submesh = .false.
 
           do work = 1, os%norbs
             ! We obtain the orbital
             if (states_are_real(st)) then
-              call dget_atomic_orbital(namespace, ions, mesh, os%sphere, ia, os%ii, os%ll, os%jj, &
-                os, work, os%radius, os%ndim, use_mesh=.not.os%submesh, &
+              call dget_atomic_orbital(namespace, ions%space, ions%latt, ions%pos(:,ia), &
+                ions%atom(ia)%species, mesh, os%sphere, os%ii, os%ll, os%jj, &
+                os, work, os%radius, os%ndim, use_mesh=.not.os%use_submesh, &
                 normalize = normalize)
             else
-              call zget_atomic_orbital(namespace, ions, mesh, os%sphere, ia, os%ii, os%ll, os%jj, &
+              call zget_atomic_orbital(namespace, ions%space, ions%latt, ions%pos(:,ia), &
+                ions%atom(ia)%species, mesh, os%sphere, os%ii, os%ll, os%jj, &
                 os, work, os%radius, os%ndim, &
-                use_mesh = .not. allocated(hm%hm_base%phase) .and. .not. os%submesh, &
+                use_mesh = .not. allocated(hm%hm_base%phase) .and. .not. os%use_submesh, &
                 normalize = normalize)
             end if
           end do
@@ -344,13 +349,25 @@ contains
             ! In case of complex wavefunction, we allocate the array for the phase correction
             SAFE_ALLOCATE(os%phase(1:os%sphere%np, st%d%kpt%start:st%d%kpt%end))
             os%phase(:,:) = M_ZERO
-            if (.not. os%submesh) then
+
+            if (.not. os%use_submesh) then
               SAFE_ALLOCATE(os%eorb_mesh(1:mesh%np, 1:os%norbs, 1:os%ndim, st%d%kpt%start:st%d%kpt%end))
               os%eorb_mesh(:,:,:,:) = M_ZERO
             else
               SAFE_ALLOCATE(os%eorb_submesh(1:os%sphere%np, 1:os%ndim, 1:os%norbs, st%d%kpt%start:st%d%kpt%end))
               os%eorb_submesh(:,:,:,:) = M_ZERO
             end if
+
+            if (accel_is_enabled() .and. st%d%dim == 1) then
+              os%ldorbs = max(pad_pow2(os%sphere%np), 1)
+              if(.not. os%use_submesh) os%ldorbs = max(pad_pow2(os%sphere%mesh%np), 1)
+
+              SAFE_ALLOCATE(os%buff_eorb(st%d%kpt%start:st%d%kpt%end))
+              do ik= st%d%kpt%start, st%d%kpt%end
+                call accel_create_buffer(os%buff_eorb(ik), ACCEL_MEM_READ_ONLY, TYPE_CMPLX, os%ldorbs*os%norbs)
+              end do
+            end if
+
             call orbitalset_update_phase(os, box%dim, st%d%kpt, hm%kpoints, (st%d%ispin==SPIN_POLARIZED), &
               vec_pot = hm%hm_base%uniform_vector_potential, &
               vec_pot_var = hm%hm_base%vector_potential)

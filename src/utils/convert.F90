@@ -76,8 +76,8 @@ program oct_convert
 
   call print_header()
 
-  call messages_print_stress(msg="Convert mode", namespace=global_namespace)
-  call messages_print_stress(namespace=global_namespace)
+  call messages_print_with_emphasis(msg="Convert mode", namespace=global_namespace)
+  call messages_print_with_emphasis(namespace=global_namespace)
 
   call restart_module_init(global_namespace)
   call fft_all_init(global_namespace)
@@ -113,7 +113,7 @@ contains
     PUSH_SUB(convert)
 
     call calc_mode_par_set_parallelization(P_STRATEGY_STATES, default = .false.)
-    sys => electrons_t(global_namespace)
+    sys => electrons_t(global_namespace, generate_epot=.false.)
     call sys%init_parallelization(mpi_world)
 
     message(1) = 'Info: Converting files'
@@ -251,16 +251,16 @@ contains
 
     select case (c_how)
     CASE(OPERATION)
-      call convert_operate(sys%gr%mesh, global_namespace, sys%space, sys%ions, sys%mc, sys%outp)
+      call convert_operate(sys%gr, global_namespace, sys%space, sys%ions, sys%mc, sys%outp)
 
     CASE(FOURIER_TRANSFORM)
       ! Compute Fourier transform
-      call convert_transform(sys%gr%mesh, global_namespace, sys%space, sys%ions, sys%mc, sys%kpoints, basename, folder, &
+      call convert_transform(sys%gr, global_namespace, sys%space, sys%ions, sys%mc, sys%kpoints, basename, folder, &
         c_start, c_end, c_step, sys%outp, subtract_file, &
         ref_name, ref_folder)
 
     CASE(CONVERT_FORMAT)
-      call convert_low(sys%gr%mesh, global_namespace, sys%space, sys%ions, sys%hm%psolver, sys%mc, basename, folder, &
+      call convert_low(sys%gr, global_namespace, sys%space, sys%ions, sys%hm%psolver, sys%mc, basename, folder, &
         c_start, c_end, c_step, sys%outp, iterate_folder, &
         subtract_file, ref_name, ref_folder)
     end select
@@ -275,7 +275,7 @@ contains
   !! output files
   subroutine convert_low(mesh, namespace, space, ions, psolver, mc, basename, in_folder, c_start, c_end, c_step, outp, &
     iterate_folder, subtract_file, ref_name, ref_folder)
-    type(mesh_t),      intent(in)    :: mesh
+    class(mesh_t),     intent(in)    :: mesh
     type(namespace_t), intent(in)    :: namespace
     type(space_t),     intent(in)    :: space
     type(ions_t),      intent(in)    :: ions
@@ -288,7 +288,7 @@ contains
     integer,           intent(in)    :: c_step         !< The step between files
     type(output_t),    intent(in)    :: outp           !< Output object; Decides the kind, what and where to output
     logical,           intent(in)    :: iterate_folder !< If true, it iterates over the folders, keeping the filename fixed.
-    !                                                  !! If false, it iterates over the filenames
+    !!                                                    If false, it iterates over the filenames
     logical,           intent(in)    :: subtract_file  !< If true, it subtracts the density from the reference
     character(len=*),  intent(inout) :: ref_name       !< Reference file name
     character(len=*),  intent(inout) :: ref_folder     !< Reference folder name
@@ -381,14 +381,15 @@ contains
       do output_i = lbound(outp%how, 1), ubound(outp%how, 1)
         if (outp%how(output_i) /= 0) then
           call dio_function_output(outp%how(output_i), trim(restart_folder)//trim(folder), &
-            trim(out_name), namespace, space, mesh, read_ff, units_out%length**(-space%dim), ierr, ions = ions)
+            trim(out_name), namespace, space, mesh, read_ff, units_out%length**(-space%dim), ierr, &
+            pos=ions%pos, atoms=ions%atom)
         end if
       end do
       if (outp%what(OPTION__OUTPUT__POTENTIAL)) then
         write(out_name, '(a)') "potential"
         call dpoisson_solve(psolver, namespace, pot, read_ff)
         call dio_function_output(outp%how(OPTION__OUTPUT__POTENTIAL), trim(restart_folder)//trim(folder), &
-          trim(out_name), namespace, space, mesh, pot, units_out%energy, ierr, ions = ions)
+          trim(out_name), namespace, space, mesh, pot, units_out%energy, ierr, pos=ions%pos, atoms=ions%atom)
       end if
       call loct_progress_bar(ii-c_start, c_end-c_start)
       ! It does not matter if the current write has failed for the next iteration
@@ -407,7 +408,7 @@ contains
   !! of the file.
   subroutine convert_transform(mesh, namespace, space, ions, mc, kpoints, basename, in_folder, c_start, c_end, c_step, outp, &
     subtract_file, ref_name, ref_folder)
-    type(mesh_t)    ,  intent(in)    :: mesh
+    class(mesh_t),     intent(in)    :: mesh
     type(namespace_t), intent(in)    :: namespace
     type(space_t),     intent(in)    :: space
     type(ions_t),      intent(in)    :: ions
@@ -463,7 +464,7 @@ contains
 
     call io_mkdir('wd.general', namespace)
     wd_info = io_open('wd.general/wd.info', global_namespace, action='write')
-    call messages_print_stress(msg="Fourier Transform Options", iunit=wd_info)
+    call messages_print_with_emphasis(msg="Fourier Transform Options", iunit=wd_info)
 
     !%Variable ConvertEnergyMin
     !%Type float
@@ -605,7 +606,7 @@ contains
       end if
     end if
 
-    call messages_print_stress(msg="File Information", iunit=wd_info)
+    call messages_print_with_emphasis(msg="File Information", iunit=wd_info)
     do i_energy = e_start, e_end
       write(filename,'(a14,i0.7,a1)')'wd.general/wd.',i_energy,'/'
       write(message(1),'(a,a,f12.7,a,1x,i7,a)')trim(filename),' w =', &
@@ -732,7 +733,7 @@ contains
           if (outp%how(output_i) /= 0) then
             call dio_function_output(0_8, trim(filename), &
               trim('density'), namespace, space, mesh, point_tmp(:, i_energy), &
-              units_out%length**(-space%dim), ierr, ions = ions)
+              units_out%length**(-space%dim), ierr, pos=ions%pos, atoms=ions%atom)
           end if
         end do
       end do
@@ -747,7 +748,7 @@ contains
             if ((outp%how(output_i) /= 0) .and. (outp%how(output_i) /= OPTION__OUTPUTFORMAT__BINARY)) then
               call dio_function_output(outp%how(output_i), trim(filename), &
                 trim('density'), namespace, space, mesh, read_rff, &
-                units_out%length**(-space%dim), ierr, ions = ions)
+                units_out%length**(-space%dim), ierr, pos=ions%pos, atoms=ions%atom)
             end if
           end do
         end do
@@ -773,7 +774,7 @@ contains
   !> Given a set of mesh function operations it computes a
   !! a resulting mesh function from linear combination of them.
   subroutine convert_operate(mesh, namespace, space, ions, mc, outp)
-    type(mesh_t),      intent(in)   :: mesh
+    class(mesh_t),     intent(in)   :: mesh
     type(namespace_t), intent(in)   :: namespace
     type(space_t),     intent(in)   :: space
     type(ions_t),      intent(in)   :: ions
@@ -887,7 +888,7 @@ contains
     do output_i = lbound(outp%how, 1), ubound(outp%how, 1)
       if (outp%how(output_i) /= 0) then
         call dio_function_output(outp%how(output_i), trim(out_folder), trim(out_filename), namespace, space, mesh, &
-          scalar_ff, units, ierr, ions = ions)
+          scalar_ff, units, ierr, pos=ions%pos, atoms=ions%atom)
       end if
     end do
 
