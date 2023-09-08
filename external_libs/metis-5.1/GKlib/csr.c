@@ -1952,7 +1952,7 @@ int gk_csr_GetSimilarRows(gk_csr_t *mat, int nqterms, int *qind,
         cand[i].key = cand[i].key/(rsums[cand[i].val]+mysum-cand[i].key);
       break;
 
-    /* Assymetric MIN  similarity */
+    /* Asymmetric MIN  similarity */
     case GK_CSR_AMIN:
       for (ncand=0, ii=0; ii<nqterms; ii++) {
         i = qind[ii];

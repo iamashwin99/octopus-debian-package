@@ -65,7 +65,7 @@ module hamiltonian_abst_oct_m
       import
       class(hamiltonian_abst_t),   intent(in)    :: hm
       type(namespace_t),           intent(in)    :: namespace
-      type(mesh_t),                intent(in)    :: mesh
+      class(mesh_t),               intent(in)    :: mesh
       class(batch_t),      target, intent(inout) :: psib
       class(batch_t),      target, intent(inout) :: hpsib
       integer,           optional, intent(in)    :: terms
@@ -76,7 +76,7 @@ module hamiltonian_abst_oct_m
       import
       class(hamiltonian_abst_t),   intent(in)    :: hm
       type(namespace_t),           intent(in)    :: namespace
-      type(mesh_t),                intent(in)    :: mesh
+      class(mesh_t),               intent(in)    :: mesh
       class(batch_t),      target, intent(inout) :: psib
       class(batch_t),      target, intent(inout) :: hpsib
       integer,           optional, intent(in)    :: terms
@@ -87,7 +87,7 @@ module hamiltonian_abst_oct_m
       import
       class(hamiltonian_abst_t),   intent(in)    :: hm
       type(namespace_t),           intent(in)    :: namespace
-      type(mesh_t),                intent(in)    :: mesh
+      class(mesh_t),               intent(in)    :: mesh
       class(batch_t),              intent(inout) :: psib
       class(batch_t),              intent(inout) :: hpsib
       FLOAT,                       intent(in)    :: vmagnus(:, :, :)
@@ -97,7 +97,7 @@ module hamiltonian_abst_oct_m
       import
       class(hamiltonian_abst_t),   intent(in)    :: hm
       type(namespace_t),           intent(in)    :: namespace
-      type(mesh_t),                intent(in)    :: mesh
+      class(mesh_t),               intent(in)    :: mesh
       class(batch_t),              intent(inout) :: psib
       class(batch_t),              intent(inout) :: hpsib
       FLOAT,                       intent(in)    :: vmagnus(:, :, :)

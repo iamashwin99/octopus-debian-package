@@ -124,19 +124,19 @@ subroutine target_init_velocity(gr, namespace, ions, tg, oct, td, ep)
     end if
   end if
 
-  SAFE_ALLOCATE(tg%grad_local_pot(1:ions%natoms, 1:gr%mesh%np, 1:gr%box%dim))
-  SAFE_ALLOCATE(vl(1:gr%mesh%np_part))
-  SAFE_ALLOCATE(vl_grad(1:gr%mesh%np, 1:gr%box%dim))
-  SAFE_ALLOCATE(tg%rho(1:gr%mesh%np))
+  SAFE_ALLOCATE(tg%grad_local_pot(1:ions%natoms, 1:gr%np, 1:gr%box%dim))
+  SAFE_ALLOCATE(vl(1:gr%np_part))
+  SAFE_ALLOCATE(vl_grad(1:gr%np, 1:gr%box%dim))
+  SAFE_ALLOCATE(tg%rho(1:gr%np))
 
   ! calculate gradient of each species potential
   do iatom = 1, ions%natoms
     vl(:) = M_ZERO
     vl_grad(:,:) = M_ZERO
-    call epot_local_potential(ep, namespace, ions%space, ions%latt, gr%mesh, ions%atom(iatom)%species, &
+    call epot_local_potential(ep, namespace, ions%space, ions%latt, gr, ions%atom(iatom)%species, &
       ions%pos(:, iatom), iatom, vl)
     call dderivatives_grad(gr%der, vl, vl_grad)
-    do ist = 1, gr%mesh%np
+    do ist = 1, gr%np
       do jst=1, gr%box%dim
         tg%grad_local_pot(iatom, ist, jst) = vl_grad(ist, jst)
       end do
@@ -293,8 +293,8 @@ subroutine target_tdcalc_velocity(tg, hm, gr, ions, psi, time, max_time)
 
   tg%td_fitness(time) = M_ZERO
 
-  SAFE_ALLOCATE(zpsi(1:gr%mesh%np_part, 1))
-  SAFE_ALLOCATE(opsi(1:gr%mesh%np_part, 1))
+  SAFE_ALLOCATE(zpsi(1:gr%np_part, 1))
+  SAFE_ALLOCATE(opsi(1:gr%np_part, 1))
   opsi = M_z0
   ! WARNING This does not work for spinors.
   do iatom = 1, ions%natoms
@@ -302,10 +302,10 @@ subroutine target_tdcalc_velocity(tg, hm, gr, ions, psi, time, max_time)
     do ik = 1, psi%d%nik
       do ist = 1, psi%nst
         do idim = 1, gr%box%dim
-          call states_elec_get_state(psi, gr%mesh, ist, ik, zpsi)
-          opsi(1:gr%mesh%np, 1) = tg%grad_local_pot(iatom, 1:gr%mesh%np, idim)*zpsi(1:gr%mesh%np, 1)
+          call states_elec_get_state(psi, gr, ist, ik, zpsi)
+          opsi(1:gr%np, 1) = tg%grad_local_pot(iatom, 1:gr%np, idim)*zpsi(1:gr%np, 1)
           ions%tot_force(idim, iatom) = ions%tot_force(idim, iatom) &
-            + TOFLOAT(psi%occ(ist, ik)*zmf_dotp(gr%mesh, psi%d%dim, opsi, zpsi))
+            + TOFLOAT(psi%occ(ist, ik)*zmf_dotp(gr, psi%d%dim, opsi, zpsi))
         end do
       end do
     end do

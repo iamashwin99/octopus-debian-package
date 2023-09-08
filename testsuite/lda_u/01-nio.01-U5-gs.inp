@@ -63,6 +63,7 @@ AOTruncation = ao_box
 
 %Output
   occ_matrices
+  current | axis_x
 %
 
 DFTUPoissonSolver = dft_u_poisson_direct

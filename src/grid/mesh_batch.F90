@@ -72,7 +72,7 @@ contains
 ! -----------------------------------------------------
 
   subroutine mesh_batch_nrm2(mesh, aa, nrm2, reduce)
-    type(mesh_t),            intent(in)    :: mesh
+    class(mesh_t),           intent(in)    :: mesh
     class(batch_t),          intent(in)    :: aa
     FLOAT,                   intent(out)   :: nrm2(:)
     logical,       optional, intent(in)    :: reduce

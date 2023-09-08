@@ -169,4 +169,3 @@ m4_ifval([$3],
   $3;;
 ])esac
 ])# _AC_PATH_PROG_FLAVOR_GNU
-

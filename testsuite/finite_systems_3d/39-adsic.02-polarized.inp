@@ -1,0 +1,17 @@
+# -*- coding: utf-8 mode: shell-script -*-
+#
+CalculationMode = gs
+FromScratch = yes
+
+PseudopotentialSet = hgh_lda
+%Coordinates
+"He" | 0 | 0 | 0
+%
+
+Spacing = 0.3
+Radius = 6
+
+ExtraStates = 1
+
+SICCorrection = sic_adsic
+SpinComponents = polarized

@@ -11,7 +11,7 @@ ExperimentalFeatures = YES
 %
 
 BoxShape = sphere
-Radius = 10 
+Radius = 10
 Spacing = 0.4
 
 TheoryLevel = independent_particles
@@ -58,5 +58,3 @@ TDPropagationTime = Tf
 
 
 FilterPotentials = filter_none
-
-

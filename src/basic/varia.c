@@ -18,16 +18,15 @@
 
 */
 
-
 #include <config.h>
 
-#include <stdlib.h>
 #include <math.h>
-#include <sys/time.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <string.h>
 
 #ifdef HAVE_UNAME
 #include <sys/utsname.h>
@@ -43,12 +42,10 @@
 
 #include "varia.h"
 
-
 /**
- * Gets the name of the machine 
+ * Gets the name of the machine
  */
-void sysname(char **c)
-{
+void sysname(char **c) {
 #ifdef HAVE_UNAME
   struct utsname name;
   uname(&name);
@@ -65,20 +62,21 @@ void sysname(char **c)
 
 /**
  * returns true if process is in the foreground
- * copied from openssh scp source 
+ * copied from openssh scp source
  */
-static int foreground_proc(void)
-{
+static int foreground_proc(void) {
 #if defined(HAVE_TCGETPGRP) || defined(HAVE_IOCTL)
   static pid_t pgrp = -1;
   int ctty_pgrp;
-  
-  if (pgrp == -1) pgrp = getpgrp();
-  
+
+  if (pgrp == -1)
+    pgrp = getpgrp();
+
 #if defined(HAVE_TCGETPGRP)
   return ((ctty_pgrp = tcgetpgrp(STDOUT_FILENO)) != -1 && ctty_pgrp == pgrp);
 #elif defined(HAVE_IOCTL)
-  return ((ioctl(STDOUT_FILENO, TIOCGPGRP, &ctty_pgrp) != -1 && ctty_pgrp == pgrp));
+  return (
+      (ioctl(STDOUT_FILENO, TIOCGPGRP, &ctty_pgrp) != -1 && ctty_pgrp == pgrp));
 #endif
 
 #else
@@ -86,11 +84,10 @@ static int foreground_proc(void)
 #endif
 }
 
-int getttywidth(void)
-{
-#ifdef HAVE_IOCTL  
+int getttywidth(void) {
+#ifdef HAVE_IOCTL
   struct winsize winsize;
-  
+
   if (ioctl(fileno(stdout), TIOCGWINSZ, &winsize) != -1)
     return (winsize.ws_col ? winsize.ws_col : 80);
   else
@@ -99,103 +96,107 @@ int getttywidth(void)
 }
 
 /**
- * displays progress bar with a percentage 
+ * displays progress bar with a percentage
  */
-void progress_bar(int actual, int max)
-{
+void progress_bar(int actual, int max) {
   static struct timeval start;
   static int old_pos, next_print;
   struct timeval now;
   char buf[512], fmt[64];
   int i, j, ratio, barlength, remaining;
   double elapsed;
-  
-  if(actual < 0) {
-    (void) gettimeofday(&start, (struct timezone *) 0);
-    actual  = 0;
+
+  if (actual < 0) {
+    (void)gettimeofday(&start, (struct timezone *)0);
+    actual = 0;
     old_pos = 0;
     next_print = 10;
   }
 
-  if(max > 0){
+  if (max > 0) {
     ratio = 100 * actual / max;
-    if(ratio < 0)   ratio = 0;
-    if(ratio > 100) {
-       ratio = 100;
-       fprintf(stderr, "Internal warning: progress_bar called with actual %i > max %i\n", actual, max);
+    if (ratio < 0)
+      ratio = 0;
+    if (ratio > 100) {
+      ratio = 100;
+      fprintf(stderr,
+              "Internal warning: progress_bar called with actual %i > max %i\n",
+              actual, max);
     }
-  }else
+  } else
     ratio = 100;
 
-  if(foreground_proc() == 0){
-    if(old_pos == 0){
+  if (foreground_proc() == 0) {
+    if (old_pos == 0) {
       printf("ETA: ");
     }
 
     barlength = getttywidth() - 6;
 
-    j = actual*(barlength - 1)/max;
-    if(j > barlength || actual == max) j = barlength;
-    if(j < 1) j = 1;
+    j = actual * (barlength - 1) / max;
+    if (j > barlength || actual == max)
+      j = barlength;
+    if (j < 1)
+      j = 1;
 
-    if(j > old_pos){
-      for(i=old_pos+1; i<=j; i++)
-	if(i*100/barlength >= next_print){
-	  printf("%1d", next_print/10 % 10);
-	  next_print += 10;
-	}else
-	  printf(".");
+    if (j > old_pos) {
+      for (i = old_pos + 1; i <= j; i++)
+        if (i * 100 / barlength >= next_print) {
+          printf("%1d", next_print / 10 % 10);
+          next_print += 10;
+        } else
+          printf(".");
       old_pos = j;
-      if(j == barlength) printf("\n");
+      if (j == barlength)
+        printf("\n");
     }
 
-  }else{
+  } else {
 
     sprintf(buf, "%d", max);
     i = strlen(buf);
-    if(i<3) i=3;
+    if (i < 3)
+      i = 3;
     sprintf(fmt, "\r[%%%dd/%%%dd]", i, i);
     sprintf(buf, fmt, actual, max);
-    sprintf(buf + strlen(buf), " %3d%%" , ratio);
-    
+    sprintf(buf + strlen(buf), " %3d%%", ratio);
+
     barlength = getttywidth() - strlen(buf) - 16;
     if (barlength > 0) {
       i = barlength * ratio / 100;
-      sprintf(buf + strlen(buf),
-	      "|%.*s%*s|", i,
-	      "*******************************************************"
-	      "*******************************************************"
-	      "*******************************************************"
-	      "*******************************************************"
-	      "*******************************************************"
-	      "*******************************************************"
-	      "*******************************************************",
-	      barlength - i, "");
+      sprintf(buf + strlen(buf), "|%.*s%*s|", i,
+              "*******************************************************"
+              "*******************************************************"
+              "*******************************************************"
+              "*******************************************************"
+              "*******************************************************"
+              "*******************************************************"
+              "*******************************************************",
+              barlength - i, "");
     }
-    
+
     /* time information now */
-    (void) gettimeofday(&now, (struct timezone *) 0);
+    (void)gettimeofday(&now, (struct timezone *)0);
     elapsed = now.tv_sec - start.tv_sec;
-  
-    if(elapsed <= 0.0 || actual <= 0) {
-      sprintf(buf + strlen(buf),
-	      "     --:-- ETA");
-    }else{
+
+    if (elapsed <= 0.0 || actual <= 0) {
+      sprintf(buf + strlen(buf), "     --:-- ETA");
+    } else {
       remaining = (int)(max / (actual / elapsed) - elapsed);
-      if(remaining < 0) remaining = 0;
-    
+      if (remaining < 0)
+        remaining = 0;
+
       i = remaining / 3600;
-      if(i)
-	sprintf(buf + strlen(buf), "%4d:", i);
+      if (i)
+        sprintf(buf + strlen(buf), "%4d:", i);
       else
-	sprintf(buf + strlen(buf), "     ");
+        sprintf(buf + strlen(buf), "     ");
       i = remaining % 3600;
       sprintf(buf + strlen(buf), "%02d:%02d%s", i / 60, i % 60, " ETA");
     }
     printf("%s", buf);
-
   }
-  
+
   fflush(stdout);
 }
 

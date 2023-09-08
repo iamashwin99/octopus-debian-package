@@ -474,4 +474,3 @@ end subroutine X(preconditioner_apply_batch)
 !! Local Variables:
 !! mode: f90
 !! coding: utf-8
-

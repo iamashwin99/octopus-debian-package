@@ -199,11 +199,14 @@ contains
     integer(i8) :: read_np, file_size
     integer :: number_type, iio
     real(r8), allocatable :: read_ff(:)
+    character(kind=c_char), dimension(c_str_len(fname)) :: cname
+
 
     PUSH_SUB(try_dread_binary)
 
     iio = 0
-    call get_info_binary(read_np, number_type, file_size, ierr, iio, string_f_to_c(fname))
+    cname = string_f_to_c(fname)
+    call get_info_binary(read_np, number_type, file_size, ierr, iio, cname)
     call io_incr_counters(iio)
 
     ! if the type of the file is real, then read real numbers and convert to complex

@@ -26,5 +26,3 @@ else
   Precision : 0.1
   match ; J1 1st iteration  ; GREPFIELD(opt-control/convergence, '##        1 ', 4) ; 2118.95988651
 endif
-
-

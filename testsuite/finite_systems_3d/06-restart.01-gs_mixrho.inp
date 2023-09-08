@@ -1,7 +1,7 @@
 # -*- coding: utf-8 mode: shell-script -*-
 
 CalculationMode = gs
-fromScratch = yes
+FromScratch = yes
 Radius = 7.0
 Spacing = 0.5
 %Coordinates

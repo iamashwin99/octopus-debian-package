@@ -14,7 +14,6 @@
 ** You should have received a copy of the GNU Lesser General Public License
 ** along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **
-** $Id$
 */
 
 #include <config.h>
@@ -88,26 +87,10 @@ void FC_FUNC_(clsetkernelarg_long, CLSETKERNELARG_LONG)
 
 /* -----------------------------------------------------------------------*/
 
-void FC_FUNC_(clsetkernelarg_float, CLSETKERNELARG_FLOAT)
-     (cl_kernel * kernel, const int * arg_index, const float * arg_value, int * status){
-
-  *status = (int) clSetKernelArg(*kernel, (cl_uint) *arg_index, (size_t) sizeof(float), arg_value);
-}
-
-/* -----------------------------------------------------------------------*/
-
 void FC_FUNC_(clsetkernelarg_double, CLSETKERNELARG_DOUBLE)
      (cl_kernel * kernel, const int * arg_index, const double * arg_value, int * status){
 
   *status = (int) clSetKernelArg(*kernel, (cl_uint) *arg_index, (size_t) sizeof(double), arg_value);
-}
-
-/* -----------------------------------------------------------------------*/
-
-void FC_FUNC_(clsetkernelarg_float2, CLSETKERNELARG_FLOAT2)
-     (cl_kernel * kernel, const int * arg_index, const cl_float2 * arg_value, int * status){
-
-  *status = (int) clSetKernelArg(*kernel, (cl_uint) *arg_index, (size_t) sizeof(cl_float2), arg_value);
 }
 
 /* -----------------------------------------------------------------------*/

@@ -12,5 +12,5 @@ match ; Number of inner points ; GREPFIELD(out, 'inner mesh', 5) ; 89727
 match ; Grid cutoff            ; GREPFIELD(out, 'Grid Cutoff', 5) ; 1160.586810
 match ; Matrix vector products ; GREPFIELD(out, 'Matrix vector products', 4) ; 25
 match ; Converged eigenvectors ; GREPFIELD(out, 'Converged eigenvectors', 3) ; 0
-Precision: 0.05
-match ; Total Energy           ; GREPFIELD(static/info, 'Total  ', 3) ; -262.19
+Precision: 9.95e-04
+match ;  Total Energy            ; GREPFIELD(static/info, 'Total  ', 3) ; -262.24067663000005

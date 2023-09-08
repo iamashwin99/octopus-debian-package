@@ -8,12 +8,14 @@ Enabled    : Yes
 Input: 07-octopus_basics-time_dependent_propagation.01-gs.inp
 Precision: 1.00e-02
 match ;  SCF convergence  ; GREPCOUNT(static/info, 'SCF converged') ; 1.0
-Precision: 5.76e-04
-match ;  Total Energy  ; GREPFIELD(static/info, 'Total  ', 3) ; -218.78454898
+Precision: 5.08e-04
+match ;  Total Energy  ; GREPFIELD(static/info, 'Total  ', 3) ; -218.87019320000002
 
 Input: 07-octopus_basics-time_dependent_propagation.02-td.inp
-match ; Energy iteration  1 ; GREPFIELD(out, ' 1       0.002000', 3) ; -218.785065
-match ; Energy iteration 50 ; GREPFIELD(out, '50       0.100000', 3) ; -218.785065
+Precision: 1.09e-05
+match ;  Energy iteration  1  ; GREPFIELD(out, ' 1       0.002000', 3) ; -218.870643
+Precision: 1.09e-05
+match ;  Energy iteration 50  ; GREPFIELD(out, '50       0.100000', 3) ; -218.870643
 
 Input: 07-octopus_basics-time_dependent_propagation.03-td_laser.inp
 Precision: 0.00001

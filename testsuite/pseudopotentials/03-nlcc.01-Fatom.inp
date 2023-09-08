@@ -1,5 +1,5 @@
 CalculationMode = gs
-fromScratch = yes
+FromScratch = yes
 ExperimentalFeatures = yes
 
 %Species
@@ -10,8 +10,8 @@ ExperimentalFeatures = yes
 "F" | 0 | 0 | 0
 %
 
-spacing = 0.22
-radius = 5.0
+Spacing = 0.22
+Radius = 5.0
 
 SpinComponents = polarized
 
@@ -23,6 +23,5 @@ SpinComponents = polarized
 FilterPotentials = filter_none
 
 MixField = density
-
 
 PoissonSolver = isf

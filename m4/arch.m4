@@ -27,7 +27,7 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM( [
 #include <emmintrin.h>
 ], [
 __m128d a __attribute__((aligned(16)));
- ])], 
+ ])],
  [acx_m128d=yes], [acx_m128d=no])
 AC_MSG_RESULT($acx_m128d)])
 
@@ -53,7 +53,7 @@ a = _mm_add_pd(b, c);
 _mm_storeu_pd(d, a);
 printf("",  *d);
 changequote([, ])
- ])], 
+ ])],
  [acx_m128d=yes], [acx_m128d=no], [acx_m128d=yes;echo -n "cross-compiling; assuming... "])
 # assume yes (rather than no as for FMA4 and AVX) since SSE2 is very common, especially when the compiler has m128d
 CFLAGS="$acx_save_CFLAGS"
@@ -95,7 +95,7 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM( [
 #include <immintrin.h>
 ], [
 __m256d a __attribute__((aligned(32)));
- ])], 
+ ])],
  [acx_m256d=yes], [acx_m256d=no])
 AC_MSG_RESULT($acx_m256d)])
 
@@ -121,7 +121,7 @@ a = _mm256_add_pd(b, c);
 _mm256_storeu_pd(d, a);
 printf("",  *d);
 changequote([, ])
- ])], 
+ ])],
  [acx_m256d=yes], [acx_m256d=no], [acx_m256d=no;echo -n "cross-compiling; assuming... "])
 CFLAGS="$acx_save_CFLAGS"
 AC_MSG_RESULT($acx_m256d)])
@@ -167,7 +167,7 @@ __m128d b __attribute__((aligned(16)));
 __m128d c __attribute__((aligned(16)));
 __m128d d __attribute__((aligned(16)));
 d = (__m128d) _mm_macc_pd(a, b, c);
- ])], 
+ ])],
  [acx_fma4=yes], [acx_fma4=no], [acx_fma4=no;echo -n "cross-compiling; assuming... "])
 CFLAGS="$acx_save_CFLAGS"
 AC_MSG_RESULT($acx_fma4)])
@@ -184,7 +184,7 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM( [
 
   cc = __cmplx(aa, bb);
   cc = __fpneg(cc);
- ]])], 
+ ]])],
  [AC_DEFINE(HAVE_BLUE_GENE, 1, [compiler supports Blue Gene intrinsics]) [acx_blue_gene=yes]], [acx_blue_gene=no])
 AC_MSG_RESULT($acx_blue_gene)])
 
@@ -198,7 +198,7 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM( [
   vector4double aa, bb, cc;
 
   cc = vec_madd(aa, bb, cc);
- ]])], 
+ ]])],
  [AC_DEFINE(HAVE_BLUE_GENE_Q, 1, [compiler supports Blue Gene Q intrinsics]) [acx_blue_gene_q=yes]], [acx_blue_gene_q=no])
 AC_MSG_RESULT($acx_blue_gene_q)])
 
@@ -256,7 +256,7 @@ oct_arch=x86_64
 ##########################################
 i?86*)
 oct_arch=x86
-;;	
+;;
 ##########################################
 ia64*)
 oct_arch=ia64
@@ -312,7 +312,7 @@ if test "x$acx_fma3" = "xyes" ; then
 fi
 
 #FMA4
-AC_ARG_ENABLE(fma4, AS_HELP_STRING([--enable-fma4], [Enable the use of FMA4 vectorial instructions (x86_64)]), 
+AC_ARG_ENABLE(fma4, AS_HELP_STRING([--enable-fma4], [Enable the use of FMA4 vectorial instructions (x86_64)]),
 	[ac_enable_fma4=${enableval}])
 if test "x$vector" = "xno" ; then
  ac_enable_fma4=no
@@ -331,7 +331,7 @@ if test "x$acx_fma4" = "xyes" ; then
 fi
 
 #AVX
-AC_ARG_ENABLE(avx, AS_HELP_STRING([--enable-avx], [Enable the use of AVX vectorial instructions (x86_64)]), 
+AC_ARG_ENABLE(avx, AS_HELP_STRING([--enable-avx], [Enable the use of AVX vectorial instructions (x86_64)]),
 	[ac_enable_avx=${enableval}])
 if test "x$vector" = "xno" ; then
  ac_enable_avx=no

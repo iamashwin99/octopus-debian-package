@@ -18,7 +18,7 @@ match ; LDA Eigenvalue 2 dn                      ; GREPFIELD(static/info, '  2  
 
 Input: 01-xc_1d.02-wfs-hf.inp
 match ; SCF convergence                          ; GREPCOUNT(static/info, 'SCF converged') ; 1
-match ; Hartree-Fock Total Energy                ; GREPFIELD(static/info, 'Total       =', 3) ; -4.19644929
+match ; Hartree-Fock Total Energy                 ; GREPFIELD(static/info, 'Total       =', 3) ; -5.2736276
 match ; Hartree-Fock Exchange Energy             ; GREPFIELD(static/info, 'Exchange    =', 3) ; -1.07717830
 match ; Hartree-Fock Eigenvalue 1 up             ; GREPFIELD(static/info, '  1   up', 3) ; -1.071001
 match ; Hartree-Fock Eigenvalue 2 up             ; GREPFIELD(static/info, '  2   up', 3) ;  0.003012

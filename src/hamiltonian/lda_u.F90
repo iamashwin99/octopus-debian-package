@@ -19,6 +19,7 @@
 #include "global.h"
 
 module lda_u_oct_m
+  use accel_oct_m
   use atomic_orbital_oct_m
   use boundaries_oct_m
   use batch_oct_m
@@ -34,6 +35,7 @@ module lda_u_oct_m
   use ions_oct_m
   use kpoints_oct_m
   use lalg_basic_oct_m
+  use lattice_vectors_oct_m
   use loct_oct_m
   use loewdin_oct_m
   use mesh_oct_m
@@ -55,6 +57,7 @@ module lda_u_oct_m
   use states_elec_oct_m
   use states_elec_dim_oct_m
   use submesh_oct_m
+  use types_oct_m
   use unit_system_oct_m
   use wfs_elec_oct_m
 
@@ -65,6 +68,7 @@ module lda_u_oct_m
   public ::                          &
     lda_u_t,                         &
     lda_u_init,                      &
+    lda_u_init_coulomb_integrals,    &
     dlda_u_apply,                    &
     zlda_u_apply,                    &
     lda_u_update_basis,              &
@@ -73,7 +77,6 @@ module lda_u_oct_m
     lda_u_build_phase_correction,    &
     lda_u_freeze_occ,                &
     lda_u_freeze_u,                  &
-    lda_u_periodic_coulomb_integrals,&
     dlda_u_set_occupations,          &
     zlda_u_set_occupations,          &
     dlda_u_get_occupations,          &
@@ -86,6 +89,8 @@ module lda_u_oct_m
     lda_u_set_effectiveV,            &
     dlda_u_commute_r,                &
     zlda_u_commute_r,                &
+    dlda_u_commute_r_single,         &
+    zlda_u_commute_r_single,         &
     dlda_u_force,                    &
     zlda_u_force,                    &
     lda_u_write_info,                &
@@ -104,46 +109,52 @@ module lda_u_oct_m
     DFT_U_AMF                     = 1
 
 
+  !> @class lda_u_t
+  !! \brief Class to describe DFT+U parameters
   type lda_u_t
     private
     integer,            public   :: level = DFT_U_NONE
-    FLOAT, allocatable, public   :: dn(:,:,:,:) !> Occupation matrices for the standard scheme
-    FLOAT, allocatable           :: dV(:,:,:,:) !> Potentials for the standard scheme
+
+    FLOAT, allocatable, public   :: dn(:,:,:,:) !< Occupation matrices for the standard scheme
+    FLOAT, allocatable           :: dV(:,:,:,:) !< Potentials for the standard scheme
 
     CMPLX, allocatable, public   :: zn(:,:,:,:)
     CMPLX, allocatable           :: zV(:,:,:,:)
-    FLOAT, allocatable, public   :: dn_alt(:,:,:,:) !> Stores the renomalized occ. matrices
-    CMPLX, allocatable, public   :: zn_alt(:,:,:,:) !> if the ACBN0 functional is used
+    FLOAT, allocatable, public   :: dn_alt(:,:,:,:) !< Stores the renomalized occ. matrices
+    CMPLX, allocatable, public   :: zn_alt(:,:,:,:) !< if the ACBN0 functional is used
 
-    FLOAT, allocatable           :: renorm_occ(:,:,:,:,:) !> On-site occupations (for the ACBN0 functional)
+    FLOAT, allocatable           :: renorm_occ(:,:,:,:,:) !< On-site occupations (for the ACBN0 functional)
 
-    FLOAT, allocatable           :: coulomb(:,:,:,:,:) !>Coulomb integrals for all the system
-    !                                                  !> (for the ACBN0 functional)
-    CMPLX, allocatable           :: zcoulomb(:,:,:,:,:,:,:) !>Coulomb integrals for all the system
-    !                                                       !> (for the ACBN0 functional with spinors)
+    FLOAT, allocatable, public   :: coulomb(:,:,:,:,:) !< Coulomb integrals for all the system
+    !                                                  !<(for the ACBN0 functional)
+    CMPLX, allocatable, public   :: zcoulomb(:,:,:,:,:,:,:) !< Coulomb integrals for all the system
+    !                                                       !< (for the ACBN0 functional with spinors)
 
-    type(orbitalbasis_t),        public :: basis                !> The full basis of localized orbitals
-    type(orbitalset_t), pointer, public :: orbsets(:) => NULL() !> All the orbital setss of the system
+    type(orbitalbasis_t),        public :: basis                !< The full basis of localized orbitals
+    type(orbitalset_t), pointer, public :: orbsets(:) => NULL() !< All the orbital setss of the system
     integer,                     public :: norbsets = 0
 
     integer,              public :: nspins = 0
     integer,              public :: spin_channels = 0
     integer                      :: nspecies = 0
-    integer,              public :: maxnorbs = 0           !> Maximal number of orbitals for all the atoms
-    integer                      :: max_np = 0             !> Maximum number of points in all orbitals submesh spheres
+    integer,              public :: maxnorbs = 0           !< Maximal number of orbitals for all the atoms
+    integer                      :: max_np = 0             !< Maximum number of points in all orbitals submesh spheres
 
-    logical                      :: useAllOrbitals = .false.       !> Do we use all atomic orbitals possible
-    logical                      :: skipSOrbitals = .true.         !> Not using s orbitals
-    logical                      :: freeze_occ = .false.           !> Occupation matrices are not recomputed during TD evolution
-    logical                      :: freeze_u = .false.             !> U is not recomputed during TD evolution
-    logical,              public :: intersite = .false.            !> intersite V are computed or not
-    FLOAT                        :: intersite_radius = M_ZERO      !> Maximal distance for considering neighboring atoms
-    logical,              public :: basisfromstates = .false.      !> We can construct the localized basis from user-defined states
-    FLOAT                        :: acbn0_screening = M_ONE        !> We use or not the screening in the ACBN0 functional
-    integer, allocatable, public :: basisstates(:)
-    logical                      :: rot_inv = .false.              !> Use a rotationally invariant formula for U and J (ACBN0 case)
-    integer                      :: double_couting = DFT_U_FLL     !> Double-couting term
-    integer                      :: sm_poisson = SM_POISSON_DIRECT !> Poisson solver used for computing Coulomb integrals
+    logical                      :: useAllOrbitals = .false.       !< Do we use all atomic orbitals possible
+    logical                      :: skipSOrbitals = .true.         !< Not using s orbitals
+    logical                      :: freeze_occ = .false.           !< Occupation matrices are not recomputed during TD evolution
+    logical                      :: freeze_u = .false.             !< U is not recomputed during TD evolution
+    logical,              public :: intersite = .false.            !< intersite V are computed or not
+    FLOAT                        :: intersite_radius = M_ZERO      !< Maximal distance for considering neighboring atoms
+    logical,              public :: basisfromstates = .false.      !< We can construct the localized basis from user-defined states
+    FLOAT                        :: acbn0_screening = M_ONE        !< We use or not the screening in the ACBN0 functional
+    integer, allocatable         :: basisstates(:)                 !< The indices of states used to construct a localized basis
+    integer, allocatable         :: basisstates_os(:)              !< The index of the orbital set to which belongs the state specified in basisstate(:)
+    logical                      :: rot_inv = .false.              !< Use a rotationally invariant formula for U and J (ACBN0 case)
+    integer                      :: double_couting = DFT_U_FLL     !< Double-couting term
+    integer                      :: sm_poisson = SM_POISSON_DIRECT !< Poisson solver used for computing Coulomb integrals
+
+    type(lattice_vectors_t), pointer :: latt
 
     type(distributed_t) :: orbs_dist
 
@@ -155,7 +166,7 @@ module lda_u_oct_m
 contains
 
   ! ---------------------------------------------------------
-  subroutine lda_u_init(this, namespace, space, level, gr, ions, st, mc, psolver, kpoints, has_phase)
+  subroutine lda_u_init(this, namespace, space, level, gr, ions, st, mc, kpoints, has_phase)
     type(lda_u_t),     target, intent(inout) :: this
     type(namespace_t),         intent(in)    :: namespace
     type(space_t),             intent(in)    :: space
@@ -164,21 +175,21 @@ contains
     type(ions_t),      target, intent(in)    :: ions
     type(states_elec_t),       intent(in)    :: st
     type(multicomm_t),         intent(in)    :: mc
-    type(poisson_t),           intent(in)    :: psolver
     type(kpoints_t),           intent(in)    :: kpoints
     logical,                   intent(in)    :: has_phase
 
-    logical :: complex_coulomb_integrals
-    integer :: ios, is, ierr
+    integer :: is, ierr
     type(block_t) :: blk
 
     PUSH_SUB(lda_u_init)
 
     ASSERT(.not. (level == DFT_U_NONE))
 
-    call messages_print_stress(msg="DFT+U", namespace=namespace)
-    if (gr%mesh%parallel_in_domains) call messages_experimental("dft+u parallel in domains", namespace=namespace)
+    call messages_print_with_emphasis(msg="DFT+U", namespace=namespace)
+    if (gr%parallel_in_domains) call messages_experimental("dft+u parallel in domains", namespace=namespace)
     this%level = level
+
+    this%latt => ions%latt
 
     !%Variable DFTUBasisFromStates
     !%Type logical
@@ -241,7 +252,7 @@ contains
       call messages_experimental("and dft_u_poisson_fft", namespace=namespace)
     end if
     if (this%sm_poisson == SM_POISSON_ISF) then
-      if (gr%mesh%parallel_in_domains) then
+      if (gr%parallel_in_domains) then
         call messages_not_implemented("DFTUPoissonSolver=dft_u_poisson_isf with domain parallelization", namespace=namespace)
       end if
       if (ions%latt%nonorthogonal) then
@@ -250,10 +261,10 @@ contains
     end if
     if (this%sm_poisson == SM_POISSON_PSOLVER) then
 #if !((defined HAVE_LIBISF) || (defined HAVE_PSOLVER))
-      message(1) = "The PSolver Poisson solver cannot be used since the code was not compiled with the PSolver libary."
+      message(1) = "The PSolver Poisson solver cannot be used since the code was not compiled with the PSolver library."
       call messages_fatal(1, namespace=namespace)
 #endif
-      if (gr%mesh%parallel_in_domains) then
+      if (gr%parallel_in_domains) then
         call messages_not_implemented("DFTUPoissonSolver=dft_u_poisson_psolver with domain parallelization", namespace=namespace)
       end if
       if (ions%latt%nonorthogonal) then
@@ -356,10 +367,10 @@ contains
       call orbitalbasis_init(this%basis, namespace, space%periodic_dim)
 
       if (states_are_real(st)) then
-        call dorbitalbasis_build(this%basis, namespace, ions, gr%mesh, st%d%kpt, st%d%dim, &
+        call dorbitalbasis_build(this%basis, namespace, ions, gr, st%d%kpt, st%d%dim, &
           this%skipSOrbitals, this%useAllOrbitals)
       else
-        call zorbitalbasis_build(this%basis, namespace, ions, gr%mesh, st%d%kpt, st%d%dim, &
+        call zorbitalbasis_build(this%basis, namespace, ions, gr, st%d%kpt, st%d%dim, &
           this%skipSOrbitals, this%useAllOrbitals)
       end if
       this%orbsets => this%basis%orbsets
@@ -379,34 +390,10 @@ contains
 
       call distributed_nullify(this%orbs_dist, this%norbsets)
 #ifdef HAVE_MPI
-      if (.not. gr%mesh%parallel_in_domains) then
+      if (.not. gr%parallel_in_domains) then
         call distributed_init(this%orbs_dist, this%norbsets, MPI_COMM_WORLD, "orbsets")
       end if
 #endif
-
-
-      if (this%level == DFT_U_ACBN0) then
-
-        complex_coulomb_integrals = .false.
-        do ios = 1, this%norbsets
-          if (this%orbsets(ios)%ndim  > 1) complex_coulomb_integrals = .true.
-        end do
-
-        if (.not. complex_coulomb_integrals) then
-          write(message(1),'(a)')    'Computing the Coulomb integrals of the localized basis.'
-          call messages_info(1, namespace=namespace)
-          if (states_are_real(st)) then
-            call dcompute_coulomb_integrals(this, namespace, space, gr%mesh, gr%der, psolver)
-          else
-            call zcompute_coulomb_integrals(this, namespace, space, gr%mesh, gr%der, psolver)
-          end if
-        else
-          ASSERT(.not. states_are_real(st))
-          write(message(1),'(a)')    'Computing complex Coulomb integrals of the localized basis.'
-          call messages_info(1, namespace=namespace)
-          call compute_complex_coulomb_integrals(this, gr%mesh, gr%der, st, psolver, namespace, space)
-        end if
-      end if
 
     else
 
@@ -415,19 +402,24 @@ contains
       !%Default none
       !%Section Hamiltonian::DFT+U
       !%Description
-      !% Each line of this block contains the index of a state to be used to construct the
-      !% localized basis. See DFTUBasisFromStates for details.
+      !% This block starts by a line containing a single integer describing the number of
+      !% orbital sets. One orbital set is a group of orbitals on which one adds a Hubbard U.
+      !% Each following line of this block contains the index of a state to be used to construct the
+      !% localized basis, followed by the index of the corresponding orbital set.
+      !% See DFTUBasisFromStates for details.
       !%End
       if (parse_block(namespace, 'DFTUBasisStates', blk) == 0) then
-        this%norbsets = 1
-        this%maxnorbs = parse_block_n(blk)
+        call parse_block_integer(blk, 0, 0, this%norbsets)
+        this%maxnorbs = parse_block_n(blk)-1
         if (this%maxnorbs <1) then
           write(message(1),'(a,i3,a,i3)') 'DFTUBasisStates must contains at least one state.'
           call messages_fatal(1, namespace=namespace)
         end if
         SAFE_ALLOCATE(this%basisstates(1:this%maxnorbs))
+        SAFE_ALLOCATE(this%basisstates_os(1:this%maxnorbs))
         do is = 1, this%maxnorbs
-          call parse_block_integer(blk, is-1, 0, this%basisstates(is))
+          call parse_block_integer(blk, is, 0, this%basisstates(is))
+          call parse_block_integer(blk, is, 1, this%basisstates_os(is))
         end do
         call parse_block_end(blk)
       else
@@ -436,12 +428,12 @@ contains
       end if
 
       if (states_are_real(st)) then
-        call dorbitalbasis_build_empty(this%basis, gr%mesh, st%d%kpt, st%d%dim, this%maxnorbs)
+        call dorbitalbasis_build_empty(this%basis, gr, st%d%kpt, st%d%dim, this%norbsets, this%basisstates_os)
       else
-        call zorbitalbasis_build_empty(this%basis, gr%mesh, st%d%kpt, st%d%dim, this%maxnorbs)
+        call zorbitalbasis_build_empty(this%basis, gr, st%d%kpt, st%d%dim, this%norbsets, this%basisstates_os)
       end if
 
-      this%max_np = gr%mesh%np
+      this%max_np = gr%np
       this%nspins = st%d%nspin
       this%spin_channels = st%d%spin_channels
       this%nspecies = 1
@@ -457,19 +449,81 @@ contains
         call zlda_u_allocate(this, st)
       end if
 
-      call lda_u_loadbasis(this, namespace, space, st, gr%mesh, mc, ierr)
+      call lda_u_loadbasis(this, namespace, space, st, gr, mc, ierr)
       if (ierr /= 0) then
-        message(1) = "Unable to load LDA+U basis from selected states."
+        message(1) = "Unable to load DFT+U basis from selected states."
         call messages_fatal(1)
       end if
-      call lda_u_periodic_coulomb_integrals(this, namespace, space, st, gr%der, mc, has_phase)
 
     end if
 
-    call messages_print_stress(namespace=namespace)
+    call messages_print_with_emphasis(namespace=namespace)
 
     POP_SUB(lda_u_init)
   end subroutine lda_u_init
+
+
+  ! ---------------------------------------------------------
+  subroutine lda_u_init_coulomb_integrals(this, namespace, space, gr, st, mc, psolver, has_phase)
+    type(lda_u_t),     target, intent(inout) :: this
+    type(namespace_t),         intent(in)    :: namespace
+    type(space_t),             intent(in)    :: space
+    type(grid_t),              intent(in)    :: gr
+    type(states_elec_t),       intent(in)    :: st
+    type(multicomm_t),         intent(in)    :: mc
+    type(poisson_t),           intent(in)    :: psolver
+    logical,                   intent(in)    :: has_phase
+
+    logical :: complex_coulomb_integrals
+    integer :: ios
+    integer :: norbs
+
+    PUSH_SUB(lda_u_init_coulomb_integrals)
+
+    norbs = this%maxnorbs
+
+    if (.not. this%basisfromstates) then
+
+      if (this%level == DFT_U_ACBN0) then
+
+        complex_coulomb_integrals = .false.
+        do ios = 1, this%norbsets
+          if (this%orbsets(ios)%ndim  > 1) complex_coulomb_integrals = .true.
+        end do
+
+        if (.not. complex_coulomb_integrals) then
+          write(message(1),'(a)')    'Computing the Coulomb integrals of the localized basis.'
+          call messages_info(1, namespace=namespace)
+          SAFE_ALLOCATE(this%coulomb(1:norbs,1:norbs,1:norbs,1:norbs, 1:this%norbsets))
+          if (states_are_real(st)) then
+            call dcompute_coulomb_integrals(this, namespace, space, gr, psolver)
+          else
+            call zcompute_coulomb_integrals(this, namespace, space, gr, psolver)
+          end if
+        else
+          ASSERT(.not. states_are_real(st))
+          write(message(1),'(a)')    'Computing complex Coulomb integrals of the localized basis.'
+          call messages_info(1, namespace=namespace)
+          SAFE_ALLOCATE(this%zcoulomb(1:norbs, 1:norbs, 1:norbs, 1:norbs, 1:st%d%dim, 1:st%d%dim, 1:this%norbsets))
+          call compute_complex_coulomb_integrals(this, gr, st, psolver, namespace, space)
+        end if
+      end if
+
+    else
+
+      SAFE_ALLOCATE(this%coulomb(1:norbs, 1:norbs, 1:norbs, 1:norbs, 1:this%norbsets))
+      if (states_are_real(st)) then
+        call dcompute_coulomb_integrals(this, namespace, space, gr, psolver)
+      else
+        call zcompute_coulomb_integrals(this, namespace, space, gr, psolver)
+      end if
+
+    end if
+
+    POP_SUB(lda_u_init_coulomb_integrals)
+
+  end subroutine lda_u_init_coulomb_integrals
+
 
   ! ---------------------------------------------------------
   subroutine lda_u_end(this)
@@ -496,6 +550,7 @@ contains
     SAFE_DEALLOCATE_A(this%dn_alt_ii)
     SAFE_DEALLOCATE_A(this%zn_alt_ii)
     SAFE_DEALLOCATE_A(this%basisstates)
+    SAFE_DEALLOCATE_A(this%basisstates_os)
 
     nullify(this%orbsets)
     call orbitalbasis_end(this%basis)
@@ -536,10 +591,10 @@ contains
 
       !We now reconstruct the basis
       if (states_are_real(st)) then
-        call dorbitalbasis_build(this%basis, namespace, ions, gr%mesh, st%d%kpt, st%d%dim, &
+        call dorbitalbasis_build(this%basis, namespace, ions, gr, st%d%kpt, st%d%dim, &
           this%skipSOrbitals, this%useAllOrbitals, verbose = .false.)
       else
-        call zorbitalbasis_build(this%basis, namespace, ions, gr%mesh, st%d%kpt, st%d%dim, &
+        call zorbitalbasis_build(this%basis, namespace, ions, gr, st%d%kpt, st%d%dim, &
           this%skipSOrbitals, this%useAllOrbitals, verbose = .false.)
       end if
       this%orbsets => this%basis%orbsets
@@ -549,7 +604,7 @@ contains
     if (this%intersite) then
       this%maxneighbors = 0
       do ios = 1, this%norbsets
-        call orbitalset_init_intersite(this%orbsets(ios), namespace, ios, ions, gr%der, psolver, &
+        call orbitalset_init_intersite(this%orbsets(ios), namespace, space, ios, ions, gr%der, psolver, &
           this%orbsets, this%norbsets, this%maxnorbs, this%intersite_radius, st%d%kpt, has_phase, &
           this%sm_poisson, this%basisfromstates)
         this%maxneighbors = max(this%maxneighbors, this%orbsets(ios)%nneighbors)
@@ -606,8 +661,8 @@ contains
   subroutine lda_u_update_occ_matrices(this, namespace, mesh, st, hm_base, energy)
     type(lda_u_t),                 intent(inout) :: this
     type(namespace_t),             intent(in)    :: namespace
-    type(mesh_t),                  intent(in)    :: mesh
-    type(states_elec_t),           intent(in)    :: st
+    class(mesh_t),                 intent(in)    :: mesh
+    type(states_elec_t),           intent(inout) :: st
     type(hamiltonian_elec_base_t), intent(in)    :: hm_base
     type(energy_t),                intent(inout) :: energy
 
@@ -618,7 +673,7 @@ contains
       call dupdate_occ_matrices(this, namespace, mesh, st, energy%dft_u)
     else
       if (allocated(hm_base%phase)) then
-        call zupdate_occ_matrices(this, namespace, mesh, st, energy%dft_u, hm_base%phase)
+        call zupdate_occ_matrices(this, namespace, mesh, st, energy%dft_u, hm_base)
       else
         call zupdate_occ_matrices(this, namespace, mesh, st, energy%dft_u)
       end if
@@ -644,16 +699,6 @@ contains
     if (boundaries%spiralBC) call messages_not_implemented("DFT+U with spiral boundary conditions", &
       namespace=namespace)
 
-    !In this case there is no phase difference, as the basis come from states on the full
-    !grid and not from spherical meshes around the atoms
-    if(this%basisfromstates) then
-      do ios = 1, this%norbsets
-        call orbitalset_update_phase_shift(this%orbsets(ios), space%dim, std%kpt, kpoints, &
-          (std%ispin==SPIN_POLARIZED), vec_pot, vec_pot_var)
-      end do
-      return
-    end if
-
     PUSH_SUB(lda_u_build_phase_correction)
 
     do ios = 1, this%norbsets
@@ -663,57 +708,17 @@ contains
         (std%ispin==SPIN_POLARIZED), vec_pot, vec_pot_var)
     end do
 
-    if (this%basis%orthogonalization) then
-      call zloewdin_orthogonalize(this%basis, std%kpt, namespace)
-    else
-      if (debug%info .and. space%is_periodic()) call zloewdin_info(this%basis, std%kpt, namespace)
+    if (.not. this%basisfromstates) then
+      if (this%basis%orthogonalization) then
+        call zloewdin_orthogonalize(this%basis, std%kpt, namespace)
+      else
+        if (debug%info .and. space%is_periodic()) call zloewdin_info(this%basis, std%kpt, namespace)
+      end if
     end if
 
     POP_SUB(lda_u_build_phase_correction)
 
   end subroutine lda_u_build_phase_correction
-
-  ! ---------------------------------------------------------
-  subroutine lda_u_periodic_coulomb_integrals(this, namespace, space, st, der, mc, has_phase)
-    type(lda_u_t),                 intent(inout) :: this
-    type(namespace_t),             intent(in)    :: namespace
-    type(space_t)    ,             intent(in)    :: space
-    type(states_elec_t),           intent(in)    :: st
-    type(derivatives_t),           intent(in)    :: der
-    type(multicomm_t),             intent(in)    :: mc
-    logical,                       intent(in)    :: has_phase
-
-    integer :: ik, im, idim
-
-    if (this%level /= DFT_U_ACBN0) return
-
-    ASSERT(this%basisfromstates)
-
-    PUSH_SUB(lda_u_periodic_coulomb_integrals)
-
-    if (states_are_real(st)) then
-      call dcompute_periodic_coulomb_integrals(this, namespace, space, der, mc)
-    else
-      call zcompute_periodic_coulomb_integrals(this, namespace, space, der, mc)
-    end if
-
-    ! We rebuild the phase for the orbital projection, similarly to the one of the pseudopotentials
-    ! In case of a laser field, the phase is recomputed in hamiltonian_elec_update
-    if (has_phase) then
-      ASSERT(states_are_complex(st))
-      do ik = st%d%kpt%start, st%d%kpt%end
-        do im = 1, this%orbsets(1)%norbs
-          do idim = 1, st%d%dim
-            call lalg_copy(der%mesh%np, this%orbsets(1)%zorb(:,idim, im), &
-              this%orbsets(1)%eorb_mesh(:,im,idim,ik))
-          end do
-        end do
-      end do
-    end if
-
-
-    POP_SUB(lda_u_periodic_coulomb_integrals)
-  end subroutine lda_u_periodic_coulomb_integrals
 
   ! ---------------------------------------------------------
   subroutine compute_ACBNO_U_kanamori(this, st, kanamori)
@@ -854,25 +859,28 @@ contains
   end subroutine lda_u_write_info
 
   ! ---------------------------------------------------------
-  subroutine lda_u_loadbasis(lda_u, namespace, space, st, mesh, mc, ierr)
-    type(lda_u_t),        intent(inout) :: lda_u
+  subroutine lda_u_loadbasis(this, namespace, space, st, mesh, mc, ierr)
+    type(lda_u_t),        intent(inout) :: this
     type(namespace_t),    intent(in)    :: namespace
     type(space_t),        intent(in)    :: space
     type(states_elec_t),  intent(in)    :: st
-    type(mesh_t),         intent(in)    :: mesh
+    class(mesh_t),        intent(in)    :: mesh
     type(multicomm_t),    intent(in)    :: mc
     integer,              intent(out)   :: ierr
 
-    integer :: err, wfns_file, is, ist, idim, ik
+    integer :: err, wfns_file, is, ist, idim, ik, ios, iorb
     type(restart_t) :: restart_gs
-    FLOAT, allocatable   :: dpsi(:)
-    CMPLX, allocatable   :: zpsi(:)
     character(len=256)   :: lines(3)
     character(len=256), allocatable :: restart_file(:, :)
     logical,            allocatable :: restart_file_present(:, :)
     character(len=12)    :: filename
     character(len=1)     :: char
     character(len=50)    :: str
+    type(orbitalset_t), pointer :: os
+    integer, allocatable :: count(:)
+    FLOAT                :: norm, center(space%dim)
+    FLOAT, allocatable   :: dpsi(:,:,:)
+    CMPLX, allocatable   :: zpsi(:,:,:)
 
 
     PUSH_SUB(lda_u_loadbasis)
@@ -880,7 +888,7 @@ contains
     ierr = 0
 
     if (debug%info) then
-      message(1) = "Debug: Loading LDA+U basis from states."
+      message(1) = "Debug: Loading DFT+U basis from states."
       call messages_info(1)
     end if
 
@@ -890,7 +898,7 @@ contains
     ! as there something fundamentally wrong with the restart files
     if (err /= 0) then
       call restart_end(restart_gs)
-      message(1) = "Error loading LDA+U basis from states, cannot proceed with the calculation"
+      message(1) = "Error loading DFT+U basis from states, cannot proceed with the calculation"
       call messages_fatal(1)
       POP_SUB(lda_u_loadbasis)
       return
@@ -918,22 +926,15 @@ contains
     if (err /= 0) then
       call restart_close(restart_gs, wfns_file)
       call restart_end(restart_gs)
-      message(1) = "Error loading LDA+U basis from states, cannot proceed with the calculation"
+      message(1) = "Error loading DFT+U basis from states, cannot proceed with the calculation"
       call messages_fatal(1)
       POP_SUB(lda_u_loadbasis)
       return
     end if
 
-    if (states_are_real(st)) then
-      SAFE_ALLOCATE(dpsi(1:mesh%np))
-    else
-      SAFE_ALLOCATE(zpsi(1:mesh%np))
-    end if
-
     SAFE_ALLOCATE(restart_file(1:st%d%dim, 1:st%nst))
     SAFE_ALLOCATE(restart_file_present(1:st%d%dim, 1:st%nst))
     restart_file_present = .false.
-
 
     ! Next we read the list of states from the files.
     ! Errors in reading the information of a specific state from the files are ignored
@@ -950,7 +951,7 @@ contains
         end if
       end if
 
-      if (any(lda_u%basisstates==ist) .and. ik == 1) then
+      if (any(this%basisstates==ist) .and. ik == 1) then
         restart_file(idim, ist) = trim(filename)
         restart_file_present(idim, ist) = .true.
       end if
@@ -958,8 +959,12 @@ contains
     call restart_close(restart_gs, wfns_file)
 
     !We loop over the states we need
-    do is = 1, lda_u%maxnorbs
-      ist = lda_u%basisstates(is)
+    SAFE_ALLOCATE(count(1:this%norbsets))
+    count = 0
+    do is = 1, this%maxnorbs
+      ist = this%basisstates(is)
+      ios = this%basisstates_os(is)
+      count(ios) = count(ios)+1
       do idim = 1, st%d%dim
 
         if (.not. restart_file_present(idim, ist)) then
@@ -968,42 +973,137 @@ contains
         end if
 
         if (states_are_real(st)) then
-          call drestart_read_mesh_function(restart_gs, space, restart_file(idim, ist), mesh, dpsi, err)
+          call drestart_read_mesh_function(restart_gs, space, restart_file(idim, ist), mesh, &
+            this%orbsets(ios)%dorb(:,idim,count(ios)), err)
         else
-          call zrestart_read_mesh_function(restart_gs, space, restart_file(idim, ist), mesh, zpsi, err)
-          call zmf_fix_phase(mesh, zpsi)
+          call zrestart_read_mesh_function(restart_gs, space, restart_file(idim, ist), mesh, &
+            this%orbsets(ios)%zorb(:,idim,count(ios)), err)
         end if
 
-        if(states_are_real(st)) then
-          call lalg_copy(mesh%np, dpsi, lda_u%orbsets(1)%dorb(:,idim,is))
-        else
-          call lalg_copy(mesh%np, zpsi, lda_u%orbsets(1)%zorb(:,idim,is))
-        end if
       end do
     end do
+    SAFE_DEALLOCATE_A(count)
+    SAFE_DEALLOCATE_A(restart_file)
+    SAFE_DEALLOCATE_A(restart_file_present)
+    call restart_end(restart_gs)
 
-    if(states_are_complex(st) .and. st%d%dim == 1) then
-      do is = 1, lda_u%maxnorbs
-        call zmf_fix_phase(mesh, lda_u%orbsets(1)%zorb(:,1,is))
+    ! Normalize the orbitals. This is important if we use Wannier orbitals instead of KS states
+    if(this%basis%normalize) then
+      do ios = 1, this%norbsets
+        do iorb = 1, this%orbsets(ios)%norbs
+          if (states_are_real(st)) then
+            norm = dmf_nrm2(mesh, st%d%dim, this%orbsets(ios)%dorb(:,:,iorb))
+            call lalg_scal(mesh%np, st%d%dim, M_ONE/norm, this%orbsets(ios)%dorb(:,:,iorb))
+          else
+            norm = zmf_nrm2(mesh, st%d%dim, this%orbsets(ios)%zorb(:,:,iorb))
+            call lalg_scal(mesh%np, st%d%dim, M_ONE/norm, this%orbsets(ios)%zorb(:,:,iorb))
+          end if
+        end do
       end do
     end if
 
-    ! The orbital is assumed to be centered around zero
-    ! We could determine the center of charge by computing <w|r|w>
-    ! and the spread by \Omega = <w|r^2|w> - <w|r|w>^2
-    SAFE_ALLOCATE(lda_u%orbsets(1)%sphere%center(1:space%dim))
-    lda_u%orbsets(1)%sphere%center = M_ZERO
+    ! We rotate the orbitals in the complex plane to have them as close as possible to real functions
+    if(states_are_complex(st) .and. st%d%dim == 1) then
+      do ios = 1, this%norbsets
+        do iorb = 1, this%orbsets(ios)%norbs
+          call zmf_fix_phase(mesh, this%orbsets(ios)%zorb(:,1,iorb))
+        end do
+      end do
+    end if
 
-    SAFE_DEALLOCATE_A(dpsi)
-    SAFE_DEALLOCATE_A(zpsi)
-    SAFE_DEALLOCATE_A(restart_file)
-    SAFE_DEALLOCATE_A(restart_file_present)
-
-
-    call restart_end(restart_gs)
+    ! We determine the center of charge by computing <w|r|w>
+    ! We could also determine the spread by \Omega = <w|r^2|w> - <w|r|w>^2
+    do ios = 1, this%norbsets
+      if (states_are_real(st)) then
+        call dorbitalset_get_center_of_mass(this%orbsets(ios), space, mesh, this%latt)
+      else
+        call zorbitalset_get_center_of_mass(this%orbsets(ios), space, mesh, this%latt)
+      end if
+    end do
 
     if (debug%info) then
-      message(1) = "Debug: Loading LDA+U basis from states done."
+      message(1) = "Debug: Converting the Wannier states to submeshes."
+      call messages_info(1)
+    end if
+
+    ! We now transfer the states to a submesh centered on the center of mass of the Wannier orbitals
+    this%max_np = 0
+    do ios = 1, this%norbsets
+      os => this%orbsets(ios)
+      center = os%sphere%center
+      SAFE_DEALLOCATE_A(os%sphere%center)
+      if (states_are_real(st)) then
+        SAFE_ALLOCATE(dpsi(1:mesh%np, 1:os%ndim, 1:os%norbs))
+        dpsi(1:mesh%np, 1:os%ndim, 1:os%norbs) = os%dorb(1:mesh%np, 1:os%ndim, 1:os%norbs)
+
+        SAFE_DEALLOCATE_A(os%dorb)
+        !We initialise the submesh corresponding to the orbital
+        call submesh_init(os%sphere, space, mesh, this%latt, center, os%radius)
+        SAFE_ALLOCATE(os%dorb(1:os%sphere%np, 1:os%ndim, 1:os%norbs))
+        do iorb = 1, os%norbs
+          do idim = 1, os%ndim
+            call dsubmesh_copy_from_mesh(os%sphere, dpsi(:,idim,iorb), os%dorb(:,idim, iorb))
+          end do
+        end do
+        SAFE_DEALLOCATE_A(dpsi)
+      else
+        SAFE_ALLOCATE(zpsi(1:mesh%np, 1:os%ndim, 1:os%norbs))
+        zpsi(1:mesh%np, 1:os%ndim, 1:os%norbs) = os%zorb(1:mesh%np, 1:os%ndim, 1:os%norbs)
+        SAFE_DEALLOCATE_A(os%zorb)
+        !We initialise the submesh corresponding to the orbital
+        call submesh_init(os%sphere, space, mesh, this%latt, center, os%radius)
+        SAFE_ALLOCATE(os%zorb(1:os%sphere%np, 1:os%ndim, 1:os%norbs))
+        do iorb = 1, os%norbs
+          do idim = 1, os%ndim
+            call zsubmesh_copy_from_mesh(os%sphere, zpsi(:,idim,iorb), os%zorb(:,idim, iorb))
+          end do
+        end do
+        SAFE_DEALLOCATE_A(zpsi)
+
+        SAFE_ALLOCATE(os%phase(1:os%sphere%np, st%d%kpt%start:st%d%kpt%end))
+        SAFE_ALLOCATE(os%eorb_submesh(1:os%sphere%np, 1:os%ndim, 1:os%norbs, st%d%kpt%start:st%d%kpt%end))
+      end if
+      os%use_submesh = .true. ! We are now on a submesh
+      this%max_np = max(this%max_np, os%sphere%np)
+    end do
+
+    this%basis%use_submesh = .true.
+
+    ! If we use GPUs, we need to transfert the orbitals on the device
+    if (accel_is_enabled() .and. st%d%dim == 1) then
+      do ios = 1, this%norbsets
+        os => this%orbsets(ios)
+
+        os%ldorbs = max(accel_padded_size(os%sphere%np), 1)
+        if (states_are_real(st)) then
+          call accel_create_buffer(os%dbuff_orb, ACCEL_MEM_READ_ONLY, TYPE_FLOAT, os%ldorbs*os%norbs)
+        else
+          call accel_create_buffer(os%zbuff_orb, ACCEL_MEM_READ_ONLY, TYPE_CMPLX, os%ldorbs*os%norbs)
+          SAFE_ALLOCATE(os%buff_eorb(st%d%kpt%start:st%d%kpt%end))
+
+          do ik= st%d%kpt%start, st%d%kpt%end
+            call accel_create_buffer(os%buff_eorb(ik), ACCEL_MEM_READ_ONLY, TYPE_CMPLX, os%ldorbs*os%norbs)
+          end do
+        end if
+
+        call accel_create_buffer(os%sphere%buff_map, ACCEL_MEM_READ_ONLY, TYPE_INTEGER, max(os%sphere%np, 1))
+        call accel_write_buffer(os%sphere%buff_map, os%sphere%np, os%sphere%map)
+
+        do iorb = 1, os%norbs
+          if(states_are_complex(st)) then
+            call accel_write_buffer(os%zbuff_orb, os%sphere%np, os%zorb(:, 1, iorb), &
+              offset = (iorb - 1)*os%ldorbs)
+          else
+            call accel_write_buffer(os%dbuff_orb, os%sphere%np, os%dorb(:, 1, iorb), &
+              offset = (iorb - 1)*os%ldorbs)
+          end if
+        end do
+      end do
+    end if
+
+
+    if (debug%info) then
+      message(1) = "Debug: Loading DFT+U basis from states done."
       call messages_info(1)
     end if
 

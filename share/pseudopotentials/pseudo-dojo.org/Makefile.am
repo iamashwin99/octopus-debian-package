@@ -20,8 +20,5 @@
 
 SUBDIRS =                                \
 	nc-sr-04_pbesol_standard         \
-	nc-sr-04_pbesol_stringent        \
 	nc-sr-04_pbe_standard            \
-	nc-sr-04_pbe_stringent           \
-	nc-sr-04_pw_standard             \
-	nc-sr-04_pw_stringent     
+	nc-sr-04_pw_standard

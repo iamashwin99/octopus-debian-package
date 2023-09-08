@@ -17,7 +17,7 @@
 !!
 
 module kind_oct_m
-  use iso_fortran_env
+  use, intrinsic :: iso_fortran_env
 
   implicit none
 

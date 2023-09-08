@@ -23,7 +23,7 @@ Spacing = 0.4
 %
 
 %ReducedCoordinates
- "Fe" |   0.0    | 0.0     | 0.0 
+ "Fe" |   0.0    | 0.0     | 0.0
 %
 
 %KPointsGrid
@@ -35,4 +35,3 @@ SmearingFunction = fermi_dirac
 ExtraStates = 4
 
 ProfilingMode = prof_io
-

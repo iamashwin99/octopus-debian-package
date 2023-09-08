@@ -7,10 +7,14 @@ Enabled    : Yes
 
 ExtraFile: 09-carbon_cpi.C.cpi
 Input: 09-carbon_cpi.01-gs.inp
-Precision: 0.00011
 match ; SCF convergence    ; GREPCOUNT(static/info, 'SCF converged') ; 1
-match ; Total energy       ; GREPFIELD(static/info, 'Total       =', 3) ; -146.81452282
-match ; Eigenvalue   [1up] ; GREPFIELD(static/info, '1   up', 3) ; -14.467194
-match ; Occupation   [1up] ; GREPFIELD(static/info, '1   up', 4) ; 1.000000
-match ; Eigenvalue [4down] ; GREPFIELD(static/info, '4   dn', 3) ; -3.683530
-match ; Occupation [4down] ; GREPFIELD(static/info, '4   dn', 4) ; 0.000000
+Precision: 7.34e-07
+match ;  Total energy        ; GREPFIELD(static/info, 'Total       =', 3) ; -146.8134881
+Precision: 7.23e-13
+match ;  Eigenvalue   [1up]  ; GREPFIELD(static/info, '1   up', 3) ; -14.466838000000001
+Precision: 1.00e-01
+match ;  Occupation   [1up]  ; GREPFIELD(static/info, '1   up', 4) ; 1.0
+Precision: 1.84e-04
+match ;  Eigenvalue [4down]  ; GREPFIELD(static/info, '4   dn', 3) ; -3.6827199999999998
+Precision: 1.00e-04
+match ;  Occupation [4down]  ; GREPFIELD(static/info, '4   dn', 4) ; 0.0

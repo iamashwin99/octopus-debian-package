@@ -39,20 +39,20 @@ module basis_vectors_oct_m
   !! convert vector coordinates in this basis to and from Cartesian coordinates.
   !! Given a vector v, its coordinates in the basis are related to the Cartesian
   !! coordinates y_i in the following way:
-  !!
+  !! \f[
   !!  x_i = \sum_j a_{ij} y_j
-  !!
+  !! \f]
   !! where a_{ij} are the elements of the change of basis matrix A.  The
   !! previous expression can be expressed in matrix form:
-  !!
+  !! \f[
   !! X = A Y
-  !!
+  !! \f]
   !! Obtaining the Cartesian coordinates from the basis coordinates is then
   !! straighforward using the inverse of A:
-  !!
+  !! \f[
   !! Y = A^{-1} X
-  !!
-  !! Note that the columns of A^{-1} are simply the basis vectors.
+  !!\f]
+  !! Note that the columns of \f$A^{-1}\f$ are simply the basis vectors.
   type basis_vectors_t
     ! Components are public by default
     integer, private :: dim
@@ -251,4 +251,3 @@ end module basis_vectors_oct_m
 !! mode: f90
 !! coding: utf-8
 !! End:
-

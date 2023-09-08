@@ -17,7 +17,7 @@
 # discrepancy...
 
 CalculationMode = gs
-fromScratch = yes
+FromScratch = yes
 UnitsOutput = ev_angstrom
 
 %Coordinates

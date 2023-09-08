@@ -20,7 +20,7 @@
 ! ---------------------------------------------------------
 !> integrates a function
 R_TYPE function X(mf_integrate) (mesh, ff, mask, reduce) result(dd)
-  type(mesh_t), intent(in) :: mesh
+  class(mesh_t), intent(in) :: mesh
   R_TYPE,       intent(in) :: ff(:)  !< (mesh%np)
   logical, optional, intent(in) :: mask(:)
   logical, optional, intent(in) :: reduce
@@ -31,6 +31,7 @@ R_TYPE function X(mf_integrate) (mesh, ff, mask, reduce) result(dd)
   PUSH_SUB(X(mf_integrate))
 
   ASSERT(ubound(ff, dim = 1) == mesh%np .or. ubound(ff, dim = 1) == mesh%np_part)
+  ASSERT(not_in_openmp())
 
   !TODO: This case need to be implemented
   if (present(mask)) then
@@ -67,7 +68,7 @@ end function X(mf_integrate)
 
 ! ---------------------------------------------------------
 subroutine X(mf_normalize)(mesh, dim, psi, norm)
-  type(mesh_t),    intent(in)    :: mesh
+  class(mesh_t),   intent(in)    :: mesh
   integer,         intent(in)    :: dim
   R_TYPE,          intent(inout) :: psi(:,:)
   FLOAT, optional, intent(out)   :: norm
@@ -142,7 +143,7 @@ end function X(mf_nrm2_aux)
 ! ---------------------------------------------------------
 !> this function returns the dot product between two vectors
 R_TYPE function X(mf_dotp_1)(mesh, f1, f2, reduce, dotu, np) result(dotp)
-  type(mesh_t),      intent(in) :: mesh
+  class(mesh_t),     intent(in) :: mesh
   R_TYPE,            intent(in) :: f1(:), f2(:)
   logical, optional, intent(in) :: reduce
   logical, optional, intent(in) :: dotu
@@ -156,8 +157,10 @@ R_TYPE function X(mf_dotp_1)(mesh, f1, f2, reduce, dotu, np) result(dotp)
 #endif
   integer             :: ip, np_
 
-  call profiling_in(X(PROFILING_MF_DOTP), TOSTRING(X(MF_DOTP)))
   PUSH_SUB(X(mf_dotp_1))
+  call profiling_in(X(PROFILING_MF_DOTP), TOSTRING(X(MF_DOTP)))
+
+  ASSERT(not_in_openmp())
 
   np_ = optional_default(np, mesh%np)
 
@@ -214,15 +217,14 @@ R_TYPE function X(mf_dotp_1)(mesh, f1, f2, reduce, dotu, np) result(dotp)
     call profiling_out(X(PROFILING_MF_REDUCE))
   end if
 
-  POP_SUB(X(mf_dotp_1))
   call profiling_out(X(PROFILING_MF_DOTP))
-
+  POP_SUB(X(mf_dotp_1))
 end function X(mf_dotp_1)
 
 
 ! ---------------------------------------------------------
 R_TYPE function X(mf_dotp_2)(mesh, dim, f1, f2, reduce, dotu, np) result(dotp)
-  type(mesh_t),      intent(in) :: mesh
+  class(mesh_t),     intent(in) :: mesh
   integer,           intent(in) :: dim
   R_TYPE,            intent(in) :: f1(:,:), f2(:,:)
   logical, optional, intent(in) :: reduce
@@ -254,7 +256,7 @@ end function X(mf_dotp_2)
 ! ---------------------------------------------------------
 !> this function returns the the norm of a vector
 FLOAT function X(mf_nrm2_1)(mesh, ff, reduce) result(nrm2)
-  type(mesh_t),      intent(in) :: mesh
+  class(mesh_t),     intent(in) :: mesh
   R_TYPE,            intent(in) :: ff(:)
   logical, optional, intent(in) :: reduce
 
@@ -289,7 +291,7 @@ end function X(mf_nrm2_1)
 
 ! ---------------------------------------------------------
 FLOAT function X(mf_nrm2_2)(mesh, dim, ff, reduce) result(nrm2)
-  type(mesh_t),      intent(in) :: mesh
+  class(mesh_t),     intent(in) :: mesh
   integer,           intent(in) :: dim
   R_TYPE,            intent(in) :: ff(:,:)
   logical, optional, intent(in) :: reduce
@@ -312,7 +314,7 @@ end function X(mf_nrm2_2)
 ! ---------------------------------------------------------
 !> This function calculates the "order" moment of the function ff
 R_TYPE function X(mf_moment) (mesh, ff, idir, order) result(rr)
-  type(mesh_t), intent(in) :: mesh
+  class(mesh_t),intent(in) :: mesh
   R_TYPE,       intent(in) :: ff(:)
   integer,      intent(in) :: idir
   integer,      intent(in) :: order
@@ -321,6 +323,8 @@ R_TYPE function X(mf_moment) (mesh, ff, idir, order) result(rr)
   integer :: ip
 
   PUSH_SUB(X(mf_moment))
+
+  ASSERT(not_in_openmp())
 
   SAFE_ALLOCATE(fxn(1:mesh%np))
 
@@ -331,14 +335,14 @@ R_TYPE function X(mf_moment) (mesh, ff, idir, order) result(rr)
   rr = X(mf_integrate)(mesh, fxn)
 
   SAFE_DEALLOCATE_A(fxn)
-  POP_SUB(X(mf_moment))
 
+  POP_SUB(X(mf_moment))
 end function X(mf_moment)
 
 ! ---------------------------------------------------------
 !> This subroutine fills a function with randon values.
 subroutine X(mf_random)(mesh, ff, pre_shift, post_shift, seed, normalized)
-  type(mesh_t),          intent(in)  :: mesh
+  class(mesh_t),         intent(in)  :: mesh
   R_TYPE,                intent(out) :: ff(:)
   integer(i8), optional, intent(in)  :: pre_shift
   integer(i8), optional, intent(in)  :: post_shift
@@ -447,7 +451,7 @@ end subroutine X(mf_interpolate_points)
 !! back the values of ff on the plane, by doing the appropriate
 !! interpolation.
 subroutine X(mf_interpolate_on_plane)(mesh, plane, ff, f_in_plane)
-  type(mesh_t),       intent(in)  :: mesh
+  class(mesh_t),      intent(in)  :: mesh
   type(mesh_plane_t), intent(in)  :: plane
   R_TYPE, target,     intent(in)  :: ff(:)
   R_TYPE,             intent(out) :: f_in_plane(plane%nu:plane%mu, plane%nv:plane%mv)
@@ -460,6 +464,8 @@ subroutine X(mf_interpolate_on_plane)(mesh, plane, ff, f_in_plane)
   FLOAT, allocatable :: xglobal(:, :)
 
   PUSH_SUB(X(mf_interpolate_on_plane))
+
+  ASSERT(not_in_openmp())
 
   SAFE_ALLOCATE(xglobal(1:mesh%np_part_global, 1:mesh%box%dim))
   !$omp parallel do
@@ -491,6 +497,7 @@ subroutine X(mf_interpolate_on_plane)(mesh, plane, ff, f_in_plane)
   if (mesh%parallel_in_domains) then
     SAFE_DEALLOCATE_P(f_global)
   end if
+
   POP_SUB(X(mf_interpolate_on_plane))
 end subroutine X(mf_interpolate_on_plane)
 
@@ -499,7 +506,7 @@ end subroutine X(mf_interpolate_on_plane)
 !! back the values of ff on the line, by doing the appropriate
 !! interpolation.
 subroutine X(mf_interpolate_on_line)(mesh, line, ff, f_in_line)
-  type(mesh_t),       intent(in)  :: mesh
+  class(mesh_t),      intent(in)  :: mesh
   type(mesh_line_t),  intent(in)  :: line
   R_TYPE, target,     intent(in)  :: ff(:)
   R_TYPE,             intent(out) :: f_in_line(line%nu:line%mu)
@@ -546,7 +553,7 @@ end subroutine X(mf_interpolate_on_line)
 !> This subroutine calculates the surface integral of a scalar
 !! function on a given plane.
 R_TYPE function X(mf_surface_integral_scalar) (mesh, ff, plane) result(dd)
-  type(mesh_t),       intent(in) :: mesh
+  class(mesh_t),      intent(in) :: mesh
   R_TYPE,             intent(in) :: ff(:)  !< (mesh%np)
   type(mesh_plane_t), intent(in) :: plane
 
@@ -574,7 +581,7 @@ end function X(mf_surface_integral_scalar)
 !> This subroutine calculates the surface integral of a vector
 !! function on a given plane.
 R_TYPE function X(mf_surface_integral_vector) (mesh, ff, plane) result(dd)
-  type(mesh_t), intent(in)       :: mesh
+  class(mesh_t),intent(in)       :: mesh
   R_TYPE,       intent(in)       :: ff(:, :)  !< (mesh%np, mesh%box%dim)
   type(mesh_plane_t), intent(in) :: plane
 
@@ -582,6 +589,8 @@ R_TYPE function X(mf_surface_integral_vector) (mesh, ff, plane) result(dd)
   integer :: ip
 
   PUSH_SUB(X(mf_surface_integral_vector))
+
+  ASSERT(not_in_openmp())
 
   SAFE_ALLOCATE(fn(1:mesh%np))
   !$omp parallel do
@@ -592,6 +601,7 @@ R_TYPE function X(mf_surface_integral_vector) (mesh, ff, plane) result(dd)
   dd =  X(mf_surface_integral_scalar)(mesh, fn, plane)
 
   SAFE_DEALLOCATE_A(fn)
+
   POP_SUB(X(mf_surface_integral_vector))
 end function X(mf_surface_integral_vector)
 
@@ -600,7 +610,7 @@ end function X(mf_surface_integral_vector)
 !> This subroutine calculates the line integral of a scalar
 !! function on a given line.
 R_TYPE function X(mf_line_integral_scalar) (mesh, ff, line) result(dd)
-  type(mesh_t),      intent(in) :: mesh
+  class(mesh_t),     intent(in) :: mesh
   R_TYPE,            intent(in) :: ff(:)  !< (mesh%np)
   type(mesh_line_t), intent(in) :: line
 
@@ -628,7 +638,7 @@ end function X(mf_line_integral_scalar)
 !> This subroutine calculates the line integral of a vector
 !! function on a given line.
 R_TYPE function X(mf_line_integral_vector) (mesh, ff, line) result(dd)
-  type(mesh_t),      intent(in) :: mesh
+  class(mesh_t),     intent(in) :: mesh
   R_TYPE,            intent(in) :: ff(:, :)  !< (mesh%np, mesh%box%dim)
   type(mesh_line_t), intent(in) :: line
 
@@ -636,6 +646,8 @@ R_TYPE function X(mf_line_integral_vector) (mesh, ff, line) result(dd)
   integer :: ip
 
   PUSH_SUB(X(mf_line_integral_vector))
+
+  ASSERT(not_in_openmp())
 
   SAFE_ALLOCATE(fn(1:mesh%np))
   !$omp parallel do
@@ -662,7 +674,7 @@ end function X(mf_line_integral_vector)
 !! And so on.
 !! -----------------------------------------------------------------------------
 subroutine X(mf_multipoles) (mesh, ff, lmax, multipole, mask)
-  type(mesh_t),      intent(in)  :: mesh
+  class(mesh_t),     intent(in)  :: mesh
   R_TYPE,            intent(in)  :: ff(:)
   integer,           intent(in)  :: lmax
   R_TYPE,            intent(out) :: multipole(:) !< ((lmax + 1)**2)
@@ -714,7 +726,7 @@ end subroutine X(mf_multipoles)
 ! -----------------------------------------------------------------------------
 !> This routine calculates the dipole of a function ff, for arbitrary dimensions
 subroutine X(mf_dipole) (mesh, ff, dipole, mask)
-  type(mesh_t),      intent(in)  :: mesh
+  class(mesh_t),     intent(in)  :: mesh
   R_TYPE,            intent(in)  :: ff(:)
   R_TYPE,            intent(out) :: dipole(:) !< (mesh%box%dim)
   logical, optional, intent(in)  :: mask(:)   !< (mesh%np)

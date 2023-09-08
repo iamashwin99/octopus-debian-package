@@ -6,7 +6,7 @@
 # r_s and N_electrons.
 #
 #
-# Figure 4 can also be obtained, although for some reason only if 
+# Figure 4 can also be obtained, although for some reason only if
 # the density is divided by 2. I think that in the paper they slipped
 # some factor of 2.
 

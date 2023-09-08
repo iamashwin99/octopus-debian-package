@@ -28,7 +28,6 @@ module sternheimer_oct_m
   use grid_oct_m
   use hamiltonian_elec_oct_m
   use io_oct_m
-  use ions_oct_m
   use kpoints_oct_m
   use lalg_basic_oct_m
   use linear_response_oct_m
@@ -40,13 +39,11 @@ module sternheimer_oct_m
   use mix_oct_m
   use mpi_oct_m
   use multicomm_oct_m
-  use multigrid_oct_m
   use namespace_oct_m
   use parser_oct_m
-  use pert_oct_m
+  use perturbation_oct_m
   use photon_mode_oct_m
   use poisson_oct_m
-  use preconditioners_oct_m
   use profiling_oct_m
   use restart_oct_m
   use scf_tol_oct_m
@@ -104,6 +101,7 @@ module sternheimer_oct_m
     type(linear_solver_t) :: solver
     type(mix_t)           :: mixer
     type(scf_tol_t)       :: scf_tol
+    FLOAT                 :: lrc_alpha
     FLOAT, allocatable    :: fxc(:,:,:)    !< linear change of the XC potential (fxc)
     FLOAT, allocatable    :: kxc(:,:,:,:)  !< quadratic change of the XC potential (kxc)
     FLOAT, pointer        :: drhs(:, :, :, :) => NULL() !< precomputed bare perturbation on RHS
@@ -163,9 +161,9 @@ contains
     end if
 
     if (wfs_are_cplx) then
-      call mix_init(this%mixer, namespace, space, gr%der, gr%mesh%np, st%d%nspin, 1, func_type_= TYPE_CMPLX)
+      call mix_init(this%mixer, namespace, space, gr%der, gr%np, st%d%nspin, 1, func_type_= TYPE_CMPLX)
     else
-      call mix_init(this%mixer, namespace, space, gr%der, gr%mesh%np, st%d%nspin, 1, func_type_= TYPE_FLOAT)
+      call mix_init(this%mixer, namespace, space, gr%der, gr%np, st%d%nspin, 1, func_type_= TYPE_FLOAT)
     end if
 
     if (present(set_occ_response)) then
@@ -264,7 +262,9 @@ contains
       call scf_tol_init(this%scf_tol, namespace, st%qtot)
     end if
 
-    if (this%add_fxc) call sternheimer_build_fxc(this, namespace, gr%mesh, st, xc)
+    this%lrc_alpha = xc%kernel_lrc_alpha
+
+    if (this%add_fxc) call sternheimer_build_fxc(this, namespace, gr, st, xc)
 
 
     ! This variable is documented in xc_oep_init.
@@ -273,7 +273,7 @@ contains
 
     if (this%has_photons) then
       if (this%has_photons) call messages_experimental('EnablePhotons = yes', namespace=namespace)
-      call photon_mode_init(this%pt_modes, namespace, gr%mesh, space%dim, M_ZERO)
+      call photon_mode_init(this%pt_modes, namespace, gr, space%dim, M_ZERO)
       call io_mkdir(EM_RESP_PHOTONS_DIR, namespace)
       iunit = io_open(EM_RESP_PHOTONS_DIR // 'photon_modes', namespace, action='write')
       call photon_mode_write_info(this%pt_modes, iunit=iunit)
@@ -290,6 +290,11 @@ contains
     !%End
     call parse_variable(namespace, 'PhotonEta', CNST(0.0000367), this%pt_eta, units_inp%energy)
     call messages_print_var_value('PhotonEta', this%pt_eta, units_inp%energy, namespace=namespace)
+
+    if (family_is_mgga(xc%family)) then
+      message(1) = "Using MGGA in Sternheimer calculation."
+      call messages_fatal(1)
+    end if
 
     POP_SUB(sternheimer_init)
   end subroutine sternheimer_init
@@ -316,7 +321,7 @@ contains
   subroutine sternheimer_build_fxc(this, namespace, mesh, st, xc)
     type(sternheimer_t), intent(inout) :: this
     type(namespace_t),   intent(in)    :: namespace
-    type(mesh_t),        intent(in)    :: mesh
+    class(mesh_t),       intent(in)    :: mesh
     type(states_elec_t), intent(in)    :: st
     type(xc_t),          intent(in)    :: xc
 
@@ -341,7 +346,7 @@ contains
   subroutine sternheimer_build_kxc(this, namespace, mesh, st, xc)
     type(sternheimer_t), intent(inout) :: this
     type(namespace_t),   intent(in)    :: namespace
-    type(mesh_t),        intent(in)    :: mesh
+    class(mesh_t),       intent(in)    :: mesh
     type(states_elec_t), intent(in)    :: st
     type(xc_t),          intent(in)    :: xc
 
@@ -487,10 +492,11 @@ contains
   end subroutine sternheimer_obsolete_variables
 
   !--------------------------------------------------------------
-  subroutine calc_hvar_photons(this, mesh, st, lr_rho, nsigma, hvar, idir)
+  subroutine calc_hvar_photons(this, mesh, space, nspin, lr_rho, nsigma, hvar, idir)
     type(sternheimer_t),    intent(inout) :: this
-    type(mesh_t),           intent(in)    :: mesh
-    type(states_elec_t),    intent(in)    :: st
+    class(mesh_t),          intent(in)    :: mesh
+    type(space_t),          intent(in)    :: space
+    integer,                intent(in)    :: nspin
     integer,                intent(in)    :: nsigma
     CMPLX,                  intent(in)    :: lr_rho(:,:)
     CMPLX,                  intent(inout) :: hvar(:,:,:) !< (1:mesh%np, 1:st%d%nspin, 1:nsigma)
@@ -514,7 +520,7 @@ contains
 
     ! spin summed density
     s_lr_rho = M_ZERO
-    do is = 1, st%d%nspin
+    do is = 1, nspin
       s_lr_rho = s_lr_rho + lr_rho(:, is)
     end do
 
@@ -546,7 +552,7 @@ contains
     SAFE_DEALLOCATE_A(vp_dip_self_ener)
     SAFE_DEALLOCATE_A(vp_bilinear_el_pt)
 
-    if (nsigma == 2) hvar(1:mesh%np, 1:st%d%nspin, 2) = conjg(hvar(1:mesh%np, 1:st%d%nspin, 1))
+    if (nsigma == 2) hvar(1:mesh%np, 1:nspin, 2) = conjg(hvar(1:mesh%np, 1:nspin, 1))
 
     call profiling_out(prof_hvar_photons)
     POP_SUB(calc_hvar_photons)

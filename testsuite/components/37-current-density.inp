@@ -1,0 +1,18 @@
+CalculationMode = test
+
+TestMode = current_density
+
+%Coordinates
+"H_n" | 0.0 | 0.0 | 0.0
+%
+
+%Species
+"H_n" | species_user_defined | potential_formula | "0" | valence | 1
+%
+
+DerivativesStencil = stencil_starplus
+DerivativesOrder = 8
+BoxShape = sphere
+Radius  = 5.0
+Spacing = 0.2
+SpinComponents = polarized

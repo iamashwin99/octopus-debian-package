@@ -1,0 +1,44 @@
+FromScratch = yes
+DisableAccel = yes
+
+CalculationMode = gs
+TheoryLevel = independent_particles
+PeriodicDimensions = 3
+
+# lattice parameter is a bit smaller than the equilibrium one
+a = 10.0
+
+Spacing = a/14
+
+BoxShape = parallelepiped
+%LatticeParameters
+ a | a | a
+%
+
+PseudopotentialSet = pseudodojo_lda
+
+%ReducedCoordinates
+  "Si" |   0.0       | 0.0       | 0.0
+  "Si" |   1/2       | 1/2       | 0.0
+  "Si" |   1/2       | 0.0       | 1/2
+  "Si" |   0.0       | 1/2       | 1/2
+  "Si" |   1/4       | 1/4       | 1/4
+  "Si" |   1/4 + 1/2 | 1/4 + 1/2 | 1/4
+  "Si" |   1/4 + 1/2 | 1/4       | 1/4 + 1/2
+  "Si" |   1/4       | 1/4 + 1/2 | 1/4 + 1/2
+%
+
+ExperimentalFeatures = yes
+SymmetrizeDensity = yes
+
+ExtraStates = 1
+ConvRelDens = 1e-8
+EigensolverTolerance = 1e-9
+ConvEigenError = yes
+
+ForceComplex=yes
+
+%Output
+  stress
+%
+

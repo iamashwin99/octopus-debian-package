@@ -64,10 +64,21 @@ dist_share_DATA =                                                       \
 	12-electronic_subsystem_propagators.test                        \
 	12-electronic_subsystem_propagators.01-gs.inp                   \
 	12-electronic_subsystem_propagators.02-expmid.inp               \
+	12-electronic_subsystem_propagators.03-aetrs.inp                \
 	13-restart_verlet.test                                          \
 	13-restart_verlet.01-restart-run-part1.inp                      \
 	13-restart_verlet.02-restart-run-part2.inp                      \
         13-restart_verlet.03-full-run.inp                               \
+	14-lennard-jones.test                                           \
+	14-lennard-jones.01-classical-particles-N2.inp                  \
+	15-electronic_system_restart.test                               \
+	15-electronic_system_restart.01-gs.inp                          \
+	15-electronic_system_restart.02-td_full.inp                     \
+	15-electronic_system_restart.03-td_restart_part1.inp            \
+	15-electronic_system_restart.04-td_restart_part2.inp            \
+        16-bomd.01-gs.inp                                               \
+        16-bomd.02-td.inp                                               \
+        16-bomd.test                                                    \
 	H-H.skf                                                         \
 	H-O.skf                                                         \
 	O-H.skf                                                         \

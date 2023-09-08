@@ -17,9 +17,9 @@
 !!
 
 #include "config_F90.h"
-#include "options.h"  
+#include "options.h"
 #include "defaults.h"
-  
+
 ! If the compiler accepts long Fortran lines, it is better to use that
 ! capacity, and build all the preprocessor definitions in one line. In
 ! this way, the debuggers will provide the right line numbers.
@@ -211,9 +211,15 @@
 #define MPI_2FLOAT     MPI_2DOUBLE_PRECISION
 #define CMPLX     	 complex(8)
 #define MPI_CMPLX 	 MPI_DOUBLE_COMPLEX
+#ifdef __GFORTRAN__
+#define PREC(x)   	 d/**/x
+#define ZPREC(x)   	 z/**/x
+#define CNST(x)   	 x/**/_8
+#else
 #define PREC(x)   	 d ## x
 #define ZPREC(x)   	 z ## x
 #define CNST(x)   	 x ## _8
+#endif
 #ifdef HAVE_LIBXC5
 #define XC_SIZE_T c_size_t
 #else
@@ -228,7 +234,11 @@
 
 ! the TOSTRING macro converts a macro into a string
 ! do not use the STRINGIFY macro
+#ifdef __GFORTRAN__
+#define STRINGIFY(x) "x"
+#else
 #define STRINGIFY(x) #x
+#endif
 #define TOSTRING(x)  STRINGIFY(x)
 
 

@@ -19,5 +19,4 @@ FilterPotentials = no
 
 Debug = info
 
-
 PoissonSolver = isf

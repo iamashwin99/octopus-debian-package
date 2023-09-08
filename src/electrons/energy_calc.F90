@@ -26,12 +26,14 @@ module energy_calc_oct_m
   use energy_oct_m
   use exchange_operator_oct_m
   use ext_partner_list_oct_m
+  use fourier_space_oct_m
   use gauge_field_oct_m
   use global_oct_m
   use grid_oct_m
   use hamiltonian_elec_oct_m
   use hamiltonian_elec_base_oct_m
   use ions_oct_m
+  use kpoints_oct_m
   use lda_u_oct_m
   use mesh_oct_m
   use mesh_batch_oct_m
@@ -40,24 +42,32 @@ module energy_calc_oct_m
   use namespace_oct_m
   use interaction_partner_oct_m
   use pcm_oct_m
+  use poisson_oct_m
   use profiling_oct_m
+  use singularity_oct_m
   use smear_oct_m
   use space_oct_m
   use states_abst_oct_m
   use states_elec_oct_m
+  use states_elec_calc_oct_m
   use states_elec_dim_oct_m
   use unit_oct_m
   use unit_system_oct_m
   use wfs_elec_oct_m
+  use xc_oct_m
 
   implicit none
 
   private
-  public ::                       &
-    energy_calc_total,            &
-    denergy_calc_electronic,      &
-    zenergy_calc_electronic,      &
-    energy_calc_eigenvalues,      &
+  public ::                               &
+    energy_calc_total,                    &
+    denergy_calc_electronic,              &
+    zenergy_calc_electronic,              &
+    done_body_matrix_elements,            &
+    zone_body_matrix_elements,            &
+    dtwo_body_matrix_elements,            &
+    ztwo_body_matrix_elements,            &
+    energy_calc_eigenvalues,              &
     energy_calc_virial_ex
 
 contains
@@ -104,18 +114,22 @@ contains
         hm%energy%extern   = hm%energy%extern_local   + hm%energy%extern_non_local
       end if
     end if
-    if( full_ .and. hm%theory_level == HARTREE_FOCK ) then
+
+    ! Computes the HF energy when not doing the ACE
+    if( full_ .and. (hm%theory_level == HARTREE_FOCK .or. &
+      (hm%theory_level == GENERALIZED_KOHN_SHAM_DFT .and. family_is_hybrid(hm%xc))) &
+      .and. .not. hm%exxop%useACE  ) then
       call xst%nullify()
       if (states_are_real(st)) then
-        call dexchange_operator_compute_potentials(hm%exxop, namespace, space, gr%mesh, st, &
+        call dexchange_operator_compute_potentials(hm%exxop, namespace, space, gr, st, &
           xst, hm%kpoints, hm%energy%exchange_hf)
       else
-        call zexchange_operator_compute_potentials(hm%exxop, namespace, space, gr%mesh, st, &
+        call zexchange_operator_compute_potentials(hm%exxop, namespace, space, gr, st, &
           xst, hm%kpoints, hm%energy%exchange_hf)
       end if
       call states_elec_end(xst)
     else
-      hm%energy%exchange_hf = M_ZERO
+      if(.not. hm%exxop%useACE) hm%energy%exchange_hf = M_ZERO
     end if
 
     if (hm%pcm%run_pcm) then
@@ -142,8 +156,8 @@ contains
       hm%energy%total = hm%ep%eii + &
         M_HALF*(hm%energy%eigenvalues + hm%energy%kinetic + hm%energy%extern - hm%energy%intnvxc &
         - hm%energy%int_dft_u) &
-        + hm%energy%exchange + hm%energy%correlation + hm%energy%vdw - hm%energy%intnvstatic &
-        + hm%energy%dft_u
+        + hm%energy%exchange + hm%energy%exchange_hf + hm%energy%correlation &
+        + hm%energy%vdw - hm%energy%intnvstatic + hm%energy%dft_u
 
       ! FIXME: pcm terms are only added to total energy in DFT case
 
@@ -184,11 +198,8 @@ contains
       write(message(2), '(6x,a, f18.8)')'Eigenvalues = ', units_from_atomic(units_out%energy, hm%energy%eigenvalues)
       write(message(3), '(6x,a, f18.8)')'Hartree     = ', units_from_atomic(units_out%energy, hm%energy%hartree)
       write(message(4), '(6x,a, f18.8)')'Int[n*v_xc] = ', units_from_atomic(units_out%energy, hm%energy%intnvxc)
-      if(hm%theory_level == HARTREE_FOCK) then
-        write(message(5), '(6x,a, f18.8)')'Exchange    = ', units_from_atomic(units_out%energy, hm%energy%exchange_hf)
-      else
-        write(message(5), '(6x,a, f18.8)')'Exchange    = ', units_from_atomic(units_out%energy, hm%energy%exchange)
-      end if
+      write(message(5), '(6x,a, f18.8)')'Exchange    = ', &
+        units_from_atomic(units_out%energy, hm%energy%exchange+hm%energy%exchange_hf)
       write(message(6), '(6x,a, f18.8)')'Correlation = ', units_from_atomic(units_out%energy, hm%energy%correlation)
       write(message(7), '(6x,a, f18.8)')'vanderWaals = ', units_from_atomic(units_out%energy, hm%energy%vdw)
       write(message(8), '(6x,a, f18.8)')'Delta XC    = ', units_from_atomic(units_out%energy, hm%energy%delta_xc)

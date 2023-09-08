@@ -35,7 +35,7 @@ if test "$acx_netcdf_ok" != disabled; then
       integer :: status
       status = nf90_close(ncid)
     ]), [acx_netcdf_ok=yes; FCFLAGS_NETCDF="$netcdf_fcflags"; LIBS_NETCDF="$netcdf_libs"], [])
-    if test "$acx_netcdf_ok" == yes; then 
+    if test "$acx_netcdf_ok" == yes; then
       LIBS_NETCDF=$netcdf_libs
       break
     fi
@@ -47,7 +47,7 @@ dnl Finally, execute ACTION-IF-FOUND/ACTION-IF-NOT-FOUND:
 if test x"$acx_netcdf_ok" = xyes; then
   AC_DEFINE(HAVE_NETCDF,1,[Defined if you have NETCDF library.])
 else
-  AC_MSG_WARN([Could not find NetCDF library. 
+  AC_MSG_WARN([Could not find NetCDF library.
               *** Will compile without NetCDF and ETSF I/O support])
   FCFLAGS_NETCDF=""
   LIBS_NETCDF=""

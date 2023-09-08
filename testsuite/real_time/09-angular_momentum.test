@@ -7,116 +7,193 @@ Enabled    : Yes
 
 Input      : 09-angular_momentum.01-gs.inp
 match ; SCF convergence   ; GREPCOUNT(static/info, 'SCF converged') ; 1
-match ; Initial energy    ; GREPFIELD(static/info, 'Total       =', 3) ; -23.18613657
+Precision: 1.16e-07
+match ;  Initial energy     ; GREPFIELD(static/info, 'Total       =', 3) ; -23.19580513
 
 Input      : 09-angular_momentum.02-td_gipaw.inp
-match ; Energy [step   1] ; LINEFIELD(td.general/energy, -101, 3) ; -2.318610994609e+01
-match ; Energy [step  25] ; LINEFIELD(td.general/energy, -76, 3) ;  -2.305782175358e+01
-match ; Energy [step  50] ; LINEFIELD(td.general/energy, -51, 3) ;  -2.305787891361e+01
-match ; Energy [step  75] ; LINEFIELD(td.general/energy, -26, 3) ;  -2.305794011410e+01
-match ; Energy [step 100] ; LINEFIELD(td.general/energy, -1, 3) ;   -2.305799454567e+01
+Precision: 1.16e-12
+match ;  Energy [step   1]  ; LINEFIELD(td.general/energy, -101, 3) ; -23.1958096408608
+Precision: 1.15e-12
+match ;  Energy [step  25]  ; LINEFIELD(td.general/energy, -76, 3) ; -23.0675440434796
+Precision: 1.15e-13
+match ;  Energy [step  50]  ; LINEFIELD(td.general/energy, -51, 3) ; -23.0676012975991
+Precision: 1.15e-11
+match ;  Energy [step  75]  ; LINEFIELD(td.general/energy, -26, 3) ; -23.067662611454
+Precision: 1.15e-12
+match ;  Energy [step 100]  ; LINEFIELD(td.general/energy, -1, 3) ; -23.0677170939376
 
-match ; Lx [step   1]     ; LINEFIELD(td.general/angular, -101, 3) ; 0.000000000000e+00
-match ; Lx [step  25]     ; LINEFIELD(td.general/angular, -76, 3) ;  4.380097051337e-02
-match ; Lx [step  50]     ; LINEFIELD(td.general/angular, -51, 3) ;  7.378119057736e-03
-match ; Lx [step  75]     ; LINEFIELD(td.general/angular, -26, 3) ; -1.944190323121e-02
-match ; Lx [step 100]     ; LINEFIELD(td.general/angular, -1, 3) ;  -3.043619537186e-02
+Precision: 1.00e-04
+match ;  Lx [step   1]      ; LINEFIELD(td.general/angular, -101, 3) ; 0.0
+Precision: 5.11e-15
+match ;  Lx [step  25]      ; LINEFIELD(td.general/angular, -76, 3) ; 0.04378813412511501
+Precision: 4.39e-15
+match ;  Lx [step  50]      ; LINEFIELD(td.general/angular, -51, 3) ; 0.007223501819495281
+Precision: 5.34e-15
+match ;  Lx [step  75]      ; LINEFIELD(td.general/angular, -26, 3) ; -0.019482698210286253
+Precision: 6.00e-15
+match ;  Lx [step 100]      ; LINEFIELD(td.general/angular, -1, 3) ; -0.0304720312519288
 
-match ; Ly [step   1]     ; LINEFIELD(td.general/angular, -101, 4) ; 0.000000000000e+00
-match ; Ly [step  25]     ; LINEFIELD(td.general/angular, -76, 4) ; -7.191191670496e-02
-match ; Ly [step  50]     ; LINEFIELD(td.general/angular, -51, 4) ; -6.897377931417e-03
-match ; Ly [step  75]     ; LINEFIELD(td.general/angular, -26, 4) ; -4.177179858401e-02
-match ; Ly [step 100]     ; LINEFIELD(td.general/angular, -1, 4) ;  -5.777605675255e-02
+Precision: 1.00e-04
+match ;  Ly [step   1]      ; LINEFIELD(td.general/angular, -101, 4) ; 0.0
+Precision: 4.13e-15
+match ;  Ly [step  25]      ; LINEFIELD(td.general/angular, -76, 4) ; -0.0718464109480849
+Precision: 4.19e-15
+match ;  Ly [step  50]      ; LINEFIELD(td.general/angular, -51, 4) ; -0.00711776925568968
+Precision: 5.10e-15
+match ;  Ly [step  75]      ; LINEFIELD(td.general/angular, -26, 4) ; -0.0417208122257626
+Precision: 5.72e-15
+match ;  Ly [step 100]      ; LINEFIELD(td.general/angular, -1, 4) ; -0.057772136201210605
 
-match ; Lz [step   1]     ; LINEFIELD(td.general/angular, -101, 5) ; 0.000000000000e+00
-match ; Lz [step  25]     ; LINEFIELD(td.general/angular, -76, 5) ; -9.774128875372e-02
-match ; Lz [step  50]     ; LINEFIELD(td.general/angular, -51, 5) ;  7.730074365584e-03
-match ; Lz [step  75]     ; LINEFIELD(td.general/angular, -26, 5) ;  7.236203845217e-02
-match ; Lz [step 100]     ; LINEFIELD(td.general/angular, -1, 5) ;   5.137179816611e-02
+Precision: 1.00e-04
+match ;  Lz [step   1]      ; LINEFIELD(td.general/angular, -101, 5) ; 0.0
+Precision: 4.88e-15
+match ;  Lz [step  25]      ; LINEFIELD(td.general/angular, -76, 5) ; -0.09756204043644941
+Precision: 3.86e-13
+match ;  Lz [step  50]      ; LINEFIELD(td.general/angular, -51, 5) ; 0.00771299300973
+Precision: 5.61e-15
+match ;  Lz [step  75]      ; LINEFIELD(td.general/angular, -26, 5) ; 0.0720814863526959
+Precision: 7.70e-15
+match ;  Lz [step 100]      ; LINEFIELD(td.general/angular, -1, 5) ; 0.0511931067883849
 
 # quadrupole moments
-match ; Q(-2)[step   1]   ; LINEFIELD(td.general/multipoles, -101, 7) ; -4.549594332458e+00
-match ; Q(-2)[step  25]   ; LINEFIELD(td.general/multipoles, -76, 7) ;  -4.616142726056e+00
-match ; Q(-2)[step  50]   ; LINEFIELD(td.general/multipoles, -51, 7) ;  -4.691698217154e+00
-match ; Q(-2)[step  75]   ; LINEFIELD(td.general/multipoles, -26, 7) ;  -4.396399844423e+00
-match ; Q(-2)[step 100]   ; LINEFIELD(td.general/multipoles, -1, 7) ;   -4.184993346009e+00
+Precision: 2.27e-13
+match ;  Q(-2)[step   1]    ; LINEFIELD(td.general/multipoles, -101, 7) ; -4.54509928510075
+Precision: 2.31e-06
+match ;  Q(-2)[step  25]    ; LINEFIELD(td.general/multipoles, -76, 7) ; -4.6116407
+Precision: 1.00e-12
+match ;  Q(-2)[step  50]    ; LINEFIELD(td.general/multipoles, -51, 7) ; -4.68734975366268
+Precision: 2.20e-14
+match ;  Q(-2)[step  75]    ; LINEFIELD(td.general/multipoles, -26, 7) ; -4.392410657028165
+Precision: 2.20e-14
+match ;  Q(-2)[step 100]    ; LINEFIELD(td.general/multipoles, -1, 7) ; -4.1816224325253994
 
-match ; Q(-1)[step   1]   ; LINEFIELD(td.general/multipoles, -101, 8) ; 4.184374503711e+00
-match ; Q(-1)[step  25]   ; LINEFIELD(td.general/multipoles, -76, 8) ;  4.188465666406e+00
-match ; Q(-1)[step  50]   ; LINEFIELD(td.general/multipoles, -51, 8) ;  4.136881587433e+00
-match ; Q(-1)[step  75]   ; LINEFIELD(td.general/multipoles, -26, 8) ;  4.070979606222e+00
-match ; Q(-1)[step 100]   ; LINEFIELD(td.general/multipoles, -1, 8) ;   4.097869117251e+00
+Precision: 2.09e-13
+match ;  Q(-1)[step   1]    ; LINEFIELD(td.general/multipoles, -101, 8) ; 4.17829863972618
+Precision: 2.09e-13
+match ;  Q(-1)[step  25]    ; LINEFIELD(td.general/multipoles, -76, 8) ; 4.18223991002009
+Precision: 2.78e-14
+match ;  Q(-1)[step  50]    ; LINEFIELD(td.general/multipoles, -51, 8) ; 4.1307761370100256
+Precision: 3.86e-14
+match ;  Q(-1)[step  75]    ; LINEFIELD(td.general/multipoles, -26, 8) ; 4.0649509725471065
+Precision: 1.00e-12
+match ;  Q(-1)[step 100]    ; LINEFIELD(td.general/multipoles, -1, 8) ; 4.09182267023327
 
-match ; Q( 0)[step   1]   ; LINEFIELD(td.general/multipoles, -101, 9) ; -7.139402225123e+00
-match ; Q( 0)[step  25]   ; LINEFIELD(td.general/multipoles, -76, 9) ;  -7.471845057573e+00
-match ; Q( 0)[step  50]   ; LINEFIELD(td.general/multipoles, -51, 9) ;  -7.810578612631e+00
-match ; Q( 0)[step  75]   ; LINEFIELD(td.general/multipoles, -26, 9) ;  -7.741650047497e+00
-match ; Q( 0)[step 100]   ; LINEFIELD(td.general/multipoles, -1, 9) ;   -7.649686600124e+00
+Precision: 3.57e-12
+match ;  Q( 0)[step   1]    ; LINEFIELD(td.general/multipoles, -101, 9) ; -7.1376083039682
+Precision: 3.73e-13
+match ;  Q( 0)[step  25]    ; LINEFIELD(td.general/multipoles, -76, 9) ; -7.4699220115102
+Precision: 3.90e-13
+match ;  Q( 0)[step  50]    ; LINEFIELD(td.general/multipoles, -51, 9) ; -7.80873199928914
+Precision: 3.87e-13
+match ;  Q( 0)[step  75]    ; LINEFIELD(td.general/multipoles, -26, 9) ; -7.73944659799368
+Precision: 1.00e-12
+match ;  Q( 0)[step 100]    ; LINEFIELD(td.general/multipoles, -1, 9) ; -7.64805656456543
 
-match ; Q( 1)[step   1]   ; LINEFIELD(td.general/multipoles, -101, 10) ; -4.831116621913e+00
-match ; Q( 1)[step  25]   ; LINEFIELD(td.general/multipoles, -76, 10) ;  -4.738029387552e+00
-match ; Q( 1)[step  50]   ; LINEFIELD(td.general/multipoles, -51, 10) ;  -4.494318318647e+00
-match ; Q( 1)[step  75]   ; LINEFIELD(td.general/multipoles, -26, 10) ;  -4.331445498110e+00
-match ; Q( 1)[step 100]   ; LINEFIELD(td.general/multipoles, -1, 10) ;   -4.291290107686e+00
+Precision: 2.37e-12
+match ;  Q( 1)[step   1]    ; LINEFIELD(td.general/multipoles, -101, 10) ; -4.82611165480358
+Precision: 2.37e-13
+match ;  Q( 1)[step  25]    ; LINEFIELD(td.general/multipoles, -76, 10) ; -4.73291324262424
+Precision: 2.24e-13
+match ;  Q( 1)[step  50]    ; LINEFIELD(td.general/multipoles, -51, 10) ; -4.48948982316254
+Precision: 3.81e-14
+match ;  Q( 1)[step  75]    ; LINEFIELD(td.general/multipoles, -26, 10) ; -4.327519808485425
+Precision: 2.14e-13
+match ;  Q( 1)[step 100]    ; LINEFIELD(td.general/multipoles, -1, 10) ; -4.28758268117524
 
-match ; Q( 2)[step   1]   ; LINEFIELD(td.general/multipoles, -101, 11) ; 1.189055771070e+01
-match ; Q( 2)[step  25]   ; LINEFIELD(td.general/multipoles, -76, 11) ;  1.233911965251e+01
-match ; Q( 2)[step  50]   ; LINEFIELD(td.general/multipoles, -51, 11) ;  1.277973502645e+01
-match ; Q( 2)[step  75]   ; LINEFIELD(td.general/multipoles, -26, 11) ;  1.272934697834e+01
-match ; Q( 2)[step 100]   ; LINEFIELD(td.general/multipoles, -1, 11) ;   1.255078357441e+01
-
+Precision: 5.95e-14
+match ;  Q( 2)[step   1]    ; LINEFIELD(td.general/multipoles, -101, 11) ; 11.891019611332549
+Precision: 6.17e-13
+match ;  Q( 2)[step  25]    ; LINEFIELD(td.general/multipoles, -76, 11) ; 12.3396857891168
+Precision: 1e-13
+match ;  Q( 2)[step  50]    ; LINEFIELD(td.general/multipoles, -51, 11) ; 12.780292713187949
+Precision: 6.36e-12
+match ;  Q( 2)[step  75]    ; LINEFIELD(td.general/multipoles, -26, 11) ; 12.729489131856
+Precision: 6.28e-13
+match ;  Q( 2)[step 100]    ; LINEFIELD(td.general/multipoles, -1, 11) ; 12.551330646233799
 
 Input      : 09-angular_momentum.03-td_icl.inp
-match ; Energy [step   1] ; LINEFIELD(td.general/energy, -101, 3) ; -2.318610994609e+01
-match ; Energy [step  25] ; LINEFIELD(td.general/energy, -76, 3) ;  -2.305782175358e+01
-match ; Energy [step  50] ; LINEFIELD(td.general/energy, -51, 3) ;  -2.305787891361e+01
-match ; Energy [step  75] ; LINEFIELD(td.general/energy, -26, 3) ;  -2.305794011410e+01
-match ; Energy [step 100] ; LINEFIELD(td.general/energy, -1, 3) ;   -2.305799454567e+01
+Precision: 1.16e-12
+match ;  Energy [step   1]  ; LINEFIELD(td.general/energy, -101, 3) ; -23.1958096408608
+Precision: 1.15e-12
+match ;  Energy [step  25]  ; LINEFIELD(td.general/energy, -76, 3) ; -23.0675440434796
+Precision: 1.15e-13
+match ;  Energy [step  50]  ; LINEFIELD(td.general/energy, -51, 3) ; -23.0676012975991
+Precision: 1.15e-11
+match ;  Energy [step  75]  ; LINEFIELD(td.general/energy, -26, 3) ; -23.067662611454
+Precision: 1.15e-12
+match ;  Energy [step 100]  ; LINEFIELD(td.general/energy, -1, 3) ; -23.0677170939376
 
-match ; Lx [step   1]     ; LINEFIELD(td.general/angular, -101, 3) ; 0.000000000000e+00
-match ; Lx [step  25]     ; LINEFIELD(td.general/angular, -76, 3) ;  4.380097051337e-02
-match ; Lx [step  50]     ; LINEFIELD(td.general/angular, -51, 3) ;  7.378119057736e-03
-match ; Lx [step  75]     ; LINEFIELD(td.general/angular, -26, 3) ; -1.944190323121e-02
-match ; Lx [step 100]     ; LINEFIELD(td.general/angular, -1, 3) ;  -3.043619537186e-02
+Precision: 1.00e-04
+match ;  Lx [step   1]      ; LINEFIELD(td.general/angular, -101, 3) ; 0.0
+Precision: 5.11e-15
+match ;  Lx [step  25]      ; LINEFIELD(td.general/angular, -76, 3) ; 0.04378813412511501
+Precision: 5.40e-15
+match ;  Lx [step  50]      ; LINEFIELD(td.general/angular, -51, 3) ; 0.007223501819495281
+Precision: 8.00e-15
+match ;  Lx [step  75]      ; LINEFIELD(td.general/angular, -26, 3) ; -0.019482698210286253
+Precision: 6.00e-15
+match ;  Lx [step 100]      ; LINEFIELD(td.general/angular, -1, 3) ; -0.0304720312519288
 
-match ; Ly [step   1]     ; LINEFIELD(td.general/angular, -101, 4) ; 0.000000000000e+00
-match ; Ly [step  25]     ; LINEFIELD(td.general/angular, -76, 4) ; -7.191191670496e-02
-match ; Ly [step  50]     ; LINEFIELD(td.general/angular, -51, 4) ; -6.897377931417e-03
-match ; Ly [step  75]     ; LINEFIELD(td.general/angular, -26, 4) ; -4.177179858401e-02
-match ; Ly [step 100]     ; LINEFIELD(td.general/angular, -1, 4) ;  -5.777605675255e-02
+Precision: 1.00e-04
+match ;  Ly [step   1]      ; LINEFIELD(td.general/angular, -101, 4) ; 0.0
+Precision: 4.13e-15
+match ;  Ly [step  25]      ; LINEFIELD(td.general/angular, -76, 4) ; -0.0718464109480849
+Precision: 4.19e-15
+match ;  Ly [step  50]      ; LINEFIELD(td.general/angular, -51, 4) ; -0.00711776925568968
+Precision: 5.10e-15
+match ;  Ly [step  75]      ; LINEFIELD(td.general/angular, -26, 4) ; -0.0417208122257626
+Precision: 5.72e-15
+match ;  Ly [step 100]      ; LINEFIELD(td.general/angular, -1, 4) ; -0.057772136201210605
 
-match ; Lz [step   1]     ; LINEFIELD(td.general/angular, -101, 5) ; 0.000000000000e+00
-match ; Lz [step  25]     ; LINEFIELD(td.general/angular, -76, 5) ; -9.774128875372e-02
-match ; Lz [step  50]     ; LINEFIELD(td.general/angular, -51, 5) ;  7.730074365584e-03
-match ; Lz [step  75]     ; LINEFIELD(td.general/angular, -26, 5) ;  7.236203845217e-02
-match ; Lz [step 100]     ; LINEFIELD(td.general/angular, -1, 5) ;   5.137179816611e-02
-
+Precision: 1.00e-04
+match ;  Lz [step   1]      ; LINEFIELD(td.general/angular, -101, 5) ; 0.0
+Precision: 4.88e-15
+match ;  Lz [step  25]      ; LINEFIELD(td.general/angular, -76, 5) ; -0.09756204043644941
+Precision: 3.86e-13
+match ;  Lz [step  50]      ; LINEFIELD(td.general/angular, -51, 5) ; 0.00771299300973
+Precision: 5.61e-15
+match ;  Lz [step  75]      ; LINEFIELD(td.general/angular, -26, 5) ; 0.0720814863526959
+Precision: 5.8-15
+match ;  Lz [step 100]      ; LINEFIELD(td.general/angular, -1, 5) ; 0.0511931067883849
 
 Util : oct-propagation_spectrum
 Input      : 09-angular_momentum.04-rotatory_strength.inp
-match ; R(0) sum rule 1; GREPFIELD(rotatory_strength, "R(0) sum rule", 6) ; -0.135725E-02
-match ; R(0) sum rule 2; GREPFIELD(rotatory_strength, "R(0) sum rule", 7) ;  0.964191E-04
-match ; R(2) sum rule 1; GREPFIELD(rotatory_strength, "R(2) sum rule", 6) ; -0.292969E-03
-match ; R(2) sum rule 2; GREPFIELD(rotatory_strength, "R(2) sum rule", 7) ; -0.170011E-03
+Precision: 6.78e-07
+match ;  R(0) sum rule 1 ; GREPFIELD(rotatory_strength, "R(0) sum rule", 6) ; -0.0013553
+Precision: 4.93e-09
+match ;  R(0) sum rule 2 ; GREPFIELD(rotatory_strength, "R(0) sum rule", 7) ; 9.86879e-05
+Precision: 1.47e-06
+match ;  R(2) sum rule 1 ; GREPFIELD(rotatory_strength, "R(2) sum rule", 6) ; -0.0002931
+Precision: 8.45e-09
+match ;  R(2) sum rule 2 ; GREPFIELD(rotatory_strength, "R(2) sum rule", 7) ; -0.00016903399999999998
 
-match ; Energy 1 ; LINEFIELD(rotatory_strength, -2001, 1) ;  0.00000000E+00
-match ; R      1 ; LINEFIELD(rotatory_strength, -2001, 2) ;  0.62274712E-03
-match ; Beta   1 ; LINEFIELD(rotatory_strength, -2001, 3) ; -0.00000000E+00
-
-match ; Energy 2 ; LINEFIELD(rotatory_strength, -1985, 1) ;  0.58798921E-02
-match ; R      2 ; LINEFIELD(rotatory_strength, -1985, 2) ;  0.62266720E-03
-Precision: 0.0003
-match ; Beta   2 ; LINEFIELD(rotatory_strength, -1985, 3) ; -0.32445796E+00
-Precision: 0.0001
-
-match ; Energy 3 ; LINEFIELD(rotatory_strength, -1014, 1) ;  0.36271584E+00
-match ; R      3 ; LINEFIELD(rotatory_strength, -1014, 2) ;  0.18143382E-03
-match ; Beta   3 ; LINEFIELD(rotatory_strength, -1014, 3) ; -0.31187514E+00
-
-match ; Energy 4 ; LINEFIELD(rotatory_strength, -310, 1) ;  0.62143109E+00
-match ; R      4 ; LINEFIELD(rotatory_strength, -310, 2) ; -0.63850023E-03
-match ; Beta   4 ; LINEFIELD(rotatory_strength, -310, 3) ; -0.16714325E+00
-
-match ; Energy 5 ; LINEFIELD(rotatory_strength, -1, 1) ;  0.73498651E+00
-match ; R      5 ; LINEFIELD(rotatory_strength, -1, 2) ; -0.87579320E-03
-match ; Beta   5 ; LINEFIELD(rotatory_strength, -1, 3) ; -0.85487619E-01
+Precision: 1.00e-04
+match ;  Energy 1  ; LINEFIELD(rotatory_strength, -2001, 1) ; 0.0
+Precision: 3.10e-10
+match ;  R      1  ; LINEFIELD(rotatory_strength, -2001, 2) ; 0.00062045164
+Precision: 1.00e-04
+match ;  Beta   1  ; LINEFIELD(rotatory_strength, -2001, 3) ; 0.0
+Precision: 2.94e-09
+match ;  Energy 2  ; LINEFIELD(rotatory_strength, -1985, 1) ; 0.005879892100000001
+Precision: 3.10e-10
+match ;  R      2  ; LINEFIELD(rotatory_strength, -1985, 2) ; 0.00062037333
+Precision: 1.61e-07
+match ;  Beta   2  ; LINEFIELD(rotatory_strength, -1985, 3) ; -0.32207313
+Precision: 1.81e-07
+match ;  Energy 3  ; LINEFIELD(rotatory_strength, -1014, 1) ; 0.36271584
+Precision: 9.16e-11
+match ;  R      3  ; LINEFIELD(rotatory_strength, -1014, 2) ; 0.00018319055
+Precision: 1.56e-07
+match ;  Beta   3  ; LINEFIELD(rotatory_strength, -1014, 3) ; -0.31101669
+Precision: 3.11e-07
+match ;  Energy 4  ; LINEFIELD(rotatory_strength, -310, 1) ; 0.62143109
+Precision: 3.18e-10
+match ;  R      4  ; LINEFIELD(rotatory_strength, -310, 2) ; -0.00063567001
+Precision: 8.37e-08
+match ;  Beta   4  ; LINEFIELD(rotatory_strength, -310, 3) ; -0.16741882
+Precision: 3.67e-07
+match ;  Energy 5  ; LINEFIELD(rotatory_strength, -1, 1) ; 0.73498651
+Precision: 4.37e-10
+match ;  R      5  ; LINEFIELD(rotatory_strength, -1, 2) ; -0.00087391571
+Precision: 4.30e-08
+match ;  Beta   5  ; LINEFIELD(rotatory_strength, -1, 3) ; -0.085947473

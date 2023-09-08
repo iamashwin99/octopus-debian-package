@@ -18,9 +18,10 @@
 
 #include "global.h"
 
-!> This module contains the definition of the oct_t data type, which
+!> @brief This module contains the definition of the oct_t data type, which
 !! contains some of the basic information about how the OCT run will
 !! be done.
+!!
 !! The "oct" variable (whose datatype is oct_t) is declared in the main
 !! OCT module, opt_control_oct_m (as a module variable). It is initialized
 !! by calling oct_read_inp, defined below in this module.
@@ -40,34 +41,37 @@ module opt_control_global_oct_m
     oct_read_inp,             &
     oct_algorithm_is_direct
 
-  !> The oct_t datatype stores the basic information about how the OCT run
-  !! is done: which algorithm, how the control funtion is stored, should the
+  !> !brief The oct_t datatype stores the basic information about how the OCT run is done.
+  !!
+  !! This includes, which algorithm, how the control funtion is stored, should the
   !! intermediate results be stored for debugging, etc.
   type oct_t
     ! Components are public by default
     integer :: algorithm            !< The algorithm to optimize depends on whether the control function is
-    !                               !! represented in real time, or is parametrized. Filled by the OCTScheme input variable.
+    !!                                 represented in real time, or is parametrized. Filled by the OCTScheme input variable.
     logical :: mode_fixed_fluence   !< Whether or not the optimization is performed in the subspace of external fields
-    !                               !! of equal fluence. This is filled by the controlfunction_mod_init subroutine.
+    !!                                 of equal fluence. This is filled by the controlfunction_mod_init subroutine.
     FLOAT   :: eta, delta           !< "Technical" variables, that complete the definition of some algorithms.
     FLOAT   :: direct_step          !< The "initial step" of the optimization search, used by some algorithms. Filled
-    !                               ! by the OCTDirectStep input variable.
+    !!                                 by the OCTDirectStep input variable.
     logical :: oct_double_check     !< At the end of the optimization, a final run can be performed in order to make sure
-    !                               !! that, indeed, the optimized field produces the optimal value.
+    !!                                 that, indeed, the optimized field produces the optimal value.
     FLOAT   :: check_gradient       !< If using the conjugate gradients algorithm, one may make sure that the forward-backward
-    !                               !! propagation is indeed computing the gradient of the functional, by computing this
-    !                               !! gradient numerically. This is sent by the OCTCheckGradient input variable.
+    !!                                 propagation is indeed computing the gradient of the functional, by computing this
+    !!                                 gradient numerically. This is sent by the OCTCheckGradient input variable.
     integer :: number_checkpoints   !< When propagating backwards, the code may check that the evolution is preserving
-    !                               !! time-reversal symmetry by checking that the state is equal to a number of previously
-    !                               !! stored "check-points", saved during the forward propagation.
+    !!                                 time-reversal symmetry by checking that the state is equal to a number of previously
+    !!                                 stored "check-points", saved during the forward propagation.
     logical :: random_initial_guess !< Can be used only with some algorithms; instead of using the field described in the input
-    !                               !! file as initial guess, the code may generate a random field.
+    !!                                 file as initial guess, the code may generate a random field.
   end type oct_t
 
 contains
 
-  !> Reads, from the inp file, some global information about how the QOCT run
-  !! should be. It uses this information to fill the "oct" variable. All the components
+  !> @brief Reads, from the inp file, some global information about how the QOCT run
+  !! should be.
+  !!
+  !! It uses this information to fill the "oct" variable. All the components
   !! of oct are filled, except for mode_fixed_fluence, which is filled when the control
   !! parameters module is initialized.
   subroutine oct_read_inp(oct, namespace)
@@ -76,7 +80,7 @@ contains
 
     PUSH_SUB(oct_read_inp)
 
-    call messages_print_stress(msg="OCT run mode", namespace=namespace)
+    call messages_print_with_emphasis(msg="OCT run mode", namespace=namespace)
     call messages_obsolete_variable(namespace, 'OCTControlRepresentation')
 
     !%Variable OCTScheme
@@ -139,7 +143,7 @@ contains
     !% This is a "direct" optimization scheme. This means that we do not make use of the
     !% "usual" QOCT equations (backward-forward propagations, etc), but we use some gradient-free
     !% maximization algorithm for the function that we want to optimize. In this case, the
-    !% maximization algorithm is the Nelder-Mead algorithm as implemeted in the GSL. The function
+    !% maximization algorithm is the Nelder-Mead algorithm as implemented in the GSL. The function
     !% values are obtained by successive forward propagations.
     !% The seed for the random number generator can be modified by setting
     !% <tt>GSL_RNG_SEED</tt> environment variable.
@@ -295,7 +299,7 @@ contains
     call parse_variable(namespace, 'OCTRandomInitialGuess', .false., oct%random_initial_guess)
     call messages_print_var_value("OCTRandomInitialGuess", oct%random_initial_guess, namespace=namespace)
 
-    call messages_print_stress(namespace=namespace)
+    call messages_print_with_emphasis(namespace=namespace)
 
     POP_SUB(oct_read_inp)
   end subroutine oct_read_inp

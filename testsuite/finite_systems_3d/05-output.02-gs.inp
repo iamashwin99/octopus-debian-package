@@ -1,7 +1,7 @@
 # -*- coding: utf-8 mode: shell-script -*-
 
 CalculationMode = gs
-fromScratch = yes
+FromScratch = yes
 
 UnitsOutput = ev_angstrom
 
@@ -12,11 +12,11 @@ Spacing = 0.5
   "H" | 0 | 0 | 0
 %
 
-%Output 
- density            | "output_format"  | axis_x + plane_x + dx       | "output_interval" | 2
+%Output
+ density            | "output_format"  | axis_x + plane_x + dx + vtk     | "output_interval" | 2
  geometry           | "output_format"  | xyz + xcrysden
  wfs                | "output_format"  | axis_x + plane_x + xcrysden
- potential_gradient | "output_format"  | plane_x
+ potential_gradient | "output_format"  | plane_x + vtk
 %
 
 OutputInterval = 4

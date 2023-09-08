@@ -37,13 +37,13 @@ nk | nk | 1
 
 KPointsUseSymmetries = no
 
-ExtraStates = 2
+ExtraStates = 4
 
 XCFunctional = mgga_x_br89 + lda_c_pz_mod
 XCUseGaugeIndependentKED = yes
 ExperimentalFeatures = yes
 
-ConvRelEv = 1e-8
+ConvRelEv = 1e-9
 
 FilterPotentials = filter_none
 StatesPack = yes

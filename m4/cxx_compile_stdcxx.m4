@@ -185,7 +185,7 @@ namespace cxx11
     Dimensions dimensions() {return Dimensions::one;}
   }
 
-#if 0 
+#if 0
 //Disabled because they are not supported by BG/Q XLF
 
   namespace test_static_assert

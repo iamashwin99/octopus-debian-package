@@ -7,13 +7,18 @@ Enabled    : Yes
 
 Processors : 1
 Input      : 20-pcm-local-field-absorption.01-gs.inp
-Precision: 0.0001
-match ; eigenvalue [1]                ;  GREPFIELD(static/info, '1   --', 3)            ;  -6.340082
-match ; electrons-solvent int. energy ;  GREPFIELD(static/info, 'E_e-solvent =', 3)     ;   0.00003115
-match ; nuclei-solvent int. energy    ;  GREPFIELD(static/info, 'E_n-solvent =', 3)     ;  -0.00003120
-match ; molecule-solvent int. energy  ;  GREPFIELD(static/info, 'E_M-solvent =', 3)     ;  -0.00000005
-match ; electronic pol. charge        ;  GREPFIELD(pcm/pcm_info.out, '       8   ', 7)  ;  -0.98711707
-match ; nuclear pol. charge           ;  GREPFIELD(pcm/pcm_info.out, '       8   ', 9)  ;   0.98713876
+Precision: 3.25e-05
+match ;  eigenvalue [1]                 ; GREPFIELD(static/info, '1   --', 3) ; -6.3396565
+Precision: 1.21e-07
+match ;  electrons-solvent int. energy  ; GREPFIELD(static/info, 'E_e-solvent =', 3) ; 3.104e-05
+Precision: 1.21e-07
+match ;  nuclei-solvent int. energy     ; GREPFIELD(static/info, 'E_n-solvent =', 3) ; -3.109e-05
+Precision: 5.00e-10
+match ;  molecule-solvent int. energy   ; GREPFIELD(static/info, 'E_M-solvent =', 3) ; -5e-08
+Precision: 8.25e-08
+match ;  electronic pol. charge         ; GREPFIELD(pcm/pcm_info.out, '       8   ', 7) ; -0.987117145
+Precision: 4.94e-07
+match ;  nuclear pol. charge            ; GREPFIELD(pcm/pcm_info.out, '       8   ', 9) ; 0.98713876
 
 Processors : 4
 Input      : 20-pcm-local-field-absorption.02-td_prop_eom.inp

@@ -2,7 +2,6 @@
 
 CalculationMode = gs
 fromScratch = yes
-DisableAccel = yes
 
 Radius = 7.0
 Spacing = 0.5

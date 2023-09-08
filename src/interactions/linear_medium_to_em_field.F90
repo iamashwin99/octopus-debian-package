@@ -48,6 +48,7 @@ module linear_medium_to_em_field_oct_m
     integer                       :: points_number
     integer                       :: global_points_number
     integer, allocatable          :: points_map(:)
+    logical                       :: has_mapping = .true.
     integer                       :: bdry_number
     integer, allocatable          :: bdry_map(:)
     FLOAT, allocatable            :: aux_ep(:,:) !< auxiliary array for the epsilon derivative profile
@@ -57,6 +58,8 @@ module linear_medium_to_em_field_oct_m
     FLOAT                         :: lsize(3)  !< length in each direction of a box
     character(len=256)            :: filename
     logical                       :: check_medium_points = .false.
+  contains
+    procedure :: to_grid => single_medium_box_to_grid
   end type single_medium_box_t
 
   type, extends(interaction_with_partner_t) :: linear_medium_to_em_field_t
@@ -114,6 +117,9 @@ contains
     PUSH_SUB(linear_medium_to_em_field_init)
 
     this%system_gr => gr
+    ! allocate medium box
+    call single_medium_box_allocate(this%medium_box, gr%np)
+    this%medium_box%has_mapping = .false.
 
     POP_SUB(linear_medium_to_em_field_init)
   end subroutine linear_medium_to_em_field_init
@@ -170,6 +176,14 @@ contains
     SAFE_ALLOCATE(medium_box%sigma_m(1:n_points))
     SAFE_ALLOCATE(medium_box%points_map(1:n_points))
     medium_box%points_map = 0
+    medium_box%aux_ep(:,1:3) = M_ZERO
+    medium_box%aux_mu(:,1:3) = M_ZERO
+    medium_box%ep(:) = M_ZERO
+    medium_box%mu(:) = M_ZERO
+    medium_box%c(:) = M_ZERO
+    medium_box%sigma_e(:) = M_ZERO
+    medium_box%sigma_m(:) = M_ZERO
+    medium_box%points_number = n_points
     call profiling_out(prof)
 
     POP_SUB(medium_box_allocate)
@@ -202,6 +216,38 @@ contains
     POP_SUB(medium_box_end)
 
   end subroutine single_medium_box_end
+
+  ! ---------------------------------------------------------
+  ! return a medium box with all functions mapped to the parent grid
+  function single_medium_box_to_grid(medium_box, grid_out) result(medium_box_out)
+    class(single_medium_box_t), intent(in) :: medium_box
+    type(grid_t),               intent(in) :: grid_out
+    class(single_medium_box_t), pointer :: medium_box_out
+
+    type(profile_t), save :: prof
+    integer :: ip, ip_out
+
+    PUSH_SUB(medium_box_to_grid)
+    call profiling_in(prof, 'MEDIUM_BOX_TO_GRID')
+
+    SAFE_ALLOCATE(medium_box_out)
+    call single_medium_box_allocate(medium_box_out, grid_out%np)
+    medium_box_out%has_mapping = .false.
+
+    do ip = 1, medium_box%points_number
+      ip_out = medium_box%points_map(ip)
+      medium_box_out%aux_ep(ip_out,1:3) = medium_box%aux_ep(ip,1:3)
+      medium_box_out%aux_mu(ip_out,1:3) = medium_box%aux_mu(ip,1:3)
+      medium_box_out%ep(ip_out) = medium_box%ep(ip)
+      medium_box_out%mu(ip_out) = medium_box%mu(ip)
+      medium_box_out%c(ip_out) = medium_box%c(ip)
+      medium_box_out%sigma_e(ip_out) = medium_box%sigma_e(ip)
+      medium_box_out%sigma_m(ip_out) = medium_box%sigma_m(ip)
+    end do
+
+    call profiling_out(prof)
+    POP_SUB(medium_box_to_grid)
+  end function single_medium_box_to_grid
 
 end module linear_medium_to_em_field_oct_m
 

@@ -8,7 +8,7 @@ EigensolverTolerance = 1e-10
  'H2'| species_user_defined | potential_formula | "-2.0/sqrt(x^2+1.0)" | valence | 2
 %
 
-Radius = 3.535 
+Radius = 3.535
 Spacing = 0.0707
 
 %Coordinates

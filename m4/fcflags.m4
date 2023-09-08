@@ -46,7 +46,7 @@ if test -z "${FCFLAGS}"; then
           if test "$a" -gt 5 ; then
             FCFLAGS="$FCFLAGS -tpp7 -xW"
           fi
-          ;;	
+          ;;
         ia64*)
           FCFLAGS="-O3 -ip -IPF_fp_relaxed -ftz -fpp -u -align all -pad"
          ;;

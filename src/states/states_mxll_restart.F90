@@ -33,7 +33,6 @@ module states_mxll_restart_oct_m
   use mpi_oct_m
   use maxwell_boundary_op_oct_m
   use multicomm_oct_m
-  use multigrid_oct_m
   use namespace_oct_m
   use parser_oct_m
   use profiling_oct_m
@@ -64,9 +63,9 @@ contains
   subroutine states_mxll_read_user_def(namespace, space, mesh, st, bc, user_def_rs_state)
     type(namespace_t),   intent(in)    :: namespace
     type(space_t),       intent(in)    :: space
-    type(mesh_t),        intent(inout) :: mesh
+    class(mesh_t),       intent(inout) :: mesh
     type(states_mxll_t), intent(inout) :: st
-    type(bc_mxll_t),     intent(in)    :: bc
+    type(bc_mxll_t),     intent(inout)    :: bc
     CMPLX,               intent(inout) :: user_def_rs_state(:,:)
 
     type(block_t)      :: blk
@@ -296,7 +295,7 @@ contains
       SAFE_DEALLOCATE_A(rs_state)
       SAFE_DEALLOCATE_A(rs_state_add)
       call parse_block_end(blk)
-      !call messages_print_stress(namespace=namespace)
+      !call messages_print_with_emphasis(namespace=namespace)
 
     else
       call messages_variable_is_block(namespace, 'UserDefineInitialdStates')
@@ -313,7 +312,7 @@ contains
     type(restart_t),      intent(in)  :: restart
     type(states_mxll_t),  intent(in)  :: st
     type(space_t),        intent(in)  :: space
-    type(mesh_t),         intent(in)  :: mesh
+    class(mesh_t),        intent(in)  :: mesh
     CMPLX,                intent(in)  :: zff(:,:)
     integer,              intent(in)  :: zff_dim
     integer,              intent(out) :: ierr
@@ -418,7 +417,7 @@ contains
   subroutine states_mxll_load(restart, st, mesh, namespace, space, zff, zff_dim, ierr, iter, lowest_missing, label, verbose)
     type(restart_t),            intent(in)    :: restart
     type(states_mxll_t),        intent(inout) :: st
-    type(mesh_t),               intent(in)    :: mesh
+    class(mesh_t),              intent(in)    :: mesh
     type(namespace_t),          intent(in)    :: namespace
     type(space_t),              intent(in)    :: space
     CMPLX,                      intent(inout) :: zff(:,:)
@@ -592,11 +591,11 @@ contains
       end if
       ! otherwise ierr = 0 would mean either all was read correctly, or nothing at all was read!
 
-      call messages_print_stress(msg='Reading Maxwell states.', namespace=namespace)
+      call messages_print_with_emphasis(msg='Reading Maxwell states.', namespace=namespace)
       write(message(1),'(a,i6,a,i6,a)') 'Only ', iread,' files out of ', &
         st%nst * zff_dim, ' could be read.'
       call messages_info(1, namespace=namespace)
-      call messages_print_stress(namespace=namespace)
+      call messages_print_with_emphasis(namespace=namespace)
     end if
 
     message(1) = 'Info: Maxwell states reading done.'

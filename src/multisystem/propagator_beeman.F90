@@ -90,7 +90,8 @@ contains
       call this%add_operation(OP_BEEMAN_CORRECT_POS)
       call this%add_operation(OP_BEEMAN_CORRECT_VEL)
       call this%add_operation(OP_END_SCF_LOOP)
-      call this%add_operation(OP_FINISHED)
+      call this%add_operation(OP_STEP_DONE)
+      call this%add_operation(OP_REWIND_ALGORITHM)
 
       this%max_scf_count = 2 !From Wikipedia
       this%scf_tol = CNST(1e-6) !At the moment arbitrary
@@ -101,7 +102,8 @@ contains
       call this%add_operation(OP_UPDATE_INTERACTIONS)
       call this%add_operation(OP_BEEMAN_COMPUTE_ACC)
       call this%add_operation(OP_BEEMAN_PREDICT_VEL)
-      call this%add_operation(OP_FINISHED)
+      call this%add_operation(OP_STEP_DONE)
+      call this%add_operation(OP_REWIND_ALGORITHM)
 
     end if
 

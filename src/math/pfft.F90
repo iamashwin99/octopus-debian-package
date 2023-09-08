@@ -134,7 +134,7 @@ contains
     CMPLX,   pointer, intent(inout) :: out(:,:,:) !< The output matrix that is going to be used to do the transform
     integer,          intent(in)    :: sign       !< Sign flag to decide FFT direction. Has to be FFTW_FORWARD
     integer,          intent(in)    :: flags      !< Flags for FFT library. Could be changed with the input variable
-    !                                             !! FFTPreparePlan. Default value is FFTW_MEASURE
+    !!                                               FFTPreparePlan. Default value is FFTW_MEASURE
     integer,          intent(in)    :: mpi_comm   !< MPI communicator
 
     integer(C_INTPTR_T) :: tmp_n(3)
@@ -169,7 +169,7 @@ contains
     FLOAT,   pointer, intent(inout) :: out(:,:,:) !< The output matrix that is going to be used to do the transform
     integer,          intent(in)    :: sign       !< Sign flag to decide FFT direction. Has to be FFTW_BACKWARD
     integer,          intent(in)    :: flags      !< Flags for FFT library. Could be changed with the input variable
-    !                                             !! FFTPreparePlan. Default value is FFTW_MEASURE
+    !!                                               FFTPreparePlan. Default value is FFTW_MEASURE
     integer,          intent(in)    :: mpi_comm   !< MPI communicator
 
     integer(C_INTPTR_T) :: tmp_n(3)
@@ -204,9 +204,9 @@ contains
     CMPLX,   pointer, intent(inout) :: in(:,:,:)  !< The input matrix that is going to be used to do the transform
     CMPLX,   pointer, intent(inout) :: out(:,:,:) !< The output matrix that is going to be used to do the transform
     integer,          intent(in)    :: sign       !< Sign flag to decide FFT direction.
-    !                                             !! Has to be FFTW_FORWARD or FFTW_BACKWARD
+    ! 1                                              Has to be FFTW_FORWARD or FFTW_BACKWARD
     integer,          intent(in)    :: flags      !< Flags for FFT library. Could be changed with the input variable
-    !                                             !! FFTPreparePlan. Default value is FFTW_MEASURE
+    !!                                               FFTPreparePlan. Default value is FFTW_MEASURE
     integer,          intent(in)    :: mpi_comm   !< MPI communicator
 
 #ifdef HAVE_PFFT

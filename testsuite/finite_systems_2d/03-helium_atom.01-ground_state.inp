@@ -13,10 +13,9 @@
 # [M. S. Pindzola, D. C Griffin and C. Bottcher, Phys. Rev. Lett. 66, 2305 (1991)].
 # In this case, the electron-electron interaction is not exactly a soft-Coulomb
 # interaction. The total energy reproduces the -77.3eV quoted in the paper.
-
 CalculationMode = gs
 Dimensions = 2
-fromScratch = yes
+FromScratch = yes
 
 a = 0.5
 corr = -1
@@ -31,5 +30,3 @@ Radius  = 7.0
 Spacing = 0.14
 
 TheoryLevel = independent_particles
-
-EigenSolverTolerance = 1.0e-4

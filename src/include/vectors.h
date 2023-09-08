@@ -31,8 +31,8 @@
 #define VEC_TYPE __m512d
 #define VEC_LD(addr) _mm512_load_pd(addr)
 #define VEC_LDU(addr) _mm512_loadu_pd(addr)
-#define VEC_ST(addr, vec)  _mm512_stream_pd(addr, vec)
-#define VEC_STU(addr, vec)  _mm512_storeu_pd(addr, vec)
+#define VEC_ST(addr, vec) _mm512_stream_pd(addr, vec)
+#define VEC_STU(addr, vec) _mm512_storeu_pd(addr, vec)
 #define VEC_FMA(aa, bb, cc) _mm512_fmadd_pd(aa, bb, cc)
 #define VEC_SCAL(aa) _mm512_set1_pd(aa)
 #define VEC_ZERO _mm512_setzero_pd()
@@ -50,8 +50,8 @@
 #define VEC_TYPE __m256d
 #define VEC_LD(addr) _mm256_load_pd(addr)
 #define VEC_LDU(addr) _mm256_loadu_pd(addr)
-#define VEC_ST(addr, vec)  _mm256_stream_pd(addr, vec)
-#define VEC_STU(addr, vec)  _mm256_storeu_pd(addr, vec)
+#define VEC_ST(addr, vec) _mm256_stream_pd(addr, vec)
+#define VEC_STU(addr, vec) _mm256_storeu_pd(addr, vec)
 #ifdef HAVE_FMA3
 #define VEC_FMA(aa, bb, cc) _mm256_fmadd_pd(aa, bb, cc)
 #elif defined(HAVE_FMA4)
@@ -76,8 +76,8 @@
 #define VEC_TYPE __m128d
 #define VEC_LD(addr) _mm_load_pd(addr)
 #define VEC_LDU(addr) _mm_loadu_pd(addr)
-#define VEC_ST(addr, vec)  _mm_stream_pd(addr, vec)
-#define VEC_STU(addr, vec)  _mm_storeu_pd(addr, vec)
+#define VEC_ST(addr, vec) _mm_stream_pd(addr, vec)
+#define VEC_STU(addr, vec) _mm_storeu_pd(addr, vec)
 #ifdef HAVE_FMA3
 #define VEC_FMA(aa, bb, cc) _mm_fmadd_pd(aa, bb, cc)
 #elif defined(HAVE_FMA4)
@@ -95,14 +95,19 @@
 #ifdef HAVE_BLUE_GENE_Q
 #define VEC_SIZE 4
 #define VEC_TYPE vector4double
-#define VEC_LD(addr) vec_ld(0, (double *) (addr))
-#define VEC_LDU(addr) ((vector4double) {(addr)[0], (addr)[1], (addr)[2], (addr)[3]})
-#define VEC_ST(addr, vec)  vec_st(vec, 0, (double *) (addr))
-#define VEC_STU(addr, vec) (addr)[0] = vec_extract(vec, 0); (addr)[1] = vec_extract(vec, 1); (addr)[2] = vec_extract(vec, 2); (addr)[3] = vec_extract(vec, 3)
+#define VEC_LD(addr) vec_ld(0, (double *)(addr))
+#define VEC_LDU(addr)                                                          \
+  ((vector4double){(addr)[0], (addr)[1], (addr)[2], (addr)[3]})
+#define VEC_ST(addr, vec) vec_st(vec, 0, (double *)(addr))
+#define VEC_STU(addr, vec)                                                     \
+  (addr)[0] = vec_extract(vec, 0);                                             \
+  (addr)[1] = vec_extract(vec, 1);                                             \
+  (addr)[2] = vec_extract(vec, 2);                                             \
+  (addr)[3] = vec_extract(vec, 3)
 #define VEC_FMA(aa, bb, cc) vec_madd(aa, bb, cc)
-#define VEC_SCAL(aa) ((vector4double) {aa, aa, aa, aa})
-#define VEC_SCAL_LD(addr) vec_lds(0, (double*) (addr))
-#define VEC_ZERO ((vector4double) {0.0, 0.0, 0.0, 0.0})
+#define VEC_SCAL(aa) ((vector4double){aa, aa, aa, aa})
+#define VEC_SCAL_LD(addr) vec_lds(0, (double *)(addr))
+#define VEC_ZERO ((vector4double){0.0, 0.0, 0.0, 0.0})
 
 #define DEPTH 16
 #endif
@@ -112,8 +117,10 @@
 #define VEC_TYPE double _Complex
 #define VEC_LD(addr) __lfpd(addr)
 #define VEC_LDU(addr) __cmplx((addr)[0], (addr)[1])
-#define VEC_ST(addr, vec)  __stfpd(addr, vec)
-#define VEC_STU(addr, vec)  (addr)[0] = __creal(vec); (addr)[1] = __cimag(vec)
+#define VEC_ST(addr, vec) __stfpd(addr, vec)
+#define VEC_STU(addr, vec)                                                     \
+  (addr)[0] = __creal(vec);                                                    \
+  (addr)[1] = __cimag(vec)
 #define VEC_FMA(aa, bb, cc) __fpmadd(cc, aa, bb)
 #define VEC_SCAL(aa) __cmplx(aa, aa)
 #define VEC_ZERO __cmplx(0.0, 0.0)
@@ -131,13 +138,13 @@
 #define VEC_LDU(addr) VEC_LD(addr)
 #define VEC_ST(addr, vec) (addr)[0] = vec
 #define VEC_STU(addr, vec) VEC_ST(addr, vec)
-#define VEC_FMA(aa, bb, cc) aa*bb + cc
+#define VEC_FMA(aa, bb, cc) aa *bb + cc
 #define VEC_SCAL(aa) aa
 #define VEC_ZERO 0.0
 
 #define DEPTH 8
 #endif
 
-#define max1(x) (((x) > 0)?(x):1)
+#define max1(x) (((x) > 0) ? (x) : 1)
 
 #endif

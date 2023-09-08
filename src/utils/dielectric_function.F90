@@ -103,7 +103,7 @@ contains
       call messages_fatal(1)
 
     end if
-  
+
     if(space%dim > 1) then
       message(1) = "This program assumes that the gauge field is in the 'x'"
       message(2) = "direction, and that the 'y' and 'z' directions are equivalent."

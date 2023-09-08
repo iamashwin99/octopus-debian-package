@@ -6,8 +6,8 @@ FromScratch = yes
 bondlength = 1.7/0.529177
 
 %Coordinates
-"Na" | 0.0 | 0.0 |  bondlength 
-"Na" | 0.0 | 0.0 | -bondlength 
+"Na" | 0.0 | 0.0 |  bondlength
+"Na" | 0.0 | 0.0 | -bondlength
 %
 
 BoxShape = sphere
@@ -38,13 +38,11 @@ electric_field   | 0 | 1 | 0 | 2*omega | "envelope_function"
 
 AbsorbingBoundaries = no
 
-%TDOutput 
- laser 
- energy 
+%TDOutput
+ laser
+ energy
  multipoles
  forces_sep
 %
 
 FilterPotentials = filter_none
-
-

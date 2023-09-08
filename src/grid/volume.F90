@@ -14,8 +14,6 @@
 !! along with this program; if not, write to the Free Software
 !! Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 !! 02110-1301, USA.
-!!
-!! $Id: species.F90 13307 2015-03-09 06:55:02Z xavier $
 
 #include "global.h"
 

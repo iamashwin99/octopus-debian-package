@@ -110,6 +110,9 @@
 /* Defined if you have the CLBLAS library. */
 #undef HAVE_CLBLAS
 
+/* Defined if you have the CLBLAST library. */
+#undef HAVE_CLBLAST
+
 /* Defined if you have the CLFFT library. */
 #undef HAVE_CLFFT
 
@@ -144,7 +147,7 @@
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #undef HAVE_DLFCN_H
 
-/* Define if ELPA is available */
+/* Define if ELPA is available with openMP support */
 #undef HAVE_ELPA
 
 /* Define to 1 if you have the <errno.h> header file. */

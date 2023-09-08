@@ -99,7 +99,7 @@ contains
     integer :: j
     FLOAT :: dr, r, sum
 
-    integer :: nr = CNST(1000)
+    integer, parameter :: nr = CNST(1000)
 
     !no PUSH_SUB, called too often
 

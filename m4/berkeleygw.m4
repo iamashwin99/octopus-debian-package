@@ -18,13 +18,13 @@ AC_MSG_CHECKING([for BerkeleyGW])
 if test "$acx_berkeleygw_ok" != disabled; then
   for location in "source" "install"; do
     if test "$location" = "source"; then
-      LIBS_BERKELEYGW="-L$with_berkeleygw_prefix/library -lBGW_wfn"; 
+      LIBS_BERKELEYGW="-L$with_berkeleygw_prefix/library -lBGW_wfn";
       FCFLAGS_BERKELEYGW="$ax_cv_f90_modflag$with_berkeleygw_prefix/library";
     else
-      LIBS_BERKELEYGW="-L$with_berkeleygw_prefix/lib -lBGW_wfn"; 
+      LIBS_BERKELEYGW="-L$with_berkeleygw_prefix/lib -lBGW_wfn";
       FCFLAGS_BERKELEYGW="$ax_cv_f90_modflag$with_berkeleygw_prefix/include";
     fi
-	
+
     FCFLAGS="$FCFLAGS_BERKELEYGW $acx_berkeleygw_save_FCFLAGS"
     LIBS="$LIBS_BERKELEYGW $acx_berkeleygw_save_LIBS"
     AC_LINK_IFELSE(AC_LANG_PROGRAM([],[
@@ -39,7 +39,7 @@ dnl Finally, execute ACTION-IF-FOUND/ACTION-IF-NOT-FOUND:
 if test x"$acx_berkeleygw_ok" = xyes; then
   AC_DEFINE(HAVE_BERKELEYGW,1,[Defined if you have the BerkeleyGW library.])
 else
-  AC_MSG_WARN([Could not find BerkeleyGW library. 
+  AC_MSG_WARN([Could not find BerkeleyGW library.
            *** Will compile without BerkeleyGW support])
   FCFLAGS_BERKELEYGW=""
   LIBS_BERKELEYGW=""

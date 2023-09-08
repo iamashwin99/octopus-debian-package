@@ -31,11 +31,11 @@ AC_DEFUN([ACX_OCTOPUS_COMPILATION_INFO],
 AC_MSG_NOTICE([collecting compilation info...])
 
 [folder=$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )]
-hash=$($folder/build/git_commit_hash.sh 2> /dev/null)
+hash=$($folder/scripts/git_commit_hash.sh 2> /dev/null)
 date=`date`
-truecc=$($folder/build/true_compiler.sh $CC 2> /dev/null)
-truecxx=$($folder/build/true_compiler.sh $CXX 2> /dev/null)
-truefc=$($folder/build/true_compiler.sh $FC 2> /dev/null)
+truecc=$($folder/scripts/true_compiler.sh $CC 2> /dev/null)
+truecxx=$($folder/scripts/true_compiler.sh $CXX 2> /dev/null)
+truefc=$($folder/scripts/true_compiler.sh $FC 2> /dev/null)
 
 AC_DEFINE_UNQUOTED([GIT_COMMIT], ["$hash"], [git commit hash])
 AC_DEFINE_UNQUOTED([BUILD_TIME], ["$date"], [date when configure was launched])
@@ -44,11 +44,11 @@ AC_DEFINE_UNQUOTED([CXX], ["$CXX $truecxx"], [C++ compiler])
 AC_DEFINE_UNQUOTED([FC], ["$FC $truefc"], [Fortran compiler])
 # 132 characters is max in std fortran, two are for the quotes, and a few more for the indentation
 AC_DEFINE_UNQUOTED([CFLAGS], ["${CFLAGS:0:120}"], [C compiler flags])
-AC_DEFINE_UNQUOTED([CFLAGS_EXTRA], ["${CFLAGS:120:240}"], [C compiler flags (extra)])
+AC_DEFINE_UNQUOTED([CFLAGS_EXTRA], ["${CFLAGS:120:120}"], [C compiler flags (extra)])
 AC_DEFINE_UNQUOTED([CXXFLAGS], ["${CXXFLAGS:0:120}"], [C++ compiler flags])
-AC_DEFINE_UNQUOTED([CXXFLAGS_EXTRA], ["${CXXFLAGS:120:240}"], [C++ compiler flags (extra)])
+AC_DEFINE_UNQUOTED([CXXFLAGS_EXTRA], ["${CXXFLAGS:120:120}"], [C++ compiler flags (extra)])
 AC_DEFINE_UNQUOTED([FCFLAGS], ["${FCFLAGS:0:120}"], [Fortran compiler flags])
-AC_DEFINE_UNQUOTED([FCFLAGS_EXTRA], ["${FCFLAGS:120:240}"], [Fortran compiler flags (extra)])
+AC_DEFINE_UNQUOTED([FCFLAGS_EXTRA], ["${FCFLAGS:120:120}"], [Fortran compiler flags (extra)])
 
 GIT_COMMIT=$hash
 AC_SUBST([GIT_COMMIT])

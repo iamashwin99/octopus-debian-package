@@ -18,7 +18,8 @@
 
 */
 
-/* This is a wrapper around the NVTX (NVIDIA Tools Extension) profiling functions */
+/* This is a wrapper around the NVTX (NVIDIA Tools Extension) profiling
+ * functions */
 
 #include <config.h>
 
@@ -26,9 +27,10 @@
 #include <nvToolsExt.h>
 /* These are colors from the "light" qualitative color scheme
  * from https://personal.sron.nl/~pault/ */
-const uint32_t colors[] = { 0xff77aadd, 0xff99ddff, 0xff44bb99, 0xffbbcc33,
-  0xffaaaa00, 0xffeedd88, 0xffee8866, 0xffffaabb, 0xffdddddd };
-const int num_colors = sizeof(colors)/sizeof(uint32_t);
+const uint32_t colors[] = {0xff77aadd, 0xff99ddff, 0xff44bb99,
+                           0xffbbcc33, 0xffaaaa00, 0xffeedd88,
+                           0xffee8866, 0xffffaabb, 0xffdddddd};
+const int num_colors = sizeof(colors) / sizeof(uint32_t);
 #endif
 
 #include "string_f.h" /* fortran <-> c string compatibility issues */
@@ -37,13 +39,16 @@ const int num_colors = sizeof(colors)/sizeof(uint32_t);
 
 using namespace std;
 
-extern "C" void FC_FUNC_(nvtx_range_push, NVTX_RANGE_PUSH)(STR_F_TYPE range_name, const fint * idx STR_ARG1){
-#ifdef HAVE_NVTX  
+extern "C" void FC_FUNC_(nvtx_range_push,
+                         NVTX_RANGE_PUSH)(STR_F_TYPE range_name,
+                                          const fint *idx STR_ARG1) {
+#ifdef HAVE_NVTX
   char *range_name_c;
   TO_C_STR1(range_name, range_name_c);
 
   /* The code for the colored ranges is taken from a blog post by Jiri Kraus:
-   * https://developer.nvidia.com/blog/cuda-pro-tip-generate-custom-application-profile-timelines-nvtx/ */
+   * https://developer.nvidia.com/blog/cuda-pro-tip-generate-custom-application-profile-timelines-nvtx/
+   */
   int color_id = *idx;
   color_id = color_id % num_colors;
   nvtxEventAttributes_t eventAttrib = {0};
@@ -54,13 +59,13 @@ extern "C" void FC_FUNC_(nvtx_range_push, NVTX_RANGE_PUSH)(STR_F_TYPE range_name
   eventAttrib.messageType = NVTX_MESSAGE_TYPE_ASCII;
   eventAttrib.message.ascii = range_name_c;
   nvtxRangePushEx(&eventAttrib);
-  
+
   free(range_name_c);
 #endif
 }
 
-extern "C" void FC_FUNC_(nvtx_range_pop, NVTX_RANGE_POP)(){
-#ifdef HAVE_NVTX  
+extern "C" void FC_FUNC_(nvtx_range_pop, NVTX_RANGE_POP)() {
+#ifdef HAVE_NVTX
   nvtxRangePop();
 #endif
 }

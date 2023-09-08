@@ -33,7 +33,7 @@ if (available nfft); then
     match ; Error match ; GREPCOUNT(err, 'Calculation will not be continued.') ; 1
   else
     Precision: 0.0015
-    match ; PES [val  1] ; LINEFIELD(td.general/PESM_power.sum, 30, 2) ;  6.648502709932E-01 
+    match ; PES [val  1] ; LINEFIELD(td.general/PESM_power.sum, 30, 2) ;  6.648502709932E-01
     match ; PES [val  2] ; LINEFIELD(td.general/PESM_power.sum, 49, 2) ;  4.532980021948E-01
     match ; PES [val  3] ; LINEFIELD(td.general/PESM_power.sum, 62, 2) ;  1.826169875388E-01
   endif

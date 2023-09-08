@@ -239,7 +239,7 @@ subroutine X(multigrid_coarse2fine_batch)(tt, coarse_der, fine_mesh, coarseb, fi
 
   PUSH_SUB(X(multigrid_coarse2fine_batch))
 
-  call profiling_in(interp_prof, TOSTRING(X(MG_INTERPOLATION_BATCH)))
+  call profiling_in(interp_prof_batch, TOSTRING(X(MG_INTERPOLATION_BATCH)))
 
   ASSERT(coarseb%nst_linear == fineb%nst_linear)
 
@@ -319,7 +319,10 @@ subroutine X(multigrid_coarse2fine_batch)(tt, coarse_der, fine_mesh, coarseb, fi
 
   end select
 
-  call profiling_out(interp_prof)
+  SAFE_DEALLOCATE_A(points)
+  SAFE_DEALLOCATE_A(factor)
+
+  call profiling_out(interp_prof_batch)
   POP_SUB(X(multigrid_coarse2fine_batch))
 end subroutine X(multigrid_coarse2fine_batch)
 
@@ -379,7 +382,7 @@ subroutine X(multigrid_restriction_batch)(tt, fine_der, coarse_mesh, fineb, coar
   type(par_vec_handle_batch_t) :: handle
 
   PUSH_SUB(X(multigrid_restriction_batch))
-  call profiling_in(restrict_prof, TOSTRING(X(MG_RESTRICTION_BATCH)))
+  call profiling_in(restrict_prof_batch, TOSTRING(X(MG_RESTRICTION_BATCH)))
 
   !The following code only works in 3D
   ASSERT(fine_der%dim == 3)
@@ -459,7 +462,7 @@ subroutine X(multigrid_restriction_batch)(tt, fine_der, coarse_mesh, fineb, coar
   end select
 
   call profiling_count_operations(tt%n_coarse*(27*3 + 1))
-  call profiling_out(restrict_prof)
+  call profiling_out(restrict_prof_batch)
   POP_SUB(X(multigrid_restriction_batch))
 end subroutine X(multigrid_restriction_batch)
 

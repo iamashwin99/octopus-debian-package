@@ -1,0 +1,43 @@
+CalculationMode = gs
+ExperimentalFeatures = yes
+FromScratch = yes
+
+PeriodicDimensions = 3
+
+a =  3.43*angstrom
+
+PseudopotentialSet = hgh_lda
+
+Spacing = 0.30
+
+%LatticeParameters
+  a | a  | a
+%
+
+%LatticeVectors
+-0.5 | 0.5 | 0.5
+ 0.5 |-0.5 | 0.5
+ 0.5 | 0.5 |-0.5
+%
+
+%ReducedCoordinates
+ "Bi" | 0.0 | 0.0 | 0.0
+%
+
+%KPointsGrid
+ 1 | 1 | 3
+%
+
+ExtraStates = 3 
+
+ConvRelDens = 1e-8
+EigensolverTolerance = 1e-9
+EigensolverMaxIter = 30
+
+SpinComponents = spinors
+RelativisticCorrection = spin_orbit
+GuessMagnetDensity = paramagnetic
+
+%Output
+ current | axis_z
+%

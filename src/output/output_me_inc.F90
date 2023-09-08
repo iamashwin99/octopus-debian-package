@@ -28,13 +28,12 @@
 !! It prints the (ll,mm) multipole moment, for
 !! the Kohn-Sham states in the irreducible subspace ik.
 !!
-! ---------------------------------------------------------
 subroutine X(output_me_ks_multipoles)(fname, namespace, space, st, mesh, ll, mm, ik)
   character(len=*),    intent(in) :: fname
   type(namespace_t),   intent(in) :: namespace
   type(space_t),       intent(in) :: space
   type(states_elec_t), intent(in) :: st
-  type(mesh_t),        intent(in) :: mesh
+  class(mesh_t),       intent(in) :: mesh
   integer,             intent(in) :: ll, mm, ik
 
   integer :: ist, jst, ip, iunit
@@ -113,12 +112,12 @@ end subroutine X(output_me_ks_multipoles)
 !! arbitrary order, similar to the 3D case.
 !!
 !! The argument dir should be 1 (X) or 2 (Y).
-! ---------------------------------------------------------
+!!
 subroutine X(output_me_ks_multipoles2d)(fname, namespace, st, mesh, dir, ik)
   character(len=*),    intent(in) :: fname
   type(namespace_t),   intent(in) :: namespace
   type(states_elec_t), intent(in) :: st
-  type(mesh_t),        intent(in) :: mesh
+  class(mesh_t),       intent(in) :: mesh
   integer,             intent(in) :: dir, ik
 
   integer :: ist, jst, ip, iunit
@@ -189,12 +188,12 @@ end subroutine X(output_me_ks_multipoles2d)
 !! It prints the states to the file opened in iunit.
 !! It prints the moment of ll-th order, for single orbital states
 !! irreducible subspace ik.
-! ---------------------------------------------------------
+!!
 subroutine X(output_me_ks_multipoles1d)(fname, namespace, st, mesh, ll, ik)
   character(len=*),    intent(in) :: fname
   type(namespace_t),   intent(in) :: namespace
   type(states_elec_t), intent(in) :: st
-  type(mesh_t),        intent(in) :: mesh
+  class(mesh_t),       intent(in) :: mesh
   integer,             intent(in) :: ll, ik
 
   integer :: iunit, ip, ist, jst
@@ -261,7 +260,6 @@ end subroutine X(output_me_ks_multipoles1d)
 !!
 !! It prints the states to the file opened in iunit.
 !!
-! ---------------------------------------------------------
 subroutine X(output_me_dipole)(this, fname, namespace, space, st, gr, hm, ions, ik)
   type(output_me_t),   intent(in) :: this
   character(len=*),    intent(in) :: fname
@@ -286,9 +284,9 @@ subroutine X(output_me_dipole)(this, fname, namespace, space, st, gr, hm, ions, 
 
   ispin = st%d%get_spin_index(ik)
 
-  SAFE_ALLOCATE(psii(1:gr%mesh%np_part, 1:st%d%dim))
-  SAFE_ALLOCATE(psij(1:gr%mesh%np, 1:st%d%dim))
-  SAFE_ALLOCATE(gpsii(1:gr%mesh%np, 1:space%dim, 1:st%d%dim))
+  SAFE_ALLOCATE(psii(1:gr%np_part, 1:st%d%dim))
+  SAFE_ALLOCATE(psij(1:gr%np, 1:st%d%dim))
+  SAFE_ALLOCATE(gpsii(1:gr%np, 1:space%dim, 1:st%d%dim))
 
   do idir = 1, space%dim
 
@@ -300,26 +298,26 @@ subroutine X(output_me_dipole)(this, fname, namespace, space, st, gr, hm, ions, 
 
     do ist = this%st_start, this%st_end
 
-      call states_elec_get_state(st, gr%mesh, ist, ik, psii)
+      call states_elec_get_state(st, gr, ist, ik, psii)
 
       if (.not. space%is_periodic()) then
 
         do idim = 1, st%d%dim
-          do ip = 1, gr%mesh%np
-            gpsii(ip, idir, idim) = psii(ip, idim)*gr%mesh%x(ip, idir)
+          do ip = 1, gr%np
+            gpsii(ip, idir, idim) = psii(ip, idim)*gr%x(ip, idir)
           end do
         end do
 
       else
 
         do idim = 1, st%d%dim
-          call boundaries_set(gr%der%boundaries, gr%mesh, psii(:, idim))
+          call boundaries_set(gr%der%boundaries, gr, psii(:, idim))
         end do
 
         !We need the phase here as the routines for the nonlocal contributions assume that the wavefunctions have a phase.
 #ifdef R_TCOMPLEX
         if (allocated(hm%hm_base%phase)) then
-          call states_elec_set_phase(st%d, psii, hm%hm_base%phase(1:gr%mesh%np_part, ik), gr%mesh%np_part, .false.)
+          call states_elec_set_phase(st%d, psii, hm%hm_base%phase(1:gr%np_part, ik), gr%np_part, .false.)
         end if
 #endif
 
@@ -332,7 +330,7 @@ subroutine X(output_me_dipole)(this, fname, namespace, space, st, gr, hm, ions, 
         if (family_is_mgga_with_exc(hm%xc)) then
           do idim = 1, st%d%dim
             !$omp parallel do
-            do ip = 1, gr%mesh%np
+            do ip = 1, gr%np
               gpsii(ip, idir, idim) = (M_ONE + M_TWO*hm%vtau(ip, ispin))*gpsii(ip, idir, idim)
             end do
             !$omp end parallel do
@@ -340,29 +338,30 @@ subroutine X(output_me_dipole)(this, fname, namespace, space, st, gr, hm, ions, 
         end if
 
         !A nonlocal contribution from the pseudopotential must be included
-        call X(projector_commute_r_allatoms_alldir)(hm%ep%proj, ions, gr%mesh, st%d%dim, &
+        call X(projector_commute_r_allatoms_alldir)(hm%ep%proj, ions, gr, st%d%dim, &
           gr%der%boundaries, ik, psii, gpsii)
 
         !A nonlocal contribution from the scissor must be included
         if (hm%scissor%apply) then
-          call scissor_commute_r(hm%scissor, gr%mesh, ik, psii, gpsii)
+          call scissor_commute_r(hm%scissor, gr, ik, psii, gpsii)
         end if
 
         if (hm%lda_u_level /= DFT_U_NONE) then
-          call X(lda_u_commute_r)(hm%lda_u, gr%mesh, st%d, namespace, ik, psii, gpsii, allocated(hm%hm_base%phase))
+          call X(lda_u_commute_r_single)(hm%lda_u, gr, space, st%d, namespace, ist, ik, &
+            psii, gpsii, allocated(hm%hm_base%phase))
         end if
       end if
 
       do jst = this%st_start, this%st_end
 
-        call states_elec_get_state(st, gr%mesh, jst, ik, psij)
+        call states_elec_get_state(st, gr, jst, ik, psij)
 #ifdef R_TCOMPLEX
         if (allocated(hm%hm_base%phase)) then
-          call states_elec_set_phase(st%d, psij, hm%hm_base%phase(1:gr%mesh%np, ik), gr%mesh%np, .false.)
+          call states_elec_set_phase(st%d, psij, hm%hm_base%phase(1:gr%np, ik), gr%np, .false.)
         end if
 #endif
 
-        dip_element = X(mf_dotp)(gr%mesh, st%d%dim, gpsii(:, idir, :), psij)
+        dip_element = X(mf_dotp)(gr, st%d%dim, gpsii(:, idir, :), psij)
         if (space%is_periodic()) then
           if (abs(st%eigenval(ist, ik) - st%eigenval(jst, ik)) > CNST(1e-5)) then
             dip_element = -dip_element/((st%eigenval(ist, ik) - st%eigenval(jst, ik)))

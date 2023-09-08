@@ -22,29 +22,43 @@
 
 __kernel void get_points(const int sp,
 			 const int ep,
-			 const int offset,
+			 __global const int * linear_to_ist,
+			 __global const int * linear_to_idim,
 			 const int nst,
 			 __global double const * restrict psi, const int ldpsi,
-			 __global double * restrict points, const int ldpoints){
-  const int ist = get_global_id(0);
+			 __global double * restrict points,
+                         const int ldpoints1, const int ldpoints2){
+  const int ist_linear = get_global_id(0);
   const int ip  = get_global_id(1);
   const int sip = ip + sp - 1;
 
-  if(ist < nst) points[ldpoints*ip + ist + offset] = psi[ldpsi*sip + ist];
+  if(ist_linear < nst) {
+    int ist = linear_to_ist[ist_linear];
+    int idim = linear_to_idim[ist_linear];
+
+    points[ldpoints1*ldpoints2*ip + idim*ldpoints1 + ist] = psi[ldpsi*sip + ist_linear];
+  }
 
 }
 
 __kernel void set_points(const int sp,
 			 const int ep,
-			 const int offset,
+			 __global const int * linear_to_ist,
+			 __global const int * linear_to_idim,
 			 const int nst,
-			 __global double const * restrict points, const int ldpoints,
+			 __global double const * restrict points,
+                         const int ldpoints1, const int ldpoints2,
 			 __global double * restrict psi, const int ldpsi){
-  const int ist = get_global_id(0);
+  const int ist_linear = get_global_id(0);
   const int ip  = get_global_id(1);
   const int sip = ip + sp - 1;
 
-  if(ist < nst) psi[ldpsi*sip + ist] = points[ldpoints*ip + ist + offset];
+  if(ist_linear < nst) {
+    int ist = linear_to_ist[ist_linear];
+    int idim = linear_to_idim[ist_linear];
+
+    psi[ldpsi*sip + ist_linear] = points[ldpoints1*ldpoints2*ip + idim*ldpoints1 + ist];
+  }
 
 }
 /*

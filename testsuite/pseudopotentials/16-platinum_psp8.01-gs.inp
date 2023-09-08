@@ -1,6 +1,7 @@
 CalculationMode = gs
+FromScratch = yes
 
-%Coordinates 
+%Coordinates
  'Pt' | 0.0 | 0.0 | 0.0
 %
 
@@ -8,20 +9,14 @@ CalculationMode = gs
  'Pt' | species_pseudo | file | '16-platinum_psp8.78_Pt_r.oncvpsp.psp8'
 %
 
-ExperimentalFeatures = yes
-
 Radius = 5.0
 Spacing = 0.32
-
-FromScratch = yes
 
 ExtraStates = 7
 
 Smearing = 0.1*eV
 SmearingFunction = fermi_dirac
 
-
 ConvEigenError = yes
-
 
 PoissonSolver = isf

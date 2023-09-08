@@ -24,6 +24,7 @@ module mesh_cube_map_oct_m
   use debug_oct_m
   use global_oct_m
   use index_oct_m
+  use mesh_oct_m
   use messages_oct_m
   use profiling_oct_m
   use types_oct_m
@@ -38,9 +39,9 @@ module mesh_cube_map_oct_m
 
   type mesh_cube_map_t
     ! Components are public by default
-    integer(i8)              :: nmap      !< The number of maps
-    integer(i8), allocatable :: map(:, :)
-    type(accel_mem_t)        :: map_buffer
+    integer              :: nmap      !< The number of maps
+    integer, allocatable :: map(:, :)
+    type(accel_mem_t)    :: map_buffer
   end type mesh_cube_map_t
 
   integer, public, parameter :: MCM_POINT = 4, MCM_COUNT = 5
@@ -49,18 +50,18 @@ contains
 
   ! ---------------------------------------------------------
 
-  subroutine mesh_cube_map_init(this, idx, np_global)
+  subroutine mesh_cube_map_init(this, mesh, np)
     type(mesh_cube_map_t),         intent(out) :: this
-    type(index_t),                 intent(in)  :: idx
-    integer(i8),                   intent(in)  :: np_global
+    class(mesh_t),                 intent(in)  :: mesh
+    integer,                       intent(in)  :: np
 
-    integer :: i1(1:3), i2(1:3), i3(1:3)
+    integer :: i1(1:3), i2(1:3)
     integer :: step
-    integer(i8) :: ip
+    integer :: ip
 
     PUSH_SUB(mesh_cube_map_init)
 
-    if (idx%dim <= 3) then
+    if (mesh%idx%dim <= 3) then
       do step = 1, 2
         if (step == 2) then
           SAFE_ALLOCATE(this%map(1:5, 1:this%nmap))
@@ -68,17 +69,16 @@ contains
 
         this%nmap = 0
         i2 = 0
-        do ip = 1, np_global
+        do ip = 1, np
 
           i1 = 0
-          call index_to_coords(idx, ip, i1(1:3))
+          call mesh_local_index_to_coords(mesh, ip, i1)
 
-          if (any(i1(2:3) /= i2(2:3)) .or. i1(1) /= i2(1) + 1) then
+          if (any(i1(2:3) /= i2(2:3)) .or. i1(1) /= i2(1) + 1 .or. ip == 1) then
             this%nmap = this%nmap + 1
             if (step == 2) then
-              call index_to_coords(idx, ip, i3(1:3))
-              this%map(1:, this%nmap) = i4_to_i8(i3)
-              this%map(idx%dim + 1:3, this%nmap) = 0
+              this%map(1:3, this%nmap) = i1(1:3)
+              this%map(mesh%idx%dim + 1:3, this%nmap) = 0
               this%map(MCM_POINT, this%nmap) = ip
               this%map(MCM_COUNT, this%nmap) = 1
             end if
@@ -90,7 +90,7 @@ contains
       end do
 
       if (accel_is_enabled()) then
-        call accel_create_buffer(this%map_buffer, ACCEL_MEM_READ_ONLY, TYPE_INTEGER8, this%nmap*5)
+        call accel_create_buffer(this%map_buffer, ACCEL_MEM_READ_ONLY, TYPE_INTEGER, this%nmap*5)
         call accel_write_buffer(this%map_buffer, this%nmap*5, this%map)
       end if
 

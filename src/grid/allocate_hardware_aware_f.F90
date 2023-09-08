@@ -23,8 +23,10 @@
 ! -----------------------------------------------------------------------
 module allocate_hardware_aware_oct_m
   use accel_oct_m
+  use global_oct_m
   use iso_c_binding
   use kind_oct_m
+  use profiling_oct_m
 
   implicit none
 
@@ -127,6 +129,10 @@ contains
     else
       zallocate_hardware_aware = zallocate_aligned(size)
     end if
+
+    if (bitand(prof_vars%mode, PROFILING_MEMORY) /= 0) then
+      call profiling_memory_allocate("batch", "allocate_hardware_aware_f.F90", 131, size*16)
+    end if
   end function zallocate_hardware_aware
 
   function dallocate_hardware_aware(size)
@@ -138,6 +144,10 @@ contains
       dallocate_hardware_aware = dallocate_pinned(size)
     else
       dallocate_hardware_aware = dallocate_aligned(size)
+    end if
+
+    if (bitand(prof_vars%mode, PROFILING_MEMORY) /= 0) then
+      call profiling_memory_allocate("batch", "allocate_hardware_aware_f.F90", 146, size*8)
     end if
   end function dallocate_hardware_aware
 
@@ -151,6 +161,10 @@ contains
     else
       callocate_hardware_aware = callocate_aligned(size)
     end if
+
+    if (bitand(prof_vars%mode, PROFILING_MEMORY) /= 0) then
+      call profiling_memory_allocate("batch", "allocate_hardware_aware_f.F90", 161, size*8)
+    end if
   end function callocate_hardware_aware
 
   function sallocate_hardware_aware(size)
@@ -163,16 +177,25 @@ contains
     else
       sallocate_hardware_aware = sallocate_aligned(size)
     end if
+
+    if (bitand(prof_vars%mode, PROFILING_MEMORY) /= 0) then
+      call profiling_memory_allocate("batch", "allocate_hardware_aware_f.F90", 176, size*4)
+    end if
   end function sallocate_hardware_aware
 
-  subroutine deallocate_hardware_aware(array)
+  subroutine deallocate_hardware_aware(array, size)
     type(c_ptr), value :: array
+    integer(i8)        :: size
 
     ! deallocate pinned memory for GPU runs, otherwise aligned memory
     if (accel_is_enabled()) then
       call deallocate_pinned(array)
     else
       call deallocate_aligned(array)
+    end if
+
+    if (bitand(prof_vars%mode, PROFILING_MEMORY) /= 0) then
+      call profiling_memory_deallocate("batch", "allocate_hardware_aware_f.F90", 190, size)
     end if
   end subroutine deallocate_hardware_aware
 

@@ -6,13 +6,13 @@ oct-run_regression_test.pl - Script to create and run B<octopus> regression test
 
 =over
 
-=item B<oct-run_regression_test.pl> [ option ]... [ file ]... 
+=item B<oct-run_regression_test.pl> [ option ]... [ file ]...
 
 =back
 
 =head1 DESCRIPTION
 
-This script is one of the B<octopus> utilities. 
+This script is one of the B<octopus> utilities.
 
 This script can be used to generate and run the B<octopus> regression tests.
 
@@ -69,7 +69,7 @@ Copy outout log to current working directory.
 
 Run matches only (assumes there are work directories present).
 
-=back 
+=back
 
 =head1 EXAMPLES
 

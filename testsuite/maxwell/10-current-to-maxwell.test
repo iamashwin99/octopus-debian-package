@@ -1,0 +1,22 @@
+# -*- coding: utf-8 mode: shell-script -*-
+
+Test       : Charged Particle current to Maxwell grid via smearing function, cos2 test.
+Program    : octopus
+TestGroups : long-run, maxwell
+Enabled    : no-GPU
+
+# This test will fail when self-consistent system initialization is implemented
+# That is, when the Maxwell system initial conditions are dependent on the velocity of the charged particles
+
+#
+Processors : 2
+Input      : 10-current-to-maxwell.01-all-forces-non-self-consistent.inp
+
+
+Precision: 1.00e-14
+match ;     B-field z direction [step 5]     ; GREPFIELD(Maxwell/output_iter/td.0000005/b_field-z.z\=0, '0.00000000000000E+000  0.00000000000000E+000', 3) ; -0.09999992056404118
+match ;    Particle 1 y coordinate [step 5]     ; GREPFIELD(cp1/td.general/coordinates, '       5', 4) ; 0.0005099999643462822
+Precision: 1.00e-20
+match ;    Particle 1 z coordinate [step 5]     ; GREPFIELD(cp1/td.general/coordinates, '       5', 5) ; 1e-10
+Precision: 1.0e-7
+match ;    Particle 1 x force [step 5]     ; GREPFIELD(cp1/td.general/coordinates, '       5', 9) ; 0.1392766510440693

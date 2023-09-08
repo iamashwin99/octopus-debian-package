@@ -101,7 +101,7 @@ contains
   ! ---------------------------------------------------------
   subroutine nlcc_init(this, mesh, ions)
     class(nlcc_t),         intent(inout) :: this
-    type(mesh_t),     target, intent(in) :: mesh
+    class(mesh_t),    target, intent(in) :: mesh
     type(ions_t),     target, intent(in) :: ions
 
 

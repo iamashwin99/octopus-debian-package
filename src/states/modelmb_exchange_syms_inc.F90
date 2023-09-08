@@ -20,7 +20,7 @@
 subroutine X(modelmb_sym_state)(space, mesh, modelmbparticles, ncombo, young_used, &
   wf, symmetries_satisfied, tproj_1yd, nspindown_out, iyoung_out, norm)
   type(space_t),            intent(in)    :: space
-  type(mesh_t),             intent(in)    :: mesh
+  class(mesh_t),            intent(in)    :: mesh
   type(modelmb_particle_t), intent(in)    :: modelmbparticles
   integer,                  intent(in)    :: ncombo
   integer,                  intent(inout) :: young_used(:) !< (1:ncombo)
@@ -148,7 +148,7 @@ end subroutine X(modelmb_sym_state)
 !> project out states for a single combination of Young diagrams (1 diagram for each particle type)
 subroutine X(modelmb_sym_state_1diag)(space, mesh, modelmbparticles, nspindown_in, iyoung_in, antisymwf, sym_ok_alltypes, norm)
   type(space_t),            intent(in)    :: space
-  type(mesh_t),             intent(in)    :: mesh
+  class(mesh_t),            intent(in)    :: mesh
   type(modelmb_particle_t), intent(in)    :: modelmbparticles
   integer,                  intent(in)    :: nspindown_in(:) !< (1:modelmbparticles%ntype_of_particle)
   integer,                  intent(in)    :: iyoung_in(:) !< (1:modelmbparticles%ntype_of_particle)
@@ -278,7 +278,7 @@ subroutine X(modelmb_sym_updown)(ndimmb, npptype, ofst, ndown, p_of_type_up, p_o
   integer,      intent(in)    :: ofst(1:npptype)
   integer,      intent(in)    :: p_of_type_up(ndown)
   integer,      intent(in)    :: p_of_type_down(ndown)
-  type(mesh_t), intent(in)    :: mesh
+  class(mesh_t),intent(in)    :: mesh
   FLOAT,        intent(in)    :: normalizer
   R_TYPE,       intent(inout) :: antisymwf(:,:,:)
 
@@ -361,7 +361,7 @@ subroutine X(modelmb_antisym_1spin) (n1spin, perms_1spin, ndimmb, npptype, ofst,
   integer,              intent(in)    :: npptype
   integer,              intent(in)    :: ofst(1:npptype)
   integer,              intent(in)    :: young_1spin(1:n1spin)
-  type(mesh_t),         intent(in)    :: mesh
+  class(mesh_t),        intent(in)    :: mesh
   FLOAT,                intent(in)    :: normalizer
   type(permutations_t), intent(in)    :: perms_1spin
   R_TYPE,               intent(inout) :: antisymwf(:,:,:)
@@ -445,7 +445,7 @@ end subroutine X(modelmb_antisym_1spin)
 !
 subroutine X(modelmb_sym_all_states)(space, mesh, st)
   type(space_t),          intent(in)    :: space
-  type(mesh_t),           intent(in)    :: mesh
+  class(mesh_t),          intent(in)    :: mesh
   type(states_elec_t),    intent(inout) :: st
 
   integer :: mm, itype

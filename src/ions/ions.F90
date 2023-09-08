@@ -60,9 +60,6 @@ module ions_oct_m
     integer                   :: natoms
     type(atom_t), allocatable :: atom(:)
 
-    integer                             :: ncatoms  !< For QM+MM calculations
-    type(atom_classical_t), allocatable :: catom(:)
-
     type(symmetries_t) :: symm
 
     type(distributed_t) :: atoms_dist
@@ -179,32 +176,11 @@ contains
 
     call read_coords_end(xyz)
 
-    ! load positions of the classical atoms, if any
-    call read_coords_init(xyz)
-    ions%ncatoms = 0
-    call read_coords_read('Classical', xyz, ions%space, namespace)
-    if (xyz%source /= READ_COORDS_ERR) then ! found classical atoms
-      if (.not. bitand(xyz%flags, XYZ_FLAGS_CHARGE) /= 0) then
-        message(1) = "Need to know charge for the classical atoms."
-        message(2) = "Please use a .pdb"
-        call messages_fatal(2, namespace=namespace)
-      end if
-      ions%ncatoms = xyz%n
-      write(message(1), '(a,i8)') 'Info: Number of classical atoms = ', ions%ncatoms
-      call messages_info(1, namespace=namespace)
-      if (ions%ncatoms>0) then
-        SAFE_ALLOCATE(ions%catom(1:ions%ncatoms))
-        do ia = 1, ions%ncatoms
-          call atom_classical_init(ions%catom(ia), xyz%atom(ia)%label, xyz%atom(ia)%x, xyz%atom(ia)%charge)
-        end do
-      end if
-      call read_coords_end(xyz)
-    end if
-
-
     call ions_fold_atoms_into_cell(ions)
     call ions_init_species(ions, print_info=print_info)
     call distributed_nullify(ions%atoms_dist, ions%natoms)
+
+    call messages_obsolete_variable(namespace, 'PDBClassical')
 
     if (present(latt_inp)) then
       ! The lattice as read from the input might be needed by some other part of the code, so we save it
@@ -376,13 +352,13 @@ contains
     ispin = min(2, ispin)
 
     if (print_info_) then
-      call messages_print_stress(msg="Species", namespace=ions%namespace)
+      call messages_print_with_emphasis(msg="Species", namespace=ions%namespace)
     end if
     do i = 1, ions%nspecies
       call species_build(ions%species(i), ions%namespace, ispin, ions%space%dim, print_info=print_info_)
     end do
     if (print_info_) then
-      call messages_print_stress(namespace=ions%namespace)
+      call messages_print_with_emphasis(namespace=ions%namespace)
     end if
 
     !%Variable SpeciesTimeDependent
@@ -432,12 +408,6 @@ contains
     ions_out%natoms = ions_in%natoms
     SAFE_ALLOCATE(ions_out%atom(1:ions_out%natoms))
     ions_out%atom = ions_in%atom
-
-    ions_out%ncatoms = ions_in%ncatoms
-    SAFE_ALLOCATE(ions_out%catom(1:ions_out%ncatoms))
-    if (ions_in%ncatoms > 0) then
-      ions_out%catom(1:ions_out%ncatoms) = ions_in%catom(1:ions_in%ncatoms)
-    end if
 
     ions_out%nspecies = ions_in%nspecies
     SAFE_ALLOCATE(ions_out%species(1:ions_out%nspecies))
@@ -495,8 +465,8 @@ contains
 
     PUSH_SUB(ions_update_quantity)
 
-    ! We are not allowed to update protected quantities!
-    ASSERT(.not. this%quantities(iq)%protected)
+    ! We are only allowed to update quantities that can be updated on demand
+    ASSERT(this%quantities(iq)%updated_on_demand)
 
     select case (iq)
     case default
@@ -514,8 +484,8 @@ contains
 
     PUSH_SUB(ions_update_exposed_quantity)
 
-    ! We are not allowed to update protected quantities!
-    ASSERT(.not. partner%quantities(iq)%protected)
+    ! We are only allowed to update quantities that can be updated on demand
+    ASSERT(partner%quantities(iq)%updated_on_demand)
 
     select case (iq)
     case default
@@ -591,7 +561,7 @@ contains
       call atom_get_species(this%atom(iatom), species)
       if (real_atoms_only_ .and. .not. species_represents_real_atom(species)) cycle
       do jatom = iatom + 1, this%natoms
-        call atom_get_species(this%atom(iatom), species)
+        call atom_get_species(this%atom(jatom), species)
         if (real_atoms_only_ .and. .not. species_represents_real_atom(species)) cycle
         xx = abs(this%pos(:, iatom) - this%pos(:, jatom))
         if (this%space%is_periodic()) then
@@ -680,9 +650,6 @@ contains
     do iatom = 1, this%natoms
       this%pos(:, iatom) = this%pos(:, iatom) - xx
     end do
-    do iatom = 1, this%ncatoms
-      this%catom(iatom)%x(1:this%space%dim) = this%catom(iatom)%x(1:this%space%dim) - xx
-    end do
 
     POP_SUB(ions_translate)
   end subroutine ions_translate
@@ -754,11 +721,6 @@ contains
     do iatom = 1, this%natoms
       f2 = this%pos(:, iatom)
       this%pos(:, iatom) = matmul(m1, f2)
-    end do
-
-    do iatom = 1, this%ncatoms
-      f2 = this%catom(iatom)%x(1:this%space%dim)
-      this%catom(iatom)%x(1:this%space%dim) = matmul(m1, f2)
     end do
 
     POP_SUB(ions_rotate)
@@ -858,16 +820,6 @@ contains
     end do
     call io_close(iunit)
 
-    if (this%ncatoms > 0) then
-      iunit = io_open(trim(fname)//'_classical.xyz', this%namespace, action='write', position=position)
-      write(iunit, '(i4)') this%ncatoms
-      write(iunit, '(1x)')
-      do iatom = 1, this%ncatoms
-        call atom_classical_write_xyz(this%catom(iatom), this%space%dim, iunit)
-      end do
-      call io_close(iunit)
-    end if
-
     POP_SUB(ions_write_xyz)
   end subroutine ions_write_xyz
 
@@ -898,16 +850,6 @@ contains
       this%pos(:, iatom) = units_to_atomic(units_out%length_xyz_file, tmp)
     end do
     call io_close(iunit)
-
-    if (this%ncatoms > 0) then
-      iunit = io_open(trim(fname)//'_classical.xyz', this%namespace, action='read', position='rewind')
-      read(iunit, '(i4)') this%ncatoms
-      read(iunit, *)
-      do iatom = 1, this%ncatoms
-        call atom_classical_read_xyz(this%catom(iatom), this%space%dim, iunit)
-      end do
-      call io_close(iunit)
-    end if
 
     POP_SUB(ions_read_xyz)
   end subroutine ions_read_xyz
@@ -1010,7 +952,7 @@ contains
 
     write(iunit, '(1a)') '# vtk DataFile Version 3.0 '
     write(iunit, '(6a)') 'Generated by octopus ', trim(conf%version), ' -  git: ', &
-      trim(conf%git_commit), " build: ",  trim(conf%build_time)
+      trim(conf%git_commit), " configuration: ",  trim(conf%config_time)
 
     if (ascii_) then
       write(iunit, '(1a)') 'ASCII'
@@ -1104,10 +1046,10 @@ contains
 
     SAFE_DEALLOCATE_A(ions%atom)
     ions%natoms=0
-    SAFE_DEALLOCATE_A(ions%catom)
-    ions%ncatoms=0
 
-    call species_end(ions%nspecies, ions%species)
+    if(allocated(ions%species)) then
+      call species_end(ions%nspecies, ions%species)
+    end if
     SAFE_DEALLOCATE_A(ions%species)
     ions%nspecies=0
 

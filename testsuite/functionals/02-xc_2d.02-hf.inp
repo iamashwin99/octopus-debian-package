@@ -24,8 +24,6 @@ BoxShape = sphere
 Radius = 10.0
 Spacing = 0.2
 
-DerivativesOrder = 4
-
 TheoryLevel = hartree_fock
 
 SpinComponents = spin_polarized

@@ -5,7 +5,6 @@
 #
 # This adds the Hartree interaction in 2D to the previous particle in a box example.
 # To make it more meaningful, it uses two electrons.
-
 CalculationMode = gs
 FromScratch = yes
 Dimensions = 2
@@ -32,7 +31,6 @@ delta | delta
 DerivativesOrder = 1
 
 XCFunctional = no
-
 
 PoissonSolver = fft
 

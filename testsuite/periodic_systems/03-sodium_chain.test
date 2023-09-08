@@ -12,32 +12,49 @@ Input: 03-sodium_chain.01-ground_state.inp
 match ; Space group        ; GREPFIELD(out, 'Space group', 4) ; 123
 match ; No. of symmetries  ; GREPFIELD(out, 'symmetries that can be used', 5)  ;  16
 
-match ; SCF convergence    ; GREPCOUNT(static/info, 'SCF converged') ; 1
-match ; Total energy       ; GREPFIELD(static/info, 'Total       =', 3) ; 2.02054938
-match ; Ion-ion energy     ; GREPFIELD(static/info, 'Ion-ion     =', 3) ; 0.0
-match ; Eigenvalues sum    ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -3.45704568
-match ; Hartree energy     ; GREPFIELD(static/info, 'Hartree     =', 3) ; -4.55104824
-match ; Exchange energy    ; GREPFIELD(static/info, 'Exchange    =', 3) ; -2.35943900
-match ; Correlation energy ; GREPFIELD(static/info, 'Correlation =', 3) ; -0.73526315
-match ; Kinetic energy     ; GREPFIELD(static/info, 'Kinetic     =', 3) ; 1.63722611
-match ; External energy    ; GREPFIELD(static/info, 'External    =', 3) ; 8.02907381
+Precision: 1.01e-06
+match ;  Total energy        ; GREPFIELD(static/info, 'Total       =', 3) ; 2.0219586
+Precision: 1.00e-04
+match ;  Ion-ion energy      ; GREPFIELD(static/info, 'Ion-ion     =', 3) ; 0.0
+Precision: 1.73e-07
+match ;  Eigenvalues sum     ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -3.45599633
+Precision: 2.28e-07
+match ;  Hartree energy      ; GREPFIELD(static/info, 'Hartree     =', 3) ; -4.55147402
+Precision: 1.18e-07
+match ;  Exchange energy     ; GREPFIELD(static/info, 'Exchange    =', 3) ; -2.35924226
+Precision: 3.68e-07
+match ;  Correlation energy  ; GREPFIELD(static/info, 'Correlation =', 3) ; -0.73522833
+Precision: 8.18e-08
+match ;  Kinetic energy      ; GREPFIELD(static/info, 'Kinetic     =', 3) ; 1.63691477
+Precision: 4.02e-07
+match ;  External energy     ; GREPFIELD(static/info, 'External    =', 3) ; 8.03099028
 
 Input: 03-sodium_chain.02-unocc.inp
 
-match ; Bands n=1,k=1; GREPFIELD(static/eigenvalues, '#k =       1', 3, 1) ; -3.648665
-match ; Bands n=1,k=2; GREPFIELD(static/eigenvalues, '#k =       2', 3, 1) ; -3.552680
-match ; Bands n=1,k=3; GREPFIELD(static/eigenvalues, '#k =       3', 3, 1) ; -3.265611
-match ; Bands n=1,k=4; GREPFIELD(static/eigenvalues, '#k =       4', 3, 1) ; -2.790168
-match ; Bands n=1,k=5; GREPFIELD(static/eigenvalues, '#k =       5', 3, 1) ; -2.131471
-match ; Bands n=1,k=6; GREPFIELD(static/eigenvalues, '#k =       6', 3, 1) ; -1.368819
-
-match ; Bands n=2,k=1; GREPFIELD(static/eigenvalues, '#k =       1', 3, 2) ; -1.236858
-match ; Bands n=2,k=2; GREPFIELD(static/eigenvalues, '#k =       2', 3, 2) ; -1.145312
-match ; Bands n=2,k=3; GREPFIELD(static/eigenvalues, '#k =       3', 3, 2) ; -0.870795
-match ; Bands n=2,k=4; GREPFIELD(static/eigenvalues, '#k =       4', 3, 2) ; -0.413928
-match ; Bands n=2,k=5; GREPFIELD(static/eigenvalues, '#k =       5', 3, 2) ; -0.281684
-match ; Bands n=2,k=6; GREPFIELD(static/eigenvalues, '#k =       6', 3, 2) ; -1.210780
-
+Precision: 1.82e-05
+match ;  Bands n=1,k=1 ; GREPFIELD(static/eigenvalues, '#k =       1', 3, 1) ; -3.647611
+Precision: 1.78e-05
+match ;  Bands n=1,k=2 ; GREPFIELD(static/eigenvalues, '#k =       2', 3, 1) ; -3.551627
+Precision: 1.63e-05
+match ;  Bands n=1,k=3 ; GREPFIELD(static/eigenvalues, '#k =       3', 3, 1) ; -3.264557
+Precision: 1.39e-05
+match ;  Bands n=1,k=4 ; GREPFIELD(static/eigenvalues, '#k =       4', 3, 1) ; -2.789111
+Precision: 1.07e-05
+match ;  Bands n=1,k=5 ; GREPFIELD(static/eigenvalues, '#k =       5', 3, 1) ; -2.130397
+Precision: 6.84e-06
+match ;  Bands n=1,k=6 ; GREPFIELD(static/eigenvalues, '#k =       6', 3, 1) ; -1.367359
+Precision: 6.18e-04
+match ;  Bands n=2,k=1 ; GREPFIELD(static/eigenvalues, '#k =       1', 3, 2) ; -1.2364
+Precision: 5.72e-06
+match ;  Bands n=2,k=2 ; GREPFIELD(static/eigenvalues, '#k =       2', 3, 2) ; -1.144853
+Precision: 4.35e-05
+match ;  Bands n=2,k=3 ; GREPFIELD(static/eigenvalues, '#k =       3', 3, 2) ; -0.870334
+Precision: 2.07e-05
+match ;  Bands n=2,k=4 ; GREPFIELD(static/eigenvalues, '#k =       4', 3, 2) ; -0.413463
+Precision: 1.40e-05
+match ;  Bands n=2,k=5 ; GREPFIELD(static/eigenvalues, '#k =       5', 3, 2) ; -0.280653
+Precision: 6.05e-06
+match ;  Bands n=2,k=6 ; GREPFIELD(static/eigenvalues, '#k =       6', 3, 2) ; -1.210152
 
 # The same, except the atom has been moved by a lattice vector.
 Input: 03-sodium_chain.03-ground_state_disp.inp
@@ -45,28 +62,46 @@ Input: 03-sodium_chain.03-ground_state_disp.inp
 match ; Space group        ; GREPFIELD(out, 'Space group', 4) ; 123
 match ; No. of symmetries  ; GREPFIELD(out, 'symmetries that can be used', 5)  ;  16
 
-match ; SCF convergence    ; GREPCOUNT(static/info, 'SCF converged') ; 1
-match ; Total energy       ; GREPFIELD(static/info, 'Total       =', 3) ; 2.02054932
-match ; Ion-ion energy     ; GREPFIELD(static/info, 'Ion-ion     =', 3) ; 0.0
-match ; Eigenvalues sum    ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -3.45704568
-match ; Hartree energy     ; GREPFIELD(static/info, 'Hartree     =', 3) ; -4.55104824
-match ; Exchange energy    ; GREPFIELD(static/info, 'Exchange    =', 3) ; -2.35943900
-match ; Correlation energy ; GREPFIELD(static/info, 'Correlation =', 3) ; -0.73526315
-match ; Kinetic energy     ; GREPFIELD(static/info, 'Kinetic     =', 3) ; 1.63722611
-match ; External energy    ; GREPFIELD(static/info, 'External    =', 3) ; 8.02907381
+Precision: 1.01e-07
+match ;  Total energy        ; GREPFIELD(static/info, 'Total       =', 3) ; 2.02196018
+Precision: 1.00e-04
+match ;  Ion-ion energy      ; GREPFIELD(static/info, 'Ion-ion     =', 3) ; 0.0
+Precision: 1.73e-07
+match ;  Eigenvalues sum     ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -3.4559954399999997
+Precision: 2.28e-07
+match ;  Hartree energy      ; GREPFIELD(static/info, 'Hartree     =', 3) ; -4.55147482
+Precision: 1.18e-07
+match ;  Exchange energy     ; GREPFIELD(static/info, 'Exchange    =', 3) ; -2.35924191
+Precision: 3.68e-07
+match ;  Correlation energy  ; GREPFIELD(static/info, 'Correlation =', 3) ; -0.73522826
+Precision: 8.18e-08
+match ;  Kinetic energy      ; GREPFIELD(static/info, 'Kinetic     =', 3) ; 1.6369145600000001
+Precision: 4.02e-07
+match ;  External energy     ; GREPFIELD(static/info, 'External    =', 3) ; 8.03099061
 
 Input: 03-sodium_chain.04-unocc_disp.inp
 
-match ; Bands n=1,k=1; GREPFIELD(static/eigenvalues, '#k =       1', 3, 1) ; -3.648665
-match ; Bands n=1,k=2; GREPFIELD(static/eigenvalues, '#k =       2', 3, 1) ; -3.552680
-match ; Bands n=1,k=3; GREPFIELD(static/eigenvalues, '#k =       3', 3, 1) ; -3.265611
-match ; Bands n=1,k=4; GREPFIELD(static/eigenvalues, '#k =       4', 3, 1) ; -2.790168
-match ; Bands n=1,k=5; GREPFIELD(static/eigenvalues, '#k =       5', 3, 1) ; -2.131471
-match ; Bands n=1,k=6; GREPFIELD(static/eigenvalues, '#k =       6', 3, 1) ; -1.368821
-
-match ; Bands n=2,k=1; GREPFIELD(static/eigenvalues, '#k =       1', 3, 2) ; -1.236859
-match ; Bands n=2,k=2; GREPFIELD(static/eigenvalues, '#k =       2', 3, 2) ; -1.145312
-match ; Bands n=2,k=3; GREPFIELD(static/eigenvalues, '#k =       3', 3, 2) ; -0.870795
-match ; Bands n=2,k=4; GREPFIELD(static/eigenvalues, '#k =       4', 3, 2) ; -0.413928
-match ; Bands n=2,k=5; GREPFIELD(static/eigenvalues, '#k =       5', 3, 2) ; -0.281683
-match ; Bands n=2,k=6; GREPFIELD(static/eigenvalues, '#k =       6', 3, 2) ; -1.210777
+Precision: 1.82e-05
+match ;  Bands n=1,k=1 ; GREPFIELD(static/eigenvalues, '#k =       1', 3, 1) ; -3.647611
+Precision: 1.78e-13
+match ;  Bands n=1,k=2 ; GREPFIELD(static/eigenvalues, '#k =       2', 3, 1) ; -3.551626
+Precision: 1.63e-05
+match ;  Bands n=1,k=3 ; GREPFIELD(static/eigenvalues, '#k =       3', 3, 1) ; -3.264557
+Precision: 1.39e-05
+match ;  Bands n=1,k=4 ; GREPFIELD(static/eigenvalues, '#k =       4', 3, 1) ; -2.789111
+Precision: 1.07e-13
+match ;  Bands n=1,k=5 ; GREPFIELD(static/eigenvalues, '#k =       5', 3, 1) ; -2.130396
+Precision: 6.84e-14
+match ;  Bands n=1,k=6 ; GREPFIELD(static/eigenvalues, '#k =       6', 3, 1) ; -1.367358
+Precision: 6.18e-04
+match ;  Bands n=2,k=1 ; GREPFIELD(static/eigenvalues, '#k =       1', 3, 2) ; -1.236399
+Precision: 5.72e-06
+match ;  Bands n=2,k=2 ; GREPFIELD(static/eigenvalues, '#k =       2', 3, 2) ; -1.144853
+Precision: 4.35e-05
+match ;  Bands n=2,k=3 ; GREPFIELD(static/eigenvalues, '#k =       3', 3, 2) ; -0.870333
+Precision: 2.07e-05
+match ;  Bands n=2,k=4 ; GREPFIELD(static/eigenvalues, '#k =       4', 3, 2) ; -0.413463
+Precision: 1.40e-05
+match ;  Bands n=2,k=5 ; GREPFIELD(static/eigenvalues, '#k =       5', 3, 2) ; -0.280652
+Precision: 6.05e-06
+match ;  Bands n=2,k=6 ; GREPFIELD(static/eigenvalues, '#k =       6', 3, 2) ; -1.210152

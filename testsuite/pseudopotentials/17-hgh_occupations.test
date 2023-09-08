@@ -1,0 +1,22 @@
+# -*- coding: utf-8 mode: shell-script -*-
+
+Test       : HGH Occupations
+Program    : octopus
+TestGroups : long-run, pseudopotentials
+Enabled    : Yes
+
+Input: 17-hgh_occupations.01-W.inp
+Precision: 4.82e-04
+match ;   Unnormalized charge   ; GREPFIELD(out, 'Unnormalized total charge = ', 6) ; 6.158967
+
+Input: 17-hgh_occupations.02-Au.inp
+Precision: 1.00e-04
+match ;  Unnormalized charge  ; GREPFIELD(out, 'Unnormalized total charge = ', 6);  0.987467
+
+Input: 17-hgh_occupations.03-W_sc.inp
+Precision: 1.00e-04
+match ;  Unnormalized charge  ; GREPFIELD(out, 'Unnormalized total charge = ', 6);  13.943817
+
+Input: 17-hgh_occupations.04-Au_sc.inp
+Precision: 2.65e-01
+match ;   Unnormalized charge   ; GREPFIELD(out, 'Unnormalized total charge = ', 6) ; 181.611663

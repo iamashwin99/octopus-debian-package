@@ -54,6 +54,7 @@ module scf_oct_m
   use multicomm_oct_m
   use namespace_oct_m
   use output_oct_m
+  use output_modelmb_oct_m
   use parser_oct_m
   use partial_charges_oct_m
   use preconditioners_oct_m
@@ -83,13 +84,13 @@ module scf_oct_m
   use xc_f03_lib_m
   use xc_interaction_oct_m
   use xc_oep_oct_m
-  
+
   implicit none
 
   private
   public ::              &
     scf_t,               &
-    scf_init,            & 
+    scf_init,            &
     scf_mix_clear,       &
     scf_run,             &
     scf_end,             &
@@ -100,7 +101,7 @@ module scf_oct_m
     VERB_NO      = 0,   &
     VERB_COMPACT = 1,   &
     VERB_FULL    = 3
-  
+
   !> some variables used for the SCF cycle
   type scf_t
     private
@@ -175,7 +176,7 @@ contains
     if (allocated(hm%vberry)) then
       call berry_init(scf%berry, namespace)
     end if
-    
+
     !Create the list of convergence criteria
     call criteria_factory_init(scf%criterion_list, namespace, scf%check_conv)
     !Setting the pointers
@@ -280,11 +281,11 @@ contains
     if(scf%mix_field == OPTION__MIXFIELD__STATES) then
       call messages_experimental('MixField = states', namespace=namespace)
     end if
-    
+
     ! Handle mixing now...
     select case(scf%mix_field)
     case (OPTION__MIXFIELD__POTENTIAL, OPTION__MIXFIELD__DENSITY)
-      scf%mixdim1 = gr%mesh%np
+      scf%mixdim1 = gr%np
     case(OPTION__MIXFIELD__STATES)
       ! we do not really need the mixer, except for the value of the mixing coefficient
       scf%mixdim1 = 1
@@ -296,7 +297,7 @@ contains
       call mix_init(scf%smix, namespace, space, gr%der, scf%mixdim1, 1, st%d%nspin, func_type_ = mix_type)
     end if
 
-    !If we use LDA+U, we also have do mix it
+    !If we use DFT+U, we also have do mix it
     if (scf%mix_field /= OPTION__MIXFIELD__STATES .and. scf%mix_field /= OPTION__MIXFIELD__NONE ) then
       call lda_u_mixer_init(hm%lda_u, scf%lda_u_mix, st)
       call lda_u_mixer_init_auxmixer(hm%lda_u, namespace, scf%lda_u_mix, scf%smix, st)
@@ -306,7 +307,7 @@ contains
     ! now the eigensolver stuff
     call eigensolver_init(scf%eigens, namespace, gr, st, mc, space)
 
-    !The evolution operator is a very specific propagation that requires a specific 
+    !The evolution operator is a very specific propagation that requires a specific
     !setting to work in the current framework
     if(scf%eigens%es_type == RS_EVO) then
       if(scf%mix_field /= OPTION__MIXFIELD__DENSITY) then
@@ -329,7 +330,7 @@ contains
     !%Section SCF
     !%Description
     !% Performs the SCF cycle with the calculation restricted to the LCAO subspace.
-    !% This may be useful for systems with convergence problems (first do a 
+    !% This may be useful for systems with convergence problems (first do a
     !% calculation within the LCAO subspace, then restart from that point for
     !% an unrestricted calculation).
     !%End
@@ -393,8 +394,8 @@ contains
         write(message(2),'(a)') 'Please use SCFCalculateStress = no.'
         call messages_fatal(2, namespace=namespace)
       end if
-    end if 
-    
+    end if
+
     !%Variable SCFCalculateDipole
     !%Type logical
     !%Section SCF
@@ -446,7 +447,7 @@ contains
   ! ---------------------------------------------------------
   subroutine scf_end(scf)
     type(scf_t),  intent(inout) :: scf
-    
+
     class(convergence_criterion_t), pointer    :: crit
     type(criterion_iterator_t) :: iter
 
@@ -499,7 +500,7 @@ contains
     type(hamiltonian_elec_t),  intent(inout) :: hm !< Hamiltonian
     type(output_t),            intent(in)    :: outp
     logical,         optional, intent(in)    :: gs_run
-    integer,         optional, intent(in)    :: verbosity 
+    integer,         optional, intent(in)    :: verbosity
     integer,         optional, intent(out)   :: iters_done
     type(restart_t), optional, intent(in)    :: restart_load
     type(restart_t), optional, intent(in)    :: restart_dump
@@ -531,6 +532,12 @@ contains
     verbosity_ = VERB_FULL
     if(present(verbosity)) verbosity_ = verbosity
 
+    ! if the user has activated output=stress but not SCFCalculateStress,
+    ! we assume that is implied
+    if (outp%what(OPTION__OUTPUT__STRESS)) then
+      scf%calc_stress = .true.
+    end if
+
     if(scf%lcao_restricted) then
       call lcao_init(lcao, namespace, space, gr, ions, st)
       if(.not. lcao_is_available(lcao)) then
@@ -544,7 +551,7 @@ contains
     if (present(restart_load)) then
       if (restart_has_flag(restart_load, RESTART_FLAG_RHO)) then
         ! Load density and used it to recalculated the KS potential.
-        call states_elec_load_rho(restart_load, space, st, gr%mesh, ierr)
+        call states_elec_load_rho(restart_load, space, st, gr, ierr)
         if (ierr /= 0) then
           message(1) = 'Unable to read density. Density will be calculated from states.'
           call messages_warning(1, namespace=namespace)
@@ -552,7 +559,7 @@ contains
           if (bitand(ks%xc_family, XC_FAMILY_OEP) == 0) then
             call v_ks_calc(ks, namespace, space, hm, st, ions, ext_partners)
           else
-            if (.not. restart_has_flag(restart_load, RESTART_FLAG_VHXC) .and. ks%oep%level /= XC_OEP_FULL) then
+            if (.not. restart_has_flag(restart_load, RESTART_FLAG_VHXC) .and. ks%oep%level /= OEP_LEVEL_FULL) then
               call v_ks_calc(ks, namespace, space, hm, st, ions, ext_partners)
             end if
           end if
@@ -560,16 +567,16 @@ contains
       end if
 
       if (restart_has_flag(restart_load, RESTART_FLAG_VHXC)) then
-        call hamiltonian_elec_load_vhxc(restart_load, hm, space, gr%mesh, ierr)
+        call hamiltonian_elec_load_vhxc(restart_load, hm, space, gr, ierr)
         if (ierr /= 0) then
           message(1) = 'Unable to read Vhxc. Vhxc will be calculated from states.'
           call messages_warning(1, namespace=namespace)
         else
-          call hamiltonian_elec_update(hm, gr%mesh, namespace, space, ext_partners)
+          call hm%update(gr, namespace, space, ext_partners)
           if (bitand(ks%xc_family, XC_FAMILY_OEP) /= 0) then
-            if (ks%oep%level == XC_OEP_FULL) then
+            if (ks%oep%level == OEP_LEVEL_FULL) then
               do is = 1, st%d%nspin
-                ks%oep%vxc(1:gr%mesh%np, is) = hm%vhxc(1:gr%mesh%np, is) - hm%vhartree(1:gr%mesh%np)
+                ks%oep%vxc(1:gr%np, is) = hm%vhxc(1:gr%np, is) - hm%vhartree(1:gr%np)
               end do
               call v_ks_calc(ks, namespace, space, hm, st, ions, ext_partners)
             end if
@@ -579,7 +586,7 @@ contains
 
       if (restart_has_flag(restart_load, RESTART_FLAG_MIX)) then
         if (scf%mix_field == OPTION__MIXFIELD__DENSITY .or. scf%mix_field == OPTION__MIXFIELD__POTENTIAL) then
-          call mix_load(namespace, restart_load, scf%smix, space, gr%mesh, ierr)
+          call mix_load(namespace, restart_load, scf%smix, space, gr, ierr)
         end if
         if (ierr /= 0) then
           message(1) = "Unable to read mixing information. Mixing will start from scratch."
@@ -588,27 +595,35 @@ contains
       end if
 
       if(hm%lda_u_level /= DFT_U_NONE) then
-        call lda_u_load(restart_load, hm%lda_u, st, hm%energy%dft_u, ierr) 
+        call lda_u_load(restart_load, hm%lda_u, st, hm%energy%dft_u, ierr)
         if (ierr /= 0) then
-          message(1) = "Unable to read LDA+U information. LDA+U data will be calculated from states."
+          message(1) = "Unable to read DFT+U information. DFT+U data will be calculated from states."
           call messages_warning(1, namespace=namespace)
         end if
-      end if 
+        call lda_u_init_coulomb_integrals(hm%lda_u, namespace, space, gr, st, mc, hm%psolver, allocated(hm%hm_base%phase))
+      end if
+    else
+      if (gs_run_ .and. mpi_grp_is_root(mpi_world)) then
+        call io_rm(STATIC_DIR //"info")
+      end if
+      if (hm%lda_u_level /= DFT_U_NONE) then
+        call lda_u_init_coulomb_integrals(hm%lda_u, namespace, space, gr, st, mc, hm%psolver, allocated(hm%hm_base%phase))
+      end if
     end if
 
-    SAFE_ALLOCATE(rhoout(1:gr%mesh%np, 1, 1:nspin))
-    SAFE_ALLOCATE(rhoin (1:gr%mesh%np, 1, 1:nspin))
+    SAFE_ALLOCATE(rhoout(1:gr%np, 1, 1:nspin))
+    SAFE_ALLOCATE(rhoin (1:gr%np, 1, 1:nspin))
 
-    rhoin(1:gr%mesh%np, 1, 1:nspin) = st%rho(1:gr%mesh%np, 1:nspin)
+    rhoin(1:gr%np, 1, 1:nspin) = st%rho(1:gr%np, 1:nspin)
     rhoout = M_ZERO
 
     !We store the Hxc potential for the contribution to the forces
     if (scf%calc_force .or. (outp%duringscf .and. outp%what(OPTION__OUTPUT__FORCES))) then
-      SAFE_ALLOCATE(vhxc_old(1:gr%mesh%np, 1:nspin))
-      vhxc_old(1:gr%mesh%np, 1:nspin) = hm%vhxc(1:gr%mesh%np, 1:nspin)
+      SAFE_ALLOCATE(vhxc_old(1:gr%np, 1:nspin))
+      vhxc_old(1:gr%np, 1:nspin) = hm%vhxc(1:gr%np, 1:nspin)
     end if
-    
-  
+
+
     select case(scf%mix_field)
     case(OPTION__MIXFIELD__POTENTIAL)
       call mixfield_set_vin(scf%mixfield, hm%vhxc)
@@ -624,15 +639,15 @@ contains
           call st%group%psib(ib, iqn)%copy_to(psioutb(ib, iqn))
         end do
       end do
-      
+
     end select
 
-    call lda_u_update_occ_matrices(hm%lda_u, namespace, gr%mesh, st, hm%hm_base, hm%energy)
-    !If we use LDA+U, we also have do mix it
-    if(scf%mix_field /= OPTION__MIXFIELD__STATES) call lda_u_mixer_set_vin(hm%lda_u, scf%lda_u_mix)
+    call lda_u_update_occ_matrices(hm%lda_u, namespace, gr, st, hm%hm_base, hm%energy)
+    ! If we use DFT+U, we also have do mix it
+    if (scf%mix_field /= OPTION__MIXFIELD__STATES) call lda_u_mixer_set_vin(hm%lda_u, scf%lda_u_mix)
 
     call create_convergence_file(STATIC_DIR, "convergence")
-    
+
     if ( verbosity_ /= VERB_NO ) then
       if(scf%max_iter > 0) then
         write(message(1),'(a)') 'Info: Starting SCF iteration.'
@@ -649,7 +664,7 @@ contains
 
     ! SCF cycle
     itime = loct_clock()
-    
+
     do iter = 1, scf%max_iter
       call profiling_in(prof, "SCF_CYCLE")
 
@@ -669,18 +684,18 @@ contains
 
       !Used for computing the imperfect convegence contribution to the forces
       if (scf%calc_force .or. (outp%duringscf .and. outp%what(OPTION__OUTPUT__FORCES))) then
-        vhxc_old(1:gr%mesh%np, 1:nspin) = hm%vhxc(1:gr%mesh%np, 1:nspin)
+        vhxc_old(1:gr%np, 1:nspin) = hm%vhxc(1:gr%np, 1:nspin)
       end if
-      
+
       if(scf%lcao_restricted) then
         call lcao_init_orbitals(lcao, namespace, st, gr, ions)
         call lcao_wf(lcao, st, gr, ions, hm, namespace)
       else
 
         !We check if the system is coupled with a partner that requires self-consistency
-      !  if(hamiltonian_has_scf_partner(hm)) then
+        !  if(hamiltonian_has_scf_partner(hm)) then
         if (allocated(hm%vberry)) then
-          !In this case, v_Hxc is frozen and we do an internal SCF loop over the 
+          !In this case, v_Hxc is frozen and we do an internal SCF loop over the
           ! partners that require SCF
           ks%frozen_hxc = .true.
           ! call perform_scf_partners()
@@ -689,20 +704,20 @@ contains
           ks%frozen_hxc = .false.
         else
           scf%eigens%converged = 0
-          call eigensolver_run(scf%eigens, namespace, gr, st, hm, iter)
+          call scf%eigens%run(namespace, gr, st, hm, iter)
         end if
       end if
 
       scf%matvec = scf%matvec + scf%eigens%matvec
 
       ! occupations
-      call states_elec_fermi(st, namespace, gr%mesh)
-      call lda_u_update_occ_matrices(hm%lda_u, namespace, gr%mesh, st, hm%hm_base, hm%energy)
+      call states_elec_fermi(st, namespace, gr)
+      call lda_u_update_occ_matrices(hm%lda_u, namespace, gr, st, hm%hm_base, hm%energy)
 
       ! compute output density, potential (if needed) and eigenvalues sum
       call density_calc(st, gr, st%rho)
 
-      rhoout(1:gr%mesh%np, 1, 1:nspin) = st%rho(1:gr%mesh%np, 1:nspin)
+      rhoout(1:gr%np, 1, 1:nspin) = st%rho(1:gr%np, 1:nspin)
 
       select case (scf%mix_field)
       case (OPTION__MIXFIELD__POTENTIAL)
@@ -714,11 +729,11 @@ contains
 
         do iqn = st%d%kpt%start, st%d%kpt%end
           do ib = st%group%block_start, st%group%block_end
-            call st%group%psib(ib, iqn)%copy_data_to(gr%mesh%np, psioutb(ib, iqn))
+            call st%group%psib(ib, iqn)%copy_data_to(gr%np, psioutb(ib, iqn))
           end do
         end do
       end select
-      
+
       if (scf%mix_field /= OPTION__MIXFIELD__STATES .and. scf%mix_field /= OPTION__MIXFIELD__NONE) then
         call lda_u_mixer_set_vout(hm%lda_u, scf%lda_u_mix)
       endif
@@ -767,9 +782,9 @@ contains
         call mixing(namespace, scf%smix)
         call mixfield_get_vnew(scf%mixfield, st%rho)
         ! for spinors, having components 3 or 4 be negative is not unphysical
-        if (minval(st%rho(1:gr%mesh%np, 1:st%d%spin_channels)) < -CNST(1e-6)) then
+        if (minval(st%rho(1:gr%np, 1:st%d%spin_channels)) < -CNST(1e-6)) then
           write(message(1),*) 'Negative density after mixing. Minimum value = ', &
-            minval(st%rho(1:gr%mesh%np, 1:st%d%spin_channels))
+            minval(st%rho(1:gr%np, 1:st%d%spin_channels))
           call messages_warning(1, namespace=namespace)
         end if
         call lda_u_mixer_get_vnew(hm%lda_u, scf%lda_u_mix, st)
@@ -779,14 +794,14 @@ contains
         call mixing(namespace, scf%smix)
         call mixfield_get_vnew(scf%mixfield, hm%vhxc)
         call lda_u_mixer_get_vnew(hm%lda_u, scf%lda_u_mix, st)
-        call hamiltonian_elec_update_pot(hm, gr%mesh, accel_copy=.true.)
-        
+        call hamiltonian_elec_update_pot(hm, gr, accel_copy=.true.)
+
       case(OPTION__MIXFIELD__STATES)
 
         do iqn = st%d%kpt%start, st%d%kpt%end
           do ib = st%group%block_start, st%group%block_end
-            call batch_scal(gr%mesh%np, M_ONE - mix_coefficient(scf%smix), st%group%psib(ib, iqn))
-            call batch_axpy(gr%mesh%np, mix_coefficient(scf%smix), psioutb(ib, iqn), st%group%psib(ib, iqn))
+            call batch_scal(gr%np, M_ONE - mix_coefficient(scf%smix), st%group%psib(ib, iqn))
+            call batch_axpy(gr%np, mix_coefficient(scf%smix), psioutb(ib, iqn), st%group%psib(ib, iqn))
           end do
         end do
 
@@ -802,50 +817,50 @@ contains
       scf%forced_finish = clean_stop(mc%master_comm) .or. walltimer_alarm(mc%master_comm)
 
       if (finish .and. st%modelmbparticles%nparticle > 0) then
-        call modelmb_sym_all_states(space, gr%mesh, st)
+        call modelmb_sym_all_states(space, gr, st)
       end if
 
-      if (gs_run_ .and. present(restart_dump)) then 
+      if (gs_run_ .and. present(restart_dump)) then
         ! save restart information
-         
+
         if ( (finish .or. (modulo(iter, outp%restart_write_interval) == 0) &
           .or. iter == scf%max_iter .or. scf%forced_finish) ) then
 
-          call states_elec_dump(restart_dump, space, st, gr%mesh, hm%kpoints, ierr, iter=iter)
+          call states_elec_dump(restart_dump, space, st, gr, hm%kpoints, ierr, iter=iter)
           if (ierr /= 0) then
             message(1) = 'Unable to write states wavefunctions.'
             call messages_warning(1, namespace=namespace)
           end if
 
-          call states_elec_dump_rho(restart_dump, space, st, gr%mesh, ierr, iter=iter)
+          call states_elec_dump_rho(restart_dump, space, st, gr, ierr, iter=iter)
           if (ierr /= 0) then
             message(1) = 'Unable to write density.'
             call messages_warning(1, namespace=namespace)
           end if
 
           if(hm%lda_u_level /= DFT_U_NONE) then
-            call lda_u_dump(restart_dump, hm%lda_u, st, ierr)
+            call lda_u_dump(restart_dump, namespace, hm%lda_u, st, gr, ierr)
             if (ierr /= 0) then
-              message(1) = 'Unable to write LDA+U information.'
+              message(1) = 'Unable to write DFT+U information.'
               call messages_warning(1, namespace=namespace)
             end if
           end if
 
           select case (scf%mix_field)
           case (OPTION__MIXFIELD__DENSITY)
-            call mix_dump(namespace, restart_dump, scf%smix, space, gr%mesh, ierr)
+            call mix_dump(namespace, restart_dump, scf%smix, space, gr, ierr)
             if (ierr /= 0) then
               message(1) = 'Unable to write mixing information.'
               call messages_warning(1, namespace=namespace)
             end if
           case (OPTION__MIXFIELD__POTENTIAL)
-            call hamiltonian_elec_dump_vhxc(restart_dump, hm, space, gr%mesh, ierr)
+            call hamiltonian_elec_dump_vhxc(restart_dump, hm, space, gr, ierr)
             if (ierr /= 0) then
               message(1) = 'Unable to write Vhxc.'
               call messages_warning(1, namespace=namespace)
             end if
 
-            call mix_dump(namespace, restart_dump, scf%smix, space, gr%mesh, ierr)
+            call mix_dump(namespace, restart_dump, scf%smix, space, gr, ierr)
             if (ierr /= 0) then
               message(1) = 'Unable to write mixing information.'
               call messages_warning(1, namespace=namespace)
@@ -855,12 +870,12 @@ contains
       end if
 
       call write_convergence_file(STATIC_DIR, "convergence")
-      
+
       if(finish) then
         if(present(iters_done)) iters_done = iter
         if(verbosity_ >= VERB_COMPACT) then
           write(message(1), '(a, i4, a)') 'Info: SCF converged in ', iter, ' iterations'
-          write(message(2), '(a)')        '' 
+          write(message(2), '(a)')        ''
           call messages_info(2, namespace=namespace)
         end if
         call profiling_out(prof)
@@ -870,15 +885,16 @@ contains
       if (any(outp%what) .and. outp%duringscf .and. gs_run_) then
         do what_i = lbound(outp%what, 1), ubound(outp%what, 1)
           if (outp%what_now(what_i, iter)) then
-        write(dirname,'(a,a,i4.4)') trim(outp%iter_dir),"scf.",iter
+            write(dirname,'(a,a,i4.4)') trim(outp%iter_dir),"scf.",iter
             call output_all(outp, namespace, space, dirname, gr, ions, iter, st, hm, ks)
+            call output_modelmb(outp, namespace, space, dirname, gr, ions, iter, st)
             exit
           end if
         end do
       end if
 
       ! save information for the next iteration
-      rhoin(1:gr%mesh%np, 1, 1:nspin) = st%rho(1:gr%mesh%np, 1:nspin)
+      rhoin(1:gr%np, 1, 1:nspin) = st%rho(1:gr%np, 1:nspin)
 
       ! restart mixing
       if (scf%mix_field /= OPTION__MIXFIELD__NONE) then
@@ -892,10 +908,10 @@ contains
       end if
 
       select case(scf%mix_field)
-        case(OPTION__MIXFIELD__POTENTIAL)
-          call mixfield_set_vin(scf%mixfield, hm%vhxc(1:gr%mesh%np, 1:nspin))
-        case (OPTION__MIXFIELD__DENSITY)
-          call mixfield_set_vin(scf%mixfield, rhoin)
+      case(OPTION__MIXFIELD__POTENTIAL)
+        call mixfield_set_vin(scf%mixfield, hm%vhxc(1:gr%np, 1:nspin))
+      case (OPTION__MIXFIELD__DENSITY)
+        call mixfield_set_vin(scf%mixfield, rhoin)
       end select
       if(scf%mix_field /= OPTION__MIXFIELD__STATES) call lda_u_mixer_set_vin(hm%lda_u, scf%lda_u_mix)
 
@@ -925,7 +941,7 @@ contains
           call psioutb(ib, iqn)%end()
         end do
       end do
-      
+
       SAFE_DEALLOCATE_A(psioutb)
     end select
 
@@ -945,35 +961,34 @@ contains
     write(message(1), '(a,i10)') 'Info: Number of matrix-vector products: ', scf%matvec
     call messages_info(1)
 
-    ! calculate forces
     if (scf%calc_force) then
       call forces_calculate(gr, namespace, ions, hm, ext_partners, st, ks, vhxc_old=vhxc_old)
     end if
 
-    ! calculate stress
-    if (scf%calc_stress) call stress_calculate(namespace, gr, hm, st, ions, ks)
-    
+    if (scf%calc_stress) call stress_calculate(namespace, gr, hm, st, ions, ks, ext_partners)
+
     if(scf%max_iter == 0) then
       call energy_calc_eigenvalues(namespace, hm, gr%der, st)
-      call states_elec_fermi(st, namespace, gr%mesh)
+      call states_elec_fermi(st, namespace, gr)
       call states_elec_write_eigenvalues(st%nst, st, space, hm%kpoints, namespace=namespace)
     end if
 
-    if(gs_run_) then 
+    if (gs_run_) then
       ! output final information
       call scf_write_static(STATIC_DIR, "info")
       call output_all(outp, namespace, space, STATIC_DIR, gr, ions, -1, st, hm, ks)
+      call output_modelmb(outp, namespace, space, STATIC_DIR, gr, ions, -1, st)
     end if
 
     if (space%is_periodic() .and. st%d%nik > st%d%nspin) then
       if (bitand(hm%kpoints%method, KPOINTS_PATH) /= 0) then
-        call states_elec_write_bandstructure(STATIC_DIR, namespace, st%nst, st, gr%box,  &
-          ions, gr%mesh, hm%kpoints, hm%hm_base%phase, vec_pot = hm%hm_base%uniform_vector_potential, &
+        call states_elec_write_bandstructure(STATIC_DIR, namespace, st%nst, st,  &
+          ions, gr, hm%kpoints, hm%hm_base%phase, vec_pot = hm%hm_base%uniform_vector_potential, &
           vec_pot_var = hm%hm_base%vector_potential)
       end if
     end if
 
-    if( ks%vdw_correction == OPTION__VDWCORRECTION__VDW_TS) then
+    if (ks%vdw_correction == OPTION__VDWCORRECTION__VDW_TS) then
       call vdw_ts_write_c6ab(ks%vdw_ts, ions, STATIC_DIR, 'c6ab_eff', namespace)
     end if
 
@@ -996,7 +1011,7 @@ contains
       if ( verbosity_ == VERB_FULL ) then
 
         write(str, '(a,i5)') 'SCF CYCLE ITER #' ,iter
-        call messages_print_stress(msg=trim(str), namespace=namespace)
+        call messages_print_with_emphasis(msg=trim(str), namespace=namespace)
         write(message(1),'(a,es15.8,2(a,es9.2))') ' etot  = ', units_from_atomic(units_out%energy, hm%energy%total), &
           ' abs_ev   = ', units_from_atomic(units_out%energy, scf%evsum_diff), &
           ' rel_ev   = ', scf%evsum_diff/abs(scf%evsum_out)
@@ -1015,12 +1030,12 @@ contains
         end if
 
         if (allocated(hm%vberry)) then
-          call calc_dipole(dipole, space, gr%mesh, st, ions)
+          call calc_dipole(dipole, space, gr, st, ions)
           call write_dipole(dipole, namespace=namespace)
         end if
 
         if(st%d%ispin > UNPOLARIZED) then
-          call write_magnetic_moments(gr%mesh, st, ions, gr%der%boundaries, scf%lmm_r, namespace=namespace)
+          call write_magnetic_moments(gr, st, ions, gr%der%boundaries, scf%lmm_r, namespace=namespace)
         end if
 
         if(hm%lda_u_level == DFT_U_ACBN0) then
@@ -1034,7 +1049,7 @@ contains
 
         call scf_print_mem_use(namespace)
 
-        call messages_print_stress(namespace=namespace)
+        call messages_print_with_emphasis(namespace=namespace)
 
       end if
 
@@ -1062,12 +1077,16 @@ contains
 
       PUSH_SUB(scf_run.scf_write_static)
 
+      if (scf%calc_stress) then
+        call stress_calculate(namespace, gr, hm, st, ions, ks, ext_partners)
+      end if
+
       if(mpi_grp_is_root(mpi_world)) then ! this the absolute master writes
         call io_mkdir(dir, namespace)
         iunit = io_open(trim(dir) // "/" // trim(fname), namespace, action='write')
 
         call grid_write_info(gr, iunit=iunit)
- 
+
         call symmetries_write_info(gr%symm, space, iunit=iunit)
 
         if (space%is_periodic()) then
@@ -1106,23 +1125,23 @@ contains
 
       if(mpi_grp_is_root(mpi_world)) write(iunit, '(1x)')
       if(st%d%ispin > UNPOLARIZED) then
-        call write_magnetic_moments(gr%mesh, st, ions, gr%der%boundaries, scf%lmm_r, iunit=iunit)
+        call write_magnetic_moments(gr, st, ions, gr%der%boundaries, scf%lmm_r, iunit=iunit)
         if (mpi_grp_is_root(mpi_world)) write(iunit, '(1x)')
       end if
 
       if (st%d%ispin == SPINORS .and. space%dim == 3) then
-        call write_total_xc_torque(iunit, gr%mesh, hm%vxc, st)
+        call write_total_xc_torque(iunit, gr, hm%vxc, st)
         if(mpi_grp_is_root(mpi_world)) write(iunit, '(1x)')
       end if
 
       if(hm%lda_u_level == DFT_U_ACBN0) then
         call lda_u_write_U(hm%lda_u, iunit=iunit)
         call lda_u_write_V(hm%lda_u, iunit=iunit)
-          if(mpi_grp_is_root(mpi_world)) write(iunit, '(1x)')
-        end if 
+        if(mpi_grp_is_root(mpi_world)) write(iunit, '(1x)')
+      end if
 
       if(scf%calc_dipole) then
-        call calc_dipole(dipole, space, gr%mesh, st, ions)
+        call calc_dipole(dipole, space, gr, st, ions)
         call write_dipole(dipole, iunit=iunit)
       end if
 
@@ -1151,32 +1170,26 @@ contains
         end if
         ! otherwise, these values are uninitialized, and unknown.
 
-        if (bitand(ks%xc_family, XC_FAMILY_OEP) /= 0 .and. ks%theory_level /= HARTREE_FOCK &
-          .and. ks%theory_level /= GENERALIZED_KOHN_SHAM_DFT) then
-          if (((ks%oep%level == XC_OEP_FULL) .or. (ks%oep%level == XC_OEP_KLI)) .and. ks%oep%has_photons) then
-            write(iunit, '(a)') 'Photon observables:'
-            write(iunit, '(6x, a, es15.8,a,es15.8,a)') 'Photon number = ', ks%oep%pt%number(1)
-            write(iunit, '(6x, a, es15.8,a,es15.8,a)') 'Photon ex. = ', ks%oep%pt%ex
-            write(iunit,'(1x)')
-          end if
+        if (bitand(ks%xc_family, XC_FAMILY_OEP) /= 0 .and. ks%oep%type==OEP_TYPE_PHOTONS) then
+          write(iunit, '(a)') 'Photon observables:'
+          write(iunit, '(6x, a, es15.8,a,es15.8,a)') 'Photon number = ', ks%oep%pt%number(1)
+          write(iunit, '(6x, a, es15.8,a,es15.8,a)') 'Photon ex. = ', ks%oep%pt%ex
+          write(iunit,'(1x)')
         end if
 
         if (scf%calc_force) call forces_write_info(iunit, ions, dir, namespace)
 
-        if(scf%calc_stress) then
-           write(iunit,'(a)') "Stress tensor [H/b^3]"
-           write(iunit,'(a9,2x,3a18)')"T_{ij}","x","y","z"
-          write(iunit,'(a9,2x,3es18.6)')"x", st%stress_tensor(1,1:3)
-          write(iunit,'(a9,2x,3es18.6)')"y", st%stress_tensor(2,1:3)
-          write(iunit,'(a9,2x,3es18.6)')"z", st%stress_tensor(3,1:3)
+        if (scf%calc_stress) then
+          call output_stress(iunit, namespace, space%dim, st%stress_tensors, all_terms=.false.)
+          call output_pressure(iunit, space%dim, st%stress_tensors%total)
         end if
-        
+
       end if
 
       if(scf%calc_partial_charges) then
         SAFE_ALLOCATE(hirshfeld_charges(1:ions%natoms))
 
-        call partial_charges_calculate(gr%mesh, st, ions, hirshfeld_charges = hirshfeld_charges)
+        call partial_charges_calculate(gr, st, ions, hirshfeld_charges)
 
         if(mpi_grp_is_root(mpi_world)) then
 
@@ -1237,7 +1250,7 @@ contains
     end subroutine write_dipole
 
     ! -----------------------------------------------------
-    
+
     subroutine create_convergence_file(dir, fname)
       character(len=*), intent(in) :: dir
       character(len=*), intent(in) :: fname
@@ -1260,7 +1273,7 @@ contains
         write(iunit, '(1x,a)', advance = 'no') label
         if (bitand(ks%xc_family, XC_FAMILY_OEP) /= 0 .and. ks%theory_level /= HARTREE_FOCK &
           .and. ks%theory_level /= GENERALIZED_KOHN_SHAM_DFT) then
-          if (ks%oep%level == XC_OEP_FULL) then
+          if (ks%oep%level == OEP_LEVEL_FULL) then
             label = 'OEP norm2ss'
             write(iunit, '(1x,a)', advance = 'no') label
           end if
@@ -1268,17 +1281,17 @@ contains
         write(iunit,'(a)') ''
         call io_close(iunit)
       end if
-      
+
     end subroutine create_convergence_file
 
     ! -----------------------------------------------------
-    
+
     subroutine write_convergence_file(dir, fname)
       character(len=*), intent(in) :: dir
       character(len=*), intent(in) :: fname
 
       integer :: iunit
-      
+
       if(mpi_grp_is_root(mpi_world)) then ! this the absolute master writes
         call io_mkdir(dir, namespace)
         iunit = io_open(trim(dir) // "/" // trim(fname), namespace, action='write', position='append')
@@ -1300,16 +1313,16 @@ contains
         end do
         if (bitand(ks%xc_family, XC_FAMILY_OEP) /= 0 .and. ks%theory_level /= HARTREE_FOCK &
           .and. ks%theory_level /= GENERALIZED_KOHN_SHAM_DFT) then
-          if (ks%oep%level == XC_OEP_FULL) then
+          if (ks%oep%level == OEP_LEVEL_FULL) then
             write(iunit, '(es13.5)', advance = 'no') ks%oep%norm2ss
-        end if
+          end if
         end if
         write(iunit,'(a)') ''
         call io_close(iunit)
       end if
-      
+
     end subroutine write_convergence_file
-    
+
   end subroutine scf_run
 
   ! ---------------------------------------------------------
@@ -1393,10 +1406,10 @@ contains
 
     type is (density_criterion_t)
       scf%abs_dens_diff = M_ZERO
-      SAFE_ALLOCATE(tmp(1:gr%mesh%np))
+      SAFE_ALLOCATE(tmp(1:gr%np))
       do is = 1, st%d%nspin
-        tmp = abs(rhoin(1:gr%mesh%np, 1, is) - rhoout(1:gr%mesh%np, 1, is))
-        scf%abs_dens_diff = scf%abs_dens_diff + dmf_integrate(gr%mesh, tmp)
+        tmp = abs(rhoin(1:gr%np, 1, is) - rhoout(1:gr%np, 1, is))
+        scf%abs_dens_diff = scf%abs_dens_diff + dmf_integrate(gr, tmp)
       end do
       SAFE_DEALLOCATE_A(tmp)
 

@@ -18,6 +18,11 @@
 
 #include "global.h"
 
+!> @brief This module implements the multisystem debug functionality.
+!!
+!! It writes markers into a file, which can then be used by the octopus web page to generate propagation diagrams.
+!! You can use that feature \HTTPS{here,octopus-code.org/documentation/main/developers/code_documentation/propagators/custom_diagram/}
+!!
 module multisystem_debug_oct_m
 
   use algorithm_oct_m
@@ -51,6 +56,8 @@ module multisystem_debug_oct_m
 
   !-------------------------------------------------------------------
 
+  !> @brief abstract class to specify events in the propagation
+  !!
   type, abstract :: event_info_t
     private
   contains
@@ -59,17 +66,19 @@ module multisystem_debug_oct_m
 
   abstract interface
 
-    function event_info_get_info(this) result(res)
+    function event_info_get_info(this) result(result)
       import event_info_t
       import MAX_INFO_LEN
       class(event_info_t), intent(in) :: this
-      character(len=MAX_INFO_LEN)     :: res
+      character(len=MAX_INFO_LEN)     :: result
     end function  event_info_get_info
 
   end interface
 
   !-------------------------------------------------------------------
 
+  !> @brief events marking a function call
+  !!
   type, extends(event_info_t) :: event_function_call_t
     character(len=MAX_INFO_LEN) :: function_name
     character(len=ALGO_LABEL_LEN) :: op_label
@@ -83,6 +92,8 @@ module multisystem_debug_oct_m
 
   !-------------------------------------------------------------------
 
+  !> @brief events marking a clock update
+  !!
   type, extends(event_info_t) :: event_clock_update_t
     character(len=MAX_INFO_LEN) :: clock_name
     character(len=MAX_INFO_LEN) :: clock_detail
@@ -98,6 +109,8 @@ module multisystem_debug_oct_m
 
   !-------------------------------------------------------------------
 
+  !> @brief time stamp for events
+  !!
   type, extends(event_info_t) :: event_marker_t
     character(len=MAX_INFO_LEN) :: text
   contains
@@ -110,6 +123,8 @@ module multisystem_debug_oct_m
 
   !-------------------------------------------------------------------
 
+  !> @brief handle to keep track of in- out- events
+  !!
   type :: event_handle_t
     integer, public :: enter_ID
   end type event_handle_t

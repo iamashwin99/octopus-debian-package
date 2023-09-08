@@ -21,7 +21,7 @@
 ! this is for the third derivative of Exc
 subroutine xc_get_kxc(xcs, mesh, namespace, rho, ispin, kxc)
   type(xc_t), target, intent(in)    :: xcs
-  type(mesh_t),       intent(in)    :: mesh
+  class(mesh_t),      intent(in)    :: mesh
   type(namespace_t),  intent(in)    :: namespace
   FLOAT,              intent(in)    :: rho(:, :)
   integer,            intent(in)    :: ispin

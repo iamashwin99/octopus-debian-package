@@ -7,12 +7,12 @@ a = 6.6329387
 Spacing = a/10
 
 %Coordinates
-  "Li" |  0.0 | 0.0 | 0.0 
-  "Li" |  a/2 | a/2 | a/2 
+  "Li" |  0.0 | 0.0 | 0.0
+  "Li" |  a/2 | a/2 | a/2
 %
 
 %Species
- 'Li' | species_pseudo | lmax | 2 | lloc | 0  
+ 'Li' | species_pseudo | lmax | 2 | lloc | 0
 %
 
 BoxShape = parallelepiped

@@ -72,6 +72,3 @@ TDExponentialMethod = lanczos
 TDExpOrder = 20
 
 TDPropagationTime = ntot*tc
-
-
-

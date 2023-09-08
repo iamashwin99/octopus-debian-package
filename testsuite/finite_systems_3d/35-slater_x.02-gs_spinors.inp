@@ -25,11 +25,10 @@ GuessMagnetDensity = user_defined
  0 | 0 | 1
 %
 
-%StaticMagneticField 
+%StaticMagneticField
  0 | 0 | 1e-3
 %
 
 SCFCalculateForces = no
 
 FilterPotentials = filter_none
-

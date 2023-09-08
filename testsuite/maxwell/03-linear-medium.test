@@ -3,7 +3,7 @@
 Test       : Free Maxwell propagation through a linear medium
 Program    : octopus
 TestGroups : long-run, maxwell
-Enabled    : Yes
+Enabled    : no-GPU
 
 
 # Cosinoidal pulse polarized in z-direction passing through medium box

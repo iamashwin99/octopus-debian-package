@@ -31,4 +31,3 @@ match ; Overlap 1 9 ; GREPFIELD(out, '      1      9', 3) ; 0.000000
 match ; Overlap 6 6 ; GREPFIELD(out, '      6      6', 3) ; 0.100000E+01
 match ; Overlap 7 8 ; GREPFIELD(out, '      7      8', 3) ; 0.000000
 match ; Overlap 9 9 ; GREPFIELD(out, '      9      9', 3) ; 0.100000E+01
-

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 mode: shell-script -*-
-	
+
 Test       : Hartree-Fock in 1D periodic solids
 Program    : octopus
 TestGroups : short-run, periodic_systems
@@ -9,13 +9,19 @@ Input      : 24-hartree_fock_1D.01-gs.inp
 
 match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
 
-match ;  Total energy        ; GREPFIELD(static/info, 'Total       =', 3) ; -471.74955010
-match ;  Ion-ion energy      ; GREPFIELD(static/info, 'Ion-ion     =', 3) ; 0.0
-match ;  Eigenvalues sum     ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -490.57368417
-match ;  Hartree energy      ; GREPFIELD(static/info, 'Hartree     =', 3) ; 0.20316102
-match ;  Kinetic energy      ; GREPFIELD(static/info, 'Kinetic     =', 3) ; 7.35021412
-match ;  External energy     ; GREPFIELD(static/info, 'External    =', 3) ; -460.27563107
+Precision: 2.45e-07
+match ;    Total energy          ; GREPFIELD(static/info, 'Total       =', 3) ; -490.43132472
+Precision: 1.00e-04
+match ;    Ion-ion energy        ; GREPFIELD(static/info, 'Ion-ion     =', 3) ; 0.0
+Precision: 2.45e-07
+match ;    Eigenvalues sum       ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -490.11291263
+Precision: 1.02e-07
+match ;    Hartree energy        ; GREPFIELD(static/info, 'Hartree     =', 3) ; 0.20315883
+Precision: 3.68e-07
+match ;    Kinetic energy        ; GREPFIELD(static/info, 'Kinetic     =', 3) ; 7.350209039999999
+Precision: 2.30e-07
+match ;    External energy       ; GREPFIELD(static/info, 'External    =', 3) ; -460.27562854999996
 
-Precision: 2.5e-04
-match ;  Direct gap  ; GREPFIELD(static/info, 'Direct gap', 7, 0) ; 9.44975
-match ;  Indirect gap  ; GREPFIELD(static/info, 'Indirect gap', 10, 0) ; 9.44975
+Precision: 4.61e-03
+match ;   Direct gap   ; GREPFIELD(static/info, 'Direct gap', 7, 0) ; 9.2193
+match ;   Indirect gap   ; GREPFIELD(static/info, 'Indirect gap', 10, 0) ; 9.2193

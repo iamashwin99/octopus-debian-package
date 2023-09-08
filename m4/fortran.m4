@@ -24,7 +24,7 @@ AC_DEFUN([ACX_LONG_FORTRAN_LINES],
 [AC_MSG_CHECKING([whether the compiler accepts very long lines])
 AC_COMPILE_IFELSE( AC_LANG_PROGRAM( [], [
 write(*, *) '456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678904567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789001234567890123456789045678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890'
- ]), 
+ ]),
  [acx_long_lines_ok=yes; AC_DEFINE(LONG_LINES, 1, [compiler supports long lines])], [acx_long_lines_ok=no])
 AC_SUBST([LONG_LINES], [$acx_long_lines_ok])
 AC_MSG_RESULT($acx_long_lines_ok)
@@ -56,10 +56,10 @@ AC_DEFUN([ACX_FORTRAN_CHECK_FUNC],
 [
 AC_MSG_CHECKING([for $1])
 AC_LANG_PUSH(Fortran)dnl
-AC_LINK_IFELSE([AC_LANG_CALL([], [$1])], 
+AC_LINK_IFELSE([AC_LANG_CALL([], [$1])],
 [
 acx_fortran_check_func=yes
-AC_DEFINE_UNQUOTED(AS_TR_CPP([HAVE_$1]),1, [Define if the $1 function can be called from Fortran])], 
+AC_DEFINE_UNQUOTED(AS_TR_CPP([HAVE_$1]),1, [Define if the $1 function can be called from Fortran])],
 [
 acx_fortran_check_func=no
 ])dnl
@@ -74,9 +74,9 @@ AC_MSG_RESULT($acx_fortran_check_func)
 m4_define([AC_LANG_FUNC_LINK_TRY(Fortran)],
 [AC_LANG_PROGRAM([], [call [$1]])])
 
-################################################ 
+################################################
 # Fortran preprocessing
-# --------------------------- 
+# ---------------------------
 
 # like built-in AC_EGREP_CPP, only using FCCPP, .F90 file, and regular grep
 # some cpp's will behave differently on .F90 and on .c files
@@ -171,9 +171,9 @@ AC_DEFUN([ACX_FORTRAN_LOC], [
     AC_LINK_IFELSE(
     [
     AC_LANG_PROGRAM(,
-      [	
+      [
           implicit none
-      
+
           integer :: ii, jj
 
           ii = loc(jj)

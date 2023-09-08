@@ -17,7 +17,7 @@ BoxShape = parallelepiped
 %Coordinates
  'Al' | 0.0 | 0.0 | 0.0
  'Al' | a/2 | a/2 | 0.0
- 'Al' | a/2 | 0.0 | a/2 
+ 'Al' | a/2 | 0.0 | a/2
  'Al' | 0.0 | a/2 | a/2
 %
 
@@ -43,10 +43,9 @@ FromScratch = yes
 
 TDMaxSteps = 150
 
-%TDOutput 
- energy 
- geometry 
- total_current 
+%TDOutput
+ energy
+ geometry
+ total_current
  gauge_field
-% 
-
+%

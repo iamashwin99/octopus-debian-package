@@ -44,29 +44,29 @@ subroutine X(lr_calc_elf)(st, space, gr, kpoints, lr, lr_m)
 
   ASSERT(.false.)
 
-  SAFE_ALLOCATE(psi(1:gr%mesh%np_part, 1:space%dim))
-  SAFE_ALLOCATE(   gpsi(1:gr%mesh%np, 1:space%dim))
-  SAFE_ALLOCATE(gdl_psi(1:gr%mesh%np, 1:space%dim))
+  SAFE_ALLOCATE(psi(1:gr%np_part, 1:space%dim))
+  SAFE_ALLOCATE(   gpsi(1:gr%np, 1:space%dim))
+  SAFE_ALLOCATE(gdl_psi(1:gr%np, 1:space%dim))
 
   if (present(lr_m)) then
-    SAFE_ALLOCATE(gdl_psi_m(1:gr%mesh%np, 1:space%dim))
+    SAFE_ALLOCATE(gdl_psi_m(1:gr%np, 1:space%dim))
   end if
 
-  SAFE_ALLOCATE(   grho(1:gr%mesh%np, 1:space%dim))
-  SAFE_ALLOCATE(gdl_rho(1:gr%mesh%np, 1:space%dim))
+  SAFE_ALLOCATE(   grho(1:gr%np, 1:space%dim))
+  SAFE_ALLOCATE(gdl_rho(1:gr%np, 1:space%dim))
 
-  SAFE_ALLOCATE(   rho(1:gr%mesh%np_part))
-  SAFE_ALLOCATE(dl_rho(1:gr%mesh%np_part))
+  SAFE_ALLOCATE(   rho(1:gr%np_part))
+  SAFE_ALLOCATE(dl_rho(1:gr%np_part))
 
-  SAFE_ALLOCATE(   elf(1:gr%mesh%np, 1:st%d%nspin))
-  SAFE_ALLOCATE(    de(1:gr%mesh%np, 1:st%d%nspin))
-  SAFE_ALLOCATE(current(1:gr%mesh%np_part, 1:space%dim, 1:st%d%nspin))
+  SAFE_ALLOCATE(   elf(1:gr%np, 1:st%d%nspin))
+  SAFE_ALLOCATE(    de(1:gr%np, 1:st%d%nspin))
+  SAFE_ALLOCATE(current(1:gr%np_part, 1:space%dim, 1:st%d%nspin))
 
   if (.not. allocated(lr%X(dl_de))) then
-    SAFE_ALLOCATE(lr%X(dl_de)(1:gr%mesh%np, 1:st%d%nspin))
+    SAFE_ALLOCATE(lr%X(dl_de)(1:gr%np, 1:st%d%nspin))
   end if
   if (.not. allocated(lr%X(dl_elf))) then
-    SAFE_ALLOCATE(lr%X(dl_elf)(1:gr%mesh%np, 1:st%d%nspin))
+    SAFE_ALLOCATE(lr%X(dl_elf)(1:gr%np, 1:st%d%nspin))
   end if
 
   !calculate the gs elf
@@ -74,7 +74,7 @@ subroutine X(lr_calc_elf)(st, space, gr, kpoints, lr, lr_m)
 
   !calculate current and its variation
   if (states_are_complex(st)) then
-    call calc_physical_current(gr%der, st, kpoints, current)
+    call calc_physical_current(gr, st, kpoints, current)
     if (present(lr_m)) then
       call lr_calc_current(st, space, gr, lr, lr_m)
     else
@@ -103,7 +103,7 @@ subroutine X(lr_calc_elf)(st, space, gr, kpoints, lr, lr_m)
     do ik = is, st%d%nik, st%d%nspin
       do ist = 1, st%nst
 
-        call states_elec_get_state(st, gr%mesh, ist, is, psi)
+        call states_elec_get_state(st, gr, ist, is, psi)
 
         ik_weight = st%d%kweights(ik)*st%occ(ist, ik)/spin_factor
 
@@ -113,12 +113,12 @@ subroutine X(lr_calc_elf)(st, space, gr, kpoints, lr, lr_m)
           call X(derivatives_grad)(gr%der, lr%X(dl_psi)(:, idim, ist, is), gdl_psi)
 
           ! sum over states to obtain the spin-density
-          rho(1:gr%mesh%np) = rho(1:gr%mesh%np) + ik_weight * abs(psi(1:gr%mesh%np, idim))**2
+          rho(1:gr%np) = rho(1:gr%np) + ik_weight * abs(psi(1:gr%np, idim))**2
 
           !the gradient of the density
           do idir = 1, space%dim
-            grho(1:gr%mesh%np, idir) = grho(1:gr%mesh%np, idir) + &
-              ik_weight*M_TWO*R_REAL(R_CONJ(psi(1:gr%mesh%np, idim))*gpsi(1:gr%mesh%np, idir))
+            grho(1:gr%np, idir) = grho(1:gr%np, idir) + &
+              ik_weight*M_TWO*R_REAL(R_CONJ(psi(1:gr%np, idim))*gpsi(1:gr%np, idir))
           end do
 
           !the variation of the density and its gradient
@@ -127,29 +127,29 @@ subroutine X(lr_calc_elf)(st, space, gr, kpoints, lr, lr_m)
 
             call X(derivatives_grad)(gr%der, lr_m%X(dl_psi)(:, idim, ist, is), gdl_psi_m)
 
-            dl_rho(1:gr%mesh%np) = dl_rho(1:gr%mesh%np) + ik_weight*( &
-              R_CONJ(psi(1:gr%mesh%np, idim))*lr%X(dl_psi)(1:gr%mesh%np, idim, ist, is) + &
-              psi(1:gr%mesh%np, idim)*R_CONJ(lr_m%X(dl_psi)(1:gr%mesh%np, idim, ist, is)))
+            dl_rho(1:gr%np) = dl_rho(1:gr%np) + ik_weight*( &
+              R_CONJ(psi(1:gr%np, idim))*lr%X(dl_psi)(1:gr%np, idim, ist, is) + &
+              psi(1:gr%np, idim)*R_CONJ(lr_m%X(dl_psi)(1:gr%np, idim, ist, is)))
 
             do idir = 1, space%dim
 
-              gdl_rho(1:gr%mesh%np, idir) = gdl_rho(1:gr%mesh%np, idir) + ik_weight*( &
-                R_CONJ(psi(1:gr%mesh%np, idim))*gdl_psi(1:gr%mesh%np, idir) + &
-                R_CONJ(gpsi(1:gr%mesh%np, idir))* lr%X(dl_psi)(1:gr%mesh%np, idim, ist, is) + &
-                psi(1:gr%mesh%np, idim)*R_CONJ(gdl_psi_m(1:gr%mesh%np, idir)) + &
-                gpsi(1:gr%mesh%np, idir)*R_CONJ(lr_m%X(dl_psi)(1:gr%mesh%np, idim, ist, is)))
+              gdl_rho(1:gr%np, idir) = gdl_rho(1:gr%np, idir) + ik_weight*( &
+                R_CONJ(psi(1:gr%np, idim))*gdl_psi(1:gr%np, idir) + &
+                R_CONJ(gpsi(1:gr%np, idir))* lr%X(dl_psi)(1:gr%np, idim, ist, is) + &
+                psi(1:gr%np, idim)*R_CONJ(gdl_psi_m(1:gr%np, idir)) + &
+                gpsi(1:gr%np, idir)*R_CONJ(lr_m%X(dl_psi)(1:gr%np, idim, ist, is)))
 
             end do
 
           else
 
-            dl_rho(1:gr%mesh%np) = dl_rho(1:gr%mesh%np) + ik_weight*M_TWO* &
-              R_REAL(R_CONJ(psi(1:gr%mesh%np, idim))*lr%X(dl_psi)(1:gr%mesh%np, idim, ist, is))
+            dl_rho(1:gr%np) = dl_rho(1:gr%np) + ik_weight*M_TWO* &
+              R_REAL(R_CONJ(psi(1:gr%np, idim))*lr%X(dl_psi)(1:gr%np, idim, ist, is))
 
             do idir = 1, space%dim
-              gdl_rho(1:gr%mesh%np, idir) = gdl_rho(1:gr%mesh%np, idir) + ik_weight*M_TWO*(&
-                R_CONJ(psi(1:gr%mesh%np, idim))*gdl_psi(1:gr%mesh%np, idir) + &
-                gpsi(1:gr%mesh%np, idir)*R_CONJ(lr%X(dl_psi)(1:gr%mesh%np, idim, ist, is)))
+              gdl_rho(1:gr%np, idir) = gdl_rho(1:gr%np, idir) + ik_weight*M_TWO*(&
+                R_CONJ(psi(1:gr%np, idim))*gdl_psi(1:gr%np, idir) + &
+                gpsi(1:gr%np, idir)*R_CONJ(lr%X(dl_psi)(1:gr%np, idim, ist, is)))
             end do
 
           end if
@@ -165,7 +165,7 @@ subroutine X(lr_calc_elf)(st, space, gr, kpoints, lr, lr_m)
     do ik = is, st%d%nik, st%d%nspin
       do ist = 1, st%nst
 
-        call states_elec_get_state(st, gr%mesh, ist, is, psi)
+        call states_elec_get_state(st, gr, ist, is, psi)
 
         ik_weight = st%d%kweights(ik)*st%occ(ist, ik)/spin_factor
 
@@ -178,7 +178,7 @@ subroutine X(lr_calc_elf)(st, space, gr, kpoints, lr, lr_m)
 
             call X(derivatives_grad)(gr%der, lr_m%X(dl_psi)(:, idim, ist, is), gdl_psi_m)
 
-            do ip = 1, gr%mesh%np
+            do ip = 1, gr%np
               lr%X(dl_de)(ip, is) = lr%X(dl_de)(ip, is) + &
                 dl_rho(ip) * ik_weight * sum(abs(gpsi(ip, 1:space%dim))**2) + &
                 rho(ip) * ik_weight * &
@@ -188,7 +188,7 @@ subroutine X(lr_calc_elf)(st, space, gr, kpoints, lr, lr_m)
 
           else
 
-            do ip = 1, gr%mesh%np
+            do ip = 1, gr%np
               lr%X(dl_de)(ip, is) = lr%X(dl_de)(ip, is) + &
                 dl_rho(ip) * ik_weight * sum(abs(gpsi(ip, 1:space%dim))**2) + &
                 rho(ip) * ik_weight * M_TWO * &
@@ -202,7 +202,7 @@ subroutine X(lr_calc_elf)(st, space, gr, kpoints, lr, lr_m)
     end do
 
     !the density term
-    do ip = 1, gr%mesh%np
+    do ip = 1, gr%np
       if (abs(st%rho(ip, is)) >= dmin) then
         lr%X(dl_de)(ip, is) = lr%X(dl_de)(ip, is) - &
           M_HALF * sum(grho(ip, 1:space%dim) * gdl_rho(ip, 1:space%dim))
@@ -211,7 +211,7 @@ subroutine X(lr_calc_elf)(st, space, gr, kpoints, lr, lr_m)
 
     !the current term
     if (states_are_complex(st)) then
-      do ip = 1, gr%mesh%np
+      do ip = 1, gr%np
         if (abs(st%rho(ip, is)) >= dmin) then
           lr%zdl_de(ip, is) = lr%zdl_de(ip, is) + &
             M_TWO * sum(current(ip, 1:space%dim, is) * lr%dl_j(ip, 1:space%dim, is))
@@ -221,7 +221,7 @@ subroutine X(lr_calc_elf)(st, space, gr, kpoints, lr, lr_m)
 
     !now the normalization
     factor = M_THREE/M_FIVE * (CNST(6.0) * M_PI**2)**M_TWOTHIRD
-    do ip = 1, gr%mesh%np
+    do ip = 1, gr%np
 
       if (abs(st%rho(ip, is)) >= dmin) then
         d0    = factor * rho(ip)**(CNST(8.0) / M_THREE)
@@ -264,7 +264,7 @@ end subroutine X(lr_calc_elf)
 !> alpha_ij(w) = -e sum(m occ, k) [(<u_mk(0)|-id/dk_i)|u_mkj(1)(w)> + <u_mkj(1)(-w)|(-id/dk_i|u_mk(0)>)]
 subroutine X(calc_polarizability_periodic)(space, mesh, symm, st, em_lr, kdotp_lr, nsigma, zpol, ndir, zpol_k)
   type(space_t),               intent(in)    :: space
-  type(mesh_t),                intent(in)    :: mesh
+  class(mesh_t),               intent(in)    :: mesh
   type(symmetries_t),          intent(in)    :: symm
   type(states_elec_t),         intent(in)    :: st
   type(lr_t),                  intent(inout) :: em_lr(:,:)
@@ -277,7 +277,6 @@ subroutine X(calc_polarizability_periodic)(space, mesh, symm, st, em_lr, kdotp_l
   integer :: dir1, dir2, ndir_, ist, ik
   CMPLX :: term, subterm
   logical :: kpt_output
-  CMPLX :: zpol_temp(space%dim, space%dim)
 
   PUSH_SUB(X(calc_polarizability_periodic))
 
@@ -316,38 +315,12 @@ subroutine X(calc_polarizability_periodic)(space, mesh, symm, st, em_lr, kdotp_l
     end do
   end do
 
-  if (st%parallel_in_states) then
-    call st%mpi_grp%allreduce(zpol, zpol_temp, space%dim**2, MPI_CMPLX, MPI_SUM)
-    zpol(1:space%periodic_dim, 1:space%dim) = zpol_temp(1:space%periodic_dim, 1:space%dim)
-  end if
-  if (st%d%kpt%parallel) then
-    call st%d%kpt%mpi_grp%allreduce(zpol, zpol_temp, space%dim**2, MPI_CMPLX, MPI_SUM)
-    zpol(1:space%periodic_dim, 1:space%dim) = zpol_temp(1:space%periodic_dim, 1:space%dim)
+  if (st%parallel_in_states .or. st%d%kpt%parallel) then
+    call comm_allreduce(st%st_kpt_mpi_grp, zpol)
   end if
   if (kpt_output) then
-    if (st%parallel_in_states) then
-      do ik = 1, st%d%nik
-        zpol_temp(:, :) = M_ZERO
-        call st%mpi_grp%allreduce(zpol_k(1:space%dim, 1:space%dim, ik), zpol_temp, space%dim**2, &
-          MPI_CMPLX, MPI_SUM)
-        do dir1 = 1, ndir_
-          do dir2 = 1, space%dim
-            zpol_k(dir1, dir2, ik) = zpol_temp(dir1, dir2)
-          end do
-        end do
-      end do
-    end if
-    if (st%d%kpt%parallel) then
-      do ik = 1, st%d%nik
-        zpol_temp(:, :) = M_ZERO
-        call st%d%kpt%mpi_grp%allreduce(zpol_k(1:space%dim, 1:space%dim, ik), zpol_temp, space%dim**2, &
-          MPI_CMPLX, MPI_SUM)
-        do dir1 = 1, ndir_
-          do dir2 = 1, space%dim
-            zpol_k(dir1, dir2, ik) = zpol_temp(dir1, dir2)
-          end do
-        end do
-      end do
+    if (st%parallel_in_states .or. st%d%kpt%parallel) then
+      call comm_allreduce(st%st_kpt_mpi_grp, zpol_k)
     end if
   end if
 
@@ -360,17 +333,16 @@ end subroutine X(calc_polarizability_periodic)
 ! ---------------------------------------------------------
 !> alpha_ij(w) = - sum(m occ) [<psi_m(0)|r_i|psi_mj(1)(w)> + <psi_mj(1)(-w)|r_i|psi_m(0)>]
 !! minus sign is from electronic charge -e
-subroutine X(calc_polarizability_finite)(namespace, space, gr, st, hm, ions, lr, nsigma, perturbation, zpol, doalldirs, ndir)
+subroutine X(calc_polarizability_finite)(namespace, space, gr, st, hm, lr, nsigma, pert, zpol, doalldirs, ndir)
   type(namespace_t),           intent(in)    :: namespace
   type(space_t),               intent(in)    :: space
   type(grid_t),                intent(in)    :: gr
   type(states_elec_t),         intent(in)    :: st
   type(hamiltonian_elec_t),    intent(inout) :: hm
-  type(ions_t),                intent(in)    :: ions
   type(lr_t),                  intent(inout) :: lr(:,:)
   integer,                     intent(in)    :: nsigma
-  type(pert_t),                intent(inout) :: perturbation
-  CMPLX,                       intent(out)   :: zpol(:, :)
+  class(perturbation_t),       intent(inout) :: pert
+  CMPLX,                       intent(out)   :: zpol(1:space%dim, 1:space%dim)
   logical,           optional, intent(in)    :: doalldirs
   integer,           optional, intent(in)    :: ndir
 
@@ -387,18 +359,18 @@ subroutine X(calc_polarizability_finite)(namespace, space, gr, st, hm, ions, lr,
     if (doalldirs) startdir = 1
   end if
 
-  SAFE_ALLOCATE(psi(1:gr%mesh%np, 1:st%d%dim, st%st_start:st%st_end, st%d%kpt%start:st%d%kpt%end))
+  SAFE_ALLOCATE(psi(1:gr%np, 1:st%d%dim, st%st_start:st%st_end, st%d%kpt%start:st%d%kpt%end))
 
-  call states_elec_get_state(st, gr%mesh, psi)
+  call states_elec_get_state(st, gr, psi)
 
   do dir1 = startdir, ndir_
     do dir2 = 1, space%dim
-      call pert_setup_dir(perturbation, dir1)
-      zpol(dir1, dir2) = -X(pert_expectation_value)(perturbation, namespace, space, gr, hm, st, psi, lr(dir2, 1)%X(dl_psi))
+      call pert%setup_dir(dir1)
+      zpol(dir1, dir2) = -pert%X(expectation_value)(namespace, space, gr, hm, st, psi, lr(dir2, 1)%X(dl_psi))
       if (nsigma == 1) then
         zpol(dir1, dir2) = zpol(dir1, dir2) + R_CONJ(zpol(dir1, dir2))
       else
-        zpol(dir1, dir2) = zpol(dir1, dir2) - X(pert_expectation_value)(perturbation, namespace, space, gr, hm, st, &
+        zpol(dir1, dir2) = zpol(dir1, dir2) - pert%X(expectation_value)(namespace, space, gr, hm, st, &
           lr(dir2, 2)%X(dl_psi), psi)
       end if
     end do
@@ -411,16 +383,15 @@ end subroutine X(calc_polarizability_finite)
 
 
 ! ---------------------------------------------------------
-subroutine X(lr_calc_susceptibility)(namespace, space, gr, st, hm, ions, lr, nsigma, perturbation, chi_para, chi_dia)
+subroutine X(lr_calc_susceptibility)(namespace, space, gr, st, hm, lr, nsigma, pert, chi_para, chi_dia)
   type(namespace_t),           intent(in)    :: namespace
   type(space_t),               intent(in)    :: space
   type(grid_t),                intent(in)    :: gr
   type(states_elec_t),         intent(in)    :: st
   type(hamiltonian_elec_t),    intent(inout) :: hm
-  type(ions_t),                intent(in)    :: ions
   type(lr_t),                  intent(inout) :: lr(:,:)
   integer,                     intent(in)    :: nsigma
-  type(pert_t),                intent(inout) :: perturbation
+  class(perturbation_t),       intent(inout) :: pert
   CMPLX,                       intent(out)   :: chi_para(:,:), chi_dia(:,:)
 
   integer :: dir1, dir2
@@ -432,28 +403,28 @@ subroutine X(lr_calc_susceptibility)(namespace, space, gr, st, hm, ions, lr, nsi
   chi_para = M_ZERO
   chi_dia  = M_ZERO
 
-  SAFE_ALLOCATE(psi(1:gr%mesh%np, 1:st%d%dim, st%st_start:st%st_end, st%d%kpt%start:st%d%kpt%end))
+  SAFE_ALLOCATE(psi(1:gr%np, 1:st%d%dim, st%st_start:st%st_end, st%d%kpt%start:st%d%kpt%end))
 
-  call states_elec_get_state(st, gr%mesh, psi)
+  call states_elec_get_state(st, gr, psi)
 
   do dir1 = 1, space%dim
     do dir2 = 1, space%dim
 
-      call pert_setup_dir(perturbation, dir1, dir2)
+      call pert%setup_dir(dir1, dir2)
 
-      trace = X(pert_expectation_value)(perturbation, namespace, space, gr, hm, st, psi, lr(dir2, 1)%X(dl_psi))
+      trace = pert%X(expectation_value)(namespace, space, gr, hm, st, psi, lr(dir2, 1)%X(dl_psi))
 
       if (nsigma == 1) then
         trace = trace + R_CONJ(trace)
       else
-        trace = trace + X(pert_expectation_value)(perturbation, namespace, space, gr, hm, st, lr(dir2, 2)%X(dl_psi), psi)
+        trace = trace + pert%X(expectation_value)(namespace, space, gr, hm, st, lr(dir2, 2)%X(dl_psi), psi)
       end if
 
       ! first the paramagnetic term
       chi_para(dir1, dir2) = chi_para(dir1, dir2) + trace
 
-      chi_dia(dir1, dir2) = chi_dia(dir1, dir2) + X(pert_expectation_value)(perturbation, namespace, space, gr, hm, st, &
-        psi, psi, pert_order=2)
+      chi_dia(dir1, dir2) = chi_dia(dir1, dir2) + pert%X(expectation_value)(namespace, space, gr, hm, st, &
+        psi, psi, perturbation_order=2)
 
     end do
   end do
@@ -490,8 +461,8 @@ subroutine X(lr_calc_beta)(sh, namespace, space, gr, st, hm, xc, ions, em_lr, di
   type(xc_t),                  intent(in)    :: xc
   type(ions_t),                intent(in)    :: ions
   type(lr_t),                  intent(inout) :: em_lr(:,:,:)
-  type(pert_t),                intent(inout) :: dipole
-  CMPLX,                       intent(out)   :: beta(:, :, :)
+  class(perturbation_t),       intent(inout) :: dipole
+  CMPLX,                       intent(out)   :: beta(1:space%dim, 1:space%dim, 1:space%dim)
   type(lr_t),        optional, intent(in)    :: kdotp_lr(:)
   type(lr_t),        optional, intent(in)    :: kdotp_em_lr(:,:,:,:) !< kdotp dir, em dir, sigma, factor
   logical,           optional, intent(in)    :: occ_response !< do the wfns include the occ subspace?
@@ -525,35 +496,35 @@ subroutine X(lr_calc_beta)(sh, namespace, space, gr, st, hm, xc, ions, em_lr, di
 
   if (sternheimer_add_fxc(sh)) then
     !calculate kxc, the derivative of fxc
-    SAFE_ALLOCATE(kxc(1:gr%mesh%np, 1:st%d%nspin, 1:st%d%nspin, 1:st%d%nspin))
+    SAFE_ALLOCATE(kxc(1:gr%np, 1:st%d%nspin, 1:st%d%nspin, 1:st%d%nspin))
     kxc = M_ZERO
 
-    SAFE_ALLOCATE(rho(1:gr%mesh%np, 1:st%d%nspin))
-    call states_elec_total_density(st, gr%mesh, rho)
+    SAFE_ALLOCATE(rho(1:gr%np, 1:st%d%nspin))
+    call states_elec_total_density(st, gr, rho)
 
-    call xc_get_kxc(xc, gr%mesh, namespace, rho, st%d%ispin, kxc)
+    call xc_get_kxc(xc, gr, namespace, rho, st%d%ispin, kxc)
     SAFE_DEALLOCATE_A(rho)
-    SAFE_ALLOCATE(hpol_density(1:gr%mesh%np))
+    SAFE_ALLOCATE(hpol_density(1:gr%np))
   end if
 
-  SAFE_ALLOCATE(tmp(1:gr%mesh%np, 1:st%d%dim))
-  SAFE_ALLOCATE(ppsi(1:gr%mesh%np, 1:st%d%dim))
-  SAFE_ALLOCATE(hvar(1:gr%mesh%np, 1:st%d%nspin, 1:2, 1:st%d%dim, 1:space%dim, 1:3))
+  SAFE_ALLOCATE(tmp(1:gr%np, 1:st%d%dim))
+  SAFE_ALLOCATE(ppsi(1:gr%np, 1:st%d%dim))
+  SAFE_ALLOCATE(hvar(1:gr%np, 1:st%d%nspin, 1:2, 1:st%d%dim, 1:space%dim, 1:3))
   SAFE_ALLOCATE(me010(1:st%nst, 1:st%nst, 1:space%dim, 1:3, st%d%kpt%start:st%d%kpt%end))
   SAFE_ALLOCATE(me11(1:space%dim, 1:space%dim, 1:3, 1:3, 1:2, st%d%kpt%start:st%d%kpt%end))
 
   do ifreq = 1, 3
     do idir = 1, space%dim
       do idim = 1, st%d%dim
-        call X(sternheimer_calc_hvar)(sh, namespace, gr%mesh, st, hm, xc, &
-          em_lr(idir, :, ifreq), 2, hvar(:, :, :, idim, idir, ifreq))
+        call X(sternheimer_calc_hvar)(sh, namespace, gr, space, hm, em_lr(idir, :, ifreq), &
+          2, hvar(:, :, :, idim, idir, ifreq))
       end do !idim
     end do !idir
   end do !ifreq
 
   call get_matrix_elements()
 
-  beta(:, :, :) = M_ZERO
+  beta(1:space%dim, 1:space%dim, 1:space%dim) = M_ZERO
 
   do ii = 1, space%dim
     do jj = 1, space%dim
@@ -580,22 +551,22 @@ subroutine X(lr_calc_beta)(sh, namespace, space, gr, st, hm, xc, ions, em_lr, di
                   ispin = st%d%get_spin_index(ik)
 
                   if (present(kdotp_em_lr) .and. u(2) <= space%periodic_dim) then
-                    tmp(1:gr%mesh%np, idim) = kdotp_em_lr(u(2), u(3), isigma, w(3))%X(dl_psi)(1:gr%mesh%np, idim, ist, ik)
+                    tmp(1:gr%np, idim) = kdotp_em_lr(u(2), u(3), isigma, w(3))%X(dl_psi)(1:gr%np, idim, ist, ik)
                   else
-                    call pert_setup_dir(dipole, u(2))
-                    call X(pert_apply)(dipole, namespace, space, gr, hm, ik, em_lr(u(3), isigma, &
+                    call dipole%setup_dir(u(2))
+                    call dipole%X(apply)(namespace, space, gr, hm, ik, em_lr(u(3), isigma, &
                       w(3))%X(dl_psi)(:, :, ist, ik), tmp)
                   end if
 
-                  do ip = 1, gr%mesh%np
+                  do ip = 1, gr%np
                     tmp(ip, idim) = tmp(ip, idim) + hvar(ip, ispin, isigma, idim, u(2), w(2)) &
                       * em_lr(u(3), isigma, w(3))%X(dl_psi)(ip, idim, ist, ik)
                   end do
 
                   beta(ii, jj, kk) = beta(ii, jj, kk) &
                     - M_HALF * st%d%kweights(ik) * st%smear%el_per_state &
-                    * X(mf_dotp)(gr%mesh, em_lr(u(1), op_sigma, w(1))%X(dl_psi)(1:gr%mesh%np, idim, ist, ik), &
-                    tmp(1:gr%mesh%np, idim))
+                    * X(mf_dotp)(gr, em_lr(u(1), op_sigma, w(1))%X(dl_psi)(1:gr%np, idim, ist, ik), &
+                    tmp(1:gr%np, idim))
 
                   do ist2 = 1, st%nst
                     if (occ_response_ .and. ist2 /= ist) cycle
@@ -611,10 +582,10 @@ subroutine X(lr_calc_beta)(sh, namespace, space, gr, st, hm, xc, ions, em_lr, di
             if (sternheimer_add_fxc(sh)) then
 
               hpol_density(:) = M_ZERO
-              do ip = 1, gr%mesh%np
-                do is1 = 1, st%d%nspin
-                  do is2 = 1, st%d%nspin
-                    do is3 = 1, st%d%nspin
+              do is3 = 1, st%d%nspin
+                do is2 = 1, st%d%nspin
+                  do is1 = 1, st%d%nspin
+                    do ip = 1, gr%np
                       hpol_density(ip) = hpol_density(ip) + kxc(ip, is1, is2, is3) &
                         * em_lr(u(1), isigma, w(1))%X(dl_rho)(ip, is1) &
                         * em_lr(u(2), isigma, w(2))%X(dl_rho)(ip, is2) &
@@ -624,7 +595,7 @@ subroutine X(lr_calc_beta)(sh, namespace, space, gr, st, hm, xc, ions, em_lr, di
                 end do
               end do
 
-              beta(ii, jj, kk) = beta(ii, jj, kk) - M_HALF * X(mf_integrate)(gr%mesh, hpol_density / CNST(6.0))
+              beta(ii, jj, kk) = beta(ii, jj, kk) - M_HALF * X(mf_integrate)(gr, hpol_density / CNST(6.0))
 
             end if
 
@@ -711,23 +682,23 @@ contains
 
     PUSH_SUB(X(lr_calc_beta).get_matrix_elements)
 
-    SAFE_ALLOCATE(psi1(1:gr%mesh%np_part, 1:st%d%dim))
-    SAFE_ALLOCATE(psi2(1:gr%mesh%np_part, 1:st%d%dim))
+    SAFE_ALLOCATE(psi1(1:gr%np_part, 1:st%d%dim))
+    SAFE_ALLOCATE(psi2(1:gr%np_part, 1:st%d%dim))
 
     do ik = st%d%kpt%start, st%d%kpt%end
       ispin = st%d%get_spin_index(ik)
       do ist = 1, st%nst
 
-        call states_elec_get_state(st, gr%mesh, ist, ik, psi1)
+        call states_elec_get_state(st, gr, ist, ik, psi1)
 
         do ist2 = 1, st%nst
 
           if (occ_response_ .and. ist2 /= ist) cycle
 
-          call states_elec_get_state(st, gr%mesh, ist2, ik, psi2)
+          call states_elec_get_state(st, gr, ist2, ik, psi2)
 
           do ii = 1, space%dim
-            call pert_setup_dir(dipole, ii)
+            call dipole%setup_dir(ii)
 
             do ifreq = 1, 3
 
@@ -737,23 +708,23 @@ contains
                   ppsi = M_ZERO ! will put in eigenvalue directly later
                 else
                   do idim = 1, st%d%dim
-                    do ip = 1, gr%mesh%np
+                    do ip = 1, gr%np
                       ppsi(ip, idim) = kdotp_lr(ii)%X(dl_psi)(ip, idim, ist, ik)
                     end do
                   end do
                 end if
               else
-                call X(pert_apply)(dipole, namespace, space, gr, hm, ik, psi1, ppsi)
+                call dipole%X(apply)(namespace, space, gr, hm, ik, psi1, ppsi)
               end if
 
               isigma = 1
               do idim = 1, st%d%dim
-                do ip = 1, gr%mesh%np
+                do ip = 1, gr%np
                   ppsi(ip, idim) = ppsi(ip, idim) + hvar(ip, ispin, isigma, idim, ii, ifreq)*psi1(ip, idim)
                 end do
               end do
 
-              me010(ist2, ist, ii, ifreq, ik) = X(mf_dotp)(gr%mesh, st%d%dim, psi2, ppsi)
+              me010(ist2, ist, ii, ifreq, ik) = X(mf_dotp)(gr, st%d%dim, psi2, ppsi)
 
               if (present(kdotp_lr) .and. ii <= space%periodic_dim .and. ist == ist2) then
                 me010(ist, ist, ii, ifreq, ik) = me010(ist, ist, ii, ifreq, ik) + dl_eig(ist, ik, ii)
@@ -782,11 +753,11 @@ contains
                 if (occ_response_) then
                   do ist = 1, st%nst
                     me11(ii, jj, ifreq, jfreq, isigma, ik)%X(matrix)(ist, ist) = &
-                      X(mf_dotp)(gr%mesh, st%d%dim, em_lr(ii, op_sigma, ifreq)%X(dl_psi)(:, :, ist, ik), &
-                      em_lr(jj, isigma,   jfreq)%X(dl_psi)(:, :, ist, ik))
+                      X(mf_dotp)(gr, st%d%dim, em_lr(ii, op_sigma, ifreq)%X(dl_psi)(:, :, ist, ik), &
+                      em_lr(jj, isigma, jfreq)%X(dl_psi)(:, :, ist, ik))
                   end do
                 else
-                  call X(mf_dotp_matrix)(gr%mesh, st%nst, st%d%dim, &
+                  call X(mf_dotp_matrix)(gr, st%nst, st%d%dim, &
                     em_lr(ii, op_sigma, ifreq)%X(dl_psi)(:, :, :, ik), &
                     em_lr(jj, isigma, jfreq)%X(dl_psi)(:, :, :, ik), &
                     me11(ii, jj, ifreq, jfreq, isigma, ik)%X(matrix))
@@ -814,7 +785,7 @@ end subroutine X(lr_calc_beta)
 ! ---------------------------------------------------------
 subroutine X(post_orthogonalize)(space, mesh, st, nfactor, nsigma, freq_factor, omega, eta, em_lr, kdotp_em_lr)
   type(space_t),       intent(in)    :: space
-  type(mesh_t),        intent(in)    :: mesh
+  class(mesh_t),       intent(in)    :: mesh
   type(states_elec_t), intent(in)    :: st
   integer,             intent(in)    :: nfactor
   integer,             intent(in)    :: nsigma
@@ -838,7 +809,11 @@ subroutine X(post_orthogonalize)(space, mesh, st, nfactor, nsigma, freq_factor, 
 
   do ifactor = 1, nfactor
     do isigma = 1, nsigma
-      frequency = R_TOPREC(omega * freq_factor(ifactor) + M_zI * eta)
+#ifdef R_TREAL
+      frequency = omega * freq_factor(ifactor)
+#else
+      frequency = omega * freq_factor(ifactor) + M_zI * eta
+#endif
       if (isigma == 2) frequency = -R_CONJ(frequency)
 
       do em_dir = 1, space%dim
@@ -861,7 +836,7 @@ end subroutine X(post_orthogonalize)
 ! <\psi|-i d/dk|\psi> =~ (L/2 \pi) Im <\psi|exp(2 \pi i x / L)|\psi> ( =~ <\psi|x|\psi> )
 subroutine X(em_resp_calc_eigenvalues)(space, mesh, latt, st, dl_eig)
   type(space_t),           intent(in)  :: space
-  type(mesh_t),            intent(in)  :: mesh
+  class(mesh_t),           intent(in)  :: mesh
   type(lattice_vectors_t), intent(in)  :: latt
   type(states_elec_t),     intent(in)  :: st
   FLOAT,                   intent(out) :: dl_eig(:,:,:) !< (ist, ik, idir)
@@ -869,7 +844,6 @@ subroutine X(em_resp_calc_eigenvalues)(space, mesh, latt, st, dl_eig)
   integer :: ik, ist, ip, idim, idir
   R_TYPE, allocatable :: psi(:,:)
   FLOAT, allocatable :: integrand(:)
-  FLOAT, allocatable :: dl_eig_temp(:,:,:)
 
   PUSH_SUB(X(em_resp_calc_eigenvalues))
 
@@ -889,7 +863,8 @@ subroutine X(em_resp_calc_eigenvalues)(space, mesh, latt, st, dl_eig)
       do idir = 1, space%periodic_dim
         do idim = 1, st%d%dim
           do ip = 1, mesh%np
-            integrand(ip) = sin(M_TWO*M_PI/norm2(latt%rlattice(:,idir))*mesh%x(ip, idir)) * abs(psi(ip, idim))**2
+            integrand(ip) = sin(M_TWO*M_PI/norm2(latt%rlattice(:,idir))*mesh%x(ip, idir)) &
+              * TOFLOAT(psi(ip, idim) * R_CONJ(psi(ip, idim)))
           end do
           dl_eig(ist, ik, idir) = dl_eig(ist, ik, idir) + &
             norm2(latt%rlattice(:,idir))/(M_TWO*M_PI) * dmf_integrate(mesh, integrand)
@@ -902,19 +877,14 @@ subroutine X(em_resp_calc_eigenvalues)(space, mesh, latt, st, dl_eig)
   SAFE_DEALLOCATE_A(integrand)
 
   if (st%parallel_in_states .or. st%d%kpt%parallel) then
-    SAFE_ALLOCATE(dl_eig_temp(1:st%nst, 1:st%d%nik, 1:space%periodic_dim))
-
-    call st%st_kpt_mpi_grp%allreduce(dl_eig, dl_eig_temp, st%nst * st%d%nik * space%periodic_dim, MPI_FLOAT, MPI_SUM)
-
-    dl_eig(:,:,:) = dl_eig_temp(:,:,:)
-    SAFE_DEALLOCATE_A(dl_eig_temp)
+    call comm_allreduce(st%st_kpt_mpi_grp, dl_eig)
   end if
 
   POP_SUB(X(em_resp_calc_eigenvalues))
 end subroutine X(em_resp_calc_eigenvalues)
 
 ! ---------------------------------------------------------
-subroutine X(lr_calc_magneto_optics_finite)(sh, sh_mo, namespace, space, gr, st, hm, xc, ions, nsigma, nfactor, lr_e, &
+subroutine X(lr_calc_magneto_optics_finite)(sh, sh_mo, namespace, space, gr, st, hm, ions, nsigma, nfactor, lr_e, &
   lr_b, chi)
   type(sternheimer_t),      intent(inout) :: sh, sh_mo
   type(namespace_t),        intent(in)    :: namespace
@@ -922,7 +892,6 @@ subroutine X(lr_calc_magneto_optics_finite)(sh, sh_mo, namespace, space, gr, st,
   type(grid_t),             intent(in)    :: gr
   type(states_elec_t),      intent(in)    :: st
   type(hamiltonian_elec_t), intent(inout) :: hm
-  type(xc_t),               intent(in)    :: xc
   type(ions_t),             intent(in)    :: ions
   integer,                  intent(in)    :: nsigma
   integer,                  intent(in)    :: nfactor
@@ -932,7 +901,8 @@ subroutine X(lr_calc_magneto_optics_finite)(sh, sh_mo, namespace, space, gr, st,
 
   integer :: dir1, dir2, dir3, ist, ist_occ, dir(nfactor)
   integer :: ik, idim, ip, isigma, ispin, ii
-  type(pert_t) :: pert_m, pert_e(nfactor)
+  type(perturbation_magnetic_t), pointer :: pert_m
+  type(perturbation_electric_t) :: pert_e(nfactor)
   R_TYPE, allocatable :: pertpsi_e(:,:,:), pertpsi_b(:,:)
   FLOAT :: weight
   R_TYPE, allocatable :: hpol_density(:), hvar_e(:,:,:,:,:), hvar_b(:,:,:,:)
@@ -945,13 +915,13 @@ subroutine X(lr_calc_magneto_optics_finite)(sh, sh_mo, namespace, space, gr, st,
 
   PUSH_SUB(X(lr_calc_magneto_optics_finite))
 
-  SAFE_ALLOCATE(pertpsi_e(1:gr%mesh%np, 1:hm%d%dim, 1:nsigma))
-  SAFE_ALLOCATE(pertpsi_b(1:gr%mesh%np, 1:hm%d%dim))
+  SAFE_ALLOCATE(pertpsi_e(1:gr%np, 1:hm%d%dim, 1:nsigma))
+  SAFE_ALLOCATE(pertpsi_b(1:gr%np, 1:hm%d%dim))
 
   calc_var = sternheimer_add_fxc(sh) .or. sternheimer_add_hartree(sh)
   calc_var_mo = sternheimer_add_fxc(sh_mo) .or. sternheimer_add_hartree(sh_mo)
   if (sternheimer_add_fxc(sh)) then
-    SAFE_ALLOCATE(hpol_density(1:gr%mesh%np))
+    SAFE_ALLOCATE(hpol_density(1:gr%np))
   end if
 
   do isigma = 1, nsigma
@@ -959,13 +929,13 @@ subroutine X(lr_calc_magneto_optics_finite)(sh, sh_mo, namespace, space, gr, st,
   end do
   SAFE_ALLOCATE(prod_ee%X(matrix)(1:st%nst, 1:st%nst))
   if (calc_var) then
-    SAFE_ALLOCATE(hvar_e(1:space%dim, 1:gr%mesh%np, 1:st%d%nspin, 1:nsigma, 1:nfactor))
+    SAFE_ALLOCATE(hvar_e(1:gr%np, 1:st%d%nspin, 1:nsigma, 1:nfactor, 1:space%dim))
   end if
   if (calc_var_mo) then
-    SAFE_ALLOCATE(hvar_b(1:space%dim, 1:gr%mesh%np, 1:st%d%nspin, 1))
+    SAFE_ALLOCATE(hvar_b(1:gr%np, 1:st%d%nspin, 1:1, 1:space%dim))
   end if
-  SAFE_ALLOCATE(psi(1:gr%mesh%np, 1:st%d%dim))
-  SAFE_ALLOCATE(psi1(1:gr%mesh%np, 1:st%d%dim))
+  SAFE_ALLOCATE(psi(1:gr%np, 1:st%d%dim))
+  SAFE_ALLOCATE(psi1(1:gr%np, 1:st%d%dim))
 
 #if defined(R_TCOMPLEX)
   factor = M_ONE
@@ -980,27 +950,25 @@ subroutine X(lr_calc_magneto_optics_finite)(sh, sh_mo, namespace, space, gr, st,
   pertpsi_e(:,:,:) = M_ZERO
   pertpsi_b(:,:) = M_ZERO
 
-  call pert_init(pert_m, namespace, PERTURBATION_MAGNETIC, ions)
+  pert_m => perturbation_magnetic_t(namespace, ions)
   do ii = 1, nfactor
-    call pert_init(pert_e(ii), namespace, PERTURBATION_ELECTRIC, ions)
+    call perturbation_electric_init(pert_e(ii), namespace)
   end do
 
   psi(:,:) = M_ZERO
   psi1(:,:) = M_ZERO
 
   if (calc_var) then
-    hvar_e(:,:,:,:,:) = M_ZERO
     do dir1 = 1, space%dim
       do ii = 1, nfactor
-        call X(sternheimer_calc_hvar)(sh, namespace, gr%mesh, st, hm, xc, lr_e(dir1, :, ii), nsigma, &
-          hvar_e(dir1, :, :, :, ii))
+        call X(sternheimer_calc_hvar)(sh, namespace, gr, space, hm, lr_e(dir1, :, ii), nsigma, &
+          hvar_e(:, :, :, ii, dir1))
       end do
     end do
   end if
   if (calc_var_mo) then
-    hvar_b(:,:,:,:) = M_ZERO
     do dir1 = 1, space%dim
-      call X(sternheimer_calc_hvar)(sh_mo, namespace, gr%mesh, st, hm, xc, lr_b(dir1, :), 1, hvar_b(dir1, :, :, :))
+      call X(sternheimer_calc_hvar)(sh_mo, namespace, gr, space, hm, lr_b(dir1, :), 1, hvar_b(:, :, :, dir1))
     end do
   end if
 
@@ -1009,44 +977,44 @@ subroutine X(lr_calc_magneto_optics_finite)(sh, sh_mo, namespace, space, gr, st,
       do dir3 = 1, space%dim
         dir(1) = dir2
         dir(nfactor) = dir1
-        call pert_setup_dir(pert_m, dir3)
+        call pert_m%setup_dir(dir3)
         do ii = 1, nfactor
-          call pert_setup_dir(pert_e(ii), dir(ii))
+          call pert_e(ii)%setup_dir(dir(ii))
         end do
         do ik = st%d%kpt%start, st%d%kpt%end
           ispin = st%d%get_spin_index(ik)
           weight = st%d%kweights(ik) * st%smear%el_per_state
           do ist = 1, st%nst
-            if (abs(st%occ(ist, ik)) .gt. M_EPSILON) then
+            if (abs(st%occ(ist, ik)) > M_EPSILON) then
               do ii = 1, nfactor
                 do isigma = 1, nsigma
-                  call X(pert_apply)(pert_e(swap_sigma(ii)), namespace, space, gr, hm, ik, &
+                  call pert_e(swap_sigma(ii))%X(apply)(namespace, space, gr, hm, ik, &
                     lr_e(dir(ii), isigma, ii)%X(dl_psi)(:, :, ist, ik), pertpsi_e(:, :, isigma))
                   if (calc_var) then
                     do idim = 1, hm%d%dim
-                      do ip = 1, gr%mesh%np
+                      do ip = 1, gr%np
                         pertpsi_e(ip, idim, isigma) = pertpsi_e(ip, idim, isigma) + &
-                          hvar_e(dir(swap_sigma(ii)), ip, ispin, isigma, swap_sigma(ii)) * &
+                          hvar_e(ip, ispin, isigma, swap_sigma(ii), dir(swap_sigma(ii))) * &
                           lr_e(dir(ii), isigma, ii)%X(dl_psi)(ip, idim, ist, ik)
                       end do
                     end do
                   end if
-                  term(isigma) = weight * factor1 * X(mf_dotp)(gr%mesh, st%d%dim, &
+                  term(isigma) = weight * factor1 * X(mf_dotp)(gr, st%d%dim, &
                     lr_b(dir3, 1)%X(dl_psi)(:, :, ist, ik), pertpsi_e(:, :, isigma))
                 end do
                 chi(dir(nfactor), dir(1), dir3) = chi(dir(nfactor), dir(1), dir3) + term(1) + R_CONJ(term(nsigma))
 
-                call X(pert_apply)(pert_m, namespace, space, gr, hm, ik, &
+                call pert_m%X(apply)(namespace, space, gr, hm, ik, &
                   lr_e(dir(ii), 1, ii)%X(dl_psi)(:, :, ist, ik), pertpsi_b(:, :))
                 if (calc_var_mo) then
                   do idim = 1, hm%d%dim
-                    do ip = 1, gr%mesh%np
-                      pertpsi_b(ip, idim) = pertpsi_b(ip, idim) + hvar_b(dir3, ip, ispin, 1) * &
+                    do ip = 1, gr%np
+                      pertpsi_b(ip, idim) = pertpsi_b(ip, idim) + hvar_b(ip, ispin, 1, dir3) * &
                         lr_e(dir(ii), 1, ii)%X(dl_psi)(ip, idim, ist, ik)
                     end do
                   end do
                 end if
-                term(1) = weight * factor1 * X(mf_dotp)(gr%mesh, st%d%dim, &
+                term(1) = weight * factor1 * X(mf_dotp)(gr, st%d%dim, &
                   lr_e(dir(swap_sigma(ii)), nsigma, swap_sigma(ii))%X(dl_psi)(:, :, ist, ik), &
                   pertpsi_b(:, :))
                 chi(dir(nfactor), dir(1), dir3) = chi(dir(nfactor), dir(1), dir3) + term(1)
@@ -1055,47 +1023,47 @@ subroutine X(lr_calc_magneto_optics_finite)(sh, sh_mo, namespace, space, gr, st,
           end do
           do ii = 1, nfactor
             do isigma = 1, nsigma
-              call X(mf_dotp_matrix)(gr%mesh, st%nst, st%d%dim, &
+              call X(mf_dotp_matrix)(gr, st%nst, st%d%dim, &
                 lr_e(dir(swap_sigma(ii)), swap_sigma(isigma), swap_sigma(ii))%X(dl_psi)(:, :, :, ik), &
                 lr_b(dir3, 1)%X(dl_psi)(:, :, :, ik), prod_eb(isigma)%X(matrix))
             end do
-            call X(mf_dotp_matrix)(gr%mesh, st%nst, st%d%dim, &
+            call X(mf_dotp_matrix)(gr, st%nst, st%d%dim, &
               lr_e(dir(ii), nsigma, ii)%X(dl_psi)(:, :, :, ik), lr_e(dir(swap_sigma(ii)), 1, &
               swap_sigma(ii))%X(dl_psi)(:, :, :, ik), prod_ee%X(matrix))
 
             do ist = 1, st%nst
-              if (abs(st%occ(ist, ik)) .gt. M_EPSILON) then
-                call states_elec_get_state(st, gr%mesh, ist, ik, psi)
-                call X(pert_apply)(pert_e(ii), namespace, space, gr, hm, ik, psi, pertpsi_e(:, :, 1))
+              if (abs(st%occ(ist, ik)) > M_EPSILON) then
+                call states_elec_get_state(st, gr, ist, ik, psi)
+                call pert_e(ii)%X(apply)(namespace, space, gr, hm, ik, psi, pertpsi_e(:, :, 1))
                 if (nfactor > 1) pertpsi_e(:, :, nfactor) = pertpsi_e(:, :, 1)
                 if (calc_var) then
-                  do idim = 1, hm%d%dim
-                    do ip = 1, gr%mesh%np
-                      do isigma = 1, nsigma
+                  do isigma = 1, nsigma
+                    do idim = 1, hm%d%dim
+                      do ip = 1, gr%np
                         pertpsi_e(ip, idim, isigma) = pertpsi_e(ip, idim, isigma) + &
-                          hvar_e(dir(ii), ip, ispin, isigma, ii) * psi(ip, idim)
+                          hvar_e(ip, ispin, isigma, ii, dir(ii)) * psi(ip, idim)
                       end do
                     end do
                   end do
                 end if
-                call X(pert_apply)(pert_m, namespace, space, gr, hm, ik, psi, pertpsi_b(:, :))
+                call pert_m%X(apply)(namespace, space, gr, hm, ik, psi, pertpsi_b(:, :))
                 if (calc_var_mo) then
                   do idim = 1, hm%d%dim
-                    do ip = 1, gr%mesh%np
-                      pertpsi_b(ip, idim) = pertpsi_b(ip, idim) + hvar_b(dir3, ip, ispin, 1) * psi(ip, idim)
+                    do ip = 1, gr%np
+                      pertpsi_b(ip, idim) = pertpsi_b(ip, idim) + hvar_b(ip, ispin, 1, dir3) * psi(ip, idim)
                     end do
                   end do
                 end if
                 do ist_occ = 1, st%nst
-                  if (abs(st%occ(ist_occ, ik)) .gt. M_EPSILON) then
-                    call states_elec_get_state(st, gr%mesh, ist_occ, ik, psi1)
+                  if (abs(st%occ(ist_occ, ik)) > M_EPSILON) then
+                    call states_elec_get_state(st, gr, ist_occ, ik, psi1)
                     do isigma = 1, nsigma
-                      term(isigma) = - weight * X(mf_dotp)(gr%mesh, st%d%dim, psi1, pertpsi_e(:, :, isigma)) &
+                      term(isigma) = - weight * X(mf_dotp)(gr, st%d%dim, psi1, pertpsi_e(:, :, isigma)) &
                         * prod_eb(isigma)%X(matrix)(ist, ist_occ)
                     end do
                     chi(dir(nfactor), dir(1), dir3) = chi(dir(nfactor), dir(1), dir3) + term(1) + R_CONJ(term(nsigma))
 
-                    term(1) = - weight * X(mf_dotp)(gr%mesh, st%d%dim, psi1, pertpsi_b(:, :))* &
+                    term(1) = - weight * X(mf_dotp)(gr, st%d%dim, psi1, pertpsi_b(:, :))* &
                       prod_ee%X(matrix)(ist, ist_occ)
                     chi(dir(nfactor), dir(1), dir3) = chi(dir(nfactor), dir(1), dir3) + term(1)
                   end if
@@ -1116,15 +1084,15 @@ subroutine X(lr_calc_magneto_optics_finite)(sh, sh_mo, namespace, space, gr, st,
         if (sternheimer_add_fxc(sh_mo) .and. sternheimer_add_fxc(sh)) then
           hpol_density(:) = M_ZERO
           do ii = 1, nfactor
-            call X(calc_kvar_energy)(sh_mo, gr%mesh, st, lr_e(dir(swap_sigma(ii)), 1, swap_sigma(ii)), &
+            call X(calc_kvar_energy)(sh_mo, gr, st, lr_e(dir(swap_sigma(ii)), 1, swap_sigma(ii)), &
               lr_e(dir(ii), 1, ii), lr_b(dir3, 1), hpol_density)
-            call X(calc_kvar_energy)(sh_mo, gr%mesh, st, lr_e(dir(ii), 1, ii), lr_b(dir3, 1), &
+            call X(calc_kvar_energy)(sh_mo, gr, st, lr_e(dir(ii), 1, ii), lr_b(dir3, 1), &
               lr_e(dir(swap_sigma(ii)), 1, swap_sigma(ii)), hpol_density)
-            call X(calc_kvar_energy)(sh_mo, gr%mesh, st, lr_b(dir3, 1), &
+            call X(calc_kvar_energy)(sh_mo, gr, st, lr_b(dir3, 1), &
               lr_e(dir(swap_sigma(ii)), 1, swap_sigma(ii)), lr_e(dir(ii), 1, ii), hpol_density)
           end do
           chi(dir(nfactor), dir(1), dir3) = chi(dir(nfactor), dir(1), dir3) + &
-            M_ONE/CNST(6.0) * X(mf_integrate)(gr%mesh, hpol_density) ! the coefficient should be checked
+            M_ONE/CNST(6.0) * X(mf_integrate)(gr, hpol_density) ! the coefficient should be checked
         end if
       end do
     end do
@@ -1136,6 +1104,8 @@ subroutine X(lr_calc_magneto_optics_finite)(sh, sh_mo, namespace, space, gr, st,
     SAFE_DEALLOCATE_A(prod_eb(isigma)%X(matrix))
   end do
   SAFE_DEALLOCATE_A(prod_ee%X(matrix))
+
+  SAFE_DEALLOCATE_P(pert_m)
 
   SAFE_DEALLOCATE_A(psi)
   SAFE_DEALLOCATE_A(psi1)
@@ -1156,10 +1126,10 @@ end subroutine X(lr_calc_magneto_optics_finite)
 
 ! ---------------------------------------------------------
 subroutine X(calc_kvar_energy)(sh_mo, mesh, st, lr1, lr2, lr3, hpol_density)
-  type(sternheimer_t),    intent(inout) :: sh_mo
-  type(mesh_t),           intent(in)    :: mesh
+  type(sternheimer_t),    intent(in)    :: sh_mo
+  class(mesh_t),          intent(in)    :: mesh
   type(states_elec_t),    intent(in)    :: st
-  type(lr_t),             intent(inout) :: lr1, lr2, lr3
+  type(lr_t),             intent(in)    :: lr1, lr2, lr3
   R_TYPE,                 intent(inout) :: hpol_density(:)
 
   R_TYPE, allocatable :: kvar(:,:,:)
@@ -1170,9 +1140,9 @@ subroutine X(calc_kvar_energy)(sh_mo, mesh, st, lr1, lr2, lr3, hpol_density)
   SAFE_ALLOCATE(kvar(1:mesh%np, 1:st%d%nspin, 1))
 
   call X(calc_kvar)(sh_mo, mesh, st, lr1%X(dl_rho), lr2%X(dl_rho), 1, kvar)
-  do ip = 1, mesh%np
-    do is = 1, st%d%nspin
-      hpol_density(ip) = hpol_density(ip) + kvar(ip,is,1) * lr3%X(dl_rho)(ip,is)
+  do is = 1, st%d%nspin
+    do ip = 1, mesh%np
+      hpol_density(ip) = hpol_density(ip) + kvar(ip, is,1) * lr3%X(dl_rho)(ip, is)
     end do
   end do
 
@@ -1182,7 +1152,7 @@ subroutine X(calc_kvar_energy)(sh_mo, mesh, st, lr1, lr2, lr3, hpol_density)
 end subroutine X(calc_kvar_energy)
 
 ! ---------------------------------------------------------
-subroutine X(lr_calc_magneto_optics_periodic)(sh, sh2, namespace, space, gr, st, hm, xc, ions, nsigma, nfactor, nfactor_ke, &
+subroutine X(lr_calc_magneto_optics_periodic)(sh, sh2, namespace, space, gr, st, hm, ions, nsigma, nfactor, nfactor_ke, &
   freq_factor, lr_e, lr_b, lr_k, lr_ke, lr_kb, frequency, zpol, zpol_kout)
   type(sternheimer_t),      intent(inout) :: sh, sh2
   type(namespace_t),        intent(in)    :: namespace
@@ -1190,7 +1160,6 @@ subroutine X(lr_calc_magneto_optics_periodic)(sh, sh2, namespace, space, gr, st,
   type(grid_t),             intent(in)    :: gr
   type(states_elec_t),      intent(in)    :: st
   type(hamiltonian_elec_t), intent(inout) :: hm
-  type(xc_t),               intent(in)    :: xc
   type(ions_t),             intent(in)    :: ions
   integer,                  intent(in)    :: nsigma
   integer,                  intent(in)    :: nfactor
@@ -1206,7 +1175,7 @@ subroutine X(lr_calc_magneto_optics_periodic)(sh, sh2, namespace, space, gr, st,
   CMPLX, optional,          intent(inout) :: zpol_kout(:,:,:,:)
 
   integer :: idir1, idir2, idir3, ist, ii, dir(nfactor), &
-    ispin, idim, ndim, np, ik, ndir, ist_occ, isigma, isigma_alt, ip
+    ispin, idim, ndim, np, ik, ndir, ist_occ, isigma, isigma_alt
   FLOAT :: weight
   R_TYPE, allocatable :: gpsi(:,:,:,:), gdl_e(:,:,:), gdl_k(:,:,:,:), gdl_b(:,:,:), &
     gdl_ke(:,:,:,:), hvar(:,:,:,:,:), hvar2(:,:,:,:)
@@ -1214,10 +1183,10 @@ subroutine X(lr_calc_magneto_optics_periodic)(sh, sh2, namespace, space, gr, st,
   type(matrix_t) :: mat_be, mat_eb
   type(matrix_t), allocatable:: mat_kek(:,:), mat_kke(:,:), mat_g(:,:)
   R_TYPE, allocatable :: psi_be(:,:,:,:), density(:)
-  logical :: add_hartree1, add_fxc1, add_hartree2, add_fxc2, kpt_output
+  logical :: add_hartree1, add_fxc1, add_hartree2, add_fxc2
   type(lr_t) :: lr0(1)
-  CMPLX :: zpol0(space%dim, space%dim, space%dim), zpol_k(space%dim, space%dim, space%dim)
-  CMPLX :: zpol_temp(space%dim, space%dim, space%dim)
+  CMPLX :: zpol0(1:space%dim,1:space%dim,1:space%dim), zpol_k(1:space%dim,1:space%dim,1:space%dim)
+  R_TYPE :: tmp
 
 #if defined(R_TCOMPLEX)
   factor = -M_zI
@@ -1235,18 +1204,18 @@ subroutine X(lr_calc_magneto_optics_periodic)(sh, sh2, namespace, space, gr, st,
 
   PUSH_SUB(X(lr_calc_magneto_optics_periodic))
 
-  ASSERT(abs(frequency) .gt. M_EPSILON)
+  ASSERT(abs(frequency) > M_EPSILON)
   ASSERT(nfactor == 2)
 
-  np = gr%mesh%np
+  np = gr%np
   ndir = space%dim
   ndim = st%d%dim
 
   SAFE_ALLOCATE(gpsi(1:np, 1:ndim, 1:st%nst, 1:nsigma))
   SAFE_ALLOCATE(gdl_e(1:np, 1:ndim, 1:nsigma))
-  SAFE_ALLOCATE(gdl_k(1:ndir, 1:np, 1:ndim, 1:nsigma))
+  SAFE_ALLOCATE(gdl_k(1:np, 1:ndim, 1:nsigma, 1:ndir))
   SAFE_ALLOCATE(gdl_b(1:np, 1:ndim, 1:nsigma))
-  SAFE_ALLOCATE(gdl_ke(1:ndir, 1:np, 1:ndim, 1:nsigma))
+  SAFE_ALLOCATE(gdl_ke(1:np, 1:ndim, 1:nsigma, 1:ndir))
   SAFE_ALLOCATE(mat_kke(1:ndir, 1:ndir))
   SAFE_ALLOCATE(mat_kek(1:ndir, 1:ndir))
   SAFE_ALLOCATE(mat_g(1:ndir, 1:nsigma))
@@ -1256,7 +1225,6 @@ subroutine X(lr_calc_magneto_optics_periodic)(sh, sh2, namespace, space, gr, st,
   SAFE_ALLOCATE(hvar(1:np, 1:st%d%nspin, 1:nsigma, 1:ndir, 1:nfactor))
   SAFE_ALLOCATE(hvar2(1:np, 1:st%d%nspin, 1, 1:ndir))
 
-  kpt_output = present(zpol_kout)
   do idir1 = 1, ndir
     do isigma = 1, nsigma
       SAFE_ALLOCATE(mat_g(idir1, isigma)%X(matrix)(1:st%nst, 1:st%nst))
@@ -1267,11 +1235,10 @@ subroutine X(lr_calc_magneto_optics_periodic)(sh, sh2, namespace, space, gr, st,
     end do
   end do
 
-  hvar(:,:,:,:,:) = M_ZERO
   hvar2(:,:,:,:) = M_ZERO
   zpol(:,:,:) = M_ZERO
   zpol0(:,:,:) = M_ZERO
-  if (kpt_output) zpol_kout(:,:,:,:) = M_ZERO
+  if (present(zpol_kout)) zpol_kout(:,:,:,:) = M_ZERO
 
   add_hartree1 = sternheimer_add_hartree(sh)
   add_fxc1 = sternheimer_add_fxc(sh)
@@ -1280,27 +1247,24 @@ subroutine X(lr_calc_magneto_optics_periodic)(sh, sh2, namespace, space, gr, st,
 
   call lr_init(lr0(1))
   if (add_hartree2 .or. add_fxc2) then
-    call lr_allocate(lr0(1), st, gr%mesh, allocate_rho = .true.)
+    call lr_allocate(lr0(1), st, gr, allocate_rho = .true.)
     if (add_fxc2) then
       SAFE_ALLOCATE(density(1:np))
     end if
     do idir1 = 1, ndir
       lr0(1)%X(dl_rho) = M_ZERO
-      call X(calc_rho)(gr%mesh, st, factor_rho, factor_sum, factor, factor, lr_k(magn_dir(idir1, 1), 1), &
+      call X(calc_rho)(gr, st, factor_rho, factor_sum, factor, factor, lr_k(magn_dir(idir1, 1), 1), &
         lr_k(magn_dir(idir1, 2), 1), lr0(1))
-      call X(calc_rho)(gr%mesh, st, factor_sum * factor_rho, factor_sum, factor, factor, lr_k(magn_dir(idir1, 2), 1), &
+      call X(calc_rho)(gr, st, factor_sum * factor_rho, factor_sum, factor, factor, lr_k(magn_dir(idir1, 2), 1), &
         lr_k(magn_dir(idir1, 1), 1), lr0(1))
 
       if (st%parallel_in_states .or. st%d%kpt%parallel) then
         call comm_allreduce(st%st_kpt_mpi_grp, lr0(1)%X(dl_rho))
       end if
 
-      do ip = 1, gr%mesh%np
-        do ispin = 1, st%d%nspin
-          lr0(1)%X(dl_rho)(ip, ispin) = lr0(1)%X(dl_rho)(ip, ispin) + lr_b(idir1, 1)%X(dl_rho)(ip, ispin)
-        end do
-      end do
-      call X(sternheimer_calc_hvar)(sh2, namespace, gr%mesh, st, hm, xc, lr0, 1, hvar2(:,:,:, idir1))
+      call lalg_axpy(gr%np, st%d%nspin, M_ONE, lr_b(idir1, 1)%X(dl_rho), lr0(1)%X(dl_rho))
+
+      call X(sternheimer_calc_hvar)(sh2, namespace, gr, space, hm, lr0, 1, hvar2(:,:,:, idir1))
       if (add_fxc2 .and. add_fxc1) then
         do idir2 = 1, ndir
           do idir3 = 1, ndir
@@ -1308,25 +1272,25 @@ subroutine X(lr_calc_magneto_optics_periodic)(sh, sh2, namespace, space, gr, st,
             dir(nfactor) = idir3
             density(:) = M_ZERO
             do ii = 1, nfactor
-              call X(calc_kvar_energy)(sh2, gr%mesh, st, lr_e(dir(swap_sigma(ii)), 1, swap_sigma(ii)), &
+              call X(calc_kvar_energy)(sh2, gr, st, lr_e(dir(swap_sigma(ii)), 1, swap_sigma(ii)), &
                 lr_e(dir(ii), 1, ii), lr0(1), density)
-              call X(calc_kvar_energy)(sh2, gr%mesh, st, lr_e(dir(ii), 1, ii), lr0(1), &
+              call X(calc_kvar_energy)(sh2, gr, st, lr_e(dir(ii), 1, ii), lr0(1), &
                 lr_e(dir(swap_sigma(ii)), 1, swap_sigma(ii)), density)
-              call X(calc_kvar_energy)(sh2, gr%mesh, st, lr0(1), lr_e(dir(swap_sigma(ii)), 1, swap_sigma(ii)), &
+              call X(calc_kvar_energy)(sh2, gr, st, lr0(1), lr_e(dir(swap_sigma(ii)), 1, swap_sigma(ii)), &
                 lr_e(dir(ii), 1, ii), density)
             end do
             if (nfactor_ke > 1) then
               do ii = 1, nfactor
-                call X(calc_kvar_energy)(sh2, gr%mesh, st, lr_e(dir(ii), 1, swap_sigma(ii)), &
+                call X(calc_kvar_energy)(sh2, gr, st, lr_e(dir(ii), 1, swap_sigma(ii)), &
                   lr_e(dir(swap_sigma(ii)), 1, ii), lr0(1), density)
-                call X(calc_kvar_energy)(sh2, gr%mesh, st, lr_e(dir(swap_sigma(ii)), 1, ii), lr0(1), &
+                call X(calc_kvar_energy)(sh2, gr, st, lr_e(dir(swap_sigma(ii)), 1, ii), lr0(1), &
                   lr_e(ii, 1, swap_sigma(ii)), density)
-                call X(calc_kvar_energy)(sh2, gr%mesh, st, lr0(1), lr_e(dir(ii), 1, swap_sigma(ii)), &
+                call X(calc_kvar_energy)(sh2, gr, st, lr0(1), lr_e(dir(ii), 1, swap_sigma(ii)), &
                   lr_e(dir(swap_sigma(ii)), 1, ii), density)
               end do
             end if
             zpol0(idir3, idir2, idir1) = zpol0(idir3, idir2, idir1) - &
-              frequency/P_C * factor0/CNST(6.0) * X(mf_integrate)(gr%mesh, density)
+              frequency/P_C * factor0/CNST(6.0) * X(mf_integrate)(gr, density)
           end do
         end do
       end if
@@ -1335,20 +1299,23 @@ subroutine X(lr_calc_magneto_optics_periodic)(sh, sh2, namespace, space, gr, st,
       SAFE_DEALLOCATE_A(density)
     end if
   else
-    call lr_allocate(lr0(1), st, gr%mesh, allocate_rho = .false.)
+    call lr_allocate(lr0(1), st, gr, allocate_rho = .false.)
   end if
 
   if (add_hartree1 .or. add_fxc1) then
     do idir1 = 1, ndir
       do ii = 1, nfactor
-        call X(sternheimer_calc_hvar)(sh, namespace, gr%mesh, st, hm, xc, lr_e(idir1, :, ii), nsigma, hvar(:,:,:, idir1, ii))
+        call X(sternheimer_calc_hvar)(sh, namespace, gr, space, hm, lr_e(idir1, :, ii), nsigma, hvar(:,:,:, idir1, ii))
       end do
     end do
+  else
+    hvar(:,:,:,:,:) = M_ZERO
   end if
 
   do ik = st%d%kpt%start, st%d%kpt%end
     ispin = st%d%get_spin_index(ik)
     weight = st%d%kweights(ik) * st%smear%el_per_state
+
     zpol_k(:,:,:) = M_ZERO
     do ii = 1, nfactor_ke
       do idir1 = 1, ndir
@@ -1357,7 +1324,7 @@ subroutine X(lr_calc_magneto_optics_periodic)(sh, sh2, namespace, space, gr, st,
           psi_be(:,:,:,:) = M_ZERO
           do isigma = 1, nsigma
             if (nsigma == 2) isigma_alt = swap_sigma(isigma)
-            call X(inhomog_EB)(gr%mesh, st, ik, add_hartree1, add_fxc1, hvar(:, ispin, isigma, idir2, ii), &
+            call X(inhomog_EB)(gr, st, ik, add_hartree1, add_fxc1, hvar(:, ispin, isigma, idir2, ii), &
               lr_b(idir1, 1)%X(dl_psi)(:,:,:, ik), lr_kb(idir2, idir1, 1)%X(dl_psi)(:,:,:, ik), &
               factor1, psi_be(:,:,:, isigma), lr_k(magn_dir(idir1, 1), 1)%X(dl_psi)(:,:,:, ik), &
               lr_k(magn_dir(idir1, 2), 1)%X(dl_psi)(:,:,:, ik))
@@ -1372,33 +1339,34 @@ subroutine X(lr_calc_magneto_optics_periodic)(sh, sh2, namespace, space, gr, st,
               factor_e, factor_e, psi_be(:,:,:, isigma))
           end do
           do ist = 1, st%nst
-            if (abs(st%occ(ist, ik)) .gt. M_EPSILON) then
+            if (abs(st%occ(ist, ik)) > M_EPSILON) then
               do idir3 = 1, ndir
-                do idim = 1, ndim
-                  zpol_k(idir3, idir2, idir1) = zpol_k(idir3, idir2, idir1) - freq_factor(ii) * &
-                    frequency / P_C * factor_e * (X(mf_dotp)(gr%mesh, psi_be(:, idim, ist, nsigma), &
-                    factor0 * lr_e(idir3, 1, swap_sigma(ii))%X(dl_psi)(:, idim, ist, ik))&
-                    - X(mf_dotp)(gr%mesh, factor0 * lr_e(idir3, nsigma, swap_sigma(ii))%X(dl_psi)(:, idim, ist, ik), &
-                    psi_be(:, idim, ist, 1)))
+                tmp = factor0 * X(mf_dotp)(gr, hm%d%dim, psi_be(:, :, ist, nsigma), &
+                  lr_e(idir3, 1, swap_sigma(ii))%X(dl_psi)(:, :, ist, ik))
+                tmp = tmp - R_CONJ(factor0) * X(mf_dotp)(gr, hm%d%dim, &
+                  lr_e(idir3, nsigma, swap_sigma(ii))%X(dl_psi)(:, :, ist, ik), psi_be(:, :, ist, 1))
 
-                  zpol_k(idir3, idir2, idir1) = zpol_k(idir3, idir2, idir1) - M_ONE / P_C *&
-                    (X(mf_dotp)(gr%mesh, psi_be(:, idim, ist, nsigma), &
-                    factor0 * lr_k(idir3, 1)%X(dl_psi)(:, idim, ist, ik))&
-                    + X(mf_dotp)(gr%mesh, factor0 * lr_k(idir3, 1)%X(dl_psi)(:, idim, ist, ik), &
-                    psi_be(:, idim, ist, 1)))
-                end do
+                zpol_k(idir3, idir2, idir1) = zpol_k(idir3, idir2, idir1) - freq_factor(ii) * &
+                  frequency / P_C * factor_e * tmp
+
+                tmp = factor0 * X(mf_dotp)(gr, hm%d%dim, psi_be(:, :, ist, nsigma), &
+                  lr_k(idir3, 1)%X(dl_psi)(:, :, ist, ik))
+                tmp = tmp + R_CONJ(factor0) * X(mf_dotp)(gr, hm%d%dim, &
+                  lr_k(idir3, 1)%X(dl_psi)(:, :, ist, ik), psi_be(:, :, ist, 1))
+
+                zpol_k(idir3, idir2, idir1) = zpol_k(idir3, idir2, idir1) - M_ONE / P_C * tmp
               end do
             end if
           end do
         end do
         do ist = 1, st%nst
-          if (abs(st%occ(ist, ik)) .gt. M_EPSILON) then
-            call states_elec_get_state(st, gr%mesh, ist, ik, lr0(1)%X(dl_psi)(:, :, ist, ik))
+          if (abs(st%occ(ist, ik)) > M_EPSILON) then
+            call states_elec_get_state(st, gr, ist, ik, lr0(1)%X(dl_psi)(:, :, ist, ik))
             call apply_v(add_hartree1, add_fxc1, nsigma, 1, idir1, ist, ik, freq_factor(ii) * frequency, &
               hvar(:, ispin, :, idir1, swap_sigma(ii)), lr0(:), gpsi(:, :, ist, :))
             do idir2 = 1, ndir
               call apply_v(add_hartree1, add_fxc1, nsigma, 1, idir1, ist, ik, freq_factor(ii) * frequency, &
-                hvar(:, ispin, :, idir1, swap_sigma(ii)), lr_k(idir2, :), gdl_k(idir2, :, :, :))
+                hvar(:, ispin, :, idir1, swap_sigma(ii)), lr_k(idir2, :), gdl_k(:, :, :, idir2))
             end do
             do idir2 = 1, ndir
               call apply_v(add_hartree1, add_fxc1, nsigma, 1, idir1, ist, ik, freq_factor(ii) * frequency, &
@@ -1407,68 +1375,75 @@ subroutine X(lr_calc_magneto_optics_periodic)(sh, sh2, namespace, space, gr, st,
                 hvar(:, ispin, :, idir1, swap_sigma(ii)), lr_e(idir2, :, ii), gdl_e(:, :, :))
               do idir3 = 1, ndir
                 call apply_v(add_hartree1, add_fxc1, nsigma, nsigma, idir1, ist, ik, freq_factor(ii) * frequency, &
-                  hvar(:, ispin, :, idir1, swap_sigma(ii)), lr_ke(idir3, idir2, :, ii), gdl_ke(idir3, :, :, :))
+                  hvar(:, ispin, :, idir1, swap_sigma(ii)), lr_ke(idir3, idir2, :, ii), gdl_ke(:, :, :, idir3))
               end do
               do idir3 = 1, ndir
                 do idim = 1, ndim
-                  zpol_k(idir1, idir3, idir2) = zpol_k(idir1, idir3, idir2) + M_HALF / P_C * factor_e * &
-                    (X(mf_dotp)(gr%mesh, lr_e(idir3, nsigma, ii)%X(dl_psi)(:, idim, ist, ik), factor0 * gdl_b(:, idim, 1)) &
-                    + X(mf_dotp)(gr%mesh, factor0 * gdl_b(:, idim, nsigma), lr_e(idir3, 1, ii)%X(dl_psi)(:, idim, ist, ik)))
+                  tmp = factor0 * X(mf_dotp)(gr, &
+                    lr_e(idir3, nsigma, ii)%X(dl_psi)(:, idim, ist, ik), gdl_b(:, idim, 1))
+                  tmp = tmp + R_CONJ(factor0) * X(mf_dotp)(gr, gdl_b(:, idim, nsigma), &
+                    lr_e(idir3, 1, ii)%X(dl_psi)(:, idim, ist, ik))
+                  zpol_k(idir1, idir3, idir2) = zpol_k(idir1, idir3, idir2) + M_HALF / P_C * factor_e * tmp
 
-                  zpol_k(idir1, idir2, idir3) = zpol_k(idir1, idir2, idir3) + M_HALF / P_C * factor_e * &
-                    (X(mf_dotp)(gr%mesh, factor * gdl_e(:, idim, nsigma), lr_b(idir3, 1)%X(dl_psi)(:, idim, ist, ik))&
-                    + X(mf_dotp)(gr%mesh, lr_b(idir3, 1)%X(dl_psi)(:, idim, ist, ik), factor * gdl_e(:, idim, 1)))
+                  tmp = R_CONJ(factor) * X(mf_dotp)(gr, gdl_e(:, idim, nsigma), &
+                    lr_b(idir3, 1)%X(dl_psi)(:, idim, ist, ik))
+                  tmp = tmp + factor * X(mf_dotp)(gr, &
+                    lr_b(idir3, 1)%X(dl_psi)(:, idim, ist, ik), gdl_e(:, idim, 1))
+                  zpol_k(idir1, idir2, idir3) = zpol_k(idir1, idir2, idir3) + M_HALF / P_C * factor_e * tmp
 
-                  zpol_k(idir1, idir2, idir3) = zpol_k(idir1, idir2, idir3) - M_FOURTH / P_C * &
-                    (X(mf_dotp)(gr%mesh, lr_ke(magn_dir(idir3, 1), idir2, nsigma, ii)%X(dl_psi)(:, idim, ist, ik),&
-                    factor0 * gdl_k(magn_dir(idir3, 2), :, idim, 1)) &
-                    + X(mf_dotp)(gr%mesh, factor * gdl_ke(magn_dir(idir3, 1), :, idim, nsigma),&
-                    lr_k(magn_dir(idir3, 2), 1)%X(dl_psi)(:, idim, ist, ik))&
-                    + X(mf_dotp)(gr%mesh, -lr_k(magn_dir(idir3, 1), 1)%X(dl_psi)(:, idim, ist, ik),&
-                    factor0 * gdl_ke(magn_dir(idir3, 2), :, idim, 1)) &
-                    + X(mf_dotp)(gr%mesh, -gdl_k(magn_dir(idir3, 1), :, idim, nsigma),&
-                    -factor0 * lr_ke(magn_dir(idir3, 2), idir2, 1, ii)%X(dl_psi)(:, idim, ist, ik))&
-                    - X(mf_dotp)(gr%mesh, lr_ke(magn_dir(idir3, 2), idir2, nsigma, ii)%X(dl_psi)(:, idim, ist, ik),&
-                    factor0 * gdl_k(magn_dir(idir3, 1), :, idim, 1)) &
-                    - X(mf_dotp)(gr%mesh, factor * gdl_ke(magn_dir(idir3, 2), :, idim, nsigma),&
-                    lr_k(magn_dir(idir3, 1), 1)%X(dl_psi)(:,idim, ist, ik))&
-                    - X(mf_dotp)(gr%mesh, -lr_k(magn_dir(idir3, 2), 1)%X(dl_psi)(:, idim, ist, ik),&
-                    factor0 * gdl_ke(magn_dir(idir3, 1), :, idim, 1))&
-                    - X(mf_dotp)(gr%mesh, -gdl_k(magn_dir(idir3, 2), :, idim, nsigma),&
-                    -factor0 * lr_ke(magn_dir(idir3, 1), idir2, 1, ii)%X(dl_psi)(:, idim, ist, ik)))
+                  tmp = factor0 * X(mf_dotp)(gr, &
+                    lr_ke(magn_dir(idir3, 1), idir2, nsigma, ii)%X(dl_psi)(:, idim, ist, ik),&
+                    gdl_k(:, idim, 1, magn_dir(idir3, 2)))
+                  tmp = tmp + R_CONJ(factor) * X(mf_dotp)(gr, gdl_ke(:, idim, nsigma, magn_dir(idir3, 1)),&
+                    lr_k(magn_dir(idir3, 2), 1)%X(dl_psi)(:, idim, ist, ik))
+                  tmp = tmp - factor0 * X(mf_dotp)(gr, lr_k(magn_dir(idir3, 1), 1)%X(dl_psi)(:, idim, ist, ik),&
+                    gdl_ke(:, idim, 1, magn_dir(idir3, 2)))
+                  tmp = tmp + factor0 * X(mf_dotp)(gr, gdl_k(:, idim, nsigma, magn_dir(idir3, 1)), &
+                    lr_ke(magn_dir(idir3, 2), idir2, 1, ii)%X(dl_psi)(:, idim, ist, ik))
+                  tmp = tmp - factor0 * X(mf_dotp)(gr, &
+                    lr_ke(magn_dir(idir3, 2), idir2, nsigma, ii)%X(dl_psi)(:, idim, ist, ik),&
+                    gdl_k(:, idim, 1, magn_dir(idir3, 1)))
+                  tmp = tmp - R_CONJ(factor) * X(mf_dotp)(gr, gdl_ke(:, idim, nsigma, magn_dir(idir3, 2)),&
+                    lr_k(magn_dir(idir3, 1), 1)%X(dl_psi)(:,idim, ist, ik))
+                  tmp = tmp + factor0 * X(mf_dotp)(gr, lr_k(magn_dir(idir3, 2), 1)%X(dl_psi)(:, idim, ist, ik),&
+                    gdl_ke(:, idim, 1, magn_dir(idir3, 1)))
+                  tmp = tmp - factor0 * X(mf_dotp)(gr, gdl_k(:, idim, nsigma, magn_dir(idir3, 2)),&
+                    lr_ke(magn_dir(idir3, 1), idir2, 1, ii)%X(dl_psi)(:, idim, ist, ik))
+
+                  zpol_k(idir1, idir2, idir3) = zpol_k(idir1, idir2, idir3) - M_FOURTH / P_C * tmp
                 end do
               end do
             end do
           end if
         end do
         do isigma = 1, nsigma
-          call X(mf_dotp_matrix)(gr%mesh, st%nst, st%d%dim, &
-            lr0(1)%X(dl_psi)(:, :, :, ik), factor * gpsi(:, :, :, isigma), mat_g(idir1, isigma)%X(matrix))
+          call X(mf_dotp_matrix)(gr, st%nst, st%d%dim, &
+            lr0(1)%X(dl_psi)(:, :, :, ik), gpsi(:, :, :, isigma), mat_g(idir1, isigma)%X(matrix), factor)
         end do
       end do
       do idir1 = 1, ndir
         do idir2 = 1, ndir
           do idir3 = 1, ndir
-            call X(mf_dotp_matrix)(gr%mesh, st%nst, st%d%dim, &
-              factor0 * lr_k(idir3, 1)%X(dl_psi)(:,:,:, ik), lr_ke(idir2, idir1, 1, ii)%X(dl_psi)(:,:,:, ik),&
-              mat_kke(idir3, idir2)%X(matrix))
-            call X(mf_dotp_matrix)(gr%mesh, st%nst, st%d%dim, &
-              lr_ke(idir3, idir1, nsigma, ii)%X(dl_psi)(:,:,:, ik), factor0 * lr_k(idir2, 1)%X(dl_psi)(:,:,:, ik),&
-              mat_kek(idir3, idir2)%X(matrix))
+            call X(mf_dotp_matrix)(gr, st%nst, st%d%dim, &
+              lr_k(idir3, 1)%X(dl_psi)(:,:,:, ik), lr_ke(idir2, idir1, 1, ii)%X(dl_psi)(:,:,:, ik),&
+              mat_kke(idir3, idir2)%X(matrix), R_CONJ(factor0))
+            call X(mf_dotp_matrix)(gr, st%nst, st%d%dim, &
+              lr_ke(idir3, idir1, nsigma, ii)%X(dl_psi)(:,:,:, ik), lr_k(idir2, 1)%X(dl_psi)(:,:,:, ik),&
+              mat_kek(idir3, idir2)%X(matrix), factor0)
           end do
         end do
         do idir2 = 1, ndir
-          call X(mf_dotp_matrix)(gr%mesh, st%nst, st%d%dim, &
-            factor1 * lr_b(idir2, 1)%X(dl_psi)(:,:,:, ik), lr_e(idir1, 1, ii)%X(dl_psi)(:,:,:, ik),&
-            mat_be%X(matrix))
-          call X(mf_dotp_matrix)(gr%mesh, st%nst, st%d%dim, &
+          call X(mf_dotp_matrix)(gr, st%nst, st%d%dim, &
+            lr_b(idir2, 1)%X(dl_psi)(:,:,:, ik), lr_e(idir1, 1, ii)%X(dl_psi)(:,:,:, ik),&
+            mat_be%X(matrix), R_CONJ(factor1))
+          call X(mf_dotp_matrix)(gr, st%nst, st%d%dim, &
             lr_e(idir1, nsigma, ii)%X(dl_psi)(:,:,:, ik), lr_b(idir2, 1)%X(dl_psi)(:,:,:, ik),&
             mat_eb%X(matrix))
           do idir3 = 1, ndir
             do ist = 1, st%nst
-              if (abs(st%occ(ist, ik)) .gt. M_EPSILON) then
+              if (abs(st%occ(ist, ik)) > M_EPSILON) then
                 do ist_occ  = st%st_start, st%st_end
-                  if (abs(st%occ(ist_occ, ik)) .gt. M_EPSILON) then
+                  if (abs(st%occ(ist_occ, ik)) > M_EPSILON) then
 
                     zpol_k(idir3, idir1, idir2) = zpol_k(idir3, idir1, idir2) &
                       - M_HALF / P_C * factor_e * (factor1 * mat_g(idir3, 1)%X(matrix)(ist_occ, ist)&
@@ -1494,8 +1469,11 @@ subroutine X(lr_calc_magneto_optics_periodic)(sh, sh2, namespace, space, gr, st,
       do idir2 = 1, ndir
         do idir3 = 1, ndir
           zpol(idir3, idir1, idir2) = zpol(idir3, idir1, idir2) + weight * zpol_k(idir3, idir1, idir2)
-          if (kpt_output) zpol_kout(idir3, idir1, idir2, ik) = zpol_kout(idir3, idir1, idir2, ik) + &
-            zpol_k(idir3, idir1, idir2) * st%smear%el_per_state
+
+          if (present(zpol_kout)) then
+            zpol_kout(idir3, idir1, idir2, ik) = zpol_kout(idir3, idir1, idir2, ik) + &
+              zpol_k(idir3, idir1, idir2) * st%smear%el_per_state
+          end if
         end do
       end do
     end do
@@ -1503,58 +1481,22 @@ subroutine X(lr_calc_magneto_optics_periodic)(sh, sh2, namespace, space, gr, st,
 
   call lr_dealloc(lr0(1))
 
-  if (st%parallel_in_states) then
-    call st%mpi_grp%allreduce(zpol, zpol_temp, space%dim**3, MPI_CMPLX, MPI_SUM)
-    zpol(1:ndir, 1:ndir, 1:ndir) = zpol_temp(1:ndir, 1:ndir, 1:ndir)
+  if (st%parallel_in_states .or. st%d%kpt%parallel) then
+    call comm_allreduce(st%st_kpt_mpi_grp, zpol)
   end if
-  if (st%d%kpt%parallel) then
-    call st%d%kpt%mpi_grp%allreduce(zpol, zpol_temp, space%dim**3, MPI_CMPLX, MPI_SUM)
-    zpol(1:ndir, 1:ndir, 1:ndir) = zpol_temp(1:ndir, 1:ndir, 1:ndir)
-  end if
-  if (kpt_output) then
-    if (st%parallel_in_states) then
-      do ik = 1, st%d%nik
-        zpol_temp(:, :, :) = M_ZERO
-        call st%mpi_grp%allreduce(zpol_kout(1:space%dim, 1:space%dim, 1:space%dim, ik), zpol_temp, space%dim**3, &
-          MPI_CMPLX, MPI_SUM)
-        do idir1 = 1, ndir
-          do idir2 = 1, ndir
-            do idir3 = 1, ndir
-              zpol_kout(idir1, idir2, idir3, ik) = zpol_temp(idir1, idir2, idir3)
-            end do
-          end do
-        end do
-      end do
-    end if
-    if (st%d%kpt%parallel) then
-      do ik = 1, st%d%nik
-        zpol_temp(:, :, :) = M_ZERO
-        call st%d%kpt%mpi_grp%allreduce(zpol_kout(1:space%dim, 1:space%dim, 1:space%dim, ik), zpol_temp, space%dim**3, &
-          MPI_CMPLX, MPI_SUM)
-        do idir1 = 1, ndir
-          do idir2 = 1, ndir
-            do idir3 = 1, ndir
-              zpol_kout(idir1, idir2, idir3, ik) = zpol_temp(idir1, idir2, idir3)
-            end do
-          end do
-        end do
-      end do
+  if (present(zpol_kout)) then
+    if (st%parallel_in_states .or. st%d%kpt%parallel) then
+      call comm_allreduce(st%st_kpt_mpi_grp, zpol_kout)
     end if
   end if
 
-  do idir1 = 1, ndir
-    do idir2 = 1, ndir
-      do idir3 = 1, ndir
-        zpol(idir3, idir1, idir2) = zpol(idir3, idir1, idir2) + zpol0(idir3, idir1, idir2)
-      end do
-    end do
-  end do
+  zpol(1:ndir, 1:ndir, 1:ndir) = zpol(1:ndir, 1:ndir, 1:ndir) + zpol0(1:ndir, 1:ndir, 1:ndir)
 
   zpol(:,:,:) = -M_zI / (frequency) * zpol(:,:,:)
   if (nfactor_ke > 1) zpol(:,:,:) = M_HALF * zpol(:,:,:)
   call zsymmetrize_magneto_optics_cart(gr%symm, zpol(:,:,:))
 
-  if (kpt_output) then
+  if (present(zpol_kout)) then
     zpol_kout(:,:,:,:) = -M_zI / (frequency) * zpol_kout(:,:,:,:)
     if (nfactor_ke > 1) zpol_kout(:,:,:,:) = M_HALF * zpol_kout(:,:,:,:)
   end if
@@ -1591,11 +1533,11 @@ contains
     integer,      intent(in)    :: nsigma_h, nsigma_in
     integer,      intent(in)    :: dir, ist0, ik0
     CMPLX,        intent(in)    :: frequency0
-    R_TYPE,       intent(inout) :: hvar_in(:, :)
-    type(lr_t),   intent(inout) :: lr_in(:)
-    R_TYPE,       intent(inout) :: psi_out(:, :, :)
+    R_TYPE,       intent(in)    :: hvar_in(:, :)
+    type(lr_t),   intent(in)    :: lr_in(:)
+    R_TYPE,       intent(out) :: psi_out(:, :, :)
 
-    type(pert_t)  :: pert_kdotp
+    type(perturbation_kdotp_t), pointer  :: pert_kdotp
     integer       :: ip, idim
     R_TYPE :: frequency0_
 
@@ -1603,14 +1545,16 @@ contains
 
     ASSERT(nsigma_h .ge. nsigma_in)
 
-    call pert_init(pert_kdotp, namespace, PERTURBATION_KDOTP, ions)
-    call pert_setup_dir(pert_kdotp, dir)
+    pert_kdotp => perturbation_kdotp_t(namespace, ions)
+    call pert_kdotp%setup_dir(dir)
 
     psi_out(:, :, :) = M_ZERO
     do isigma = 1, nsigma_in
-      call X(pert_apply)(pert_kdotp, namespace, space, gr, hm, ik0, &
+      call pert_kdotp%X(apply)(namespace, space, gr, hm, ik0, &
         lr_in(isigma)%X(dl_psi)(:, :, ist0, ik0), psi_out(:, :, isigma))
     end do
+    SAFE_DEALLOCATE_P(pert_kdotp)
+
     if ((nsigma_h == 2) .and. (nsigma_in == 1)) psi_out(:, :, nsigma_h) = psi_out(:, :, 1)
 
     if (add_hartree .or. add_fxc) then
@@ -1622,14 +1566,14 @@ contains
 #endif
 
       do idim = 1, hm%d%dim
-        do ip = 1, gr%mesh%np
+        do ip = 1, gr%np
           psi_out(ip, idim, 1) = psi_out(ip, idim, 1) + frequency0_ * &
             factor_e * hvar_in(ip, 1) * lr_in(1)%X(dl_psi)(ip, idim, ist0, ik0)
         end do
       end do
       if (nsigma_h == 2) then
         do idim = 1, hm%d%dim
-          do ip = 1, gr%mesh%np
+          do ip = 1, gr%np
             psi_out(ip, idim, nsigma_h) = psi_out(ip, idim, nsigma_h) - R_CONJ(frequency0_) * &
               factor_e * hvar_in(ip, nsigma_h) * lr_in(nsigma_in)%X(dl_psi)(ip, idim, ist0, ik0)
           end do
@@ -1637,7 +1581,6 @@ contains
       end if
     end if
 
-    call pert_end(pert_kdotp)
 
     POP_SUB(X(lr_calc_magneto_optics_periodic).apply_v)
   end subroutine apply_v
@@ -1649,17 +1592,16 @@ end subroutine X(lr_calc_magneto_optics_periodic)
 subroutine X(lr_calc_magnetization_periodic)(namespace, space, mesh, st, hm, lr_k, magn)
   type(namespace_t),        intent(in)    :: namespace
   type(space_t),            intent(in)    :: space
-  type(mesh_t),             intent(in)    :: mesh
+  class(mesh_t),            intent(in)    :: mesh
   type(states_elec_t),      intent(in)    :: st
   type(hamiltonian_elec_t), intent(in)    :: hm
   type(lr_t),               intent(inout) :: lr_k(:)
   CMPLX,                    intent(out)   :: magn(:)
 
-  integer :: idir1, idir2, idir, ist, idim, ik
+  integer :: idir1, idir2, idir, ist, ik
   R_TYPE :: factor
   R_TYPE, allocatable :: Hdl_psi(:,:,:)
   FLOAT :: weight
-  CMPLX :: magn_temp(1:space%dim)
 
   PUSH_SUB(X(lr_calc_magnetization_periodic))
 
@@ -1675,8 +1617,8 @@ subroutine X(lr_calc_magnetization_periodic)(namespace, space, mesh, st, hm, lr_
 
   do ik = st%d%kpt%start, st%d%kpt%end
     weight = st%d%kweights(ik) * st%smear%el_per_state
-    do ist = 1, st%nst
-      if (abs(st%occ(ist, ik)) .gt. M_EPSILON) then
+    do ist = st%st_start, st%st_end
+      if (abs(st%occ(ist, ik)) > M_EPSILON) then
         do idir = 1, space%dim
           call X(hamiltonian_elec_apply_single)(hm, namespace, mesh, lr_k(idir)%X(dl_psi)(:, :, ist, ik), &
             Hdl_psi(:, :, idir), ist, ik)
@@ -1685,18 +1627,17 @@ subroutine X(lr_calc_magnetization_periodic)(namespace, space, mesh, st, hm, lr_
         do idir = 1, space%dim
           idir1 = magn_dir(idir, 1)
           idir2 = magn_dir(idir, 2)
-          do idim = 1, st%d%dim
-            magn(idir) = magn(idir) + M_zI * M_HALF * M_HALF * weight / P_C * &
-              (X(mf_dotp)(mesh, lr_k(idir2)%X(dl_psi)(1:mesh%np, idim, ist, ik), Hdl_psi(1:mesh%np, idim, idir1)) &
-              - X(mf_dotp)(mesh, lr_k(idir1)%X(dl_psi)(1:mesh%np, idim, ist, ik), Hdl_psi(1:mesh%np, idim, idir2)) &
-              + X(mf_dotp)(mesh, Hdl_psi(1:mesh%np, idim, idir2), lr_k(idir1)%X(dl_psi)(1:mesh%np, idim, ist, ik)) &
-              - X(mf_dotp)(mesh, Hdl_psi(1:mesh%np, idim, idir1), lr_k(idir2)%X(dl_psi)(1:mesh%np, idim, ist, ik)))
 
-            magn(idir) = magn(idir) + M_zI * M_HALF * weight * st%eigenval(ist, ik) / P_C * (&
-              X(mf_dotp)(mesh, lr_k(idir2)%X(dl_psi)(1:mesh%np, idim, ist, ik), lr_k(idir1)%X(dl_psi)(1:mesh%np, idim, ist, ik)) &
-              - X(mf_dotp)(mesh, lr_k(idir1)%X(dl_psi)(1:mesh%np, idim, ist, ik), &
-              lr_k(idir2)%X(dl_psi)(1:mesh%np, idim, ist, ik)))
-          end do
+          magn(idir) = magn(idir) + M_zI * M_HALF * M_HALF * weight / P_C * &
+            (X(mf_dotp)(mesh, st%d%dim, lr_k(idir2)%X(dl_psi)(:, :, ist, ik), Hdl_psi(:, :, idir1)) &
+            - X(mf_dotp)(mesh, st%d%dim, lr_k(idir1)%X(dl_psi)(:, :, ist, ik), Hdl_psi(:, :, idir2)) &
+            + X(mf_dotp)(mesh, st%d%dim, Hdl_psi(:, :, idir2), lr_k(idir1)%X(dl_psi)(:, :, ist, ik)) &
+            - X(mf_dotp)(mesh, st%d%dim, Hdl_psi(:, :, idir1), lr_k(idir2)%X(dl_psi)(:, :, ist, ik)))
+
+          magn(idir) = magn(idir) + M_zI * M_HALF * weight * st%eigenval(ist, ik) / P_C * (&
+            X(mf_dotp)(mesh, st%d%dim, lr_k(idir2)%X(dl_psi)(:, :, ist, ik), lr_k(idir1)%X(dl_psi)(:, :, ist, ik)) &
+            - X(mf_dotp)(mesh, st%d%dim, lr_k(idir1)%X(dl_psi)(:, :, ist, ik), &
+            lr_k(idir2)%X(dl_psi)(:, :, ist, ik)))
         end do
       end if
     end do
@@ -1704,13 +1645,8 @@ subroutine X(lr_calc_magnetization_periodic)(namespace, space, mesh, st, hm, lr_
 
   SAFE_DEALLOCATE_A(Hdl_psi)
 
-  if (st%parallel_in_states) then
-    call st%mpi_grp%allreduce(magn, magn_temp, space%dim, MPI_CMPLX, MPI_SUM)
-    magn(1:space%dim) = magn_temp(1:space%dim)
-  end if
-  if (st%d%kpt%parallel) then
-    call st%d%kpt%mpi_grp%allreduce(magn, magn_temp, space%dim, MPI_CMPLX, MPI_SUM)
-    magn(1:space%dim) = magn_temp(1:space%dim)
+  if (st%parallel_in_states .or. st%d%kpt%parallel) then
+    call comm_allreduce(st%st_kpt_mpi_grp, magn)
   end if
 
   POP_SUB(X(lr_calc_magnetization_periodic))
@@ -1722,7 +1658,7 @@ subroutine X(lr_calc_susceptibility_periodic)(namespace, space, symm, mesh, st, 
   type(namespace_t),        intent(in)    :: namespace
   type(space_t),            intent(in)    :: space
   type(symmetries_t),       intent(in)    :: symm
-  type(mesh_t),             intent(in)    :: mesh
+  class(mesh_t),            intent(in)    :: mesh
   type(states_elec_t),      intent(in)    :: st
   type(hamiltonian_elec_t), intent(in)    :: hm
   type(lr_t),               intent(inout) :: lr_k(:)
@@ -1731,15 +1667,14 @@ subroutine X(lr_calc_susceptibility_periodic)(namespace, space, symm, mesh, st, 
   type(lr_t),               intent(inout) :: lr_kb(:,:)
   CMPLX,                    intent(out)   :: magn(:,:)
 
-  integer :: idir1, idir2, idir, ist, ispin, idim, ndim
+  integer :: idir1, idir2, idir, ist, ispin, ndim
   integer :: dir1, dir2, dir3, dir4, np, ik, ist_occ, ndir
 
   FLOAT :: weight
-  R_TYPE:: factor, factor0
+  R_TYPE:: factor, factor0, tmp
   R_TYPE, allocatable :: Hdl_k(:,:,:,:), Hdl_b(:,:,:)
   R_TYPE, allocatable :: Hdl_kb(:,:,:,:), Hdl_kk(:,:,:,:)
   type(matrix_t), allocatable :: kH_mat(:,:), Hk_mat(:,:), kk_mat(:,:)
-  CMPLX :: magn_temp(space%dim, space%dim)
 
 #if defined(R_TCOMPLEX)
   factor = -M_zI
@@ -1778,7 +1713,7 @@ subroutine X(lr_calc_susceptibility_periodic)(namespace, space, symm, mesh, st, 
     weight = st%d%kweights(ik)*st%smear%el_per_state
     ispin = st%d%get_spin_index(ik)
     do ist = 1, st%nst
-      if (abs(st%occ(ist, ik)) .gt. M_EPSILON) then
+      if (abs(st%occ(ist, ik)) > M_EPSILON) then
         do idir = 1, ndir
           call X(hamiltonian_elec_apply_single)(hm, namespace, mesh, lr_b(idir)%X(dl_psi)(:,:,ist,ik), &
             Hdl_b(:,:,idir), ist, ik)
@@ -1796,116 +1731,115 @@ subroutine X(lr_calc_susceptibility_periodic)(namespace, space, symm, mesh, st, 
         end do
         do idir1 = 1, ndir
           do idir2 = 1, ndir
-            do idim = 1, ndim
+            magn(idir1, idir2) = magn(idir1, idir2) + M_HALF * weight / (P_C**2) * (&
+              X(mf_dotp)(mesh, hm%d%dim, lr_b(idir2)%X(dl_psi)(:, :, ist, ik), Hdl_b(:, :, idir1))&
+              + X(mf_dotp)(mesh, hm%d%dim, lr_b(idir1)%X(dl_psi)(:, :, ist, ik), Hdl_b(:, :, idir2))&
+              + X(mf_dotp)(mesh, hm%d%dim, Hdl_b(:,:, idir2), lr_b(idir1)%X(dl_psi)(:, :, ist, ik))&
+              + X(mf_dotp)(mesh, hm%d%dim, Hdl_b(:,:, idir1), lr_b(idir2)%X(dl_psi)(:, :, ist, ik)))
 
-              magn(idir1, idir2) = magn(idir1, idir2) + M_HALF * weight / (P_C**2) * (&
-                X(mf_dotp)(mesh, lr_b(idir2)%X(dl_psi)(:, idim, ist, ik), Hdl_b(:, idim, idir1))&
-                + X(mf_dotp)(mesh, lr_b(idir1)%X(dl_psi)(:, idim, ist, ik), Hdl_b(:, idim, idir2))&
-                + X(mf_dotp)(mesh, Hdl_b(:,idim, idir2), lr_b(idir1)%X(dl_psi)(:, idim, ist, ik))&
-                + X(mf_dotp)(mesh, Hdl_b(:,idim, idir1), lr_b(idir2)%X(dl_psi)(:, idim, ist, ik)))
+            magn(idir1, idir2) = magn(idir1, idir2) - weight * st%eigenval(ist, ik) / (P_C**2) * (&
+              X(mf_dotp)(mesh, hm%d%dim, lr_b(idir2)%X(dl_psi)(:, :, ist, ik), &
+              lr_b(idir1)%X(dl_psi)(:, :, ist, ik))&
+              + X(mf_dotp)(mesh, hm%d%dim, lr_b(idir1)%X(dl_psi)(:, :, ist, ik), &
+              lr_b(idir2)%X(dl_psi)(:, :, ist, ik)))
 
-              magn(idir1, idir2) = magn(idir1, idir2) - weight * st%eigenval(ist, ik) / (P_C**2) * (&
-                X(mf_dotp)(mesh, lr_b(idir2)%X(dl_psi)(:, idim, ist, ik), &
-                lr_b(idir1)%X(dl_psi)(:, idim, ist, ik))&
-                + X(mf_dotp)(mesh, lr_b(idir1)%X(dl_psi)(:, idim, ist, ik), &
-                lr_b(idir2)%X(dl_psi)(:, idim, ist, ik)))
+            tmp = R_CONJ(factor0) * X(mf_dotp)(mesh, hm%d%dim, lr_k(magn_dir(idir2, 2))%X(dl_psi)(:, :, ist, ik), &
+              lr_kb(magn_dir(idir2, 1), idir1)%X(dl_psi)(:, :, ist, ik))
+            tmp = tmp - R_CONJ(factor0) * X(mf_dotp)(mesh, hm%d%dim, lr_k(magn_dir(idir2, 1))%X(dl_psi)(:, :, ist, ik), &
+              lr_kb(magn_dir(idir2, 2),idir1)%X(dl_psi)(:, :, ist, ik))
+            tmp = tmp + R_CONJ(factor0) * X(mf_dotp)(mesh, hm%d%dim, lr_k(magn_dir(idir1, 2))%X(dl_psi)(:, :, ist, ik), &
+              lr_kb(magn_dir(idir1, 1), idir2)%X(dl_psi)(:, :, ist, ik))
+            tmp = tmp - R_CONJ(factor0) * X(mf_dotp)(mesh, hm%d%dim, lr_k(magn_dir(idir1, 1))%X(dl_psi)(:, :, ist, ik), &
+              lr_kb(magn_dir(idir1, 2), idir2)%X(dl_psi)(:, :, ist, ik))
+            tmp = tmp + factor * X(mf_dotp)(mesh, hm%d%dim, lr_kb(magn_dir(idir2, 2), idir1)%X(dl_psi)(:, :, ist, ik), &
+              lr_k(magn_dir(idir2, 1))%X(dl_psi)(:, :, ist, ik))
+            tmp = tmp - factor * X(mf_dotp)(mesh, hm%d%dim, lr_kb(magn_dir(idir2, 1), idir1)%X(dl_psi)(:, :, ist, ik), &
+              lr_k(magn_dir(idir2, 2))%X(dl_psi)(:, :, ist, ik))
+            tmp = tmp + factor * X(mf_dotp)(mesh, hm%d%dim, lr_kb(magn_dir(idir1, 2), idir2)%X(dl_psi)(:, :, ist, ik), &
+              lr_k(magn_dir(idir1, 1))%X(dl_psi)(:, :, ist, ik))
+            tmp = tmp - factor * X(mf_dotp)(mesh, hm%d%dim, lr_kb(magn_dir(idir1, 1), idir2)%X(dl_psi)(:, :, ist, ik), &
+              lr_k(magn_dir(idir1, 2))%X(dl_psi)(:, :, ist, ik))
 
-              magn(idir1, idir2) = magn(idir1, idir2) - M_HALF * factor0 / (P_C**2) * weight * st%eigenval(ist, ik) * (&
-                X(mf_dotp)(mesh, factor0 * lr_k(magn_dir(idir2, 2))%X(dl_psi)(:, idim, ist, ik), &
-                lr_kb(magn_dir(idir2, 1), idir1)%X(dl_psi)(:, idim, ist, ik))&
-                - X(mf_dotp)(mesh, factor0 * lr_k(magn_dir(idir2, 1))%X(dl_psi)(:, idim, ist, ik), &
-                lr_kb(magn_dir(idir2, 2),idir1)%X(dl_psi)(:, idim, ist, ik))&
-                + X(mf_dotp)(mesh, factor0 * lr_k(magn_dir(idir1, 2))%X(dl_psi)(:, idim, ist, ik), &
-                lr_kb(magn_dir(idir1, 1), idir2)%X(dl_psi)(:, idim, ist, ik))&
-                - X(mf_dotp)(mesh, factor0 * lr_k(magn_dir(idir1, 1))%X(dl_psi)(:, idim, ist, ik), &
-                lr_kb(magn_dir(idir1, 2), idir2)%X(dl_psi)(:, idim, ist, ik))&
-                + X(mf_dotp)(mesh, lr_kb(magn_dir(idir2, 2), idir1)%X(dl_psi)(:, idim, ist, ik), &
-                factor * lr_k(magn_dir(idir2, 1))%X(dl_psi)(:, idim, ist, ik))&
-                - X(mf_dotp)(mesh, lr_kb(magn_dir(idir2, 1), idir1)%X(dl_psi)(:, idim, ist, ik), &
-                factor * lr_k(magn_dir(idir2, 2))%X(dl_psi)(:, idim, ist, ik))&
-                + X(mf_dotp)(mesh, lr_kb(magn_dir(idir1, 2), idir2)%X(dl_psi)(:, idim, ist, ik), &
-                factor * lr_k(magn_dir(idir1, 1))%X(dl_psi)(:, idim, ist, ik))&
-                - X(mf_dotp)(mesh, lr_kb(magn_dir(idir1, 1), idir2)%X(dl_psi)(:, idim, ist, ik), &
-                factor * lr_k(magn_dir(idir1, 2))%X(dl_psi)(:, idim, ist, ik)))
+            magn(idir1, idir2) = magn(idir1, idir2) - M_HALF * factor0 / (P_C**2) * weight * st%eigenval(ist, ik) * tmp
 
-              magn(idir1, idir2) = magn(idir1, idir2) + M_FOURTH * weight / (P_C**2) * (&
-                X(mf_dotp)(mesh, factor0 * lr_k(magn_dir(idir2, 1))%X(dl_psi)(:, idim, ist, ik), &
-                factor0 * Hdl_kb(:, idim, magn_dir(idir2, 2), idir1))&
-                - X(mf_dotp)(mesh, factor0 * lr_k(magn_dir(idir2, 2))%X(dl_psi)(:, idim, ist, ik), &
-                factor0 * Hdl_kb(:, idim, magn_dir(idir2, 1), idir1))&
-                + X(mf_dotp)(mesh, factor0 * lr_k(magn_dir(idir1, 1))%X(dl_psi)(:, idim, ist, ik), &
-                factor0 * Hdl_kb(:, idim, magn_dir(idir1, 2), idir2))&
-                - X(mf_dotp)(mesh, factor0 * lr_k(magn_dir(idir1, 2))%X(dl_psi)(:, idim, ist, ik), &
-                factor0 * Hdl_kb(:, idim, magn_dir(idir1, 1), idir2))&
-                + X(mf_dotp)(mesh, factor0 * Hdl_k(:, idim, ist, magn_dir(idir2, 1)), &
-                factor0 * lr_kb(magn_dir(idir2, 2), idir1)%X(dl_psi)(:, idim, ist, ik))&
-                - X(mf_dotp)(mesh, factor0 * Hdl_k(:, idim, ist, magn_dir(idir2, 2)), &
-                factor0 * lr_kb(magn_dir(idir2, 1), idir1)%X(dl_psi)(:, idim, ist, ik))&
-                + X(mf_dotp)(mesh, factor0 * Hdl_k(:, idim, ist, magn_dir(idir1, 1)), &
-                factor0 * lr_kb(magn_dir(idir1, 2), idir2)%X(dl_psi)(:, idim, ist, ik))&
-                - X(mf_dotp)(mesh, factor0 * Hdl_k(:, idim, ist, magn_dir(idir1, 2)), &
-                factor0 * lr_kb(magn_dir(idir1, 1), idir2)%X(dl_psi)(:, idim, ist, ik))&
-                + X(mf_dotp)(mesh, lr_kb(magn_dir(idir2, 1), idir1)%X(dl_psi)(:, idim, ist, ik),&
-                -Hdl_k(:, idim, ist, magn_dir(idir2, 2)))&
-                - X(mf_dotp)(mesh, lr_kb(magn_dir(idir2, 2), idir1)%X(dl_psi)(:, idim, ist, ik),&
-                -Hdl_k(:, idim, ist, magn_dir(idir2, 1)))&
-                + X(mf_dotp)(mesh, lr_kb(magn_dir(idir1, 1), idir2)%X(dl_psi)(:, idim, ist, ik),&
-                -Hdl_k(:, idim, ist, magn_dir(idir1, 2)))&
-                - X(mf_dotp)(mesh, lr_kb(magn_dir(idir1, 2), idir2)%X(dl_psi)(:, idim, ist, ik),&
-                -Hdl_k(:, idim, ist, magn_dir(idir1, 1)))&
-                + X(mf_dotp)(mesh, Hdl_kb(:, idim, magn_dir(idir2, 1), idir1), &
-                -lr_k(magn_dir(idir2, 2))%X(dl_psi)(:, idim, ist, ik))&
-                - X(mf_dotp)(mesh, Hdl_kb(:, idim, magn_dir(idir2, 2), idir1), &
-                -lr_k(magn_dir(idir2, 1))%X(dl_psi)(:, idim, ist, ik))&
-                + X(mf_dotp)(mesh, Hdl_kb(:, idim, magn_dir(idir1, 1), idir2), &
-                -lr_k(magn_dir(idir1, 2))%X(dl_psi)(:, idim, ist, ik))&
-                - X(mf_dotp)(mesh, Hdl_kb(:, idim, magn_dir(idir1, 2), idir2), &
-                -lr_k(magn_dir(idir1, 1))%X(dl_psi)(:, idim, ist, ik)))
 
-              magn(idir1, idir2) = magn(idir1, idir2) - M_FOURTH * M_HALF * weight / (P_C**2) * (&
-                X(mf_dotp)(mesh, lr_kk(max(magn_dir(idir1, 1), magn_dir(idir2, 1)), &
-                min(magn_dir(idir1, 1), magn_dir(idir2, 1)))%X(dl_psi)(:, idim, ist, ik), &
-                Hdl_kk(:, idim, magn_dir(idir1,2), magn_dir(idir2,2))) &
-                - X(mf_dotp)(mesh, lr_kk(max(magn_dir(idir1, 2), magn_dir(idir2, 1)), &
-                min(magn_dir(idir1, 2), magn_dir(idir2, 1)))%X(dl_psi)(:, idim, ist, ik), &
-                Hdl_kk(:, idim, magn_dir(idir1, 1), magn_dir(idir2, 2))) &
-                - X(mf_dotp)(mesh, lr_kk(max(magn_dir(idir1, 1), magn_dir(idir2, 2)), &
-                min(magn_dir(idir1, 1), magn_dir(idir2, 2)))%X(dl_psi)(:, idim, ist, ik), &
-                Hdl_kk(:, idim, magn_dir(idir1, 2), magn_dir(idir2, 1))) &
-                + X(mf_dotp)(mesh, lr_kk(max(magn_dir(idir1, 2), magn_dir(idir2, 2)), &
-                min(magn_dir(idir1, 2), magn_dir(idir2, 2)))%X(dl_psi)(:, idim, ist, ik), &
-                Hdl_kk(:, idim, magn_dir(idir1, 1), magn_dir(idir2, 1))) &
-                + X(mf_dotp)(mesh, Hdl_kk(:, idim, magn_dir(idir1, 1), magn_dir(idir2, 1)), &
-                lr_kk(max(magn_dir(idir1, 2), magn_dir(idir2, 2)), &
-                min(magn_dir(idir1, 2), magn_dir(idir2, 2)))%X(dl_psi)(:, idim, ist, ik)) &
-                - X(mf_dotp)(mesh, Hdl_kk(:, idim, magn_dir(idir1, 2), magn_dir(idir2, 1)),&
-                lr_kk(max(magn_dir(idir1, 1), magn_dir(idir2, 2)), &
-                min(magn_dir(idir1, 1), magn_dir(idir2, 2)))%X(dl_psi)(:, idim, ist, ik))&
-                - X(mf_dotp)(mesh, Hdl_kk(:, idim, magn_dir(idir1, 1), magn_dir(idir2, 2)),&
-                lr_kk(max(magn_dir(idir1, 2), magn_dir(idir2, 1)), &
-                min(magn_dir(idir1, 2), magn_dir(idir2, 1)))%X(dl_psi)(:, idim, ist, ik))&
-                + X(mf_dotp)(mesh, Hdl_kk(:, idim, magn_dir(idir1, 2), magn_dir(idir2, 2)),&
-                lr_kk(max(magn_dir(idir1, 1), magn_dir(idir2, 1)), &
-                min(magn_dir(idir1, 1), magn_dir(idir2, 1)))%X(dl_psi)(:, idim, ist, ik)))
+            magn(idir1, idir2) = magn(idir1, idir2) + M_FOURTH * weight / (P_C**2) * (&
+              X(mf_dotp)(mesh, hm%d%dim, lr_k(magn_dir(idir2, 1))%X(dl_psi)(:, :, ist, ik), &
+              Hdl_kb(:, :, magn_dir(idir2, 2), idir1)) * abs(factor0)**2&
+              - X(mf_dotp)(mesh, hm%d%dim, lr_k(magn_dir(idir2, 2))%X(dl_psi)(:, :, ist, ik), &
+              Hdl_kb(:, :, magn_dir(idir2, 1), idir1)) * abs(factor0)**2&
+              + X(mf_dotp)(mesh, hm%d%dim, lr_k(magn_dir(idir1, 1))%X(dl_psi)(:, :, ist, ik), &
+              Hdl_kb(:, :, magn_dir(idir1, 2), idir2)) * abs(factor0)**2&
+              - X(mf_dotp)(mesh, hm%d%dim, lr_k(magn_dir(idir1, 2))%X(dl_psi)(:, :, ist, ik), &
+              Hdl_kb(:, :, magn_dir(idir1, 1), idir2)) * abs(factor0)**2&
+              + X(mf_dotp)(mesh, hm%d%dim, Hdl_k(:, :, ist, magn_dir(idir2, 1)), &
+              lr_kb(magn_dir(idir2, 2), idir1)%X(dl_psi)(:, :, ist, ik)) * abs(factor0)**2&
+              - X(mf_dotp)(mesh, hm%d%dim, Hdl_k(:, :, ist, magn_dir(idir2, 2)), &
+              lr_kb(magn_dir(idir2, 1), idir1)%X(dl_psi)(:, :, ist, ik)) * abs(factor0)**2&
+              + X(mf_dotp)(mesh, hm%d%dim, Hdl_k(:, :, ist, magn_dir(idir1, 1)), &
+              lr_kb(magn_dir(idir1, 2), idir2)%X(dl_psi)(:, :, ist, ik)) * abs(factor0)**2&
+              - X(mf_dotp)(mesh, hm%d%dim, Hdl_k(:, :, ist, magn_dir(idir1, 2)), &
+              lr_kb(magn_dir(idir1, 1), idir2)%X(dl_psi)(:, :, ist, ik)) * abs(factor0)**2&
+              - X(mf_dotp)(mesh, hm%d%dim, lr_kb(magn_dir(idir2, 1), idir1)%X(dl_psi)(:, :, ist, ik),&
+              Hdl_k(:, :, ist, magn_dir(idir2, 2)))&
+              + X(mf_dotp)(mesh, hm%d%dim, lr_kb(magn_dir(idir2, 2), idir1)%X(dl_psi)(:, :, ist, ik),&
+              Hdl_k(:, :, ist, magn_dir(idir2, 1)))&
+              - X(mf_dotp)(mesh, hm%d%dim, lr_kb(magn_dir(idir1, 1), idir2)%X(dl_psi)(:, :, ist, ik),&
+              Hdl_k(:, :, ist, magn_dir(idir1, 2)))&
+              + X(mf_dotp)(mesh, hm%d%dim, lr_kb(magn_dir(idir1, 2), idir2)%X(dl_psi)(:, :, ist, ik),&
+              Hdl_k(:, :, ist, magn_dir(idir1, 1)))&
+              - X(mf_dotp)(mesh, hm%d%dim, Hdl_kb(:, :, magn_dir(idir2, 1), idir1), &
+              lr_k(magn_dir(idir2, 2))%X(dl_psi)(:, :, ist, ik))&
+              + X(mf_dotp)(mesh, hm%d%dim, Hdl_kb(:, :, magn_dir(idir2, 2), idir1), &
+              lr_k(magn_dir(idir2, 1))%X(dl_psi)(:, :, ist, ik))&
+              - X(mf_dotp)(mesh, hm%d%dim, Hdl_kb(:, :, magn_dir(idir1, 1), idir2), &
+              lr_k(magn_dir(idir1, 2))%X(dl_psi)(:, :, ist, ik))&
+              + X(mf_dotp)(mesh, hm%d%dim, Hdl_kb(:, :, magn_dir(idir1, 2), idir2), &
+              lr_k(magn_dir(idir1, 1))%X(dl_psi)(:, :, ist, ik)))
 
-              magn(idir1, idir2) = magn(idir1, idir2) + M_FOURTH / (P_C**2) * weight * st%eigenval(ist, ik) * (&
-                + X(mf_dotp)(mesh, lr_kk(max(magn_dir(idir1, 2), magn_dir(idir2, 2)), &
-                min(magn_dir(idir1, 2) ,magn_dir(idir2, 2)))%X(dl_psi)(:, idim, ist, ik), &
-                lr_kk(max(magn_dir(idir1, 1), magn_dir(idir2, 1)), &
-                min(magn_dir(idir1, 1), magn_dir(idir2, 1)))%X(dl_psi)(:, idim, ist, ik)) &
-                - X(mf_dotp)(mesh, lr_kk(max(magn_dir(idir1, 1), magn_dir(idir2, 2)), &
-                min(magn_dir(idir1, 1), magn_dir(idir2, 2)))%X(dl_psi)(:, idim, ist, ik), &
-                lr_kk(max(magn_dir(idir1, 2), magn_dir(idir2, 1)), &
-                min(magn_dir(idir1, 2), magn_dir(idir2, 1)))%X(dl_psi)(:, idim, ist, ik)) &
-                - X(mf_dotp)(mesh, lr_kk(max(magn_dir(idir1, 2), magn_dir(idir2, 1)), &
-                min(magn_dir(idir1, 2), magn_dir(idir2, 1)))%X(dl_psi)(:, idim, ist, ik), &
-                lr_kk(max(magn_dir(idir1, 1), magn_dir(idir2, 2)), &
-                min(magn_dir(idir1, 1), magn_dir(idir2, 2)))%X(dl_psi)(:, idim, ist, ik))&
-                + X(mf_dotp)(mesh, lr_kk(max(magn_dir(idir1, 1), magn_dir(idir2, 1)), &
-                min(magn_dir(idir1, 1), magn_dir(idir2, 1)))%X(dl_psi)(:, idim, ist, ik), &
-                lr_kk(max(magn_dir(idir1, 2), magn_dir(idir2, 2)), &
-                min(magn_dir(idir1, 2), magn_dir(idir2, 2)))%X(dl_psi)(:, idim, ist, ik)))
-            end do
+            magn(idir1, idir2) = magn(idir1, idir2) - M_FOURTH * M_HALF * weight / (P_C**2) * (&
+              X(mf_dotp)(mesh, hm%d%dim, lr_kk(max(magn_dir(idir1, 1), magn_dir(idir2, 1)), &
+              min(magn_dir(idir1, 1), magn_dir(idir2, 1)))%X(dl_psi)(:, :, ist, ik), &
+              Hdl_kk(:, :, magn_dir(idir1,2), magn_dir(idir2,2))) &
+              - X(mf_dotp)(mesh, hm%d%dim, lr_kk(max(magn_dir(idir1, 2), magn_dir(idir2, 1)), &
+              min(magn_dir(idir1, 2), magn_dir(idir2, 1)))%X(dl_psi)(:, :, ist, ik), &
+              Hdl_kk(:, :, magn_dir(idir1, 1), magn_dir(idir2, 2))) &
+              - X(mf_dotp)(mesh, hm%d%dim, lr_kk(max(magn_dir(idir1, 1), magn_dir(idir2, 2)), &
+              min(magn_dir(idir1, 1), magn_dir(idir2, 2)))%X(dl_psi)(:, :, ist, ik), &
+              Hdl_kk(:, :, magn_dir(idir1, 2), magn_dir(idir2, 1))) &
+              + X(mf_dotp)(mesh, hm%d%dim, lr_kk(max(magn_dir(idir1, 2), magn_dir(idir2, 2)), &
+              min(magn_dir(idir1, 2), magn_dir(idir2, 2)))%X(dl_psi)(:, :, ist, ik), &
+              Hdl_kk(:, :, magn_dir(idir1, 1), magn_dir(idir2, 1))) &
+              + X(mf_dotp)(mesh, hm%d%dim, Hdl_kk(:, :, magn_dir(idir1, 1), magn_dir(idir2, 1)), &
+              lr_kk(max(magn_dir(idir1, 2), magn_dir(idir2, 2)), &
+              min(magn_dir(idir1, 2), magn_dir(idir2, 2)))%X(dl_psi)(:, :, ist, ik)) &
+              - X(mf_dotp)(mesh, hm%d%dim, Hdl_kk(:, :, magn_dir(idir1, 2), magn_dir(idir2, 1)),&
+              lr_kk(max(magn_dir(idir1, 1), magn_dir(idir2, 2)), &
+              min(magn_dir(idir1, 1), magn_dir(idir2, 2)))%X(dl_psi)(:, :, ist, ik))&
+              - X(mf_dotp)(mesh, hm%d%dim, Hdl_kk(:, :, magn_dir(idir1, 1), magn_dir(idir2, 2)),&
+              lr_kk(max(magn_dir(idir1, 2), magn_dir(idir2, 1)), &
+              min(magn_dir(idir1, 2), magn_dir(idir2, 1)))%X(dl_psi)(:, :, ist, ik))&
+              + X(mf_dotp)(mesh, hm%d%dim, Hdl_kk(:, :, magn_dir(idir1, 2), magn_dir(idir2, 2)),&
+              lr_kk(max(magn_dir(idir1, 1), magn_dir(idir2, 1)), &
+              min(magn_dir(idir1, 1), magn_dir(idir2, 1)))%X(dl_psi)(:, :, ist, ik)))
+
+            magn(idir1, idir2) = magn(idir1, idir2) + M_FOURTH / (P_C**2) * weight * st%eigenval(ist, ik) * (&
+              + X(mf_dotp)(mesh, hm%d%dim, lr_kk(max(magn_dir(idir1, 2), magn_dir(idir2, 2)), &
+              min(magn_dir(idir1, 2) ,magn_dir(idir2, 2)))%X(dl_psi)(:, :, ist, ik), &
+              lr_kk(max(magn_dir(idir1, 1), magn_dir(idir2, 1)), &
+              min(magn_dir(idir1, 1), magn_dir(idir2, 1)))%X(dl_psi)(:, :, ist, ik)) &
+              - X(mf_dotp)(mesh, hm%d%dim, lr_kk(max(magn_dir(idir1, 1), magn_dir(idir2, 2)), &
+              min(magn_dir(idir1, 1), magn_dir(idir2, 2)))%X(dl_psi)(:, :, ist, ik), &
+              lr_kk(max(magn_dir(idir1, 2), magn_dir(idir2, 1)), &
+              min(magn_dir(idir1, 2), magn_dir(idir2, 1)))%X(dl_psi)(:, :, ist, ik)) &
+              - X(mf_dotp)(mesh, hm%d%dim, lr_kk(max(magn_dir(idir1, 2), magn_dir(idir2, 1)), &
+              min(magn_dir(idir1, 2), magn_dir(idir2, 1)))%X(dl_psi)(:, :, ist, ik), &
+              lr_kk(max(magn_dir(idir1, 1), magn_dir(idir2, 2)), &
+              min(magn_dir(idir1, 1), magn_dir(idir2, 2)))%X(dl_psi)(:, :, ist, ik))&
+              + X(mf_dotp)(mesh, hm%d%dim, lr_kk(max(magn_dir(idir1, 1), magn_dir(idir2, 1)), &
+              min(magn_dir(idir1, 1), magn_dir(idir2, 1)))%X(dl_psi)(:, :, ist, ik), &
+              lr_kk(max(magn_dir(idir1, 2), magn_dir(idir2, 2)), &
+              min(magn_dir(idir1, 2), magn_dir(idir2, 2)))%X(dl_psi)(:, :, ist, ik)))
           end do
         end do
       end if
@@ -1931,9 +1865,9 @@ subroutine X(lr_calc_susceptibility_periodic)(namespace, space, symm, mesh, st, 
         dir4 = magn_dir(idir2, 2)
 
         do ist = 1, st%nst
-          if (abs(st%occ(ist, ik)) .gt. M_EPSILON) then
+          if (abs(st%occ(ist, ik)) > M_EPSILON) then
             do ist_occ = 1, st%nst
-              if (abs(st%occ(ist_occ, ik)) .gt. M_EPSILON) then
+              if (abs(st%occ(ist_occ, ik)) > M_EPSILON) then
                 magn(idir1, idir2) = magn(idir1, idir2) - M_FOURTH * M_HALF / (P_C**2) * weight * (&
                   kH_mat(dir4, dir1)%X(matrix)(ist_occ, ist) * kk_mat(dir2, dir3)%X(matrix)(ist, ist_occ) &
                   - kH_mat(dir4, dir3)%X(matrix)(ist_occ, ist) * kk_mat(dir2, dir1)%X(matrix)(ist, ist_occ) &
@@ -2039,13 +1973,8 @@ subroutine X(lr_calc_susceptibility_periodic)(namespace, space, symm, mesh, st, 
 
   call zsymmetrize_tensor_cart(symm, magn(:,:))
 
-  if (st%parallel_in_states) then
-    call st%mpi_grp%allreduce(magn, magn_temp, space%dim**2, MPI_CMPLX, MPI_SUM)
-    magn(1:ndir, 1:ndir) = magn_temp(1:ndir, 1:ndir)
-  end if
-  if (st%d%kpt%parallel) then
-    call st%d%kpt%mpi_grp%allreduce(magn, magn_temp, space%dim**2, MPI_CMPLX, MPI_SUM)
-    magn(1:ndir, 1:ndir) = magn_temp(1:ndir, 1:ndir)
+  if (st%parallel_in_states .or. st%d%kpt%parallel) then
+    call comm_allreduce(st%st_kpt_mpi_grp, magn)
   end if
 
   POP_SUB(X(lr_calc_susceptibility_periodic))
@@ -2062,87 +1991,72 @@ subroutine X(inhomog_per_component)(namespace, space, gr, st, hm, ions, idir, ik
   type(space_t),            intent(in)    :: space
   type(grid_t),             intent(in)    :: gr
   type(states_elec_t),      intent(in)    :: st
-  type(hamiltonian_elec_t), intent(inout) :: hm
+  type(hamiltonian_elec_t), intent(in)    :: hm
   type(ions_t),             intent(in)    :: ions
   integer,                  intent(in)    :: idir
   integer,                  intent(in)    :: ik
-  R_TYPE,                   intent(inout) :: psi_k2(:,:,:)
+  R_TYPE,                   intent(in)    :: psi_k2(:,:,:)
   R_TYPE,                   intent(inout) :: psi_out(:,:,:)
   R_TYPE,                   intent(in)    :: factor_tot, factor_k, factor_second
 
   R_TYPE, allocatable :: f_out(:,:), vel(:,:,:)
   R_TYPE :: factor
-  integer :: ip, ist, idim, ist_occ
+  integer :: ist, ist_occ
   type(matrix_t):: vel_mat
-  type(pert_t)  :: pert_kdotp
+  class(perturbation_kdotp_t), pointer  :: pert_kdotp
   R_TYPE, allocatable :: psi(:,:,:)
 
   PUSH_SUB(X(inhomog_per_component))
 
-  SAFE_ALLOCATE(f_out(1:gr%mesh%np,1:hm%d%dim))
-  SAFE_ALLOCATE(vel(1:gr%mesh%np,1:hm%d%dim, 1:st%nst))
-  SAFE_ALLOCATE(vel_mat%X(matrix)(1:st%nst, 1:st%nst))
-  SAFE_ALLOCATE(psi(1:gr%mesh%np, 1:st%d%dim, 1:st%nst))
+  ASSERT(.not. st%parallel_in_states)
 
+  pert_kdotp => perturbation_kdotp_t(namespace, ions)
+  call pert_kdotp%setup_dir(idir)
+
+  SAFE_ALLOCATE(vel(1:gr%np,1:hm%d%dim, 1:st%nst))
+  SAFE_ALLOCATE(psi(1:gr%np, 1:st%d%dim, 1:st%nst))
+  do ist = 1, st%nst
+    if (abs(st%occ(ist, ik)) > M_EPSILON) then
+      call states_elec_get_state(st, gr, ist, ik, psi(:,:,ist))
+      call pert_kdotp%X(apply)(namespace, space, gr, hm, ik, psi(:,:,ist), vel(:,:,ist))
+    else
+      psi(:,:,ist) = M_ZERO
+      vel(:,:,ist) = M_ZERO
+    end if
+  end do
+
+  SAFE_ALLOCATE(vel_mat%X(matrix)(1:st%nst, 1:st%nst))
 #if defined(R_TCOMPLEX)
   factor = -M_zI
 #else
   factor = M_ONE
 #endif
 
-  f_out(:,:) = M_ZERO
+  call X(mf_dotp_matrix)(gr, st%nst, st%d%dim, psi, vel, vel_mat%X(matrix), factor)
 
-  call pert_init(pert_kdotp, namespace, PERTURBATION_KDOTP, ions)
-  call pert_setup_dir(pert_kdotp, idir)
+  SAFE_DEALLOCATE_A(psi)
+  SAFE_DEALLOCATE_A(vel)
 
-  vel(:,:,:) = M_ZERO
-  psi(:,:,:) = M_ZERO
+  SAFE_ALLOCATE(f_out(1:gr%np,1:hm%d%dim))
   do ist = 1, st%nst
-    if (abs(st%occ(ist, ik)) .gt. M_EPSILON) then
-      call states_elec_get_state(st, gr%mesh, ist, ik, psi(:,:,ist))
-      call X(pert_apply)(pert_kdotp, namespace, space, gr, hm, ik, psi(:,:,ist), f_out)
-      do idim = 1, hm%d%dim
-        do ip = 1, gr%mesh%np
-          vel(ip,idim,ist) = factor * f_out(ip,idim)
-        end do
-      end do
-    end if
-  end do
+    if (abs(st%occ(ist, ik)) > M_EPSILON) then
 
-  call X(mf_dotp_matrix)(gr%mesh, st%nst, st%d%dim, &
-    psi(:,:,:), vel(:,:,:), vel_mat%X(matrix))
-
-  do ist = 1, st%nst
-    if (abs(st%occ(ist, ik)) .gt. M_EPSILON) then
-
-      call X(pert_apply)(pert_kdotp, namespace, space, gr, hm, ik, factor_k * psi_k2(:, :, ist), f_out)
-
-      do idim = 1, hm%d%dim
-        do ip = 1, gr%mesh%np
-          psi_out(ip, idim, ist) = psi_out(ip, idim, ist) - &
-            factor_tot * factor * f_out(ip, idim)
-        end do
-      end do
+      call pert_kdotp%X(apply)(namespace, space, gr, hm, ik, psi_k2(:, :, ist), f_out)
+      call lalg_axpy(gr%np, hm%d%dim, -factor_k * factor_tot * factor, f_out, psi_out(:,:,ist))
 
       do ist_occ = 1, st%nst
-        if (abs(st%occ(ist_occ, ik)) .gt. M_EPSILON) then
-          do idim = 1, hm%d%dim
-            do ip = 1, gr%mesh%np
-              psi_out(ip, idim, ist) = psi_out(ip, idim, ist) - factor_second * factor_tot *&
-                factor_k * psi_k2(ip, idim, ist_occ) * vel_mat%X(matrix)(ist_occ, ist)
-            end do
-          end do
+        if (abs(st%occ(ist_occ, ik)) > M_EPSILON) then
+          call lalg_axpy(gr%np, hm%d%dim, -factor_second*factor_tot*factor_k &
+            *vel_mat%X(matrix)(ist_occ, ist), psi_k2(:,:,ist_occ), psi_out(:,:,ist))
         end if
       end do
     end if
   end do
 
-  call pert_end(pert_kdotp)
+  SAFE_DEALLOCATE_A(f_out)
+  SAFE_DEALLOCATE_P(pert_kdotp)
   SAFE_DEALLOCATE_A(vel_mat%X(matrix))
 
-  SAFE_DEALLOCATE_A(f_out)
-  SAFE_DEALLOCATE_A(vel)
-  SAFE_DEALLOCATE_A(psi)
   POP_SUB(X(inhomog_per_component))
 end subroutine X(inhomog_per_component)
 
@@ -2157,30 +2071,28 @@ subroutine X(inhomog_per_component_2nd_order)(namespace, space, gr, st, hm, ions
   type(space_t),            intent(in)    :: space
   type(grid_t),             intent(in)    :: gr
   type(states_elec_t),      intent(in)    :: st
-  type(hamiltonian_elec_t), intent(inout) :: hm
+  type(hamiltonian_elec_t), intent(in)    :: hm
   type(ions_t),             intent(in)    :: ions
   integer,                  intent(in)    :: idir
   integer,                  intent(in)    :: ik
-  R_TYPE,                   intent(inout) :: psi_k2(:,:,:)
+  R_TYPE,                   intent(in)    :: psi_k2(:,:,:)
   R_TYPE,                   intent(inout) :: psi_e(:,:,:)
   R_TYPE,                   intent(inout) :: psi_out(:,:,:)
   R_TYPE,                   intent(in)    :: factor_tot, factor_k, factor_e
 
-  R_TYPE, allocatable :: f_out(:,:)
   R_TYPE, allocatable :: vel(:,:,:)
   R_TYPE :: factor
-  integer :: ip, ist, idim, ist_occ
+  integer :: ist, ist_occ
   type(matrix_t):: vel_mat, prod_mat
-  type(pert_t)  :: pert_kdotp
+  class(perturbation_kdotp_t), pointer  :: pert_kdotp
   R_TYPE, allocatable :: psi(:,:)
 
   PUSH_SUB(X(inhomog_per_component_2nd_order))
 
-  SAFE_ALLOCATE(f_out(1:gr%mesh%np, 1:hm%d%dim))
-  SAFE_ALLOCATE(vel(1:gr%mesh%np,1:hm%d%dim, 1:st%nst))
+  SAFE_ALLOCATE(vel(1:gr%np,1:hm%d%dim, 1:st%nst))
   SAFE_ALLOCATE(vel_mat%X(matrix)(1:st%nst, 1:st%nst))
   SAFE_ALLOCATE(prod_mat%X(matrix)(1:st%nst, 1:st%nst))
-  SAFE_ALLOCATE(psi(1:gr%mesh%np, 1:st%d%dim))
+  SAFE_ALLOCATE(psi(1:gr%np, 1:st%d%dim))
 
 #if defined(R_TCOMPLEX)
   factor = -M_zI
@@ -2188,52 +2100,40 @@ subroutine X(inhomog_per_component_2nd_order)(namespace, space, gr, st, hm, ions
   factor = M_ONE
 #endif
 
-  f_out(:,:) = M_ZERO
+  pert_kdotp => perturbation_kdotp_t(namespace, ions)
+  call pert_kdotp%setup_dir(idir)
 
-  call pert_init(pert_kdotp, namespace, PERTURBATION_KDOTP, ions)
-  call pert_setup_dir(pert_kdotp, idir)
-
-  vel(:,:,:) = M_ZERO
   do ist = 1, st%nst
-    if (abs(st%occ(ist, ik)) .gt. M_EPSILON) then
-      call states_elec_get_state(st, gr%mesh, ist, ik, psi)
-      call X(pert_apply)(pert_kdotp, namespace, space, gr, hm, ik, psi, f_out)
-      do idim = 1, hm%d%dim
-        do ip = 1, gr%mesh%np
-          vel(ip, idim, ist) = factor * f_out(ip, idim)
-        end do
-      end do
+    if (abs(st%occ(ist, ik)) > M_EPSILON) then
+      call states_elec_get_state(st, gr, ist, ik, psi)
+      call pert_kdotp%X(apply)(namespace, space, gr, hm, ik, psi, vel(:,:,ist))
+      call lalg_scal(gr%np, hm%d%dim, factor, vel(:,:,ist))
+    else
+      vel(:,:,ist) = M_ZERO
     end if
   end do
 
-  call X(mf_dotp_matrix)(gr%mesh, st%nst, st%d%dim, &
-    factor_e * psi_e(:,:,:), vel(:,:,:), vel_mat%X(matrix))
+  call X(mf_dotp_matrix)(gr, st%nst, st%d%dim, psi_e, vel, vel_mat%X(matrix), R_CONJ(factor_e))
 
-  call X(mf_dotp_matrix)(gr%mesh, st%nst, st%d%dim, &
-    factor_e * psi_e(:,:,:), factor_k * psi_k2(:,:,:), prod_mat%X(matrix))
+  call X(mf_dotp_matrix)(gr, st%nst, st%d%dim, psi_e, psi_k2, prod_mat%X(matrix), R_CONJ(factor_e)*factor_k)
 
   do ist = 1, st%nst
-    if (abs(st%occ(ist, ik)) .gt. M_EPSILON) then
+    if (abs(st%occ(ist, ik)) > M_EPSILON) then
       do ist_occ = 1, st%nst
-        if (abs(st%occ(ist_occ, ik)) .gt. M_EPSILON) then
-          do idim = 1, hm%d%dim
-            do ip = 1, gr%mesh%np
-              psi_out(ip, idim, ist) = psi_out(ip, idim, ist) - factor_tot * &
-                vel_mat%X(matrix)(ist_occ, ist) * factor_k * psi_k2(ip, idim, ist_occ)
-              psi_out(ip, idim, ist) = psi_out(ip, idim, ist) + factor_tot * &
-                prod_mat%X(matrix)(ist_occ, ist) * vel(ip, idim, ist_occ)
-            end do
-          end do
+        if (abs(st%occ(ist_occ, ik)) > M_EPSILON) then
+          call lalg_axpy(gr%np, hm%d%dim, -factor_tot*vel_mat%X(matrix)(ist_occ, ist)*factor_k, &
+            psi_k2(:, :, ist_occ), psi_out(:, :, ist))
+          call lalg_axpy(gr%np, hm%d%dim,  factor_tot*prod_mat%X(matrix)(ist_occ, ist), &
+            vel(:, :, ist_occ), psi_out(:, :, ist))
         end if
       end do
     end if
   end do
 
-  call pert_end(pert_kdotp)
+  SAFE_DEALLOCATE_P(pert_kdotp)
 
   SAFE_DEALLOCATE_A(vel_mat%X(matrix))
   SAFE_DEALLOCATE_A(prod_mat%X(matrix))
-  SAFE_DEALLOCATE_A(f_out)
   SAFE_DEALLOCATE_A(vel)
   SAFE_DEALLOCATE_A(psi)
   POP_SUB(X(inhomog_per_component_2nd_order))
@@ -2241,22 +2141,21 @@ end subroutine X(inhomog_per_component_2nd_order)
 
 
  ! --------------------------------------------------------------------------
-subroutine X(inhomog_B)(sh, namespace, space, gr, st, hm, xc, ions, idir1, idir2, lr_k1, lr_k2, psi_out)
+subroutine X(inhomog_B)(sh, namespace, space, gr, st, hm, ions, idir1, idir2, lr_k1, lr_k2, psi_out)
   type(sternheimer_t),      intent(inout) :: sh
   type(namespace_t),        intent(in)    :: namespace
   type(space_t),            intent(in)    :: space
   type(grid_t),             intent(in)    :: gr
   type(states_elec_t),      intent(in)    :: st
-  type(hamiltonian_elec_t), intent(inout) :: hm
-  type(xc_t),               intent(in)    :: xc
+  type(hamiltonian_elec_t), intent(in)    :: hm
   type(ions_t),             intent(in)    :: ions
   integer,                  intent(in)    :: idir1
   integer,                  intent(in)    :: idir2
   type(lr_t),               intent(inout) :: lr_k1(:)
   type(lr_t),               intent(inout) :: lr_k2(:)
-  R_TYPE,                   intent(inout) :: psi_out(:,:,:,:,:)
+  R_TYPE,                   intent(out)   :: psi_out(:,:,:,:,:)
 
-  R_TYPE :: factor_plus, factor_minus, factor_k, factor_magn, factor_rho, factor_sum
+  R_TYPE :: factor_plus, factor_minus, factor_k, factor_rho
   type(lr_t) :: lr0(1)
   R_TYPE, allocatable :: hvar(:,:,:)
   integer :: ispin, ik, ik0
@@ -2273,35 +2172,35 @@ subroutine X(inhomog_B)(sh, namespace, space, gr, st, hm, xc, ions, idir1, idir2
   factor_k = -M_ONE
 #endif
   factor_minus = -factor_plus
-  factor_magn = M_ONE
 
   psi_out(:,:,:,:,:) = M_ZERO
 
   do ik = st%d%kpt%start, st%d%kpt%end
     ik0 = ik-st%d%kpt%start+1
     call X(inhomog_per_component)(namespace, space, gr, st, hm, ions, idir1, ik, lr_k2(1)%X(dl_psi)(:, :, :, ik), &
-      psi_out(:, :, :, ik0, 1), factor_plus, factor_k, factor_magn)
+      psi_out(:, :, :, ik0, 1), factor_plus, factor_k, R_TOTYPE(M_ONE))
     call X(inhomog_per_component)(namespace, space, gr, st, hm, ions, idir2, ik, lr_k1(1)%X(dl_psi)(:, :, :, ik), &
-      psi_out(:, :, :, ik0, 1), factor_minus, factor_k, factor_magn)
+      psi_out(:, :, :, ik0, 1), factor_minus, factor_k, R_TOTYPE(M_ONE))
   end do
+
   if (sternheimer_add_hartree(sh) .or. sternheimer_add_fxc(sh)) then
-    SAFE_ALLOCATE(hvar(1:gr%mesh%np, 1:st%d%nspin, 1))
+    SAFE_ALLOCATE(hvar(1:gr%np, 1:st%d%nspin, 1))
     call lr_init(lr0(1))
-    call lr_allocate(lr0(1), st, gr%mesh, allocate_rho = .true.)
-    lr0(1)%X(dl_rho)(1:gr%mesh%np, 1:st%d%nspin) = M_ZERO
-    factor_sum = -M_ONE
-    call X(calc_rho)(gr%mesh, st, factor_rho, factor_sum, factor_k, factor_k, lr_k1(1), lr_k2(1), lr0(1))
-    call X(calc_rho)(gr%mesh, st, factor_sum * factor_rho, factor_sum, factor_k, factor_k, lr_k2(1), lr_k1(1), lr0(1))
+    call lr_allocate(lr0(1), st, gr, allocate_rho = .true.)
+    lr0(1)%X(dl_rho)(1:gr%np, 1:st%d%nspin) = M_ZERO
+
+    call X(calc_rho)(gr, st, factor_rho, R_TOTYPE(-M_ONE), factor_k, factor_k, lr_k1(1), lr_k2(1), lr0(1))
+    call X(calc_rho)(gr, st,-factor_rho, R_TOTYPE(-M_ONE), factor_k, factor_k, lr_k2(1), lr_k1(1), lr0(1))
     if (st%parallel_in_states .or. st%d%kpt%parallel) then
       call comm_allreduce(st%st_kpt_mpi_grp, lr0(1)%X(dl_rho))
     end if
-    call X(sternheimer_calc_hvar)(sh, namespace, gr%mesh, st, hm, xc, lr0(1:1), 1, hvar)
+    call X(sternheimer_calc_hvar)(sh, namespace, gr, space, hm, lr0(1:1), 1, hvar)
     call lr_dealloc(lr0(1))
 
     do ik = st%d%kpt%start, st%d%kpt%end
       ispin = st%d%get_spin_index(ik)
       ik0 = ik - st%d%kpt%start + 1
-      call X(calc_hvar_psi)(gr%mesh, st, ik, hvar(:, ispin, 1), psi_out(:, :, :, ik0, 1))
+      call X(calc_hvar_psi)(gr, st, ik, hvar(:, ispin, 1), psi_out(:, :, :, ik0, 1))
     end do
     SAFE_DEALLOCATE_A(hvar)
   end if
@@ -2311,7 +2210,7 @@ end subroutine X(inhomog_B)
 
 ! --------------------------------------------------------------------------
 subroutine X(inhomog_EB)(mesh, st, ik, add_hartree, add_fxc, hvar, psi_b, psi_kb, factor_b, psi_out, psi_k1, psi_k2)
-  type(mesh_t),         intent(in)    :: mesh
+  class(mesh_t),        intent(in)    :: mesh
   type(states_elec_t),  intent(in)    :: st
   integer,              intent(in)    :: ik
   logical,              intent(in)    :: add_hartree, add_fxc
@@ -2322,10 +2221,12 @@ subroutine X(inhomog_EB)(mesh, st, ik, add_hartree, add_fxc, hvar, psi_b, psi_kb
   R_TYPE,               intent(inout) :: psi_out(:,:,:)
   R_TYPE,     optional, intent(inout) :: psi_k1(:,:,:), psi_k2(:,:,:)
 
-  R_TYPE :: factor, factor_e, factor_sum
+  R_TYPE :: factor, factor_e
   integer :: ip, idim, ist
 
   PUSH_SUB(X(inhomog_EB))
+
+  ASSERT(.not. st%parallel_in_states)
 
 #if defined(R_TCOMPLEX)
   factor = M_zI
@@ -2335,20 +2236,14 @@ subroutine X(inhomog_EB)(mesh, st, ik, add_hartree, add_fxc, hvar, psi_b, psi_kb
   factor_e = -M_ONE
 
   do ist = 1, st%nst
-    do idim = 1, st%d%dim
-      do ip = 1, mesh%np
-        psi_out(ip, idim, ist) = psi_out(ip, idim, ist) + factor * psi_kb(ip, idim, ist)
-      end do
-    end do
+    call lalg_axpy(mesh%np, st%d%dim, factor, psi_kb(:,:,ist), psi_out(:,:,ist))
   end do
 
   if (add_hartree .or. add_fxc) then
     call X(calc_hvar_lr)(mesh, st, ik, hvar(:), psi_b, factor_e, factor_b, psi_out)
     if ((present(psi_k1)) .and. (present(psi_k2))) then
-      factor_sum = M_ONE
-      call calc_hvar_lr2(psi_k1, psi_k2, hvar, factor_sum)
-      factor_sum = -M_ONE
-      call calc_hvar_lr2(psi_k2, psi_k1, hvar, factor_sum)
+      call calc_hvar_lr2(psi_k1, psi_k2, hvar, R_TOTYPE(M_ONE))
+      call calc_hvar_lr2(psi_k2, psi_k1, hvar, R_TOTYPE(-M_ONE))
     end if
   end if
 
@@ -2392,9 +2287,9 @@ contains
       end if
     end do
 
-    call X(mf_dotp_matrix)(mesh, st%nst, st%d%dim, factor_k * tlr_k1(:,:,:), factor_k * tlr_k2(:,:,:), prod_mat%X(matrix))
+    call X(mf_dotp_matrix)(mesh, st%nst, st%d%dim, tlr_k1, tlr_k2, prod_mat%X(matrix), R_CONJ(factor_k)*factor_k)
 
-    call X(mf_dotp_matrix)(mesh, st%nst, st%d%dim, factor_k * tlr_k1(:,:,:), psi(:,:,:), prod_mat2%X(matrix))
+    call X(mf_dotp_matrix)(mesh, st%nst, st%d%dim, tlr_k1, psi, prod_mat2%X(matrix), R_CONJ(factor_k))
 
     do ist1 = 1, st%nst
       if (abs(st%occ(ist1, ik)) > M_EPSILON) then
@@ -2429,7 +2324,7 @@ subroutine X(inhomog_BE)(namespace, space, gr, st, hm, ions, idir1, idir2, ik, a
   type(space_t),            intent(in)    :: space
   type(grid_t),             intent(in)    :: gr
   type(states_elec_t),      intent(in)    :: st
-  type(hamiltonian_elec_t), intent(inout) :: hm
+  type(hamiltonian_elec_t), intent(in)    :: hm
   type(ions_t),             intent(in)    :: ions
   integer,                  intent(in)    :: idir1, idir2
   integer,                  intent(in)    :: ik
@@ -2442,7 +2337,7 @@ subroutine X(inhomog_BE)(namespace, space, gr, st, hm, ions, idir1, idir2, ik, a
   R_TYPE,                   intent(in)    :: factor_e1, factor_e2
   R_TYPE,                   intent(inout) :: psi_out(:,:,:)
 
-  R_TYPE :: factor_plus, factor_minus, factor_magn
+  R_TYPE :: factor_plus, factor_minus
   R_TYPE :: factor_k, factor_k0, factor_b
 
   PUSH_SUB(X(inhomog_BE))
@@ -2460,12 +2355,11 @@ subroutine X(inhomog_BE)(namespace, space, gr, st, hm, ions, idir1, idir2, ik, a
   factor_k0 = -M_ONE
   factor_b = -M_ONE
 #endif
-  factor_magn = M_ONE
 
   call X(inhomog_per_component)(namespace, space, gr, st, hm, ions, idir1, ik, psi_ek2, psi_out, factor_plus, &
-    factor_magn, factor_magn)
+    R_TOTYPE(M_ONE), R_TOTYPE(M_ONE))
   call X(inhomog_per_component)(namespace, space, gr, st, hm, ions, idir2, ik, psi_ek1, psi_out, factor_minus, &
-    factor_magn, factor_magn)
+    R_TOTYPE(M_ONE), R_TOTYPE(M_ONE))
 
   call X(inhomog_per_component_2nd_order)(namespace, space, gr, st, hm, ions, idir1, ik, psi_k2, psi_e2, psi_out, factor_plus, &
     factor_k, factor_e1)
@@ -2478,7 +2372,7 @@ subroutine X(inhomog_BE)(namespace, space, gr, st, hm, ions, idir1, idir2, ik, a
     factor_e2, factor_k0)
 
   if (add_hartree .or. add_fxc) then
-    call X(calc_hvar_lr)(gr%mesh, st, ik, hvar, psi_e1, factor_b, factor_e2, psi_out)
+    call X(calc_hvar_lr)(gr, st, ik, hvar, psi_e1, factor_b, factor_e2, psi_out)
   end if
 
   POP_SUB(X(inhomog_BE))
@@ -2490,21 +2384,16 @@ subroutine X(inhomog_KE)(namespace, space, gr, st, hm, ions, idir, ik, psi_e, ps
   type(space_t),            intent(in)    :: space
   type(grid_t),             intent(in)    :: gr
   type(states_elec_t),      intent(in)    :: st
-  type(hamiltonian_elec_t), intent(inout) :: hm
+  type(hamiltonian_elec_t), intent(in)    :: hm
   type(ions_t),             intent(in)    :: ions
   integer,                  intent(in)    :: idir, ik
-  R_TYPE,                   intent(inout) :: psi_e(:,:,:)
+  R_TYPE,                   intent(in)    :: psi_e(:,:,:)
   R_TYPE,                   intent(inout) :: psi_out(:,:,:)
-
-  R_TYPE :: factor_plus, factor_magn, factor_e
 
   PUSH_SUB(X(inhomog_KE))
 
-  factor_plus = M_ONE
-  factor_magn = -M_ONE
-  factor_e = -M_ONE
-
-  call X(inhomog_per_component)(namespace, space, gr, st, hm, ions, idir, ik, psi_e, psi_out, factor_plus, factor_e, factor_magn)
+  call X(inhomog_per_component)(namespace, space, gr, st, hm, ions, idir, ik, psi_e, psi_out, &
+    R_TOTYPE(M_ONE), R_TOTYPE(-M_ONE), R_TOTYPE(-M_ONE))
 
   POP_SUB(X(inhomog_KE))
 end subroutine X(inhomog_KE)
@@ -2516,50 +2405,46 @@ subroutine X(inhomog_k2)(namespace, space, gr, st, hm, ions, idir1, idir2, ik, p
   type(space_t),            intent(in)    :: space
   type(grid_t),             intent(in)    :: gr
   type(states_elec_t),      intent(in)    :: st
-  type(hamiltonian_elec_t), intent(inout) :: hm
+  type(hamiltonian_elec_t), intent(in)    :: hm
   type(ions_t),             intent(in)    :: ions
   integer,                  intent(in)    :: idir1, idir2
   integer,                  intent(in)    :: ik
-  R_TYPE,                   intent(inout) :: psi_k2(:,:,:)
+  R_TYPE,                   intent(in)    :: psi_k2(:,:,:)
   R_TYPE,                   intent(inout) :: psi_out(:,:,:)
 
-  R_TYPE :: factor_plus, factor_magn, factor_k
-  integer :: ip, ist, idim
+  R_TYPE :: factor_k
+  integer :: ist
   R_TYPE, allocatable :: f_out(:,:), psi(:,:)
-  type(pert_t) :: pert_kdotp2
+  type(perturbation_kdotp_t), pointer :: pert_kdotp2
 
   PUSH_SUB(X(inhomog_K2))
 
-  SAFE_ALLOCATE(f_out(1:gr%mesh%np, 1:hm%d%dim))
-  SAFE_ALLOCATE(psi(1:gr%mesh%np, 1:st%d%dim))
+  SAFE_ALLOCATE(f_out(1:gr%np, 1:hm%d%dim))
+  SAFE_ALLOCATE(psi(1:gr%np, 1:st%d%dim))
 
-  factor_plus = M_ONE
 #if defined(R_TCOMPLEX)
   factor_k = -M_zI
 #else
   factor_k = -M_ONE
 #endif
-  factor_magn = -M_ONE
 
-  call X(inhomog_per_component)(namespace, space, gr, st, hm, ions, idir1, ik, psi_k2, psi_out, factor_plus, factor_k, factor_magn)
+  call X(inhomog_per_component)(namespace, space, gr, st, hm, ions, idir1, ik, psi_k2, psi_out, &
+    R_TOTYPE(M_ONE), factor_k, R_TOTYPE(-M_ONE))
 
-  call pert_init(pert_kdotp2, namespace, PERTURBATION_KDOTP, ions)
-  call pert_setup_dir(pert_kdotp2, idir1, idir2)
+  pert_kdotp2 => perturbation_kdotp_t(namespace, ions)
+  call pert_kdotp2%setup_dir(idir1, idir2)
 
   do ist = 1, st%nst
-    if (abs(st%occ(ist, ik)) .gt. M_EPSILON) then
-      call states_elec_get_state(st, gr%mesh, ist, ik, psi)
-      call X(pert_apply_order_2)(pert_kdotp2, namespace, space, gr, hm, ik, psi, f_out)
+    if (abs(st%occ(ist, ik)) > M_EPSILON) then
+      call states_elec_get_state(st, gr, ist, ik, psi)
+      call pert_kdotp2%X(apply_order_2)(namespace, space, gr, hm, ik, psi, f_out)
       if (idir1 == idir2) f_out(:,:) = M_HALF * f_out(:,:)
-      do idim = 1, hm%d%dim
-        do ip = 1, gr%mesh%np
-          psi_out(ip, idim, ist) = psi_out(ip, idim, ist) + factor_plus * f_out(ip, idim)
-        end do
-      end do
+
+      call lalg_axpy(gr%np, hm%d%dim, M_ONE, f_out, psi_out(:,:,ist))
     end if
   end do
 
-  call pert_end(pert_kdotp2)
+  SAFE_DEALLOCATE_P(pert_kdotp2)
   SAFE_DEALLOCATE_A(f_out)
   SAFE_DEALLOCATE_A(psi)
 
@@ -2572,31 +2457,32 @@ subroutine X(inhomog_kb)(namespace, gr, space, st, hm, ions, idir, idir1, idir2,
   type(space_t),            intent(in)    :: space
   type(grid_t),             intent(in)    :: gr
   type(states_elec_t),      intent(in)    :: st
-  type(hamiltonian_elec_t), intent(inout) :: hm
+  type(hamiltonian_elec_t), intent(in)    :: hm
   type(ions_t),             intent(in)    :: ions
   integer,                  intent(in)    :: idir, idir1, idir2
   integer,                  intent(in)    :: ik
   R_TYPE,                   intent(inout) :: psi_k1(:,:,:)
   R_TYPE,                   intent(inout) :: psi_k2(:,:,:)
-  R_TYPE,                   intent(inout) :: psi_b(:,:,:)
+  R_TYPE,                   intent(in)    :: psi_b(:,:,:)
   R_TYPE,                   intent(inout) :: psi_out(:,:,:)
 
-  R_TYPE :: factor_plus, factor_minus, factor_magn, factor, factor_k
+  R_TYPE :: factor_plus, factor_minus, factor_k
   integer :: ist_occ, ist, idim, ip
   R_TYPE, allocatable :: f_out1(:,:,:), f_out2(:,:,:)
   type(matrix_t):: vel_mat1, vel_mat2
-  type(pert_t)  :: pert_kdotp2
+  type(perturbation_kdotp_t), pointer  :: pert_kdotp2
   R_TYPE, allocatable :: psi(:,:,:)
 
   PUSH_SUB(X(inhomog_kb))
 
   ASSERT(idir .ne. -1)
+  ASSERT(.not. st%parallel_in_states)
 
-  SAFE_ALLOCATE(f_out1(1:gr%mesh%np,1:hm%d%dim, 1:st%nst))
-  SAFE_ALLOCATE(f_out2(1:gr%mesh%np,1:hm%d%dim, 1:st%nst))
+  SAFE_ALLOCATE(f_out1(1:gr%np,1:hm%d%dim, 1:st%nst))
+  SAFE_ALLOCATE(f_out2(1:gr%np,1:hm%d%dim, 1:st%nst))
   SAFE_ALLOCATE(vel_mat1%X(matrix)(1:st%nst, 1:st%nst))
   SAFE_ALLOCATE(vel_mat2%X(matrix)(1:st%nst, 1:st%nst))
-  SAFE_ALLOCATE(psi(1:gr%mesh%np, 1:st%d%dim, 1:st%nst))
+  SAFE_ALLOCATE(psi(1:gr%np, 1:st%d%dim, 1:st%nst))
 
 #if defined(R_TCOMPLEX)
   factor_plus = M_zI * M_HALF
@@ -2608,58 +2494,59 @@ subroutine X(inhomog_kb)(namespace, gr, space, st, hm, ions, idir, idir1, idir2,
   factor_k = M_ONE
 #endif
 
-  factor_magn = -M_ONE
-  factor = M_ONE
-
   call X(inhomog_per_component_2nd_order)(namespace, space, gr, st, hm, ions, idir, ik, psi_k2, psi_k1, psi_out, factor_plus, &
     factor_k, factor_k)
   call X(inhomog_per_component_2nd_order)(namespace, space, gr, st, hm, ions, idir, ik, psi_k1, psi_k2, psi_out, factor_minus, &
     factor_k, factor_k)
-  call X(inhomog_per_component)(namespace, space, gr, st, hm, ions, idir, ik, psi_b, psi_out, factor, factor, factor_magn)
+  call X(inhomog_per_component)(namespace, space, gr, st, hm, ions, idir, ik, psi_b, psi_out, &
+    R_TOTYPE(M_ONE), R_TOTYPE(M_ONE), R_TOTYPE(-M_ONE))
 
-  call pert_init(pert_kdotp2, namespace, PERTURBATION_KDOTP, ions)
-  call pert_setup_dir(pert_kdotp2, idir1, idir2)
+  pert_kdotp2 => perturbation_kdotp_t(namespace, ions)
+  call pert_kdotp2%setup_dir(idir1, idir2)
 
 
   f_out1(:,:,:) = M_ZERO
   f_out2(:,:,:) = M_ZERO
   psi(:,:,:) = M_ZERO
   do ist = 1, st%nst
-    if (abs(st%occ(ist, ik)) .gt. M_EPSILON) then
-      call states_elec_get_state(st, gr%mesh, ist, ik, psi(:, :, ist))
-      call pert_setup_dir(pert_kdotp2, idir, idir1)
-      call X(pert_apply_order_2)(pert_kdotp2, namespace, space, gr, hm, ik, psi_k2(:, :, ist), f_out1(:, :, ist))
+    if (abs(st%occ(ist, ik)) > M_EPSILON) then
+      call states_elec_get_state(st, gr, ist, ik, psi(:, :, ist))
+
+      call pert_kdotp2%setup_dir(idir, idir1)
+      call pert_kdotp2%X(apply_order_2)(namespace, space, gr, hm, ik, psi_k2(:, :, ist), f_out1(:, :, ist))
       if (idir .ne. idir1) f_out1(:,:,ist) = M_TWO * f_out1(:, :, ist)
-      call pert_setup_dir(pert_kdotp2,idir,idir2)
-      call X(pert_apply_order_2)(pert_kdotp2, namespace, space, gr, hm, ik, psi_k1(:, :, ist), f_out2(:, :, ist))
+
+      call pert_kdotp2%setup_dir(idir, idir2)
+      call pert_kdotp2%X(apply_order_2)(namespace, space, gr, hm, ik, psi_k1(:, :, ist), f_out2(:, :, ist))
       if (idir .ne. idir2) f_out2(:,:,ist) = M_TWO * f_out2(:, :, ist)
 
       do idim = 1, hm%d%dim
-        do ip = 1, gr%mesh%np
+        do ip = 1, gr%np
           psi_out(ip, idim, ist) = psi_out(ip, idim, ist) +  &
             factor_k * (factor_plus * f_out1(ip, idim, ist) + factor_minus * f_out2(ip, idim, ist))
         end do
       end do
 
-      call pert_setup_dir(pert_kdotp2, idir, idir1)
-      call X(pert_apply_order_2)(pert_kdotp2, namespace, space, gr, hm, ik, psi(:, :, ist), f_out1(:, :, ist))
+      call pert_kdotp2%setup_dir(idir, idir1)
+      call pert_kdotp2%X(apply_order_2)(namespace, space, gr, hm, ik, psi(:, :, ist), f_out1(:, :, ist))
       if (idir .ne. idir1) f_out1(:, :, ist) = M_TWO * f_out1(:, :, ist)
-      call pert_setup_dir(pert_kdotp2, idir, idir2)
-      call X(pert_apply_order_2)(pert_kdotp2, namespace, space, gr, hm, ik, psi(:, :, ist), f_out2(:, :,ist))
+
+      call pert_kdotp2%setup_dir(idir, idir2)
+      call pert_kdotp2%X(apply_order_2)(namespace, space, gr, hm, ik, psi(:, :, ist), f_out2(:, :,ist))
       if (idir .ne. idir2) f_out2(:, :, ist) = M_TWO * f_out2(:, :, ist)
     end if
   end do
 
-  call X(mf_dotp_matrix)(gr%mesh, st%nst, st%d%dim, psi, f_out1(:,:,:), vel_mat1%X(matrix))
+  call X(mf_dotp_matrix)(gr, st%nst, st%d%dim, psi, f_out1(:,:,:), vel_mat1%X(matrix))
 
-  call X(mf_dotp_matrix)(gr%mesh, st%nst, st%d%dim, psi, f_out2(:,:,:), vel_mat2%X(matrix))
+  call X(mf_dotp_matrix)(gr, st%nst, st%d%dim, psi, f_out2(:,:,:), vel_mat2%X(matrix))
 
   do ist = 1, st%nst
-    if (abs(st%occ(ist, ik)) .gt. M_EPSILON) then
+    if (abs(st%occ(ist, ik)) > M_EPSILON) then
       do ist_occ = 1, st%nst
-        if (abs(st%occ(ist_occ, ik)) .gt. M_EPSILON) then
+        if (abs(st%occ(ist_occ, ik)) > M_EPSILON) then
           do idim = 1, hm%d%dim
-            do ip = 1, gr%mesh%np
+            do ip = 1, gr%np
               psi_out(ip, idim, ist) = psi_out(ip, idim, ist) +  &
                 factor_k * (factor_plus * psi_k2(ip, idim, ist_occ) * vel_mat1%X(matrix)(ist_occ, ist) + &
                 factor_minus * psi_k1(ip, idim, ist_occ) * vel_mat2%X(matrix)(ist_occ, ist))
@@ -2670,7 +2557,7 @@ subroutine X(inhomog_kb)(namespace, gr, space, st, hm, ions, idir, idir1, idir2,
     end if
   end do
 
-  call pert_end(pert_kdotp2)
+  SAFE_DEALLOCATE_P(pert_kdotp2)
 
   SAFE_DEALLOCATE_A(vel_mat1%X(matrix))
   SAFE_DEALLOCATE_A(vel_mat2%X(matrix))
@@ -2683,15 +2570,14 @@ end subroutine X(inhomog_kb)
 
 
  ! --------------------------------------------------------------------------
-subroutine X(inhomog_KB_tot)(sh, namespace, space, gr, st, hm, xc, ions, idir, idir1, idir2, &
+subroutine X(inhomog_KB_tot)(sh, namespace, space, gr, st, hm, ions, idir, idir1, idir2, &
   lr_k, lr_b, lr_k1, lr_k2, lr_kk1, lr_kk2, psi_out)
   type(sternheimer_t),      intent(inout) :: sh
   type(namespace_t),        intent(in)    :: namespace
   type(space_t),            intent(in)    :: space
   type(grid_t),             intent(in)    :: gr
   type(states_elec_t),      intent(in)    :: st
-  type(hamiltonian_elec_t), intent(inout) :: hm
-  type(xc_t),               intent(in)    :: xc
+  type(hamiltonian_elec_t), intent(in)    :: hm
   type(ions_t),             intent(in)    :: ions
   integer,                  intent(in)    :: idir, idir1, idir2
   type(lr_t),               intent(inout) :: lr_k(:)
@@ -2700,17 +2586,17 @@ subroutine X(inhomog_KB_tot)(sh, namespace, space, gr, st, hm, xc, ions, idir, i
   type(lr_t),               intent(inout) :: lr_kk2(:)
   type(lr_t),               intent(inout) :: lr_k1(:)
   type(lr_t),               intent(inout) :: lr_k2(:)
-  R_TYPE,                   intent(inout) :: psi_out(:,:,:,:,:)
+  R_TYPE,                   intent(out)   :: psi_out(:,:,:,:,:)
 
-  R_TYPE :: factor1, factor2, factor_sum, factor_rho
+  R_TYPE :: factor1, factor2, factor_rho
   R_TYPE, allocatable :: hvar(:,:,:)
   type(lr_t) :: lr0(1)
-  integer :: ispin, ik, ip, ik0
+  integer :: ispin, ik, ik0
   logical :: add_hartree, add_fxc
 
   PUSH_SUB(X(inhomog_KB_tot))
 
-  SAFE_ALLOCATE(hvar(1:gr%mesh%np, 1:st%d%nspin, 1))
+  SAFE_ALLOCATE(hvar(1:gr%np, 1:st%d%nspin, 1))
 
 #if defined(R_TCOMPLEX)
   factor1 = -M_zI
@@ -2721,41 +2607,38 @@ subroutine X(inhomog_KB_tot)(sh, namespace, space, gr, st, hm, xc, ions, idir, i
   factor2 = -M_ONE
   factor_rho = M_HALF
 #endif
-  factor_sum = -M_ONE
 
   psi_out(:,:,:,:,:) = M_ZERO
-  hvar(:,:,:) = M_ZERO
 
   add_hartree = sternheimer_add_hartree(sh)
   add_fxc = sternheimer_add_fxc(sh)
 
   if (add_hartree .or. add_fxc) then
     call lr_init(lr0(1))
-    call lr_allocate(lr0(1), st, gr%mesh, allocate_rho = .true.)
+    call lr_allocate(lr0(1), st, gr, allocate_rho = .true.)
     lr0(1)%X(dl_rho) = M_ZERO
 
-    call X(calc_rho)(gr%mesh, st, factor_rho, factor_sum, factor1, factor1, lr_k1(1), lr_k2(1), lr0(1))
-    call X(calc_rho)(gr%mesh, st, factor_sum * factor_rho, factor_sum, factor1, factor1, lr_k2(1), lr_k1(1), lr0(1))
+    call X(calc_rho)(gr, st, factor_rho, R_TOTYPE(-M_ONE), factor1, factor1, lr_k1(1), lr_k2(1), lr0(1))
+    call X(calc_rho)(gr, st,-factor_rho, R_TOTYPE(-M_ONE), factor1, factor1, lr_k2(1), lr_k1(1), lr0(1))
     if (st%parallel_in_states .or. st%d%kpt%parallel) then
       call comm_allreduce(st%st_kpt_mpi_grp, lr0(1)%X(dl_rho))
     end if
 
-    do ip = 1, gr%mesh%np
-      do ispin = 1, st%d%nspin
-        lr0(1)%X(dl_rho)(ip, ispin) = lr0(1)%X(dl_rho)(ip, ispin) + lr_b(1)%X(dl_rho)(ip, ispin)
-      end do
-    end do
+    call lalg_axpy(gr%np, st%d%nspin, M_ONE, lr_b(1)%X(dl_rho), lr0(1)%X(dl_rho))
 
-    call X(sternheimer_calc_hvar)(sh, namespace, gr%mesh, st, hm, xc, lr0, 1, hvar)
+    call X(sternheimer_calc_hvar)(sh, namespace, gr, space, hm,  lr0, 1, hvar)
     call lr_dealloc(lr0(1))
+  else
+    hvar(:,:,:) = M_ZERO
   end if
 
   do ik = st%d%kpt%start, st%d%kpt%end
     ik0 = ik-st%d%kpt%start+1
+    ispin = st%d%get_spin_index(ik)
+
     call X(inhomog_kb)(namespace, gr, space, st, hm, ions, idir, idir1, idir2, ik, lr_b(1)%X(dl_psi)(:, :, :, ik), &
       lr_k1(1)%X(dl_psi)(:, :, :, ik), lr_k2(1)%X(dl_psi)(:, :, :, ik), psi_out(:, :, :, ik0, 1))
 
-    ispin = st%d%get_spin_index(ik)
     call X(inhomog_BE)(namespace, space, gr, st, hm, ions, idir1, idir2, ik, add_hartree, add_fxc, hvar(:, ispin, 1), &
       lr_k(1)%X(dl_psi)(:, :, :, ik), lr_k(1)%X(dl_psi)(:, :, :, ik), lr_kk1(1)%X(dl_psi)(:, :, :, ik), &
       lr_kk2(1)%X(dl_psi)(:, :, :, ik), lr_k1(1)%X(dl_psi)(:, :, :, ik), lr_k2(1)%X(dl_psi)(:, :, :, ik), &
@@ -2768,20 +2651,19 @@ subroutine X(inhomog_KB_tot)(sh, namespace, space, gr, st, hm, xc, ions, idir, i
 end subroutine X(inhomog_KB_tot)
 
 ! --------------------------------------------------------------------------
-subroutine X(inhomog_KE_tot)(sh, namespace, space, gr, st, hm, xc, ions, idir, nsigma, lr_k, lr_e, lr_kk, psi_out)
+subroutine X(inhomog_KE_tot)(sh, namespace, space, gr, st, hm, ions, idir, nsigma, lr_k, lr_e, lr_kk, psi_out)
   type(sternheimer_t),      intent(inout) :: sh
   type(namespace_t),        intent(in)    :: namespace
   type(space_t),            intent(in)    :: space
   type(grid_t),             intent(in)    :: gr
   type(states_elec_t),      intent(in)    :: st
-  type(hamiltonian_elec_t), intent(inout) :: hm
-  type(xc_t),               intent(in)    :: xc
+  type(hamiltonian_elec_t), intent(in)    :: hm
   type(ions_t),             intent(in)    :: ions
   integer,                  intent(in)    :: idir, nsigma
   type(lr_t),               intent(inout) :: lr_e(:)
   type(lr_t),               intent(inout) :: lr_k(:)
   type(lr_t),               intent(inout) :: lr_kk(:)
-  R_TYPE,                   intent(inout) :: psi_out(:,:,:,:,:)
+  R_TYPE,                   intent(out)   :: psi_out(:,:,:,:,:)
 
   R_TYPE :: factor_k
   integer :: isigma, ispin, ik, ik0
@@ -2790,7 +2672,7 @@ subroutine X(inhomog_KE_tot)(sh, namespace, space, gr, st, hm, xc, ions, idir, n
 
   PUSH_SUB(X(inhomog_KE_tot))
 
-  SAFE_ALLOCATE(hvar(1:gr%mesh%np, 1:st%d%nspin, 1:nsigma))
+  SAFE_ALLOCATE(hvar(1:gr%np, 1:st%d%nspin, 1:nsigma))
 
 #if defined(R_TCOMPLEX)
   factor_k = -M_zI
@@ -2799,20 +2681,19 @@ subroutine X(inhomog_KE_tot)(sh, namespace, space, gr, st, hm, xc, ions, idir, n
 #endif
 
   psi_out(:,:,:,:,:) = M_ZERO
-  hvar(:,:,:) = M_ZERO
 
   add_hartree = sternheimer_add_hartree(sh)
   add_fxc = sternheimer_add_fxc(sh)
 
   if (add_hartree .or. add_fxc) then
-    call X(sternheimer_calc_hvar)(sh, namespace, gr%mesh, st, hm, xc, lr_e, nsigma, hvar)
+    call X(sternheimer_calc_hvar)(sh, namespace, gr, space, hm, lr_e, nsigma, hvar)
   end if
 
   do ik = st%d%kpt%start, st%d%kpt%end
     ik0 = ik - st%d%kpt%start + 1
     ispin = st%d%get_spin_index(ik)
     do isigma = 1, nsigma
-      call X(inhomog_EB)(gr%mesh, st, ik, add_hartree, add_fxc, hvar(:, ispin, isigma), lr_k(1)%X(dl_psi)(:, :, :, ik), &
+      call X(inhomog_EB)(gr, st, ik, add_hartree, add_fxc, hvar(:, ispin, isigma), lr_k(1)%X(dl_psi)(:, :, :, ik), &
         lr_kk(1)%X(dl_psi)(:, :, :, ik), factor_k, psi_out(:, :, :, ik0, isigma))
 
       call X(inhomog_KE)(namespace, space, gr, st, hm, ions, idir, ik, lr_e(isigma)%X(dl_psi)(:, :, :, ik), &
@@ -2831,12 +2712,12 @@ subroutine X(inhomog_k2_tot)(namespace, space, gr, st, hm, ions, idir1, idir2, l
   type(space_t),            intent(in)    :: space
   type(grid_t),             intent(in)    :: gr
   type(states_elec_t),      intent(in)    :: st
-  type(hamiltonian_elec_t), intent(inout) :: hm
+  type(hamiltonian_elec_t), intent(in)    :: hm
   type(ions_t),             intent(in)    :: ions
   integer,                  intent(in)    :: idir1, idir2
   type(lr_t),               intent(inout) :: lr_k1(:)
   type(lr_t),               intent(inout) :: lr_k2(:)
-  R_TYPE,                   intent(inout) :: psi_out(:,:,:,:,:)
+  R_TYPE,                   intent(out)   :: psi_out(:,:,:,:,:)
 
   integer :: ik, ik0
 
@@ -2863,14 +2744,14 @@ end subroutine X(inhomog_k2_tot)
 ! or magnetic perturbations with kdotp that come from elements of the density
 ! matrix within occupied and unoccupied subspaces
 subroutine X(calc_rho)(mesh, st, factor, factor_sum, factor_e, factor_k, lr_e, lr_k, lr0)
-  type(mesh_t),         intent(in)    :: mesh
+  class(mesh_t),        intent(in)    :: mesh
   type(states_elec_t),  intent(in)    :: st
   R_TYPE,               intent(in)    :: factor
   R_TYPE,               intent(in)    :: factor_sum
   R_TYPE,               intent(in)    :: factor_e
   R_TYPE,               intent(in)    :: factor_k
-  type(lr_t),           intent(inout) :: lr_e
-  type(lr_t),           intent(inout) :: lr_k
+  type(lr_t),           intent(in)    :: lr_e
+  type(lr_t),           intent(in)    :: lr_k
   type(lr_t),           intent(inout) :: lr0
 
   integer :: ip, ik, ist, idim, ist_occ, ispin
@@ -2880,6 +2761,8 @@ subroutine X(calc_rho)(mesh, st, factor, factor_sum, factor_e, factor_k, lr_e, l
 
   PUSH_SUB(X(calc_rho))
 
+  ASSERT(.not. st%parallel_in_states)
+
   SAFE_ALLOCATE(mat%X(matrix)(1:st%nst, 1:st%nst))
   SAFE_ALLOCATE(psi(1:mesh%np, 1:st%d%dim))
   SAFE_ALLOCATE(psi1(1:mesh%np, 1:st%d%dim))
@@ -2887,7 +2770,7 @@ subroutine X(calc_rho)(mesh, st, factor, factor_sum, factor_e, factor_k, lr_e, l
   do ik = st%d%kpt%start, st%d%kpt%end
     ispin = st%d%get_spin_index(ik)
     call X(mf_dotp_matrix)(mesh, st%nst, st%d%dim, &
-      factor_k * lr_k%X(dl_psi)(:,:,:, ik), factor_e*lr_e%X(dl_psi)(:,:,:, ik), mat%X(matrix))
+      lr_k%X(dl_psi)(:,:,:, ik), lr_e%X(dl_psi)(:,:,:, ik), mat%X(matrix), R_CONJ(factor_k)*factor_e)
 
     do ist  = 1, st%nst
       if (st%occ(ist, ik) > M_EPSILON) then
@@ -2905,8 +2788,7 @@ subroutine X(calc_rho)(mesh, st, factor, factor_sum, factor_e, factor_k, lr_e, l
             do idim = 1, st%d%dim
               do ip = 1, mesh%np
                 lr0%X(dl_rho)(ip, ispin) = lr0%X(dl_rho)(ip, ispin) - factor * factor_sum * weight * &
-                  mat%X(matrix)(ist, ist_occ) * psi(ip, idim) * &
-                  R_CONJ(psi1(ip, idim))
+                  mat%X(matrix)(ist, ist_occ) * psi(ip, idim) * R_CONJ(psi1(ip, idim))
               end do
             end do
           end if
@@ -2927,10 +2809,10 @@ end subroutine X(calc_rho)
 ! with kdotp coming from the contribution to the density from elements of
 ! the density matrix within occupied and unoccupied subspaces
 subroutine X(calc_hvar_psi)(mesh, st, ik, hvar, psi_out)
-  type(mesh_t),         intent(in)    :: mesh
+  class(mesh_t),        intent(in)    :: mesh
   type(states_elec_t),  intent(in)    :: st
   integer,              intent(in)    :: ik
-  R_TYPE,               intent(inout) :: hvar(:)
+  R_TYPE,               intent(in)    :: hvar(:)
   R_TYPE,               intent(inout) :: psi_out(:,:,:)
 
   R_TYPE, allocatable :: psi(:,:)
@@ -2939,6 +2821,8 @@ subroutine X(calc_hvar_psi)(mesh, st, ik, hvar, psi_out)
   PUSH_SUB(X(calc_hvar_psi))
 
   SAFE_ALLOCATE(psi(1:mesh%np, 1:st%d%dim))
+
+  ASSERT(.not. st%parallel_in_states)
 
   do ist = 1, st%nst
     if (abs(st%occ(ist, ik)) > M_EPSILON) then
@@ -2958,13 +2842,12 @@ end subroutine X(calc_hvar_psi)
 
 ! --------------------------------------------------------------------------
 ! Calculation of V_{hxc}[n^{(1)}] |  \psi^{(1)}> for second-order perturbations
-subroutine X(calc_hvar_lr)(mesh, st, ik, hvar, psi_in, &
-  factor1, factor2, psi_out)
-  type(mesh_t),         intent(in)    :: mesh
+subroutine X(calc_hvar_lr)(mesh, st, ik, hvar, psi_in, factor1, factor2, psi_out)
+  class(mesh_t),        intent(in)    :: mesh
   type(states_elec_t),  intent(in)    :: st
   integer,              intent(in)    :: ik
-  R_TYPE,               intent(inout) :: hvar(:)
-  R_TYPE,               intent(inout) :: psi_in(:,:,:)
+  R_TYPE,               intent(in)    :: hvar(:)
+  R_TYPE,               intent(in)    :: psi_in(:,:,:)
   R_TYPE,               intent(in)    :: factor1, factor2
   R_TYPE,               intent(inout) :: psi_out(:,:,:)
 
@@ -2975,11 +2858,12 @@ subroutine X(calc_hvar_lr)(mesh, st, ik, hvar, psi_in, &
 
   PUSH_SUB(X(calc_hvar_lr))
 
+  ASSERT(.not. st%parallel_in_states)
+
   SAFE_ALLOCATE(psi(1:mesh%np, 1:st%d%dim, 1:st%nst))
   SAFE_ALLOCATE(mat%X(matrix)(1:st%nst, 1:st%nst))
   SAFE_ALLOCATE(psi0(1:mesh%np, 1:st%d%dim, 1:st%nst))
 
-  psi(:,:,:) = M_ZERO
   psi0(:,:,:) = M_ZERO
   do ist = 1, st%nst
     if (abs(st%occ(ist, ik)) > M_EPSILON) then
@@ -2993,38 +2877,36 @@ subroutine X(calc_hvar_lr)(mesh, st, ik, hvar, psi_in, &
     end if
   end do
 
-  call X(mf_dotp_matrix)(mesh, st%nst, st%d%dim, psi0, psi(:,:,:), mat%X(matrix))
+  call X(mf_dotp_matrix)(mesh, st%nst, st%d%dim, psi0, psi, mat%X(matrix))
+
+  SAFE_DEALLOCATE_A(psi0)
+  SAFE_DEALLOCATE_A(psi)
 
   do ist = 1, st%nst
     if (abs(st%occ(ist, ik)) > M_EPSILON) then
       do ist1 = 1, st%nst
         if (abs(st%occ(ist1, ik)) > M_EPSILON) then
-          do idim = 1, st%d%dim
-            do ip = 1, mesh%np
-              psi_out(ip, idim, ist) = psi_out(ip, idim, ist) + mat%X(matrix)(ist1, ist) * factor2 * psi_in(ip, idim, ist1)
-            end do
-          end do
+          call lalg_axpy(mesh%np, st%d%dim, mat%X(matrix)(ist1, ist) * factor2, psi_in(:,:, ist1), psi_out(:,:,ist))
         end if
       end do
     end if
   end do
 
   SAFE_DEALLOCATE_A(mat%X(matrix))
-  SAFE_DEALLOCATE_A(psi)
-  SAFE_DEALLOCATE_A(psi0)
 
   POP_SUB(X(calc_hvar_lr))
 end subroutine X(calc_hvar_lr)
 
 ! ---------------------------------------------------------
 !> Multiplication of two blocks of states
-subroutine X(mf_dotp_matrix)(mesh, nst, dim, psi1, psi2, res)
-  type(mesh_t),                   intent(in)    :: mesh
+subroutine X(mf_dotp_matrix)(mesh, nst, dim, psi1, psi2, res, factor)
+  class(mesh_t),                  intent(in)    :: mesh
   integer,                        intent(in)    :: nst
   integer,                        intent(in)    :: dim
   R_TYPE, target, contiguous,     intent(in)    :: psi1(:, :, :)
   R_TYPE, target, contiguous,     intent(in)    :: psi2(:, :, :)
   R_TYPE,                         intent(inout) :: res(:, :)
+  R_TYPE, optional,               intent(in)    :: factor
 
   type(batch_t)        :: psi1b, psi2b
 
@@ -3037,6 +2919,10 @@ subroutine X(mf_dotp_matrix)(mesh, nst, dim, psi1, psi2, res)
 
   call psi1b%end()
   call psi2b%end()
+
+  if(present(factor)) then
+    res = res * factor
+  end if
 
   POP_SUB(X(mf_dotp_matrix))
 end subroutine X(mf_dotp_matrix)

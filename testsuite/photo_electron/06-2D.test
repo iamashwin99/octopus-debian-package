@@ -14,14 +14,14 @@ else
   match ; Total energy ; GREPFIELD(static/info, 'Total       =', 3) ; -0.21408824
 endif
 
-# Na check velocity map 
+# Na check velocity map
 Input      : 06-2D.02-Na_few_cy.inp
 if(available cuda); then
   match ; Error match ; GREPCOUNT(err, 'Calculation will not be continued.') ; 1
 else
-  match ; Momentum grid [val  1] ; LINEFIELD(td.general/PESM_map.pz=0, 24012, 1) ; -4.662846239094E-01
-  match ; Momentum grid [val  2] ; LINEFIELD(td.general/PESM_map.pz=0, 29580, 2) ;  0.000000000000E+00
-  match ; Velocity map [val  1] ; LINEFIELD(td.general/PESM_map.pz=0, 29580, 3) ; 4.891005437139
-  match ; Velocity map [val  2] ; LINEFIELD(td.general/PESM_map.pz=0, 29578, 3) ; 3.602401145186E+00
-  match ; Velocity map [val  3] ; LINEFIELD(td.general/PESM_map.pz=0, 24012, 3) ; 7.794815103098E-03
+  match ; Momentum grid [val  1] ; LINEFIELD(td.general/PESM_map.pz=0, 24012, 1) ; -8.495782602300E-01
+  match ; Momentum grid [val  2] ; LINEFIELD(td.general/PESM_map.pz=0, 29646, 2) ;  0.000000000000E+00
+  match ; Velocity map [val  1] ; LINEFIELD(td.general/PESM_map.pz=0, 29398, 3) ; 3.498552357540E-01
+  match ; Velocity map [val  2] ; LINEFIELD(td.general/PESM_map.pz=0, 29417, 3) ; 3.768552039712E-03
+  match ; Velocity map [val  3] ; LINEFIELD(td.general/PESM_map.pz=0, 29431, 3) ; 1.974450623906E-05
 endif

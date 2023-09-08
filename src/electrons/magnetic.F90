@@ -24,6 +24,7 @@ module magnetic_oct_m
   use debug_oct_m
   use derivatives_oct_m
   use global_oct_m
+  use grid_oct_m
   use ions_oct_m
   use kpoints_oct_m
   use mesh_function_oct_m
@@ -59,7 +60,7 @@ contains
 
   ! ---------------------------------------------------------
   subroutine magnetic_density(mesh, std, rho, md)
-    type(mesh_t),            intent(in)  :: mesh
+    class(mesh_t),           intent(in)  :: mesh
     type(states_elec_dim_t), intent(in)  :: std
     FLOAT,                   intent(in)  :: rho(:,:) !< (np, st%d%nspin)
     FLOAT,                   intent(out) :: md(:,:)  !< (np, 3)
@@ -86,7 +87,7 @@ contains
 
   ! ---------------------------------------------------------
   subroutine magnetic_moment(mesh, st, rho, mm)
-    type(mesh_t),        intent(in)  :: mesh
+    class(mesh_t),       intent(in)  :: mesh
     type(states_elec_t), intent(in)  :: st
     FLOAT,               intent(in)  :: rho(:,:)
     FLOAT,               intent(out) :: mm(3)
@@ -114,7 +115,7 @@ contains
 
   ! ---------------------------------------------------------
   subroutine write_magnetic_moments(mesh, st, ions, boundaries, lmm_r, iunit, namespace)
-    type(mesh_t),                intent(in) :: mesh
+    class(mesh_t),               intent(in) :: mesh
     type(states_elec_t),         intent(in) :: st
     type(ions_t),                intent(in) :: ions
     type(boundaries_t),          intent(in) :: boundaries
@@ -168,10 +169,10 @@ contains
 
   ! ---------------------------------------------------------
   subroutine magnetic_local_moments(mesh, st, ions, boundaries, rho, rr, lmm)
-    type(mesh_t),         intent(in)  :: mesh
+    class(mesh_t),        intent(in)  :: mesh
     type(states_elec_t),  intent(in)  :: st
     type(ions_t),         intent(in)  :: ions
-    type(boundaries_t),   intent(in) :: boundaries
+    type(boundaries_t),   intent(in)   :: boundaries
     FLOAT,                intent(in)  :: rho(:,:)
     FLOAT,                intent(in)  :: rr
     FLOAT,                intent(out) :: lmm(max(mesh%box%dim, 3), ions%natoms)
@@ -194,7 +195,7 @@ contains
       if (boundaries%spiral) then
         SAFE_ALLOCATE(phase_spiral(1:sphere%np))
         do is = 1, sphere%np
-          phase_spiral(is) = exp(+M_zI*sum((sphere%x(is,:) - mesh%x(sphere%map(is),:)) &
+          phase_spiral(is) = exp(+M_zI*sum((sphere%rel_x(:,is) + sphere%center - mesh%x(sphere%map(is),:)) &
             *boundaries%spiral_q(1:mesh%box%dim)))
         end do
 
@@ -237,7 +238,7 @@ contains
 
   ! ---------------------------------------------------------
   subroutine magnetic_total_magnetization(mesh, st, qq, trans_mag)
-    type(mesh_t),        intent(in)  :: mesh
+    class(mesh_t),       intent(in)  :: mesh
     type(states_elec_t), intent(in)  :: st
     FLOAT,               intent(in)  :: qq(:)
     CMPLX,               intent(out) :: trans_mag(6)
@@ -283,8 +284,8 @@ contains
 
   ! ---------------------------------------------------------
   !TODO: We should remove this routine and use st%current. NTD
-  subroutine calc_physical_current(der, st, kpoints, jj)
-    type(derivatives_t),  intent(in)    :: der
+  subroutine calc_physical_current(gr, st, kpoints, jj)
+    type(grid_t),         intent(in)    :: gr
     type(states_elec_t),  intent(inout) :: st
     type(kpoints_t),      intent(in)    :: kpoints
     FLOAT,                intent(out)   :: jj(:,:,:)
@@ -292,7 +293,7 @@ contains
     PUSH_SUB(calc_physical_current)
 
     ! Paramagnetic contribution to the physical current
-    call states_elec_calc_quantities(der, st, kpoints, .false., paramagnetic_current = jj)
+    call states_elec_calc_quantities(gr, st, kpoints, .false., paramagnetic_current = jj)
 
     ! \todo
     ! Diamagnetic contribution to the physical current
@@ -305,13 +306,13 @@ contains
   !> This subroutine receives as input a current, and produces
   !! as an output the vector potential that it induces.
   !! \warning There is probably a problem for 2D. For 1D none of this makes sense?
-  subroutine magnetic_induced(namespace, der, st, psolver, kpoints, a_ind, b_ind)
+  subroutine magnetic_induced(namespace, gr, st, psolver, kpoints, a_ind, b_ind)
     type(namespace_t),    intent(in)    :: namespace
-    type(derivatives_t),  intent(in)    :: der
+    type(grid_t),         intent(in)    :: gr
     type(states_elec_t),  intent(inout) :: st
     type(poisson_t),      intent(in)    :: psolver
     type(kpoints_t),      intent(in)    :: kpoints
-    FLOAT,                intent(out)   :: a_ind(:, :) !< a_ind(der%mesh%np_part, der%dim)
+    FLOAT, contiguous,    intent(out)   :: a_ind(:, :) !< a_ind(der%mesh%np_part, der%dim)
     FLOAT,                intent(out)   :: b_ind(:, :)
     !< if der%dim=3, b_ind(der%mesh%np_part, der%dim)
     !< if der%dim=2, b_ind(der%mesh%np_part, 1)
@@ -330,26 +331,26 @@ contains
       return
     end if
 
-    SAFE_ALLOCATE(jj(1:der%mesh%np_part, 1:der%dim, 1:st%d%nspin))
-    call states_elec_calc_quantities(der, st, kpoints, .false., paramagnetic_current = jj)
+    SAFE_ALLOCATE(jj(1:gr%np_part, 1:gr%der%dim, 1:st%d%nspin))
+    call states_elec_calc_quantities(gr, st, kpoints, .false., paramagnetic_current = jj)
 
     !We sum the current for up and down, valid for collinear and noncollinear spins
     if (st%d%nspin > 1) then
-      do idir = 1, der%dim
+      do idir = 1, gr%der%dim
         jj(:, idir, 1) = jj(:, idir, 1) + jj(:, idir, 2)
       end do
     end if
 
     a_ind = M_ZERO
-    do idir = 1, der%dim
+    do idir = 1, gr%der%dim
       call dpoisson_solve(psolver, namespace, a_ind(:, idir), jj(:, idir, 1))
     end do
     ! This minus sign is introduced here because the current that has been used
     ! before is the "number-current density", and not the "charge-current density",
     ! and therefore there is a minus sign missing (electrons are negative charges...)
-    a_ind(1:der%mesh%np, 1:der%dim) = - a_ind(1:der%mesh%np, 1:der%dim) / P_C
+    a_ind(1:gr%np, 1:gr%der%dim) = - a_ind(1:gr%np, 1:gr%der%dim) / P_C
 
-    call dderivatives_curl(der, a_ind, b_ind)
+    call dderivatives_curl(gr%der, a_ind, b_ind)
 
     SAFE_DEALLOCATE_A(jj)
     POP_SUB(magnetic_induced)
@@ -357,7 +358,7 @@ contains
 
   subroutine write_total_xc_torque(iunit, mesh, vxc, st)
     integer,                  intent(in) :: iunit
-    type(mesh_t),             intent(in) :: mesh
+    class(mesh_t),            intent(in) :: mesh
     FLOAT,                    intent(in) :: vxc(:,:)
     type(states_elec_t),      intent(in) :: st
 
@@ -386,7 +387,7 @@ contains
 
   ! ---------------------------------------------------------
   subroutine calc_xc_torque(mesh, vxc, st, torque)
-    type(mesh_t),             intent(in) :: mesh
+    class(mesh_t),            intent(in) :: mesh
     FLOAT,                    intent(in) :: vxc(:,:)
     type(states_elec_t),      intent(in) :: st
     FLOAT,                 intent(inout) :: torque(:,:)

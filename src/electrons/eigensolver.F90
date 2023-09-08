@@ -24,6 +24,7 @@ module eigensolver_oct_m
   use debug_oct_m
   use derivatives_oct_m
   use eigen_cg_oct_m
+  use eigen_chebyshev_oct_m
   use eigen_rmmdiis_oct_m
   use exponential_oct_m
   use global_oct_m
@@ -40,7 +41,6 @@ module eigensolver_oct_m
   use mpi_oct_m
   use mpi_lib_oct_m
   use multicomm_oct_m
-  use multigrid_oct_m
   use namespace_oct_m
   use parser_oct_m
   use preconditioners_oct_m
@@ -63,8 +63,7 @@ module eigensolver_oct_m
   public ::            &
     eigensolver_t,     &
     eigensolver_init,  &
-    eigensolver_end,   &
-    eigensolver_run
+    eigensolver_end
 
   type eigensolver_t
     private
@@ -76,18 +75,18 @@ module eigensolver_oct_m
     FLOAT           :: imag_time
 
     !> Stores information about how well it performed.
-    FLOAT, allocatable,   public :: diff(:, :)
+    FLOAT, allocatable,   public :: diff(:, :)     !< Diff in `nst` states, per k-point
     integer,              public :: matvec
-    integer, allocatable, public :: converged(:)
+    integer, allocatable, public :: converged(:)   !< Number of converged states, per k-point
 
     !> Stores information about the preconditioning.
     type(preconditioner_t), public :: pre
 
+    !> Store routine used for subspace diagonalisation
     type(subspace_t) :: sdiag
 
     integer :: rmmdiis_minimization_iter
 
-    logical :: skip_finite_weight_kpoints
     logical, public :: folded_spectrum
 
     ! cg options
@@ -96,17 +95,23 @@ module eigensolver_oct_m
     logical, public :: additional_terms
     FLOAT,   public :: energy_change_threshold
 
+    ! Chebyshev filtering options
+    type(eigen_chebyshev_t), public :: cheby_params
+
     type(exponential_t) :: exponential_operator
+  contains
+    procedure :: run =>  eigensolver_run
   end type eigensolver_t
 
 
   integer, public, parameter :: &
-       RS_PLAN    = 11,         &
-       RS_CG      =  5,         &
-       RS_CG_NEW  =  6,         &
-       RS_EVO     =  9,         &
-       RS_RMMDIIS = 10
-  
+    RS_PLAN    = 11,         &
+    RS_CG      =  5,         &
+    RS_CG_NEW  =  6,         &
+    RS_EVO     =  9,         &
+    RS_RMMDIIS = 10,         &
+    RS_CHEBYSHEV = 12
+
 contains
 
   ! ---------------------------------------------------------
@@ -143,7 +148,7 @@ contains
     !% Ref: Jiang et al., <i>Phys. Rev. B</i> <b>68</b>, 165337 (2003)
     !%Option evolution 9
     !% (Experimental) Propagation in imaginary time.
-    !%Option rmmdiis 10 
+    !%Option rmmdiis 10
     !% Residual minimization scheme, direct inversion in the
     !% iterative subspace eigensolver, based on the implementation of
     !% Kresse and Furthm&uuml;ller [<i>Phys. Rev. B</i> <b>54</b>, 11169
@@ -154,6 +159,12 @@ contains
     !% Note: with <tt>unocc</tt>, you will need to stop the calculation
     !% by hand, since the highest states will probably never converge.
     !% Usage with more than one block of states per node is experimental, unfortunately.
+    !%Option chebyshev_filter 12
+    !% A Chebyshev-filtered subspace iteration method, which avoids most of the explicit computation of
+    !% eigenvectors and results in a significant speedup over iterative diagonalization methods.
+    !% This method may be viewed as an approach to solve the original nonlinear Kohn-Sham equation by a
+    !% nonlinear subspace iteration technique, without emphasizing the intermediate linearized Kohn-Sham
+    !% eigenvalue problems. For further details, see [Zhou et. al.](http://dx.doi.org/10.1016/j.jcp.2014.06.056)
     !%End
 
     if(st%parallel_in_states) then
@@ -163,6 +174,12 @@ contains
     end if
 
     call parse_variable(namespace, 'Eigensolver', default_es, eigens%es_type)
+
+    if(eigens%es_type == RS_CG_NEW) then
+      message(1) = "The cg_new eigensolver is deprecated"
+      message(2) = "and will be removed in the next major release of Octopus."
+      call messages_warning(2, namespace=namespace)
+    endif
 
     if(st%parallel_in_states .and. .not. eigensolver_parallel_in_states(eigens)) then
       message(1) = "The selected eigensolver is not parallel in states."
@@ -248,6 +265,8 @@ contains
     case(RS_EVO)
       call messages_experimental("imaginary-time evolution eigensolver")
 
+      default_iter = 1
+
       !%Variable EigensolverImaginaryTime
       !%Type float
       !%Default 0.1
@@ -260,14 +279,14 @@ contains
       !%End
       call parse_variable(namespace, 'EigensolverImaginaryTime', CNST(0.1), eigens%imag_time)
       if(eigens%imag_time <= M_ZERO) call messages_input_error(namespace, 'EigensolverImaginaryTime')
-      
+
       call exponential_init(eigens%exponential_operator, namespace)
 
       if(st%smear%method /= SMEAR_SEMICONDUCTOR .and. st%smear%method /= SMEAR_FIXED_OCC) then
         message(1) = "Smearing of occupations is incompatible with imaginary time evolution."
         call messages_fatal(1, namespace=namespace)
       end if
-      
+
     case(RS_RMMDIIS)
       default_iter = 5
 
@@ -284,13 +303,69 @@ contains
 
       call parse_variable(namespace, 'EigensolverMinimizationIter', 0, eigens%rmmdiis_minimization_iter)
 
-      if(gr%mesh%use_curvilinear) call messages_experimental("RMMDIIS eigensolver for curvilinear coordinates")
+      if(gr%use_curvilinear) call messages_experimental("RMMDIIS eigensolver for curvilinear coordinates")
+
+    case(RS_CHEBYSHEV)
+      !%Variable ChebyshevFilterLanczosOrder
+      !%Type integer
+      !%Default 5
+      !%Section SCF::Eigensolver
+      !%Description
+      !% Used by the Chebyshev filter only.
+      !% The number of Lanczos iterations used to construct the tridiagonal matrix,
+      !% from which the upper bound of H is estimated.
+      !% A value in the range 4 <= ChebyshevFilterLanczosOrder <= 10 is reasonable.
+      !% Values greater than 10 will raise an assertion.
+      !%End
+      call parse_variable(namespace, 'ChebyshevFilterLanczosOrder', default_chebyshev_params%n_lanczos, &
+        eigens%cheby_params%n_lanczos)
+
+      !%Variable ChebyshevFilterDegree
+      !%Type integer
+      !%Default 10
+      !%Section SCF::Eigensolver
+      !%Description
+      !% Used by the Chebyshev filter only.
+      !% The degree of the Chebyshev polynomial used to dampen the interval of eigenstates
+      !% one is not interested in.
+      !% The larger the polynomial, the fewer SCF steps should be required to reach convergence,
+      !% however this directly defines the number of matrix-vector products performed on the Hamiltonian
+      !% per SCF step.
+      !% A value in the range 8 <= ChebyshevFilterDegree <= 20 is reasonable.
+      !%End
+      call parse_variable(namespace, 'ChebyshevFilterDegree', default_chebyshev_params%degree, eigens%cheby_params%degree)
+
+      !%Variable ChebyshevFilterBoundMixing
+      !%Type float
+      !%Default 0.5
+      !%Section SCF::Eigensolver
+      !%Description
+      !% In the first application of the filter, for the first SCF step, the initial lower bound estimate
+      !% is defined as a linear combination of the smallest and largest eigenvalues of the Hamiltonian.
+      !% The bound mixing determines the proportion of linear mixing, beta:
+      !% $b_{lower} = beta min{\lambda} + (\beta - 1) max{\lambda}$
+      !% of the smallest and largest eigenvalues.
+      !%End
+      call parse_variable(namespace, 'ChebyshevFilterBoundMixing', default_chebyshev_params%bound_mixing, &
+        eigens%cheby_params%bound_mixing)
+
+      !%Variable ChebyshevFilterNIter
+      !%Type integer
+      !%Default 5
+      !%Section SCF::Eigensolver
+      !%Description
+      !% The max number of iterations in the first SCF step of the Chebyshev solver. In practice this
+      !% does not need to exceed 10, as the eigenstates will vary alot between the first and second
+      !% SCF steps.
+      !%End
+      call parse_variable(namespace, 'ChebyshevFilterNIter', default_chebyshev_params%n_iter, &
+        eigens%cheby_params%n_iter)
 
     case default
       call messages_input_error(namespace, 'Eigensolver')
     end select
 
-    call messages_print_stress(msg='Eigensolver', namespace=namespace)
+    call messages_print_with_emphasis(msg='Eigensolver', namespace=namespace)
 
     call messages_print_var_option("Eigensolver", eigens%es_type, namespace=namespace)
 
@@ -298,10 +373,10 @@ contains
     call messages_obsolete_variable(namespace, 'EigensolverFinalTolerance', 'EigensolverTolerance')
     call messages_obsolete_variable(namespace, 'EigensolverFinalToleranceIteration')
 
-    ! this is an internal option that makes the solver use the 
+    ! this is an internal option that makes the solver use the
     ! folded operator (H-shift)^2 to converge first eigenvalues around
-    ! the values of shift 
-    ! c.f. L. W. Wang and A. Zunger 
+    ! the values of shift
+    ! c.f. L. W. Wang and A. Zunger
     ! JCP 100, 2394 (1994); doi: http://dx.doi.org/10.1063/1.466486
     eigens%folded_spectrum = .false.
 
@@ -323,7 +398,9 @@ contains
     !% except for <tt>rmdiis</tt>, which performs only 5 iterations.
     !% Increasing this value for <tt>rmdiis</tt> increases the convergence speed,
     !% at the cost of an increased memory footprint.
-    !% In the case of imaginary time propatation, this variable is not used.
+    !%
+    !% In the case of imaginary time propatation, this variable controls the number of iterations
+    !% for which the Hxc potential is frozen. Default is 1 for the imaginary time evolution.
     !%End
     call parse_variable(namespace, 'EigensolverMaxIter', default_iter, eigens%es_maxiter)
     if(eigens%es_maxiter < 1) call messages_input_error(namespace, 'EigensolverMaxIter')
@@ -355,7 +432,7 @@ contains
     select case(eigens%es_type)
     case(RS_RMMDIIS)
       call messages_write('Info: The rmmdiis eigensolver requires ')
-      mem = (M_TWO*eigens%es_maxiter - M_ONE)*st%d%block_size*TOFLOAT(gr%mesh%np_part)
+      mem = (M_TWO*eigens%es_maxiter - M_ONE)*st%d%block_size*TOFLOAT(gr%np_part)
       if(states_are_real(st)) then
         mem = mem*CNST(8.0)
       else
@@ -372,16 +449,7 @@ contains
       call messages_info()
     end select
 
-    call messages_print_stress(namespace=namespace)
-
-    !%Variable EigensolverSkipKpoints
-    !%Type logical
-    !%Section SCF::Eigensolver
-    !%Description
-    !% Only solve Hamiltonian for k-points with zero weight
-    !%End
-    call parse_variable(namespace, 'EigensolverSkipKpoints', .false., eigens%skip_finite_weight_kpoints)
-    call messages_print_var_value('EigensolverSkipKpoints',  eigens%skip_finite_weight_kpoints, namespace=namespace)
+    call messages_print_with_emphasis(namespace=namespace)
 
     POP_SUB(eigensolver_init)
   end subroutine eigensolver_init
@@ -407,14 +475,14 @@ contains
 
   ! ---------------------------------------------------------
   subroutine eigensolver_run(eigens, namespace, gr, st, hm, iter, conv, nstconv)
-    type(eigensolver_t),      intent(inout) :: eigens
+    class(eigensolver_t),     intent(inout) :: eigens
     type(namespace_t),        intent(in)    :: namespace
     type(grid_t),             intent(in)    :: gr
     type(states_elec_t),      intent(inout) :: st
     type(hamiltonian_elec_t), intent(inout) :: hm
     integer,                  intent(in)    :: iter
     logical,        optional, intent(out)   :: conv
-    integer,        optional, intent(in)    :: nstconv !< Number of states considered for 
+    integer,        optional, intent(in)    :: nstconv !< Number of states considered for
     !                                                  !< the convergence criteria
 
     integer :: ik, ist, nstconv_
@@ -430,7 +498,7 @@ contains
     PUSH_SUB(eigensolver_run)
 
     if(present(conv)) conv = .false.
-    if(present(nstconv)) then 
+    if(present(nstconv)) then
       nstconv_ = nstconv
     else
       nstconv_ = st%nst
@@ -443,12 +511,10 @@ contains
     end if
 
     ik_loop: do ik = st%d%kpt%start, st%d%kpt%end
-     if(eigens%skip_finite_weight_kpoints.and. st%d%kweights(ik) > M_ZERO) cycle
-
       if (states_are_real(st)) then
-        call deigensolver_run(eigens, namespace, gr%mesh, st, hm, iter, ik)
+        call deigensolver_run(eigens, namespace, gr, st, hm, iter, ik)
       else
-        call zeigensolver_run(eigens, namespace, gr%mesh, st, hm, iter, ik)
+        call zeigensolver_run(eigens, namespace, gr, st, hm, iter, ik)
       end if
 
       if (.not. eigens%folded_spectrum) then
@@ -518,7 +584,7 @@ contains
     par_stat = .false.
 
     select case(this%es_type)
-    case(RS_RMMDIIS)
+    case(RS_RMMDIIS, RS_EVO)
       par_stat = .true.
     end select
 

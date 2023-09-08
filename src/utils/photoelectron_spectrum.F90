@@ -133,7 +133,7 @@ program photoelectron_spectrum
   dim    = space%dim   ! The dimensionality dim = [1,2,3]
   pdim   = space%periodic_dim
 
-  call messages_print_stress(msg="Postprocessing", namespace=global_namespace)
+  call messages_print_with_emphasis(msg="Postprocessing", namespace=global_namespace)
 
   !Figure out which method has been used to calculate the photoelectron data
   call parse_variable(global_namespace, 'PhotoElectronSpectrum', OPTION__PHOTOELECTRONSPECTRUM__NONE, pes_method)
@@ -363,7 +363,7 @@ program photoelectron_spectrum
 
       krng(1) = kpoints_number(kpoints) - kpoints%nik_skip  + 1
 
-      call messages_print_stress(msg="Kpoint selection", namespace=global_namespace)
+      call messages_print_with_emphasis(msg="Kpoint selection", namespace=global_namespace)
       write(message(1), '(a)') 'Will use a zero-weight path in reciprocal space with the following points'
       call messages_info(1)
 
@@ -380,7 +380,7 @@ program photoelectron_spectrum
   end if
 
   call write_kpoints_info(kpoints, krng(1), krng(2))
-  call messages_print_stress(namespace=global_namespace)
+  call messages_print_with_emphasis(namespace=global_namespace)
 
 
   nkpt = krng(2) - krng(1) + 1
@@ -486,7 +486,7 @@ program photoelectron_spectrum
   write(message(1), '(a)') 'Done'
   call messages_info(1)
 
-  call messages_print_stress(namespace=global_namespace)
+  call messages_print_with_emphasis(namespace=global_namespace)
 
   call restart_end(restart)
 
@@ -564,7 +564,7 @@ contains
     ! these functions are defined in pes_mask_out_inc.F90
 
     if (st%d%ispin /= UNPOLARIZED .or. ist>0) then
-      call messages_print_stress(namespace=global_namespace)
+      call messages_print_with_emphasis(namespace=global_namespace)
     end if
 
     if (ist > 0) then
@@ -590,7 +590,7 @@ contains
 
 
     if (pesout%what(OPTION__PHOTOELECTRONSPECTRUMOUTPUT__ENERGY_TOT)) then
-      call messages_print_stress(msg="Energy-resolved PES", namespace=global_namespace)
+      call messages_print_with_emphasis(msg="Energy-resolved PES", namespace=global_namespace)
 
       select case (pes_method)
       case (OPTION__PHOTOELECTRONSPECTRUM__PES_MASK)
@@ -603,7 +603,7 @@ contains
     end if
 
     if (pesout%what(OPTION__PHOTOELECTRONSPECTRUMOUTPUT__ENERGY_ANGLE)) then
-      call messages_print_stress(msg="Angle- and energy-resolved PES", namespace=global_namespace)
+      call messages_print_with_emphasis(msg="Angle- and energy-resolved PES", namespace=global_namespace)
 
       select case (pes_method)
       case (OPTION__PHOTOELECTRONSPECTRUM__PES_MASK)
@@ -617,7 +617,7 @@ contains
     end if
 
     if (pesout%what(OPTION__PHOTOELECTRONSPECTRUMOUTPUT__VELOCITY_MAP_CUT)) then
-      call messages_print_stress(msg="Velocity map on a plane", namespace=global_namespace)
+      call messages_print_with_emphasis(msg="Velocity map on a plane", namespace=global_namespace)
       dir = -1
       if (sum((pvec-(/1 ,0 ,0/))**2) <= M_EPSILON) dir = 1
       if (sum((pvec-(/0 ,1 ,0/))**2) <= M_EPSILON) dir = 2
@@ -653,7 +653,7 @@ contains
     end if
 
     if (pesout%what(OPTION__PHOTOELECTRONSPECTRUMOUTPUT__ENERGY_XY)) then
-      call messages_print_stress(msg="Angle and energy-resolved on a plane", namespace=global_namespace)
+      call messages_print_with_emphasis(msg="Angle and energy-resolved on a plane", namespace=global_namespace)
       if (uEstep >  0 .and. uEstep > Estep) then
         Estep = uEstep
       else
@@ -671,7 +671,7 @@ contains
     end if
 
     if (pesout%what(OPTION__PHOTOELECTRONSPECTRUMOUTPUT__ENERGY_TH_PH)) then
-      call messages_print_stress(msg="PES on spherical cuts", namespace=global_namespace)
+      call messages_print_with_emphasis(msg="PES on spherical cuts", namespace=global_namespace)
 
       write(message(1), '(a,es19.12,a2,es19.12,2x,a19)') &
         'Save PES on a spherical cut at E= ',Emin,", ",Emax, &
@@ -697,7 +697,7 @@ contains
 
     if (pesout%what(OPTION__PHOTOELECTRONSPECTRUMOUTPUT__VELOCITY_MAP)) then
 
-      call messages_print_stress(msg="Full velocity map", namespace=global_namespace)
+      call messages_print_with_emphasis(msg="Full velocity map", namespace=global_namespace)
 
       if (.not. (bitand(pesout%how(OPTION__PHOTOELECTRONSPECTRUMOUTPUT__VELOCITY_MAP), OPTION__OUTPUTFORMAT__NETCDF) /= 0) .and. &
         .not. (bitand(pesout%how(OPTION__PHOTOELECTRONSPECTRUMOUTPUT__VELOCITY_MAP), OPTION__OUTPUTFORMAT__VTK)      /= 0) .and. &
@@ -729,7 +729,7 @@ contains
     end if
 
     if (pesout%what(OPTION__PHOTOELECTRONSPECTRUMOUTPUT__ARPES)) then
-      call messages_print_stress(msg="ARPES", namespace=global_namespace)
+      call messages_print_with_emphasis(msg="ARPES", namespace=global_namespace)
 
       do i3 = 1, llp(3)
         do i2 = 1, llp(2)
@@ -749,7 +749,7 @@ contains
 
 
     if (pesout%what(OPTION__PHOTOELECTRONSPECTRUMOUTPUT__ARPES_CUT)) then
-      call messages_print_stress(msg="ARPES cut on reciprocal space path", namespace=global_namespace)
+      call messages_print_with_emphasis(msg="ARPES cut on reciprocal space path", namespace=global_namespace)
 
       filename = outfile('./PES_ARPES', ist, ispin, "path")
       call pes_out_arpes_cut(global_namespace, pesP_out, filename, dim, llp, pmesh, Ekin)

@@ -82,7 +82,7 @@ contains
     type(pes_t),                  intent(out)   :: pes
     type(namespace_t),            intent(in)    :: namespace
     type(space_t),                intent(in)    :: space
-    type(mesh_t),                 intent(in)    :: mesh
+    class(mesh_t),                intent(in)    :: mesh
     class(box_t),                 intent(in)    :: box
     type(states_elec_t),          intent(in)    :: st
     integer,                      intent(in)    :: save_iter
@@ -133,7 +133,7 @@ contains
 
     !Header Photoelectron info
     if (pes%calc_spm .or. pes%calc_mask .or. pes%calc_flux) then
-      call messages_print_stress(msg='Photoelectron', namespace=namespace)
+      call messages_print_with_emphasis(msg='Photoelectron', namespace=namespace)
     end if
 
 
@@ -150,7 +150,7 @@ contains
 
     !Footer Photoelectron info
     if (pes%calc_spm .or. pes%calc_mask .or. pes%calc_flux) then
-      call messages_print_stress(namespace=namespace)
+      call messages_print_with_emphasis(namespace=namespace)
     end if
 
     POP_SUB(pes_init)
@@ -176,7 +176,7 @@ contains
     type(pes_t),              intent(inout) :: pes
     type(namespace_t),        intent(in)    :: namespace
     type(space_t),            intent(in)    :: space
-    type(mesh_t),             intent(in)    :: mesh
+    class(mesh_t),            intent(in)    :: mesh
     type(states_elec_t),      intent(inout) :: st
     type(derivatives_t),      intent(in)    :: der
     FLOAT,                    intent(in)    :: dt
@@ -189,7 +189,7 @@ contains
 
     if (pes%calc_spm)  call pes_spm_calc(pes%spm, st, mesh, dt, iter, ext_partners)
     if (pes%calc_mask) call pes_mask_calc(pes%mask, namespace, space, mesh, st, kpoints, dt, iter)
-    if (pes%calc_flux) then 
+    if (pes%calc_flux) then
       call pes_flux_calc(pes%flux, space, mesh, st, der, ext_partners, kpoints, iter, dt, stopping)
     end if
 
@@ -198,25 +198,24 @@ contains
 
 
   ! ---------------------------------------------------------
-  subroutine pes_output(pes, namespace, space, mesh, st, iter, outp, dt, gr, ions)
+  subroutine pes_output(pes, namespace, space, gr, st, iter, outp, dt, ions)
     type(pes_t),         intent(inout) :: pes
     type(namespace_t),   intent(in)    :: namespace
     type(space_t),       intent(in)    :: space
-    type(mesh_t),        intent(in)    :: mesh
+    type(grid_t),       intent(in)    :: gr
     type(states_elec_t), intent(in)    :: st
     integer,             intent(in)    :: iter
     type(output_t),      intent(in)    :: outp
     FLOAT,               intent(in)    :: dt
-    type(grid_t),        intent(in)    :: gr
     type(ions_t),        intent(in)    :: ions
 
     PUSH_SUB(pes_output)
 
-    if (pes%calc_spm) call pes_spm_output(pes%spm, mesh, st, namespace, iter, dt)
+    if (pes%calc_spm) call pes_spm_output(pes%spm, gr, st, namespace, iter, dt)
 
-    if (pes%calc_mask) call pes_mask_output (pes%mask, mesh, st, outp, namespace, space, "td.general/PESM", gr, ions,iter)
+    if (pes%calc_mask) call pes_mask_output (pes%mask, gr, st, outp, namespace, space, "td.general/PESM", ions,iter)
 
-    if (pes%calc_flux) call pes_flux_output(pes%flux, mesh%box, st, namespace)
+    if (pes%calc_flux) call pes_flux_output(pes%flux, gr%box, st, namespace)
 
     POP_SUB(pes_output)
   end subroutine pes_output
@@ -228,7 +227,7 @@ contains
     type(namespace_t),   intent(in)  :: namespace
     type(restart_t),     intent(in)  :: restart
     type(states_elec_t), intent(in)  :: st
-    type(mesh_t),        intent(in)  :: mesh
+    class(mesh_t),       intent(in)  :: mesh
     integer,             intent(out) :: ierr
 
     PUSH_SUB(pes_dump)
@@ -313,7 +312,7 @@ contains
   ! ---------------------------------------------------------
   subroutine pes_init_write(pes, mesh, st, namespace)
     type(pes_t),         intent(in)  :: pes
-    type(mesh_t),        intent(in)  :: mesh
+    class(mesh_t),       intent(in)  :: mesh
     type(states_elec_t), intent(in)  :: st
     type(namespace_t),   intent(in)  :: namespace
 

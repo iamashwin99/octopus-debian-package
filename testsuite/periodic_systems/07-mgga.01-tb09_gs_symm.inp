@@ -11,14 +11,14 @@ BoxShape = parallelepiped
 Spacing = a/12
 
 %Coordinates
-  "C" |   0.0       | 0.0       | 0.0 
+  "C" |   0.0       | 0.0       | 0.0
   "C" |   a/2       | a/2       | 0.0
   "C" |   a/2       | 0.0       | a/2
-  "C" |   0.0       | a/2       | a/2 
-  "C" |   a/4       | a/4       | a/4 
+  "C" |   0.0       | a/2       | a/2
+  "C" |   a/4       | a/4       | a/4
   "C" |   a/4 + a/2 | a/4 + a/2 | a/4
   "C" |   a/4 + a/2 | a/4       | a/4 + a/2
-  "C" |   a/4       | a/4 + a/2 | a/4 + a/2 
+  "C" |   a/4       | a/4 + a/2 | a/4 + a/2
 %
 
 nk = 3
@@ -31,7 +31,7 @@ KPointsUseSymmetries = yes
 ExperimentalFeatures = yes
 SymmetrizeDensity = yes
 
-ExtraStates = 2
+ExtraStates = 3
 
 FromScratch = yes
 
@@ -42,5 +42,3 @@ ConvRelEv = 1e-8
 XCUseGaugeIndependentKED = no
 
 FilterPotentials = filter_none
-
-

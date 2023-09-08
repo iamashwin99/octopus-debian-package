@@ -23,6 +23,8 @@ module species_oct_m
   use global_oct_m
   use iihash_oct_m
   use io_oct_m
+  use loct_math_oct_m
+  use logrid_oct_m
   use math_oct_m
   use messages_oct_m
   use mpi_oct_m
@@ -31,6 +33,7 @@ module species_oct_m
   use profiling_oct_m
   use ps_oct_m
   use pseudo_oct_m
+  use root_solver_oct_m
   use share_directory_oct_m
   use pseudo_set_oct_m
   use splines_oct_m
@@ -49,7 +52,6 @@ module species_oct_m
     species_build,                 &
     species_init_global,           &
     species_end_global,            &
-    species_read_delta,            &
     species_pot_init,              &
     species_type,                  &
     species_label,                 &
@@ -59,6 +61,8 @@ module species_oct_m
     species_ps,                    &
     species_zval,                  &
     species_z,                     &
+    species_a,                     &
+    species_b,                     &
     species_sc_alpha,              &
     species_jradius,               &
     species_jthick,                &
@@ -104,7 +108,8 @@ module species_oct_m
     SPECIES_CHARGE_DENSITY = 125,           & !< user-defined function for charge density
     SPECIES_FROM_FILE      = 126,           &
     SPECIES_FULL_DELTA     = 127,           & !< full-potential atom
-    SPECIES_SOFT_COULOMB   = 128              !< soft-Coulomb potential
+    SPECIES_SOFT_COULOMB   = 128,           & !< soft-Coulomb potential
+    SPECIES_FULL_ANC       = 130              !< Analytical non-conserving regularized full potential
 
   type species_t
     private
@@ -137,8 +142,9 @@ module species_oct_m
     logical                 :: nlcc   !< true if we have non-local core corrections
 
 
-    FLOAT :: sigma                !< If we have an all-electron atom:
-
+    FLOAT :: sigma = -M_ONE       !< If we have an all-electron atom:
+    FLOAT :: aa = -M_ONE          !< a parameter of the ANC potential
+    FLOAT :: bb = M_ZERO          !< b parameter of the ANC potential
 
     character(len=200) :: density_formula !< If we have a charge distribution creating the potential:
 
@@ -147,10 +153,10 @@ module species_oct_m
     integer, allocatable :: iwf_l(:, :), iwf_m(:, :), iwf_i(:, :), iwf_n(:, :) !< i, n, l, m as a function of iorb and ispin
     FLOAT, allocatable :: iwf_j(:)    !< j as a function of iorb
 
-    integer :: hubbard_l          !< For the LDA+U, the angular momentum for the applied U
-    FLOAT   :: hubbard_U          !< For the LDA+U, the effective U
-    FLOAT   :: hubbard_j          !< For the LDA+U, j (l-1/2 or l+1/2)
-    FLOAT   :: hubbard_alpha      !< For the LDA+U, a potential contraining the occupations
+    integer :: hubbard_l          !< For the DFT+U, the angular momentum for the applied U
+    FLOAT   :: hubbard_U          !< For the DFT+U, the effective U
+    FLOAT   :: hubbard_j          !< For the DFT+U, j (l-1/2 or l+1/2)
+    FLOAT   :: hubbard_alpha      !< For the DFT+U, a potential contraining the occupations
     integer :: user_lmax          !< For the TM pseudos, user defined lmax
     integer :: user_llocal        !< For the TM pseudos, used defined llocal
     integer :: pseudopotential_set_id !< to which set this pseudopotential belongs
@@ -166,6 +172,11 @@ module species_oct_m
   logical :: initialized = .false.
   integer :: default_pseudopotential_set_id
   type(pseudo_set_t) :: default_pseudopotential_set
+  FLOAT :: alpha_p
+  type(logrid_t), pointer :: grid_p
+  integer :: default_allelectron_type
+  FLOAT :: default_sigma
+  FLOAT :: default_anc_a
 
 contains
 
@@ -173,7 +184,7 @@ contains
   subroutine species_init_global(namespace)
     type(namespace_t),         intent(in)  :: namespace
 
-    integer :: ierr
+    integer :: ierr, default_val
 
     if (initialized) return
 
@@ -182,6 +193,53 @@ contains
     initialized = .true.
 
     call share_directory_set(conf%share)
+
+    !%Variable AllElectronType
+    !%Type integer
+    !%Default no
+    !%Section System::Species
+    !%Description
+    !% Selects the type of all-electron species that applies by default to all
+    !% atoms. This is not compatible with <tt>PseudopotentialSet</tt>, but it is
+    !% compatible with the <tt>Species</tt> block.
+    !%
+    !%Option no 0
+    !% Do not specify any default all-electron type of species. All species must be
+    !% specified in the Species block.
+    !%Option full_delta 1
+    !% All atoms are supposed to be by default of type <tt>species_full_delta</tt>.
+    !%Option full_gaussian 2
+    !% All atoms are supposed to be by default of type <tt>species_full_gaussian</tt>.
+    !%Option full_anc 3
+    !% All atoms are supposed to be by default of type <tt>species_full_anc</tt>.
+    !%End
+    call parse_variable(namespace, 'AllElectronType', OPTION__ALLELECTRONTYPE__NO, default_allelectron_type)
+    call messages_print_var_option('AllElectronType', default_allelectron_type, namespace=namespace)
+
+    !%Variable AllElectronSigma
+    !%Type integer
+    !%Default 0.6
+    !%Section System::Species
+    !%Description
+    !% Default value for the parameter <tt>gaussian_width</tt>. This is useful
+    !% for specifying multiple atoms without specifying the species block. The
+    !% default value is taken from the recommendation in
+    !% <i>Phys. Rev. B</i> <b>55</b>, 10289 (1997).
+    !%
+    !%End
+    call parse_variable(namespace, 'AllElectronSigma', CNST(0.6), default_sigma)
+
+    !%Variable AllElectronANCParam
+    !%Type integer
+    !%Default 4
+    !%Section System::Species
+    !%Description
+    !% Default values for the parameter <tt>anc_a</tt>. This is usefull
+    !% for specifying multiple atoms without specifying the species block.
+    !%
+    !%End
+    call parse_variable(namespace, 'AllElectronANCParam', CNST(4.0), default_anc_a)
+
 
     !%Variable PseudopotentialSet
     !%Type integer
@@ -208,6 +266,7 @@ contains
     !% PBE pseudopotentials. Ref: M. Schlipf and F. Gygi, <i>Comp. Phys. Commun.</i> <b>196</b>, 36 (2015).
     !% This set provides pseudopotentials for elements up to Z = 83
     !% (Bi), excluding Lanthanides.
+    !% Current version of the set is 1.2.
     !%Option hgh_lda 3
     !% The set of Hartwigsen-Goedecker-Hutter LDA pseudopotentials for elements from H to Rn.
     !% Ref: C. Hartwigsen, S. Goedecker, and J. Hutter, <i>Phys. Rev. B</i> <b>58</b>, 3641 (1998).
@@ -229,24 +288,24 @@ contains
     !% documentation of the option <tt>hscv_lda</tt> for details and warnings.
     !%Option pseudodojo_pbe 100
     !% PBE version of the pseudopotentials of http://pseudo-dojo.org. Version 0.4.
-    !%Option pseudodojo_pbe_stringent 102
-    !% High-accuracy PBE version of the pseudopotentials of http://pseudo-dojo.org. Version 0.4.
     !%Option pseudodojo_lda 103
     !% LDA pseudopotentials of http://pseudo-dojo.org. Version 0.4.
-    !%Option pseudodojo_lda_stringent 104
-    !% High-accuracy LDA pseudopotentials of http://pseudo-dojo.org. Version 0.4.
     !%Option pseudodojo_pbesol 105
     !% PBEsol version of the pseudopotentials of http://pseudo-dojo.org. Version 0.3.
-    !%Option pseudodojo_pbesol_stringent 106
-    !% High-accuracy PBEsol version of the pseudopotentials of http://pseudo-dojo.org. Version 0.4.
     !%End
-
-    call parse_variable(namespace, 'PseudopotentialSet', OPTION__PSEUDOPOTENTIALSET__STANDARD, default_pseudopotential_set_id)
+    default_val = OPTION__PSEUDOPOTENTIALSET__STANDARD
+    if(default_allelectron_type /= OPTION__ALLELECTRONTYPE__NO) default_val = OPTION__PSEUDOPOTENTIALSET__NONE
+    call parse_variable(namespace, 'PseudopotentialSet', default_val, default_pseudopotential_set_id)
     call messages_print_var_option('PseudopotentialSet', default_pseudopotential_set_id, namespace=namespace)
     if (default_pseudopotential_set_id /= OPTION__PSEUDOPOTENTIALSET__NONE) then
       call pseudo_set_init(default_pseudopotential_set, get_set_directory(default_pseudopotential_set_id), ierr)
     else
       call pseudo_set_nullify(default_pseudopotential_set)
+    end if
+
+    if (default_pseudopotential_set_id /= OPTION__PSEUDOPOTENTIALSET__NONE .and. default_allelectron_type /= OPTION__ALLELECTRONTYPE__NO) then
+      message(1) = "PseudopotentialSet /= none cannot be used with AllElectronType /= no."
+      call messages_fatal(1, namespace=namespace)
     end if
 
     POP_SUB(species_init_global)
@@ -295,7 +354,7 @@ contains
     this%jradius = M_ZERO
     this%jthick = M_ZERO
     this%nlcc = .false.
-    this%sigma = M_ZERO
+    this%sigma = -M_ONE
     this%density_formula = ""
     this%niwfs = -1
     this%hubbard_l = -1
@@ -325,6 +384,7 @@ contains
     character(len=LABEL_LEN)  :: lab
     integer :: ib, row, n_spec_block, read_data
     type(block_t) :: blk
+    type(element_t) :: element
 
     PUSH_SUB(species_read)
 
@@ -381,6 +441,7 @@ contains
     !% <br>&nbsp;&nbsp;'He_all'  | species_full_delta
     !% <br>&nbsp;&nbsp;'H_all'   | species_full_gaussian  |  gaussian_width |  0.2
     !% <br>&nbsp;&nbsp;'Li1D'    | species_soft_coulomb   |  softening | 1.5 | valence | 3
+    !% <br>&nbsp;&nbsp;'H_all'   | species_full_anc       |  anc_a | 4
     !% <br>%</tt>
     !%Option species_pseudo  -7
     !% The species is a pseudopotential. How to get the
@@ -432,6 +493,9 @@ contains
     !% Full atomic potential represented by a delta charge
     !% distribution. The atom will be displaced to the nearest grid
     !% point. The atomic number is determined from the name of the species.
+    !%Option species_full_anc     -130
+    !% Analytical norm-conserving regulized Coulomb potential from
+    !% [Gygi J. Chem. Theory Comput. 2023, 19, 1300−1309].
     !%Option species_full_gaussian   -124
     !% A full-potential atom is defined by a Gaussian accumulation of
     !% positive charge (distorted if curvilinear coordinates are
@@ -473,8 +537,9 @@ contains
     !% <a href=http://www.nist.gov/pml/data/comp.cfm>NIST values</a>.
     !% For other species, the default is 1.0.
     !%Option valence -10006
-    !% The number of electrons of the species. It is set automatically for pseudopotentials,
-    !% but is mandatory for other species.
+    !% The number of electrons of the species. It is set automatically from the name of the species.
+    !% if it correspond to the name in the periodic table. If not specified and if the name
+    !% does not match an atom name, a value of 0 is assumed.
     !%Option jellium_radius -10007
     !% The radius of the sphere for <tt>species_jellium</tt>. If this value is not specified,
     !% the default of 0.5 bohr is used.
@@ -485,7 +550,7 @@ contains
     !%Option gaussian_width -10008
     !% The width of the Gaussian (in units of spacing) used to represent
     !% the nuclear charge for <tt>species_full_gaussian</tt>. If not present,
-    !% the default is 0.25.
+    !% the default is 0.6.
     !%Option softening -10009
     !% The softening parameter <i>a</i> for <tt>species_soft_coulomb</tt> in units of length.
     !%Option file -10010
@@ -507,12 +572,15 @@ contains
     !%Option hubbard_l -10018
     !% The angular-momentum for which the effective U will be applied.
     !%Option hubbard_u -10019
-    !% The effective U that will be used for the LDA+U calculations.
+    !% The effective U that will be used for the DFT+U calculations.
     !%Option hubbard_j -10020
     !% The value of j (hubbard_l-1/2 or hubbard_l+1/2) on which the effective U is applied.
     !%Option hubbard_alpha -10021
     !% The strength of the potential constraining the occupations of the localized subspace
     !% as defined in PRB 71, 035105 (2005)
+    !%Option anc_a -10022
+    !% The value of the parameter a of the ANC potential, as defined in [Gygi, JCTC 2023, 19, 1300−1309].
+    !% This parameter has the unit of inverse length and determines the range of regularization.
     !%End
 
     call messages_obsolete_variable(namespace, 'SpecieAllElectronSigma', 'Species')
@@ -549,14 +617,41 @@ contains
     ! the species we are looking for.
     if (n_spec_block > 0) call parse_block_end(blk)
 
-    spec%pseudopotential_set_id = default_pseudopotential_set_id
-    spec%pseudopotential_set = default_pseudopotential_set
-    call read_from_set(spec, read_data)
+    if(default_allelectron_type /= 0) then
+      select case(default_allelectron_type)
+      case(OPTION__ALLELECTRONTYPE__FULL_DELTA)
+        spec%type = SPECIES_FULL_DELTA
+      case(OPTION__ALLELECTRONTYPE__FULL_GAUSSIAN)
+        spec%type = SPECIES_FULL_GAUSSIAN
+      case(OPTION__ALLELECTRONTYPE__FULL_ANC)
+        spec%type = SPECIES_FULL_ANC
+      case default
+        ASSERT(.false.)
+      end select
 
-    if (read_data == 0) then
-      call messages_write( 'Species '//trim(spec%label)//' not found in default pseudopotential set.', new_line=.true. )
-      call messages_write('( '//trim(get_set_directory(default_pseudopotential_set_id))//' )')
-      call messages_fatal(namespace=namespace)
+      ! get the mass, vdw radius and atomic number for this element
+      call element_init(element, get_symbol(spec%label))
+
+      ASSERT(element_valid(element))
+
+      spec%z = element_atomic_number(element)
+      spec%z_val = spec%z
+      spec%mass = element_mass(element)
+      spec%vdw_radius = element_vdw_radius(element)
+
+      call element_end(element)
+
+    else
+      spec%pseudopotential_set_id = default_pseudopotential_set_id
+      spec%pseudopotential_set = default_pseudopotential_set
+
+      call read_from_set(spec, read_data)
+
+      if (read_data == 0) then
+        call messages_write( 'Species '//trim(spec%label)//' not found in default pseudopotential set.', new_line=.true. )
+        call messages_write('( '//trim(get_set_directory(default_pseudopotential_set_id))//' )')
+        call messages_fatal(namespace=namespace)
+      end if
     end if
 
     POP_SUB(species_read)
@@ -616,16 +711,10 @@ contains
       filename = trim(conf%share)//'/pseudopotentials/quantum-simulation.org/hscv/pbe/'
     case (OPTION__PSEUDOPOTENTIALSET__PSEUDODOJO_LDA)
       filename = trim(conf%share)//'/pseudopotentials/pseudo-dojo.org/nc-sr-04_pw_standard/'
-    case (OPTION__PSEUDOPOTENTIALSET__PSEUDODOJO_LDA_STRINGENT)
-      filename = trim(conf%share)//'/pseudopotentials/pseudo-dojo.org/nc-sr-04_pw_stringent/'
     case (OPTION__PSEUDOPOTENTIALSET__PSEUDODOJO_PBE)
       filename = trim(conf%share)//'/pseudopotentials/pseudo-dojo.org/nc-sr-04_pbe_standard/'
-    case (OPTION__PSEUDOPOTENTIALSET__PSEUDODOJO_PBE_STRINGENT)
-      filename = trim(conf%share)//'/pseudopotentials/pseudo-dojo.org/nc-sr-04_pbe_stringent/'
     case (OPTION__PSEUDOPOTENTIALSET__PSEUDODOJO_PBESOL)
       filename = trim(conf%share)//'/pseudopotentials/pseudo-dojo.org/nc-sr-04_pbesol_standard/'
-    case (OPTION__PSEUDOPOTENTIALSET__PSEUDODOJO_PBESOL_STRINGENT)
-      filename = trim(conf%share)//'/pseudopotentials/pseudo-dojo.org/nc-sr-04_pbesol_stringent/'
     case (OPTION__PSEUDOPOTENTIALSET__NONE)
       filename = ''
     case default
@@ -737,17 +826,56 @@ contains
       spec%niwfs = 2*nint(spec%z_val+M_HALF)
       spec%omega = CNST(0.1)
 
-    case (SPECIES_FULL_DELTA, SPECIES_FULL_GAUSSIAN)
+    case (SPECIES_FULL_DELTA)
       spec%has_density = .true.
       if (print_info_) then
         write(message(1),'(a,a,a)')    'Species "',trim(spec%label),'" is an all-electron atom.'
-        write(message(2),'(a,f11.6)')  '   Z = ', spec%z_val
+        write(message(2),'(a,f11.6)')  '   Z = ', spec%z
         write(message(3),'(a)')  '   Potential will be calculated solving the Poisson equation'
         write(message(4),'(a)')  '   for a delta density distribution.'
         call messages_info(4, namespace=namespace)
       end if
       spec%niwfs = species_closed_shell_size(floor(M_HALF*spec%z_val+M_HALF))
-      spec%omega = spec%z_val
+      ! We add one more shell because heavier elements might have not complete shells
+      ! An example is Ag with 5s1 electrons but no 4f electrons
+      ! We correct this number later
+      spec%niwfs = species_closed_shell_size(spec%niwfs+1)
+      spec%omega = spec%z
+
+    case (SPECIES_FULL_GAUSSIAN)
+      spec%has_density = .true.
+      if (print_info_) then
+        write(message(1),'(a,a,a)')    'Species "',trim(spec%label),'" is an all-electron atom.'
+        write(message(2),'(a,f11.6)')  '   Z = ', spec%z
+        write(message(3),'(a)')  '   Potential will be calculated solving the Poisson equation'
+        write(message(4),'(a)')  '   for a Gaussian density distribution.'
+        call messages_info(4, namespace=namespace)
+      end if
+      spec%niwfs = species_closed_shell_size(floor(M_HALF*spec%z_val+M_HALF))
+      ! We add one more shell because heavier elements might have not complete shells
+      ! An example is Ag with 5s1 electrons but no 4f electrons
+      ! We correct this number later
+      spec%niwfs = species_closed_shell_size(spec%niwfs+1)
+      spec%omega = spec%z
+      if(spec%sigma < 0) spec%sigma = default_sigma
+      ASSERT(spec%sigma > 0)
+
+    case (SPECIES_FULL_ANC)
+      spec%has_density = .false.
+      if (print_info_) then
+        write(message(1),'(a,a,a)')    'Species "',trim(spec%label),'" is an all-electron atom.'
+        write(message(2),'(a,f11.6)')  '   Z = ', spec%z
+        write(message(3),'(a)')  '   Potential is an analytical norm-conserving regularized potential'
+        call messages_info(3, namespace=namespace)
+      end if
+      spec%niwfs = species_closed_shell_size(floor(M_HALF*spec%z_val+M_HALF))
+      ! We add one more shell because heavier elements might have not complete shells
+      ! An example is Ag with 5s2 electrons but no 4f electrons
+      ! We correct this number later
+      spec%niwfs = species_closed_shell_size(spec%niwfs+1)
+      spec%omega = spec%z
+      if(spec%aa < 0) spec%aa = default_anc_a
+      ASSERT(spec%aa > 0)
 
     case (SPECIES_CHARGE_DENSITY, SPECIES_JELLIUM_CHARGE_DENSITY)
       spec%niwfs = int(max(2*spec%z_val, M_ONE))
@@ -768,7 +896,7 @@ contains
       call messages_input_error(namespace, 'Species', 'Unknown species type')
     end select
 
-    if (.not. species_is_ps(spec) .and. spec%type /= SPECIES_FULL_DELTA) then
+    if (.not. species_is_ps(spec) .and. .not. species_is_full(spec)) then
       ! since there is no real cap, make sure there are at least a few available
       spec%niwfs = max(5, spec%niwfs)
     end if
@@ -779,7 +907,7 @@ contains
     SAFE_ALLOCATE(spec%iwf_i(1:spec%niwfs, 1:ispin))
     SAFE_ALLOCATE(spec%iwf_j(1:spec%niwfs))
 
-    call species_iwf_fix_qn(spec, ispin, dim)
+    call species_iwf_fix_qn(spec, namespace, ispin, dim)
 
     if (.not. species_is_ps(spec)) then
       write(message(1),'(a,i6,a,i6)') 'Number of orbitals: ', spec%niwfs
@@ -788,26 +916,9 @@ contains
 
     POP_SUB(species_build)
   end subroutine species_build
-  ! ---------------------------------------------------------
-
-  subroutine species_read_delta(spec, zz)
-    type(species_t), intent(out) :: spec
-    FLOAT,           intent(in)  :: zz
-
-    PUSH_SUB(species_read_delta)
-
-    spec%type = SPECIES_FULL_DELTA
-    spec%z     = zz
-    spec%z_val = zz
-    spec%sigma = CNST(0.25)
-
-    POP_SUB(species_read_delta)
-  end subroutine species_read_delta
 
 
   ! ---------------------------------------------------------
-
-
   !> find size of closed shell for hydrogenic atom with size at least min_niwfs
   integer function species_closed_shell_size(min_niwfs) result(size)
     integer, intent(in) :: min_niwfs
@@ -821,8 +932,6 @@ contains
     end do
 
   end function species_closed_shell_size
-
-  ! ---------------------------------------------------------
 
 
   ! ---------------------------------------------------------
@@ -839,6 +948,11 @@ contains
     character(len=256) :: dirname
     integer            :: iorb
     FLOAT :: local_radius, orbital_radius
+    FLOAT :: grid_aa, grid_bb, bb(1), startval(1)
+    integer :: grid_np
+    logical :: conv
+    type(root_solver_t) :: rs
+
 
     PUSH_SUB(species_pot_init)
 
@@ -891,7 +1005,74 @@ contains
       end if
     end if
 
+    if(species_type(this) == SPECIES_FULL_ANC) then
+      ! We first construct a logarithmic grid
+      ! Then we find the value of b on this grid
+      ! Finally, we evaluate the scaled potential following Eq. 19
+      call logrid_find_parameters(namespace, int(this%z), grid_aa, grid_bb, grid_np)
+      SAFE_ALLOCATE(grid_p)
+      call logrid_init(grid_p, LOGRID_PSF, grid_aa, grid_bb, grid_np)
+
+      alpha_p = this%aa
+      ! We start from b=-0.1, which is close to the solution for a=4
+      startval(1) = CNST(-0.1)
+
+      ! solve equation
+      call root_solver_init(rs, namespace, 1, solver_type=ROOT_NEWTON, maxiter=500, abs_tolerance=CNST(1.0e-20))
+      call droot_solver_run(rs, func_anc, bb, conv, startval=startval)
+
+      this%bb = bb(1)
+
+      if (.not. conv) then
+        write(message(1),'(a)') 'Root finding in species_pot did not converge/'
+        call messages_fatal(1, namespace=namespace)
+      end if
+
+      if(debug%info) then
+        write(message(1),'(a, f12.6)')  'Debug: Optimized value of b for the ANC potential = ', this%bb
+        call messages_info(1, namespace=namespace)
+      end if
+      call logrid_end(grid_p)
+      SAFE_DEALLOCATE_P(grid_p)
+    end if
+
     POP_SUB(species_pot_init)
+  contains
+    ! ---------------------------------------------------------
+    ! In order to use the root finder, we need an auxiliary function
+    ! that returns the value of the function to minimize and its Jacobian matrix
+    ! given a value of the parameters.
+    ! This routine does it for the ANC potential, where xin corresponds to the value b
+    subroutine func_anc(xin, ff, jacobian)
+      FLOAT, intent(in)  :: xin(:)
+      FLOAT, intent(out) :: ff(:), jacobian(:,:)
+
+      FLOAT, allocatable :: rho(:)
+      FLOAT :: norm
+      integer :: ip
+
+      PUSH_SUB(func_anc)
+
+      SAFE_ALLOCATE(rho(1:grid_p%nrval))
+      norm = M_ONE/sqrt(M_PI)
+      do ip = 1, grid_p%nrval
+        rho(ip) = -grid_p%rofi(ip) * loct_erf(grid_p%rofi(ip)*alpha_p) + xin(1)*exp(-alpha_p**2*grid_p%r2ofi(ip))
+        rho(ip) =  norm * exp(rho(ip))
+      end do
+
+      ! First, we calculate the function to be minimized
+      ff(1) = sum(grid_p%drdi*rho**2*grid_p%r2ofi) - M_ONE/M_FOUR/M_PI
+
+      ! Now the jacobian.
+      do ip = 1, grid_p%nrval
+        rho(ip) = M_TWO*rho(ip)**2*exp(-alpha_p**2*grid_p%r2ofi(ip))
+      end do
+      jacobian(1,1) = sum(grid_p%drdi*rho*grid_p%r2ofi)
+
+      SAFE_DEALLOCATE_A(rho)
+      POP_SUB(func_anc)
+    end subroutine func_anc
+
   end subroutine species_pot_init
   ! ---------------------------------------------------------
 
@@ -965,6 +1146,22 @@ contains
     type(species_t), intent(in) :: spec
     species_z = spec%z
   end function species_z
+  ! ---------------------------------------------------------
+
+
+  ! ---------------------------------------------------------
+  FLOAT pure function species_a(spec)
+    type(species_t), intent(in) :: spec
+    species_a = spec%aa
+  end function species_a
+  ! ---------------------------------------------------------
+
+
+  ! ---------------------------------------------------------
+  FLOAT pure function species_b(spec)
+    type(species_t), intent(in) :: spec
+    species_b = spec%bb
+  end function species_b
   ! ---------------------------------------------------------
 
 
@@ -1195,7 +1392,8 @@ contains
 
     species_is_full = &
       ( spec%type == SPECIES_FULL_GAUSSIAN) .or. &
-      ( spec%type == SPECIES_FULL_DELTA)
+      ( spec%type == SPECIES_FULL_DELTA)    .or. &
+      ( spec%type == SPECIES_FULL_ANC)
 
   end function species_is_full
 
@@ -1242,7 +1440,7 @@ contains
   subroutine species_real_nl_projector(spec, np, x, r, l, lm, i, uV)
     type(species_t),   intent(in)  :: spec
     integer,           intent(in)  :: np
-    FLOAT,             intent(in)  :: x(:,:) !< (np_part, 3)
+    FLOAT,             intent(in)  :: x(:,:) !< (3, np_part)
     FLOAT,             intent(in)  :: r(:) !< (np_part)
     integer,           intent(in)  :: l, lm, i
     FLOAT,             intent(out) :: uV(:) !< (np)
@@ -1259,7 +1457,7 @@ contains
       call spline_eval_vec(spec%ps%kb(l, i), np, uv)
 
       do ip = 1, np
-        call ylmr_real(x(ip, 1:3), l, lm, ylm)
+        call ylmr_real(x(1:3, ip), l, lm, ylm)
         uv(ip) = uv(ip) * ylm
       end do
     end if
@@ -1276,7 +1474,7 @@ contains
   subroutine species_nl_projector(spec, np, x, r, l, lm, i, uV)
     type(species_t),   intent(in)  :: spec
     integer,           intent(in)  :: np
-    FLOAT,             intent(in)  :: x(:,:) !< (np_part, 3)
+    FLOAT,             intent(in)  :: x(:,:) !< (3, np_part)
     FLOAT,             intent(in)  :: r(:) !< (np_part)
     integer,           intent(in)  :: l, lm, i
     CMPLX,             intent(out) :: uV(:) !< (np)
@@ -1293,7 +1491,7 @@ contains
       call spline_eval_vec(spec%ps%kb(l, i), np, uv)
 
       do ip = 1, np
-        call ylmr_cmplx(x(ip, 1:3), l, lm, ylm)
+        call ylmr_cmplx(x(1:3, ip), l, lm, ylm)
         uv(ip) = uv(ip) * ylm
       end do
     end if
@@ -1323,6 +1521,17 @@ contains
     if (species_is_ps(spec)) then
       ASSERT(ii <= spec%ps%conf%p)
       radius = spline_cutoff_radius(spec%ps%ur(ii, is), threshold_)
+    else if (species_is_full(spec)) then
+      ! For n=1, we use the direct analytical expression
+      radius = -log(threshold_*sqrt(M_PI/(spec%Z_val**3)))/spec%Z_val
+
+      ! For higher orbitals, we could use the first moment of the hydrogenic wavefunction
+      ! See Physics of atoms and molecules, Bransden and Joachain
+      ! Eq. 3.68
+      ! radius = (TOFLOAT(ii)**2/spec%z)*(M_ONE + M_HALF*(M_ONE-TOFLOAT(ll*(ll+1))/(spec%z**2)))
+      ! However, these values are too small and leads to unbound orbitals.
+      ! Hence, we use the scaling of the first moment, that goes as n^2 to scale the n=1 radius
+      radius = radius * ii**2
     else if (species_represents_real_atom(spec)) then
       radius = -ii*log(threshold_)/spec%Z_val
     else
@@ -1419,11 +1628,9 @@ contains
       spec%pseudopotential_set_initialized = .false.
     end if
 
-    if (species_is_ps(spec)) then
-      if (allocated(spec%ps)) then
-        call ps_end(spec%ps)
-        SAFE_DEALLOCATE_A(spec%ps)
-      end if
+    if (allocated(spec%ps)) then
+      call ps_end(spec%ps)
+      SAFE_DEALLOCATE_A(spec%ps)
     end if
     SAFE_DEALLOCATE_A(spec%iwf_n)
     SAFE_DEALLOCATE_A(spec%iwf_l)
@@ -1612,7 +1819,10 @@ contains
     case (SPECIES_JELLIUM_SLAB)
 
     case (SPECIES_FULL_DELTA, SPECIES_FULL_GAUSSIAN)
-      spec%sigma = CNST(0.25)
+      spec%sigma = default_sigma
+
+    case (SPECIES_FULL_ANC)
+      spec%aa = default_anc_a
 
     case (SPECIES_CHARGE_DENSITY, SPECIES_JELLIUM_CHARGE_DENSITY)
 
@@ -1731,6 +1941,16 @@ contains
           row=row, column=icol+1)
         if (spec%type /= SPECIES_FULL_GAUSSIAN) then
           call messages_input_error(namespace, 'Species', 'gaussian_width can only be used with species_full_gaussian', &
+            row=row, column=icol+1)
+        end if
+
+      case (OPTION__SPECIES__ANC_A)
+        call check_duplication(OPTION__SPECIES__ANC_A)
+        call parse_block_float(blk, row, icol + 1, spec%aa)
+        if (spec%aa <= M_ZERO) call messages_input_error(namespace, 'Species', 'anc_a must be positive', &
+          row=row, column=icol+1)
+        if (spec%type /= SPECIES_FULL_ANC) then
+          call messages_input_error(namespace, 'Species', 'anc_a can only be used with species_full_anc', &
             row=row, column=icol+1)
         end if
 
@@ -1857,7 +2077,7 @@ contains
     end if
 
     select case (spec%type)
-    case (SPECIES_PSEUDO, SPECIES_PSPIO, SPECIES_FULL_DELTA, SPECIES_FULL_GAUSSIAN)
+    case (SPECIES_PSEUDO, SPECIES_PSPIO, SPECIES_FULL_DELTA, SPECIES_FULL_GAUSSIAN, SPECIES_FULL_ANC)
 
       if ((spec%type == SPECIES_PSEUDO .or. spec%type == SPECIES_PSPIO) &
         .and. .not. (parameter_defined(OPTION__SPECIES__FILE) .or. parameter_defined(OPTION__SPECIES__DB_FILE))) then
@@ -1889,7 +2109,8 @@ contains
 
       spec%z = element_atomic_number(element)
 
-      if (spec%type == SPECIES_FULL_DELTA .or. spec%type == SPECIES_FULL_GAUSSIAN) then
+      ! If z_val was not specified, we set it to be z
+      if (species_is_full(spec) .and. spec%z_val < M_ZERO) then
         spec%z_val = spec%z
       end if
 
@@ -1987,10 +2208,11 @@ contains
 
   ! ---------------------------------------------------------
   !> set up quantum numbers of orbitals
-  subroutine species_iwf_fix_qn(spec, ispin, dim)
-    type(species_t), intent(inout) :: spec
-    integer,         intent(in)    :: ispin
-    integer,         intent(in)    :: dim
+  subroutine species_iwf_fix_qn(spec, namespace, ispin, dim)
+    type(species_t),   intent(inout) :: spec
+    type(namespace_t), intent(in)    :: namespace
+    integer,           intent(in)    :: ispin
+    integer,           intent(in)    :: dim
 
     integer :: is, n, i, l, m, n1, n2, n3, nn, ii
 
@@ -2017,6 +2239,36 @@ contains
 
         end do
       end do
+
+    else if (species_is_full(spec)) then
+
+      ! We need to find the occupations of the atomic wavefunctions to be able to get the atomic density
+      ! Note that here we store the configuration is spec%ps%conf, even if we do not have a pseudo
+      ! Not so clean...
+      SAFE_ALLOCATE(spec%ps)
+      spec%ps%conf%symbol = spec%label(1:3)
+      call ps_guess_atomic_occupations(namespace, species_z(spec), species_zval(spec), ispin, spec%ps%conf)
+
+      ! Now that we have the occupations and the correct quantum numbers, we can attribute them
+      do is = 1, ispin
+        n = 1
+        do i = 1, spec%ps%conf%p
+          if (n > spec%niwfs) exit
+          l = spec%ps%conf%l(i)
+
+          do m = -l, l
+            spec%iwf_i(n, is) = i
+            spec%iwf_n(n, is) = spec%ps%conf%n(i)
+            spec%iwf_l(n, is) = l
+            spec%iwf_m(n, is) = m
+            spec%iwf_j(n) = spec%ps%conf%j(i)
+            n = n + 1
+          end do
+        end do
+      end do
+
+      ! We now overwrite spec%niwfs because we know now the number of orbitals
+      spec%niwfs = n-1
 
     else if (species_represents_real_atom(spec) .and. dim == 3) then
 

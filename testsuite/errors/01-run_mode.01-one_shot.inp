@@ -2,7 +2,7 @@
 #
 
 CalculationMode = one_shot
-fromScratch = yes
+FromScratch = yes
 
 %Coordinates
 "H" | 0 | 0 | 0

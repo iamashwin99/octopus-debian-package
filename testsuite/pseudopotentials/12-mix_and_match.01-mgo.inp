@@ -1,4 +1,5 @@
 CalculationMode = gs
+Debug = info
 
 dist = 1.834*angstrom
 
@@ -8,16 +9,11 @@ dist = 1.834*angstrom
 %
 
 %Coordinates
- 'Mg' | 0.0 |  dist/2 | 0.0 
- 'O'  | 0.0 | -dist/2 | 0.0 
+ 'Mg' | 0.0 |  dist/2 | 0.0
+ 'O'  | 0.0 | -dist/2 | 0.0
 %
 
 Spacing = 0.43
 Radius = 6.0
-
-Debug = info
-
-ExperimentalFeatures = yes
-
 
 PoissonSolver = isf

@@ -43,6 +43,7 @@ subroutine X(write_binary)(fname, np, ff, ierr, nohead, fendian)
   logical, optional,   intent(in)  :: fendian  !< flip endianness
 
   integer :: nhd, flpe, iio
+  character(kind=c_char), dimension(c_str_len(fname)) :: cname
 
   PUSH_SUB(X(write_binary))
 
@@ -52,7 +53,8 @@ subroutine X(write_binary)(fname, np, ff, ierr, nohead, fendian)
   flpe = logical_to_integer(optional_default(fendian, .false.))
 
   iio = 0
-  call write_binary(np, c_loc(ff(1)), R_TYPE_IOBINARY, ierr, iio, nhd, flpe, string_f_to_c(fname))
+  cname = string_f_to_c(fname)
+  call write_binary(np, c_loc(ff(1)), R_TYPE_IOBINARY, ierr, iio, nhd, flpe, cname)
   call io_incr_counters(iio)
 
   POP_SUB(X(write_binary))
@@ -214,6 +216,7 @@ subroutine X(read_binary)(fname, np, ff, ierr, offset)
   integer(i8), optional, intent(in)   :: offset
 
   integer :: iio
+  character(kind=c_char), dimension(c_str_len(fname)) :: cname
 
   PUSH_SUB(X(read_binary))
 
@@ -226,7 +229,8 @@ subroutine X(read_binary)(fname, np, ff, ierr, offset)
 #endif
   if (ierr == -1) then
     iio = 0
-    call read_binary(np, optional_default(offset, 0_i8), c_loc(ff(1)), R_TYPE_IOBINARY, ierr, iio, string_f_to_c(fname))
+    cname = string_f_to_c(fname)
+    call read_binary(np, optional_default(offset, 0_i8), c_loc(ff(1)), R_TYPE_IOBINARY, ierr, iio, cname)
     call io_incr_counters(iio)
   end if
 

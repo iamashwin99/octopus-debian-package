@@ -20,7 +20,7 @@ lz = 4.0*angstrom
 
 %LatticeParameters
   lx | ly | 2*lz
-% 
+%
 
 %Spacing
  lx/16 | ly/8 | lx/16
@@ -53,6 +53,3 @@ FilterPotentials = filter_none
 Preconditioner = no
 
 SymmetriesTolerance = 1e-4
-
-
-

@@ -1,7 +1,7 @@
 #include <config.h>
 
 #ifdef HAVE_CLFFT
-
+#include <stdlib.h>
 #include <clFFT.h>
 
 void FC_FUNC_(clfftgetversion_low, CLFFTGETVERSION_LOW)(int * major, int * minor, int * patch, int * status){

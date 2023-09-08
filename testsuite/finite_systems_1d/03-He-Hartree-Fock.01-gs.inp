@@ -1,4 +1,4 @@
-calculationMode = gs
+CalculationMode = gs
 
 Dimensions = 1
 
@@ -11,10 +11,8 @@ Spacing = 0.05
 %
 
 %Coordinates
-  "1dhelium" | 0 
+  "1dhelium" | 0
 %
-
-MaximumIter = 500
 
 ExtraStates = 6
 

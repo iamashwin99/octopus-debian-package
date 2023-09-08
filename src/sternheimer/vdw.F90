@@ -32,7 +32,7 @@ module vdw_oct_m
   use mpi_oct_m
   use multisystem_basic_oct_m
   use parser_oct_m
-  use pert_oct_m
+  use perturbation_electric_oct_m
   use profiling_oct_m
   use restart_oct_m
   use space_oct_m
@@ -240,9 +240,9 @@ contains
       end if
 
       ! we always need complex response
-      call restart_init(gs_restart, sys%namespace, RESTART_GS, RESTART_TYPE_LOAD, sys%mc, ierr, mesh=sys%gr%mesh, exact=.true.)
+      call restart_init(gs_restart, sys%namespace, RESTART_GS, RESTART_TYPE_LOAD, sys%mc, ierr, mesh=sys%gr, exact=.true.)
       if (ierr == 0) then
-        call states_elec_look_and_load(gs_restart, sys%namespace, sys%space, sys%st, sys%gr%mesh, sys%kpoints, &
+        call states_elec_look_and_load(gs_restart, sys%namespace, sys%space, sys%st, sys%gr, sys%kpoints, &
           is_complex = .true.)
         call restart_end(gs_restart)
       else
@@ -257,18 +257,18 @@ contains
 
       do dir = 1, ndir
         call lr_init(lr(dir,1))
-        call lr_allocate(lr(dir,1), sys%st, sys%gr%mesh)
+        call lr_allocate(lr(dir,1), sys%st, sys%gr)
       end do
 
       ! load wavefunctions
       if (.not. fromScratch) then
-        call restart_init(restart_load, sys%namespace, RESTART_VDW, RESTART_TYPE_LOAD, sys%mc, ierr, mesh=sys%gr%mesh)
+        call restart_init(restart_load, sys%namespace, RESTART_VDW, RESTART_TYPE_LOAD, sys%mc, ierr, mesh=sys%gr)
 
         do dir = 1, ndir
           write(dirname,'(a,i1,a)') "wfs_", dir, "_1_1"
           call restart_open_dir(restart_load, dirname, ierr)
           if (ierr == 0) then
-            call states_elec_load(restart_load, sys%namespace, sys%space, sys%st, sys%gr%mesh, sys%kpoints, ierr, lr=lr(dir,1))
+            call states_elec_load(restart_load, sys%namespace, sys%space, sys%st, sys%gr, sys%kpoints, ierr, lr=lr(dir,1))
           end if
           if (ierr /= 0) then
             message(1) = "Unable to read response wavefunctions from '"//trim(dirname)//"'."
@@ -284,7 +284,7 @@ contains
         call io_mkdir(VDW_DIR, sys%namespace)               ! output data
       end if
 
-      call restart_init(restart_dump, sys%namespace, RESTART_VDW, RESTART_TYPE_DUMP, sys%mc, ierr, mesh=sys%gr%mesh)
+      call restart_init(restart_dump, sys%namespace, RESTART_VDW, RESTART_TYPE_DUMP, sys%mc, ierr, mesh=sys%gr)
 
       POP_SUB(vdw_run_legacy.init_)
     end subroutine init_
@@ -312,23 +312,23 @@ contains
     FLOAT function get_pol(omega)
       CMPLX, intent(in) :: omega
 
-      CMPLX        :: alpha(sys%space%dim, sys%space%dim)
-      type(pert_t) :: perturbation
+      CMPLX   :: alpha(1:sys%space%dim, 1:sys%space%dim)
+      type(perturbation_electric_t), pointer :: pert
 
       PUSH_SUB(vdw_run_legacy.get_pol)
 
-      call pert_init(perturbation, sys%namespace, PERTURBATION_ELECTRIC, sys%ions)
+      pert => perturbation_electric_t(sys%namespace)
       do dir = 1, ndir
         write(message(1), '(3a,f7.3)') 'Info: Calculating response for the ', index2axis(dir), &
           '-direction and imaginary frequency ', units_from_atomic(units_out%energy, aimag(omega))
         call messages_info(1, namespace=sys%namespace)
 
-        call pert_setup_dir(perturbation, dir)
-        call zsternheimer_solve(sh, sys%namespace, sys%space, sys%gr, sys%kpoints, sys%st, sys%hm, sys%ks%xc, sys%mc, &
-          lr(dir, :), 1, omega, perturbation, restart_dump, em_rho_tag(TOFLOAT(omega),dir), em_wfs_tag(dir,1))
+        call pert%setup_dir(dir)
+        call zsternheimer_solve(sh, sys%namespace, sys%space, sys%gr, sys%kpoints, sys%st, sys%hm, sys%mc, &
+          lr(dir, :), 1, omega, pert, restart_dump, em_rho_tag(TOFLOAT(omega),dir), em_wfs_tag(dir,1))
       end do
 
-      call zcalc_polarizability_finite(sys%namespace, sys%space, sys%gr, sys%st, sys%hm, sys%ions, lr(:,:), 1, perturbation, &
+      call zcalc_polarizability_finite(sys%namespace, sys%space, sys%gr, sys%st, sys%hm, lr(:,:), 1, pert, &
         alpha(:,:), ndir = ndir)
 
       get_pol = M_ZERO
@@ -341,7 +341,7 @@ contains
 
       get_pol = get_pol / TOFLOAT(sys%space%dim)
 
-      call pert_end(perturbation)
+      SAFE_DEALLOCATE_P(pert)
       POP_SUB(vdw_run_legacy.get_pol)
     end function get_pol
 

@@ -68,7 +68,7 @@ endef
 define module_use_target
 $(eval _use_mods += $(call modinfo_name,$1,$2,$3,use))
 $(call modinfo_name,$1,$2,$3,use): $1 $(dir $1)$(am__dirstamp) ${HEADERS_DEP} | $(_f90_depdir)/$(dir $1)
-	$(call _f90_verbose,F90 USE  [$3] $$<)${FORTRAN_CPP} $$< | $(top_srcdir)/build/preprocess.pl - ${PERL_ARGS} | \
+	$(call _f90_verbose,F90 USE  [$3] $$<)${FORTRAN_CPP} $$< | $(top_srcdir)/scripts/preprocess.pl - ${PERL_ARGS} | \
 		grep -i -o '^ *use [^ ,!:]*' | sed 's/^[[:space:]]*//;' | tr '[:upper:]' '[:lower:]' | sort -u > $$@
 
 endef
@@ -79,7 +79,7 @@ endef
 define module_def_target
 $(eval _def_mods += $(call modinfo_name,$1,$2,$3,def))
 $(call modinfo_name,$1,$2,$3,def): $1 $(dir $1)$(am__dirstamp) ${HEADERS_DEP} | $(_f90_depdir)/$(dir $1)
-	$(call _f90_verbose,F90 MOD  [$3] $$<)${FORTRAN_CPP} $$< | $(top_srcdir)/build/preprocess.pl - ${PERL_ARGS} | \
+	$(call _f90_verbose,F90 MOD  [$3] $$<)${FORTRAN_CPP} $$< | $(top_srcdir)/scripts/preprocess.pl - ${PERL_ARGS} | \
 		grep -i -o '^ *module [^!]*' | sed 's/^[[:space:]]*//;' | tr '[:upper:]' '[:lower:]' | grep -v "\<procedure\>\|\<intrinsic\>" > $$@ || true
 
 endef

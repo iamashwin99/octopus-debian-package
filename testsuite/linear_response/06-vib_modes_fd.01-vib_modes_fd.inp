@@ -1,7 +1,7 @@
 # -*- coding: utf-8 mode: shell-script -*-
 
 CalculationMode = vib_modes
-fromScratch = yes
+FromScratch = yes
 ResponseMethod = finite_differences
 
 BoxShape = minimum

@@ -32,7 +32,7 @@ function usage() {
  (based on script by H. Appel and others)
 
 Usage: oct-run_testsuite.sh [options] [arguments]
-    
+
      -h            this message
      -s            use slurm with salloc
      -l            local run

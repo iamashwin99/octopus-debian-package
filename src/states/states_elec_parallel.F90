@@ -177,6 +177,7 @@ contains
     integer,                     intent(in) :: iqn
     class(wfs_elec_t),           pointer    :: psib
 
+    integer :: total_size
     type(profile_t), save :: prof
 #ifdef HAVE_MPI
     type(profile_t), save :: prof_mpi
@@ -205,6 +206,8 @@ contains
       ASSERT(allocated(this%group%rma_win))
 
       call psib%do_pack(copy = .false.)
+      ASSERT(product(psib%pack_size) < huge(0_i4))
+      total_size = product(int(psib%pack_size, i4))
 
 #ifdef HAVE_MPI
 
@@ -212,12 +215,12 @@ contains
       call MPI_Win_lock(MPI_LOCK_SHARED, this%group%block_node(ib), 0, this%group%rma_win(ib, iqn),  mpi_err)
 
       if (states_are_real(this)) then
-        call MPI_Get(psib%dff_pack(1, 1), product(psib%pack_size), MPI_FLOAT, &
-          this%group%block_node(ib), int(0, MPI_ADDRESS_KIND), product(psib%pack_size), MPI_FLOAT, &
+        call MPI_Get(psib%dff_pack(1, 1), total_size, MPI_FLOAT, &
+          this%group%block_node(ib), int(0, MPI_ADDRESS_KIND), total_size, MPI_FLOAT, &
           this%group%rma_win(ib, iqn), mpi_err)
       else
-        call MPI_Get(psib%zff_pack(1, 1), product(psib%pack_size), MPI_CMPLX, &
-          this%group%block_node(ib), int(0, MPI_ADDRESS_KIND), product(psib%pack_size), MPI_CMPLX, &
+        call MPI_Get(psib%zff_pack(1, 1), total_size, MPI_CMPLX, &
+          this%group%block_node(ib), int(0, MPI_ADDRESS_KIND), total_size, MPI_CMPLX, &
           this%group%rma_win(ib, iqn), mpi_err)
       end if
 

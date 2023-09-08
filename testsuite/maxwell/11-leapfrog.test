@@ -1,0 +1,90 @@
+# -*- coding: utf-8 mode: shell-script -*-
+
+Test       : Free Maxwell propagation through a linear medium with PML boundaries, using the Leapfrog propagator
+Program    : octopus
+TestGroups : long-run, maxwell
+Enabled    : Yes
+
+Input      : 11-leapfrog.01-fullrun.inp
+Precision: 1e-13
+match ;  Tot. Maxwell energy [step 0]  ; LINEFIELD(Maxwell/td.general/maxwell_energy, 6, 3) ; 2.0199000474347553e-01
+match ;  Tot. Maxwell energy [step 50]  ; LINEFIELD(Maxwell/td.general/maxwell_energy, 56, 3) ; 2.0590348055490393e-01
+match ;  Tot. Maxwell energy [step 100]  ; LINEFIELD(Maxwell/td.general/maxwell_energy, 106, 3) ; 2.0583556186260490e-01
+match ;  Tot. Maxwell energy [step 200]  ; LINEFIELD(Maxwell/td.general/maxwell_energy, 206, 3) ; 2.0581739084137096e-01
+
+Precision: 1.0e-15
+match ;  Ez (x=2,y=  0,z=  0) [step 100]  ; LINEFIELD(Maxwell/output_iter/td.0000100/e_field-z\.z=0, 1891, 3) ; 4.69260512377151E-002
+match ;  Ez (x=10,y=10,z=  0) [step 100]  ; LINEFIELD(Maxwell/output_iter/td.0000100/e_field-z\.z=0, 2839, 3) ; -6.72294136038830E-004
+match ;  Ez (x=2,y=  0,z=  0) [step 200]  ; LINEFIELD(Maxwell/output_iter/td.0000200/e_field-z\.z=0, 1891, 3) ; -2.98444795151011E-004
+match ;  Ez (x=10,y=10,z=  0) [step 200]  ; LINEFIELD(Maxwell/output_iter/td.0000200/e_field-z\.z=0, 2839, 3) ; 2.01994776454345E-002
+
+Input      : 11-leapfrog.02-pml_fullrun.inp
+Precision: 2e-14
+match ;  Tot. Maxwell energy [step 0]  ; LINEFIELD(Maxwell/td.general/maxwell_energy, 6, 3) ; 1.0450760171552784e-01
+match ;  Tot. Maxwell energy [step 50]  ; LINEFIELD(Maxwell/td.general/maxwell_energy, 56, 3) ; 1.0624090578258766e-01
+match ;  Tot. Maxwell energy [step 100]  ; LINEFIELD(Maxwell/td.general/maxwell_energy, 106, 3) ; 1.0622122859465563e-01
+match ;  Tot. Maxwell energy [step 200]  ; LINEFIELD(Maxwell/td.general/maxwell_energy, 206, 3) ; 1.2474616228031876e-03
+
+Precision: 1.0e-15
+match ;  Ez (x=6,y=  0,z=  0) [step 100]  ; LINEFIELD(Maxwell/output_iter/td.0000100/e_field-z\.z=0, 2355, 3) ; 5.21895234161229E-002
+match ;  Ez (x=14,y=8,z=  0) [step 100]  ; LINEFIELD(Maxwell/output_iter/td.0000100/e_field-z\.z=0, 3299, 3) ; 1.42987340200225E-007
+match ;  Ez (x=14,y=8,z=  0) [step 200]  ; LINEFIELD(Maxwell/output_iter/td.0000200/e_field-z\.z=0, 3299, 3) ; 1.86008083977626E-005
+
+
+Input      : 11-leapfrog.03-pml_medium_fullrun.inp
+Precision: 2e-14
+match ;  Tot. Maxwell energy [step 0]  ; LINEFIELD(Maxwell/td.general/maxwell_energy, 6, 3) ; 1.0450760171552784e-01
+match ;  Tot. Maxwell energy [step 50]  ; LINEFIELD(Maxwell/td.general/maxwell_energy, 56, 3) ; 9.3035171414538334e-02
+match ;  Tot. Maxwell energy [step 100]  ; LINEFIELD(Maxwell/td.general/maxwell_energy, 106, 3) ; 8.1037608900760782e-02
+match ;  Tot. Maxwell energy [step 200]  ; LINEFIELD(Maxwell/td.general/maxwell_energy, 206, 3) ; 3.8478923984817150e-02
+
+# Ez, xy plane
+Precision: 1.0e-15
+match ;  Ez at PML border (x=-14,y=  0,z=  0) [step 100]  ; LINEFIELD(Maxwell/output_iter/td.0000100/e_field-z\.z=0, 35, 3) ; 5.40463255500746E-006
+match ;  Ez at PML border (x= 14,y=  0,z=  0) [step 100]  ; LINEFIELD(Maxwell/output_iter/td.0000100/e_field-z\.z=0, 3283, 3) ; -3.43953638670198E-006
+Precision: 1.0e-12
+match ;  Ez in medium, center (x=  0,y=  0,z=  0) [step 100]  ; LINEFIELD(Maxwell/output_iter/td.0000100/e_field-z\.z=0, 1659, 3) ; 2.37934748733679E-002
+match ;  Ez in medium, focus (x=0.5,y=-2.5,z=  0) [step 100] ; LINEFIELD(Maxwell/output_iter/td.0000100/e_field-z\.z=0, 1712, 3) ; 4.53633241662807E-002
+match ;  Ez in vacuum, pw max (x=6,y=9.5,z=  0) [step 100] ; LINEFIELD(Maxwell/output_iter/td.0000100/e_field-z\.z=0, 2374, 3) ; 5.26304530325920E-002
+match ;  Ez in vacuum, focus (x=5.5,y=0,z=  0) [step 100] ; LINEFIELD(Maxwell/output_iter/td.0000100/e_field-z\.z=0, 2297, 3) ; -3.93159162525475E-004
+
+
+Precision: 1.0e-15
+match ;  Ez at PML border (x=-14,y=  0,z=  0) [step 200]  ; LINEFIELD(Maxwell/output_iter/td.0000200/e_field-z\.z=0, 35, 3) ; 1.21906162569804E-005
+match ;  Ez at PML border (x= 14,y=  0,z=  0) [step 200]  ; LINEFIELD(Maxwell/output_iter/td.0000200/e_field-z\.z=0, 3283, 3) ; 3.55698894206850E-005
+Precision: 1.0e-13
+match ;  Ez in medium, center (x=  0,y=  0,z=  0) [step 200]  ; LINEFIELD(Maxwell/output_iter/td.0000200/e_field-z\.z=0, 1659, 3) ; -1.71027426283011E-003
+match ;  Ez in medium, focus (x=0.5,y=-2.5,z=  0) [step 200] ; LINEFIELD(Maxwell/output_iter/td.0000200/e_field-z\.z=0, 1712, 3) ; 1.28492019630167E-003
+match ;  Ez in vacuum, pw max (x=6,y=9.5,z=  0) [step 200] ; LINEFIELD(Maxwell/output_iter/td.0000200/e_field-z\.z=0, 2374, 3) ; -2.21463534616846E-003
+Precision: 1.0e-11
+match ;  Ez in vacuum, focus (x=5.5,y=0,z=  0) [step 200] ; LINEFIELD(Maxwell/output_iter/td.0000200/e_field-z\.z=0, 2297, 3) ; -1.00209354727888E-001
+
+Input      : 11-leapfrog.04-pml_medium_restart_part1.inp
+Input      : 11-leapfrog.05-pml_medium_restart_part2.inp
+
+Precision: 2e-14
+match ;  Tot. Maxwell energy [step 0]  ; LINEFIELD(Maxwell/td.general/maxwell_energy, 6, 3) ; 1.0450760171552784e-01
+match ;  Tot. Maxwell energy [step 50]  ; LINEFIELD(Maxwell/td.general/maxwell_energy, 56, 3) ; 9.3035171414538334e-02
+match ;  Tot. Maxwell energy [step 100]  ; LINEFIELD(Maxwell/td.general/maxwell_energy, 106, 3) ; 8.1037608900760782e-02
+match ;  Tot. Maxwell energy [step 200]  ; LINEFIELD(Maxwell/td.general/maxwell_energy, 206, 3) ; 3.8478923984817150e-02
+
+# Ez, xy plane
+Precision: 1.0e-16
+match ;  Ez at PML border (x=-14,y=  0,z=  0) [step 100]  ; LINEFIELD(Maxwell/output_iter/td.0000100/e_field-z\.z=0, 35, 3) ; 5.40463255500746E-006
+match ;  Ez at PML border (x= 14,y=  0,z=  0) [step 100]  ; LINEFIELD(Maxwell/output_iter/td.0000100/e_field-z\.z=0, 3283, 3) ; -3.43953638670198E-006
+Precision: 1.0e-12
+match ;  Ez in medium, center (x=  0,y=  0,z=  0) [step 100]  ; LINEFIELD(Maxwell/output_iter/td.0000100/e_field-z\.z=0, 1659, 3) ; 2.37934748733679E-002
+match ;  Ez in medium, focus (x=0.5,y=-2.5,z=  0) [step 100] ; LINEFIELD(Maxwell/output_iter/td.0000100/e_field-z\.z=0, 1712, 3) ; 4.53633241662807E-002
+match ;  Ez in vacuum, pw max (x=6,y=9.5,z=  0) [step 100] ; LINEFIELD(Maxwell/output_iter/td.0000100/e_field-z\.z=0, 2374, 3) ; 5.26304530325920E-002
+match ;  Ez in vacuum, focus (x=5.5,y=0,z=  0) [step 100] ; LINEFIELD(Maxwell/output_iter/td.0000100/e_field-z\.z=0, 2297, 3) ; -3.93159162525475E-004
+
+
+Precision: 1.0e-16
+match ;  Ez at PML border (x=-14,y=  0,z=  0) [step 200]  ; LINEFIELD(Maxwell/output_iter/td.0000200/e_field-z\.z=0, 35, 3) ; 1.21906162569804E-005
+match ;  Ez at PML border (x= 14,y=  0,z=  0) [step 200]  ; LINEFIELD(Maxwell/output_iter/td.0000200/e_field-z\.z=0, 3283, 3) ; 3.55698894206850E-005
+Precision: 1.0e-13
+match ;  Ez in medium, center (x=  0,y=  0,z=  0) [step 200]  ; LINEFIELD(Maxwell/output_iter/td.0000200/e_field-z\.z=0, 1659, 3) ; -1.71027426283011E-003
+match ;  Ez in medium, focus (x=0.5,y=-2.5,z=  0) [step 200] ; LINEFIELD(Maxwell/output_iter/td.0000200/e_field-z\.z=0, 1712, 3) ; 1.28492019630167E-003
+match ;  Ez in vacuum, pw max (x=6,y=9.5,z=  0) [step 200] ; LINEFIELD(Maxwell/output_iter/td.0000200/e_field-z\.z=0, 2374, 3) ; -2.21463534616846E-003
+Precision: 1.0e-11
+match ;  Ez in vacuum, focus (x=5.5,y=0,z=  0) [step 200] ; LINEFIELD(Maxwell/output_iter/td.0000200/e_field-z\.z=0, 2297, 3) ; -1.00209354727888E-001

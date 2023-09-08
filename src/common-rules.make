@@ -49,7 +49,7 @@ octopus_LIBS =
 scalapack_LIBS = @LIBS_ELPA@ @LIBS_SCALAPACK@ @LIBS_BLACS@
 
 core_LIBS = \
-	@LIBS_FFTW@  @LIBS_LAPACK@ @LIBS_BLAS@                     \
+	@LIBS_FFTW@  @LIBS_LAPACK@ @LIBS_BLAS@ @LIBS_CLBLAST@            \
 	$(top_builddir)/liboct_parser/liboct_parser.la \
 	@GSL_LIBS@ @LIBS_LIBXC@ @FCEXTRALIBS@
 
@@ -67,7 +67,7 @@ FCFLAGS_MODS += @FCFLAGS_LIBXC@ @FCFLAGS_PSPIO@ @FCFLAGS_PSOLVER@ @FCFLAGS_ISF@	
   @FCFLAGS_LIKWID@ @FCFLAGS_DFTBPLUS@
 
 if COMPILE_OPENCL
-  external_LIBS += $(top_builddir)/external_libs/fortrancl/libfortrancl.la @LIBS_CLBLAS@ @LIBS_CLFFT@ @CL_LIBS@
+  external_LIBS += $(top_builddir)/external_libs/fortrancl/libfortrancl.la @LIBS_CLBLAS@ @LIBS_CLBLAST@ @LIBS_CLFFT@ @CL_LIBS@
   FCFLAGS_MODS += @F90_MODULE_FLAG@$(top_builddir)/external_libs/fortrancl
 endif
 
@@ -112,14 +112,14 @@ fc_verbose_0 = @echo "  FC       $@";
 # an object file and delete the intermediate file.
 .F90.o:
 	$(cpp_verbose)@FCCPP@ @CPPFLAGS@ $(AM_CPPFLAGS) -I. $< | \
-	  $(top_srcdir)/build/preprocess.pl - \
+	  $(top_srcdir)/scripts/preprocess.pl - \
 	  "@DEBUG@" "@F90_ACCEPTS_LINE_NUMBERS@" > $*_oct.f90
 	  $(fc_verbose)@FC@ $(FCFLAGS) $(FCFLAGS_MODS) -c @FCFLAGS_f90@ -o $@ $*_oct.f90
 	@rm -f $*_oct.f90
 
 .F90.lo:
 	$(cpp_verbose)@FCCPP@ @CPPFLAGS@ $(AM_CPPFLAGS) -I. $< | \
-	  $(top_srcdir)/build/preprocess.pl - \
+	  $(top_srcdir)/scripts/preprocess.pl - \
 	  "@DEBUG@" "@F90_ACCEPTS_LINE_NUMBERS@" > $*_oct.f90
 	$(fc_verbose)$(LIBTOOL) $(AM_V_lt) --tag=FC $(AM_LIBTOOLFLAGS) \
 	  $(LIBTOOLFLAGS) --mode=compile \
@@ -132,7 +132,7 @@ fc_verbose_0 = @echo "  FC       $@";
 # the .F90.o rule.
 .F90_oct.f90:
 	$(cpp_verbose)@FCCPP@ @CPPFLAGS@ $(AM_CPPFLAGS) -I. $< | \
-	  $(top_srcdir)/build/preprocess.pl - \
+	  $(top_srcdir)/scripts/preprocess.pl - \
 	  "@DEBUG@" "@F90_ACCEPTS_LINE_NUMBERS@" > $*_oct.f90
 
 

@@ -1,0 +1,110 @@
+# ----- Calculation mode and parallelization ------------------------------------------------------
+
+ CalculationMode   = td
+ RestartWrite = yes
+ ExperimentalFeatures = yes
+
+ DisableAccel = yes
+
+%Systems
+  'Maxwell' | maxwell
+  'NP' | dispersive_medium
+%
+
+ Maxwell.ParDomains = auto
+ Maxwell.ParStates  = no
+
+ MediumPoleEnergy = 9.03*ev
+ MediumPoleDamping = 0.053*ev
+ MediumDispersionType = drude_medium
+ %MediumCurrentCoordinates
+   -160.0*nm | 0.0 | 0.0
+   -80.0*nm | 0.0 | 0.0
+%
+# ----- Maxwell box variables ---------------------------------------------------------------------
+
+ l_zero = 550*nm     #central wavelength
+ lsize_mx = 1.25*l_zero
+ lsize_myz = 0.5*l_zero
+ S_c = 0.2 ##Courant condition coefficient
+
+ dx_mx    = 20*nm
+ BoxShape   = parallelepiped
+ NP.BoxShape = box_cgal
+ NP.BoxCgalFile = "09-drude-medium-from-file.01-gold-np-r80nm.off"
+
+ %Lsize
+  lsize_mx+0.25*l_zero | lsize_myz+0.25*l_zero | lsize_myz+0.25*l_zero
+ %
+
+ %Spacing
+  dx_mx | dx_mx | dx_mx
+ %
+
+
+# ----- Maxwell calculation variables -------------------------------------------------------------
+
+ MaxwellHamiltonianOperator = faraday_ampere
+
+ %MaxwellBoundaryConditions
+  plane_waves | zero | zero
+ %
+
+ %MaxwellAbsorbingBoundaries
+  cpml | cpml | cpml
+ %
+
+ MaxwellABWidth                 = 0.25*l_zero
+ MaxwellABPMLPower              = 3.0
+ MaxwellABPMLReflectionError    = 1e-16
+
+
+# ----- Output variables --------------------------------------------------------------------------
+
+ OutputFormat = axis_x
+
+
+# ----- Maxwell output variables ------------------------------------------------------------------
+
+ %MaxwellOutput
+  electric_field
+  total_current_mxll
+ %
+
+ MaxwellOutputInterval = 10
+ MaxwellTDOutput       = maxwell_energy + maxwell_total_e_field + maxwell_total_b_field
+
+ %MaxwellFieldsCoordinate
+   0.00 | 0.00 | 0.00
+ %
+
+
+# ----- Time step variables -----------------------------------------------------------------------
+
+ Maxwell.TDSystemPropagator = prop_expmid
+ NP.TDSystemPropagator      = prop_rk4
+ timestep                = S_c*dx_mx/c
+ TDTimeStep              = timestep
+ TDPropagationTime       = 30*timestep
+
+
+# ----- Maxwell field variables -------------------------------------------------------------------
+
+ lambda = l_zero
+ omega  = 2 * pi * c / lambda
+ kx     = omega / c
+ Ez    = 1.0
+ sigma = 40.0*c
+ p_s     = -lsize_mx
+
+ %UserDefinedInitialMaxwellStates
+   use_incident_waves
+ %
+
+ %MaxwellIncidentWaves
+   plane_wave_mx_function | 0 | 0 | Ez | "plane_waves_function"
+ %
+
+ %MaxwellFunctions
+   "plane_waves_function" | mxf_gaussian_wave | kx | 0 | 0 | p_s | 0 | 0 | sigma
+ %

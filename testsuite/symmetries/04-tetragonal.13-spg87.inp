@@ -17,7 +17,7 @@ MaximumIter = 0
 LCAOStart = lcao_none
 FilterPotentials = filter_none
 %KpointsGrid
- 4 | 4 | 4 
+ 4 | 4 | 4
 %
 KPointsUseSymmetries = yes
 %ReducedCoordinates
@@ -30,4 +30,3 @@ KPointsUseSymmetries = yes
 "H" | 4.0000000000E-02 | 6.0000000000E-02 | 3.2000000000E-01
 "H" | 6.0000000000E-02 | 7.4000000000E-01 | 2.0000000000E-02
 %
-

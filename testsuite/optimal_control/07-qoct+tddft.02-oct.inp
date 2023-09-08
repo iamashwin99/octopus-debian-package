@@ -1,5 +1,4 @@
 CalculationMode = opt_control
-#CalculationMode = gs
 FromScratch = yes
 Dimensions = 2
 ExperimentalFeatures = yes
@@ -17,8 +16,6 @@ omega = 0.25
 BoxShape = sphere
 Radius = 15.0
 Spacing = 0.5
-
-DerivativesOrder = 4
 
 # ------------------
 # GS RUN Parameters
@@ -48,7 +45,7 @@ TDTimeStep = dt
 
 freq = 0.0
 %TDExternalFields
-electric_field | 1 | 0 | 0 | freq | "envelope_function" 
+electric_field | 1 | 0 | 0 | freq | "envelope_function"
 %
 
 %TDFunctions
@@ -76,7 +73,5 @@ OCTControlFunctionOmegaMax = 8.0
 OCTControlFunctionRepresentation = control_fourier_series
 
 OCTDoubleCheck = no
-
-
 
 MixField = density

@@ -43,7 +43,7 @@ subroutine target_init_tdlocal(gr, namespace, tg, td)
   if (parse_block(namespace, 'OCTTdTarget', blk) == 0) then
     call parse_block_string(blk, 0, 0, tg%td_local_target)
     call conv_to_C_string(tg%td_local_target)
-    SAFE_ALLOCATE(tg%rho(1:gr%mesh%np))
+    SAFE_ALLOCATE(tg%rho(1:gr%np))
     call parse_block_end(blk)
   else
     message(1) = 'If OCTTargetOperator = oct_tg_td_local, you must supply a OCTTdTarget block.'
@@ -86,8 +86,8 @@ subroutine target_output_tdlocal(tg, namespace, space, gr, dir, ions, outp)
 
   call io_mkdir(trim(dir), namespace)
   call target_build_tdlocal(tg, gr, M_ZERO)
-  call dio_function_output(outp%how(0), trim(dir), 'td_local_target', namespace, space, gr%mesh, &
-    tg%rho, units_out%length**(-space%dim), ierr, ions = ions)
+  call dio_function_output(outp%how(0), trim(dir), 'td_local_target', namespace, space, gr, &
+    tg%rho, units_out%length**(-space%dim), ierr, pos=ions%pos, atoms=ions%atom)
 
   POP_SUB(target_output_tdlocal)
 end subroutine target_output_tdlocal
@@ -147,23 +147,23 @@ subroutine target_tdcalc_tdlocal(tg, gr, psi, time)
 
   tg%td_fitness(time) = M_ZERO
 
-  SAFE_ALLOCATE(zpsi(1:gr%mesh%np, 1:psi%d%dim))
+  SAFE_ALLOCATE(zpsi(1:gr%np, 1:psi%d%dim))
 
   !!!! WARNING Here one should build the time-dependent target.
   select case (psi%d%ispin)
   case (UNPOLARIZED)
     ASSERT(psi%d%nik == 1)
-    SAFE_ALLOCATE(opsi(1:gr%mesh%np_part, 1))
+    SAFE_ALLOCATE(opsi(1:gr%np_part, 1))
     opsi = M_z0
     do ist  = psi%st_start, psi%st_end
 
-      call states_elec_get_state(psi, gr%mesh, ist, 1, zpsi)
+      call states_elec_get_state(psi, gr, ist, 1, zpsi)
 
-      do ip = 1, gr%mesh%np
+      do ip = 1, gr%np
         opsi(ip, 1) = tg%rho(ip)*zpsi(ip, 1)
       end do
 
-      tg%td_fitness(time) = tg%td_fitness(time) + psi%occ(ist, 1)*TOFLOAT(zmf_dotp(gr%mesh, psi%d%dim, zpsi, opsi))
+      tg%td_fitness(time) = tg%td_fitness(time) + psi%occ(ist, 1)*TOFLOAT(zmf_dotp(gr, psi%d%dim, zpsi, opsi))
 
     end do
     SAFE_DEALLOCATE_A(opsi)
@@ -193,8 +193,8 @@ subroutine target_build_tdlocal(tg, gr, time)
 
   PUSH_SUB(target_build_tdlocal)
 
-  do ip = 1, gr%mesh%np
-    call mesh_r(gr%mesh, ip, rr, coords = xx)
+  do ip = 1, gr%np
+    call mesh_r(gr, ip, rr, coords = xx)
     call parse_expression(re, im, gr%box%dim, xx, rr, time, tg%td_local_target)
     tg%rho(ip) = re
   end do

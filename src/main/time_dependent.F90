@@ -28,10 +28,10 @@ module time_dependent_oct_m
   use namespace_oct_m
   use parser_oct_m
   use profiling_oct_m
+  use propagator_factory_oct_m
   use restart_oct_m
   use system_oct_m
   use td_oct_m
-  use unit_system_oct_m
   use walltimer_oct_m
 
   implicit none
@@ -63,7 +63,6 @@ contains
     class(multisystem_basic_t), intent(inout) :: systems
     logical,                    intent(in)    :: from_scratch
 
-    FLOAT :: final_time
     logical :: trigger_restart, stop_code, stop_loop
     logical :: restart_read
 
@@ -71,20 +70,11 @@ contains
 
     call multisystem_debug_init("debug/multisystem_propagation.log", global_namespace, systems%grp)
 
-    call messages_write('Info: Running Multi-System time evolution')
+    call messages_write('Info: Running Multi-system time evolution')
     call messages_info(namespace=systems%namespace)
 
-    ! Get final propagation time from input
-    ! This variable is also defined (and properly documented) in td/td.F90.
-    ! This is temporary, until all the propagators are moved to the new framework.
-    call parse_variable(systems%namespace, 'TDPropagationTime', CNST(-1.0), final_time, unit = units_inp%time)
-    if (final_time <= M_ZERO) then
-      call messages_input_error(systems%namespace, 'TDPropagationTime', 'must be greater than zero')
-    end if
-    call messages_print_var_value('TDPropagationTime', final_time)
-
     ! Initialize all propagators
-    call systems%init_propagator()
+    call systems%init_algorithm(propagator_factory_t(systems%namespace))
 
     ! Read restart files or set initial conditions
     if (.not. from_scratch) then
@@ -92,7 +82,11 @@ contains
     else
       restart_read = .false.
     end if
-    if (.not. restart_read) then
+    if (restart_read) then
+      message(1) = "Successfully read restart data for all system."
+      call messages_info(1, namespace=systems%namespace)
+    else
+      call systems%init_clocks()
       call systems%initial_conditions()
     end if
 
@@ -102,10 +96,9 @@ contains
 
     ! The full TD loop
     stop_loop = .false.
-    call systems%start_barrier(final_time, BARRIER_TIME)
-    do while (.not. systems%arrived_at_barrier(BARRIER_TIME))
-      ! Do one algorithmic operation
-      call systems%dt_operation()
+    do while (.not. systems%algorithm_finished())
+      ! Execute algorithm until next barrier
+      call systems%execute_algorithm()
 
       ! determine cases in which to trigger writing restart files
       stop_code = clean_stop(systems%grp%comm) .or. walltimer_alarm(systems%grp%comm)
@@ -123,7 +116,7 @@ contains
       end if
     end do
 
-    if (systems%arrived_at_barrier(BARRIER_TIME)) then
+    if (systems%algorithm_finished()) then
       call systems%restart_write()
     end if
 

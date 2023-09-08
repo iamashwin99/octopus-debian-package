@@ -63,7 +63,8 @@ module nl_operator_oct_m
     nl_operator_get_index,      &
     nl_operator_output_weights, &
     nl_operator_np_zero_bc,     &
-    nl_operator_compact_boundaries
+    nl_operator_compact_boundaries, &
+    nl_operator_update_gpu_buffers
 
   type nl_operator_index_t
     private
@@ -84,6 +85,9 @@ module nl_operator_oct_m
     FLOAT,   allocatable, public :: w(:,:)        !< weights. Unique on each parallel process.
 
     logical,          public :: const_w = .true.   !< are the weights independent of index i
+
+    type(accel_mem_t), public :: buff_weights      !< buffer with constant weights
+    type(accel_mem_t), public :: buff_half_weights !< buffer with weights multiplied by -1/2
 
     character(len=40) :: label
 
@@ -136,8 +140,6 @@ module nl_operator_oct_m
 
   integer :: dfunction_global = -1
   integer :: zfunction_global = -1
-  integer :: sfunction_global = -1
-  integer :: cfunction_global = -1
   integer :: function_opencl
 
 contains
@@ -184,40 +186,6 @@ contains
     call parse_variable(namespace, 'OperateComplex', default, zfunction_global)
     if (.not. varinfo_valid_option('OperateComplex', zfunction_global)) call messages_input_error(namespace, 'OperateComplex')
 
-
-    !%Variable OperateSingle
-    !%Type integer
-    !%Section Execution::Optimization
-    !%Default optimized
-    !%Description
-    !% This variable selects the subroutine used to apply non-local
-    !% operators over the grid for single-precision real functions.
-    !%Option fortran 0
-    !% The standard Fortran function.
-    !%Option optimized 1
-    !% This version is optimized using vector primitives (if available).
-    !%End
-
-    !%Variable OperateComplexSingle
-    !%Type integer
-    !%Section Execution::Optimization
-    !%Default optimized
-    !%Description
-    !% This variable selects the subroutine used to apply non-local
-    !% operators over the grid for single-precision complex functions.
-    !%Option fortran 0
-    !% The standard Fortran function.
-    !%Option optimized 1
-    !% This version is optimized using vector primitives (if available).
-    !%End
-
-    call parse_variable(namespace, 'OperateSingle', OP_FORTRAN, sfunction_global)
-    if (.not. varinfo_valid_option('OperateSingle', sfunction_global)) call messages_input_error(namespace, 'OperateSingle')
-
-    call parse_variable(namespace, 'OperateComplexSingle', OP_FORTRAN, cfunction_global)
-    if (.not. varinfo_valid_option('OperateComplexSingle', cfunction_global)) then
-      call messages_input_error(namespace, 'OperateComplexSingle')
-    end if
 
     if (accel_is_enabled()) then
 
@@ -321,6 +289,14 @@ contains
       SAFE_ALLOCATE_SOURCE_A(opo%outer%imin, opi%outer%imin)
       SAFE_ALLOCATE_SOURCE_A(opo%outer%imax, opi%outer%imax)
       SAFE_ALLOCATE_SOURCE_A(opo%outer%ri,   opi%outer%ri)
+    end if
+
+    ! We create the corresponding GPU buffers
+    if (accel_is_enabled() .and. opo%const_w) then
+      call accel_create_buffer(opo%buff_weights, ACCEL_MEM_READ_ONLY, TYPE_FLOAT, opo%stencil%size)
+      call accel_write_buffer(opo%buff_weights, opo%stencil%size, opo%w(:, 1))
+      call accel_create_buffer(opo%buff_half_weights, ACCEL_MEM_READ_ONLY, TYPE_FLOAT, opo%stencil%size)
+      call accel_write_buffer(opo%buff_half_weights, opo%stencil%size, -M_HALF*opo%w(:, 1))
     end if
 
 
@@ -551,8 +527,9 @@ contains
         call accel_kernel_build(op%kernel, 'operate.cl', 'operate_map', flags)
       end select
 
-      call accel_create_buffer(op%buff_ri, ACCEL_MEM_READ_ONLY, TYPE_INTEGER, op%nri*op%stencil%size)
-      call accel_write_buffer(op%buff_ri, op%nri*op%stencil%size, op%ri)
+      ! conversion to i8 needed to avoid integer overflow
+      call accel_create_buffer(op%buff_ri, ACCEL_MEM_READ_ONLY, TYPE_INTEGER, int(op%nri, i8)*op%stencil%size)
+      call accel_write_buffer(op%buff_ri, int(op%nri, i8)*op%stencil%size, op%ri)
 
       select case (function_opencl)
       case (OP_INVMAP)
@@ -711,6 +688,8 @@ contains
       opt%w(1:op%stencil%size, 1) = op%w(1:op%stencil%size, 1)
     end if
 
+    call nl_operator_update_gpu_buffers(opt)
+
     if (mesh%parallel_in_domains) then
       SAFE_DEALLOCATE_P(vol_pp)
       SAFE_DEALLOCATE_P(weights)
@@ -747,6 +726,9 @@ contains
         call accel_release_buffer(op%buff_xyz_to_ip)
         call accel_release_buffer(op%buff_ip_to_xyz)
       end select
+
+      call accel_release_buffer(op%buff_weights)
+      call accel_release_buffer(op%buff_half_weights)
     end if
 
     SAFE_DEALLOCATE_A(op%inner%imin)
@@ -778,6 +760,23 @@ contains
 
     res = ip + op%ri(is, op%rimap(ip))
   end function nl_operator_get_index
+
+
+  ! ---------------------------------------------------------
+
+  subroutine nl_operator_update_gpu_buffers(op)
+    type(nl_operator_t), intent(inout)   :: op
+
+    PUSH_SUB(nl_operator_update_gpu_buffers)
+
+    ! Update the GPU weights
+    if (accel_is_enabled() .and. op%const_w) then
+      call accel_write_buffer(op%buff_weights, op%stencil%size, op%w(:, 1))
+      call accel_write_buffer(op%buff_half_weights, op%stencil%size, -M_HALF*op%w(:, 1))
+    end if
+
+    POP_SUB(nl_operator_update_gpu_buffers)
+  end subroutine nl_operator_update_gpu_buffers
 
   ! ---------------------------------------------------------
 

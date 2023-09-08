@@ -1,6 +1,6 @@
 # -*- coding: utf-8 mode: shell-script -*-
 
-Test       : Time-propagation of the mode-resolved QEDFT Kohn-Sham equations in the length gauge 
+Test       : Time-propagation of the mode-resolved QEDFT Kohn-Sham equations in the length gauge
 Program    : octopus
 TestGroups : short-run, maxwell
 Enabled    : Yes

@@ -11,14 +11,14 @@ BoxShape = parallelepiped
 Spacing = a/12
 
 %Coordinates
-  "C" |   0.0       | 0.0       | 0.0 
+  "C" |   0.0       | 0.0       | 0.0
   "C" |   a/2       | a/2       | 0.0
   "C" |   a/2       | 0.0       | a/2
-  "C" |   0.0       | a/2       | a/2 
-  "C" |   a/4       | a/4       | a/4 
+  "C" |   0.0       | a/2       | a/2
+  "C" |   a/4       | a/4       | a/4
   "C" |   a/4 + a/2 | a/4 + a/2 | a/4
   "C" |   a/4 + a/2 | a/4       | a/4 + a/2
-  "C" |   a/4       | a/4 + a/2 | a/4 + a/2 
+  "C" |   a/4       | a/4 + a/2 | a/4 + a/2
 %
 
 nk = 3
@@ -48,4 +48,3 @@ TDMaxSteps = 20
 TDEnergyUpdateIter = 5
 
 FilterPotentials = filter_none
-

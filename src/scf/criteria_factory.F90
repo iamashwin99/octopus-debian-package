@@ -161,4 +161,3 @@ contains
   end subroutine criteria_factory_init
 
 end module criteria_factory_oct_m
-

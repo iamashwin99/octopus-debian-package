@@ -1,6 +1,6 @@
 # Final state minimal current
 # Tests OCTTargetOperator = oct_tg_current
-#       OCTCurrentFunctional =  oct_min_curr 
+#       OCTCurrentFunctional =  oct_min_curr
 
 Dimensions = 1
 fromScratch = yes
@@ -24,7 +24,7 @@ Radius =  10.0
 %
 
 %Coordinates
-"ADW1D" | 0 
+"ADW1D" | 0
 %
 
 TheoryLevel = independent_particles
@@ -59,11 +59,11 @@ OCTCurrentWeight = -10.
 %
 
 
-OCTDoubleCheck = yes 
+OCTDoubleCheck = yes
 
 OCTEps = 0.000001
 OCTMaxIter = 1
- 
+
 OCTPenalty = 1.0
 # predefine envelope of control field
 %OCTLaserEnvelope
@@ -87,11 +87,8 @@ electric_field | 1 | 0 | 0 | freq | "envelope_function"
 
 #-----------------------------
 # Output
-#---------------------------- 
+#----------------------------
 %Output
  wfs     | axis_x
  density | axis_x
 %
-
-
-

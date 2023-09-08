@@ -12,7 +12,7 @@ oct-atomic_occupations - prints atomic electronic configurations.
 
 =head1 DESCRIPTION
 
-This script is one of the B<octopus> utilities. 
+This script is one of the B<octopus> utilities.
 
 It prints out to standard output the atomic electronic configuration
 of a given atom, and the way this electronic configuration
@@ -35,7 +35,7 @@ species is the atomic symbol (e.g. Na, Au, etc).
 
 Show a brief summary of command line options.
 
-=back 
+=back
 
 =head1 EXAMPLES
 
@@ -62,5 +62,3 @@ This  is free software; see the source for copying conditions.  There is NO warr
 =head1 SEE ALSO
 
 The largest source of documentation is the octopus website: S<http://octopus-code.org>.
-
-

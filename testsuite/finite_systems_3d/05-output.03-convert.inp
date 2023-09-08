@@ -12,7 +12,7 @@ Spacing = 0.5*angstrom
 
 %Output
  density | dx
-% 
+%
 ConvertFolder = 'restart/gs'
 ConvertFilename = 'density'
 ConvertIterateFolder = no

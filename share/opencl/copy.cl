@@ -23,13 +23,41 @@
 __kernel void copy(const int np,
                   const __global double * restrict xx, const int ldxx,
                   __global double * restrict yy, const int ldyy){
-  
+
   int ist = get_global_id(0);
   int ip = get_global_id(1) + get_global_size(1)*get_global_id(2);
-  
+
   if(ip < np) yy[(ip<<ldyy) + ist] = xx[(ip<<ldxx) + ist];
 
 }
+
+__kernel void add_with_map(const int np,
+                  const __global int * map,
+                  const __global double * restrict xx, const int ldxx,
+                  const __global double * restrict yy, const int ldyy,
+                  __global double * restrict zz, const int ldzz){
+
+  int ist = get_global_id(0);
+  int ip = get_global_id(1) + get_global_size(1)*get_global_id(2);
+  if (ip >= np) return;
+
+  int ip_in = map[ip] - 1;
+  zz[(ip_in<<ldzz) + ist] = xx[(ip_in<<ldxx) + ist] + yy[(ip_in<<ldyy) + ist];
+}
+
+__kernel void copy_with_map(const int np,
+                  const __global int * map,
+                  const __global double * restrict xx, const int ldxx,
+                  __global double * restrict yy, const int ldyy){
+
+  int ist = get_global_id(0);
+  int ip = get_global_id(1) + get_global_size(1)*get_global_id(2);
+  if (ip >= np) return;
+
+  int ip_in = map[ip] - 1;
+  yy[(ip_in<<ldyy) + ist] = xx[(ip_in<<ldxx) + ist];
+}
+
 
 /*
  Local Variables:

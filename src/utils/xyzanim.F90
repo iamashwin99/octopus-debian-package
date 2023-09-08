@@ -79,7 +79,7 @@ contains
     !%Section Utilities::oct-xyz-anim
     !%Description
     !% Sampling rate of the animation. The animation will be constructed using
-    !% the iteration numbers that are multiples of <tt>AnimationSampling<tt>.
+    !% the iteration numbers that are multiples of <tt>AnimationSampling</tt>.
     !%End
     call parse_variable(global_namespace, 'AnimationSampling', 100, sampling)
     if (sampling < 1) then

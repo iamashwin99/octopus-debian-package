@@ -17,12 +17,7 @@ module atom_oct_m
     atom_get_label,                       &
     atom_set_species,                     &
     atom_get_species,                     &
-    atom_same_species,                    &
-    atom_classical_init,                  &
-    atom_classical_end,                   &
-    atom_classical_get_label,             &
-    atom_classical_write_xyz,             &
-    atom_classical_read_xyz
+    atom_same_species
 
   type, public :: atom_t
     !private
@@ -41,15 +36,6 @@ module atom_oct_m
     FLOAT, dimension(MAX_DIM) :: f_nlcc   = M_ZERO !< NLCC forces
     FLOAT, dimension(MAX_DIM) :: f_photons= M_ZERO !< Photons forces
   end type atom_t
-
-  type, public :: atom_classical_t
-    !private
-    character(len=LABEL_LEN)  :: label  = ""
-    FLOAT, dimension(MAX_DIM) :: x      = M_ZERO
-    FLOAT, dimension(MAX_DIM) :: v      = M_ZERO
-    FLOAT, dimension(MAX_DIM) :: f      = M_ZERO
-    FLOAT                     :: charge = M_ZERO
-  end type atom_classical_t
 
   interface atom_same_species
     module procedure atom_same_species_aa
@@ -154,87 +140,6 @@ contains
     is = (atom_get_label(this) == species_label(species))
 
   end function atom_same_species_as
-
-  ! ---------------------------------------------------------
-  pure subroutine atom_classical_init(this, label, x, charge)
-    type(atom_classical_t), intent(out) :: this
-    character(len=*),       intent(in)  :: label
-    FLOAT,    dimension(:), intent(in)  :: x
-    FLOAT,                  intent(in)  :: charge
-
-    this%label  = trim(adjustl(label))
-    this%x      = x
-    this%v      = M_ZERO
-    this%f      = M_ZERO
-    this%charge = charge
-
-  end subroutine atom_classical_init
-
-  ! ---------------------------------------------------------
-  elemental subroutine atom_classical_end(this)
-    type(atom_classical_t), intent(inout) :: this
-
-    this%label  = ""
-    this%x      = M_ZERO
-    this%v      = M_ZERO
-    this%f      = M_ZERO
-    this%charge = M_ZERO
-
-  end subroutine atom_classical_end
-
-  ! ---------------------------------------------------------
-  pure function atom_classical_get_label(this) result(label)
-    type(atom_classical_t), intent(in) :: this
-    !
-    character(len=len_trim(adjustl(this%label))) :: label
-    !
-    label=trim(adjustl(this%label))
-    return
-  end function atom_classical_get_label
-
-  ! ---------------------------------------------------------
-  subroutine atom_classical_write_xyz(this, dim, unit)
-    type(atom_classical_t), intent(in) :: this
-    integer,      optional, intent(in) :: dim
-    integer,                intent(in) :: unit
-
-    character(len=27) :: frmt
-    integer           :: i, dim_
-
-    PUSH_SUB(atom_classical_write_xyz)
-    dim_=MAX_DIM
-    if (present(dim))dim_=dim
-    write(unit=frmt, fmt="(a10,i2.2,a15)") "(6x,a1,2x,", dim_, "f12.6,a3,f12.6)"
-    write(unit=unit, fmt=frmt) this%label(1:1), &
-      (units_from_atomic(units_out%length_xyz_file, this%x(i)), i=1, dim_), " # ", this%charge
-
-    POP_SUB(atom_classical_write_xyz)
-  end subroutine atom_classical_write_xyz
-
-  ! ---------------------------------------------------------
-  subroutine atom_classical_read_xyz(this, dim, unit)
-    type(atom_classical_t), intent(inout) :: this
-    integer,      optional, intent(in) :: dim
-    integer,                intent(in) :: unit
-
-    character(len=27) :: frmt, dum
-    integer           :: i, dim_
-    FLOAT, dimension(MAX_DIM) :: tmp
-
-    PUSH_SUB(atom_classical_read_xyz)
-    dim_=MAX_DIM
-    if (present(dim))dim_=dim
-    write(unit=frmt, fmt="(a10,i2.2,a15)") "(6x,a1,2x,", dim_, "f12.6,a3,f12.6)"
-    read(unit=unit, fmt=frmt) dum, (tmp, i=1, dim_)
-
-    do i = 1, dim_
-      this%x(i) = units_to_atomic(units_out%length_xyz_file, tmp(i))
-    end do
-
-
-    POP_SUB(atom_classical_read_xyz)
-  end subroutine atom_classical_read_xyz
-
 
 end module atom_oct_m
 

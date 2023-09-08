@@ -5,61 +5,82 @@ Program    : octopus
 TestGroups : short-run, functionals
 Enabled    : Yes
 
-#At the moment the test fails on CUDA+MPI 
+#At the moment the test fails on CUDA+MPI
 Processors: 1
 
 Input: 18-mgga.01-br89.inp
 match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
-
-Precision: 6.75e-15
-match ;  Total energy        ; GREPFIELD(static/info, 'Total       =', 3) ; -6.75054792
-Precision: 1.00e-15
+Precision: 1.00e-04
 match ;  Ion-ion energy      ; GREPFIELD(static/info, 'Ion-ion     =', 3) ; 0.0
-Precision: 3.00e-15
-match ;  Eigenvalues sum     ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -2.99862468
-Precision: 4.64e-15
-match ;  Hartree energy      ; GREPFIELD(static/info, 'Hartree     =', 3) ; 4.64175567
-Precision: 3.07e-15
-match ;  Int[n*v_xc]         ; GREPFIELD(static/info, 'Int\[n\*v_xc\] =', 3) ; -3.07178285
-Precision: 2.18e-15
-match ;  Exchange energy     ; GREPFIELD(static/info, 'Exchange    =', 3) ; -2.18195995
-Precision: 1.00e-15
+Precision: 1.00e-04
 match ;  Correlation energy  ; GREPFIELD(static/info, 'Correlation =', 3) ; 0.0
-Precision: 1.08e-14
-match ;  Kinetic energy      ; GREPFIELD(static/info, 'Kinetic     =', 3) ; 10.84817614
-Precision: 2.01e-14
-match ;  External energy     ; GREPFIELD(static/info, 'External    =', 3) ; -20.05851023
-Precision: 1.50e-15
-match ;  Eigenvalue     [1]  ; GREPFIELD(static/info, '1   --', 3) ; -1.499312
 
-Precision: 1.09e-13
-match ;  energy_density  ; LINEFIELD(static/energy_density.y\=0\,z\=0, 11, 2) ; 13.106048616038802
+if (available libxc5); then
+  Precision: 3.38e-07
+  match ;  Total energy       (libxc5) ; GREPFIELD(static/info, 'Total       =', 3) ; -6.750206620
+  Precision: 1.50e-07
+  match ;  Eigenvalues sum    (libxc5) ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -2.9980647900
+  Precision: 2.32e-07
+  match ;  Hartree energy     (libxc5) ; GREPFIELD(static/info, 'Hartree     =', 3) ; 4.6415893200
+  Precision: 1.54e-07
+  match ;  Int[n*v_xc]        (libxc5) ; GREPFIELD(static/info, 'Int\[n\*v_xc\] =', 3) ; -3.071681970
+  Precision: 1.09e-07
+  match ;  Exchange energy    (libxc5) ; GREPFIELD(static/info, 'Exchange    =', 3) ; -2.181895720
+  Precision: 5.42e-08
+  match ;  Kinetic energy     (libxc5) ; GREPFIELD(static/info, 'Kinetic     =', 3) ; 10.847706550
+  Precision: 1.00e-13
+  match ;  External energy    (libxc5) ; GREPFIELD(static/info, 'External    =', 3) ; -20.05794552000
+  Precision: 7.50e-08
+  match ;  Eigenvalue     [1] (libxc5) ; GREPFIELD(static/info, '1   --', 3) ; -1.4990320
+  Precision: 1.0e-10
+  match ;  energy_density  ; LINEFIELD(static/energy_density.y\=0\,z\=0, 11, 2) ; 13.1053043223538
+else
+  Precision: 3.38e-07
+  match ;  Total energy       (libxc4) ; GREPFIELD(static/info, 'Total       =', 3) ; -6.750548090000001
+  Precision: 1.50e-07
+  match ;  Eigenvalues sum    (libxc4) ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -2.99862643
+  Precision: 2.32e-07
+  match ;  Hartree energy     (libxc4) ; GREPFIELD(static/info, 'Hartree     =', 3) ; 4.64175401
+  Precision: 1.54e-07
+  match ;  Int[n*v_xc]        (libxc4) ; GREPFIELD(static/info, 'Int\[n\*v_xc\] =', 3) ; -3.07178148
+  Precision: 1.09e-07
+  match ;  Exchange energy    (libxc4) ; GREPFIELD(static/info, 'Exchange    =', 3) ; -2.1819592300000004
+  Precision: 5.42e-08
+  match ;  Kinetic energy     (libxc4) ; GREPFIELD(static/info, 'Kinetic     =', 3) ; 10.84816826
+  Precision: 1.00e-13
+  match ;  External energy    (libxc4) ; GREPFIELD(static/info, 'External    =', 3) ; -20.058501030000002
+  Precision: 7.50e-08
+  match ;  Eigenvalue     [1] (libxc4) ; GREPFIELD(static/info, '1   --', 3) ; -1.499313
+  Precision: 1.0e-10
+  match ;  energy_density  ; LINEFIELD(static/energy_density.y\=0\,z\=0, 11, 2) ; 13.1060323566996
+endif
+
+
 
 Input: 18-mgga.02-br89_oep.inp
 match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
 
-Precision: 6.75e-15
-match ;  Total energy        ; GREPFIELD(static/info, 'Total       =', 3) ; -6.75045247
-Precision: 1.00e-15
+Precision: 3.38e-07
+match ;  Total energy        ; GREPFIELD(static/info, 'Total       =', 3) ; -6.750536729999999
+Precision: 1.00e-04
 match ;  Ion-ion energy      ; GREPFIELD(static/info, 'Ion-ion     =', 3) ; 0.0
-Precision: 3.00e-15
-match ;  Eigenvalues sum     ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -2.99854915
-Precision: 4.64e-15
-match ;  Hartree energy      ; GREPFIELD(static/info, 'Hartree     =', 3) ; 4.64171795
-Precision: 3.07e-15
-match ;  Int[n*v_xc]         ; GREPFIELD(static/info, 'Int\[n\*v_xc\] =', 3) ; -3.07176002
-Precision: 2.18e-15
-match ;  Exchange energy     ; GREPFIELD(static/info, 'Exchange    =', 3) ; -2.18194539
-Precision: 1.00e-15
+Precision: 1.50e-07
+match ;  Eigenvalues sum     ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -2.99862855
+Precision: 2.32e-07
+match ;  Hartree energy      ; GREPFIELD(static/info, 'Hartree     =', 3) ; 4.64172319
+Precision: 1.54e-06
+match ;  Int[n*v_xc]         ; GREPFIELD(static/info, 'Int\[n\*v_xc\] =', 3) ; -3.0717623
+Precision: 1.09e-07
+match ;  Exchange energy     ; GREPFIELD(static/info, 'Exchange    =', 3) ; -2.18194729
+Precision: 1.00e-04
 match ;  Correlation energy  ; GREPFIELD(static/info, 'Correlation =', 3) ; 0.0
-Precision: 1.08e-14
-match ;  Kinetic energy      ; GREPFIELD(static/info, 'Kinetic     =', 3) ; 10.84806854
-Precision: 2.01e-14
-match ;  External energy     ; GREPFIELD(static/info, 'External    =', 3) ; -20.05838123
-Precision: 1.50e-15
-match ;  Eigenvalue     [1]  ; GREPFIELD(static/info, '1   --', 3) ; -1.499275
-Precision: 2.18e-15
-match ;   Exchange energy (orbitals)   ; GREPFIELD(static/info, 'Energy from the orbitals', 5) ; -2.181945
-Precision: 1.04e-15
-match ;   Exchange energy (virial)     ; GREPFIELD(static/info, 'Energy from the potential', 6) ; -1.043634
-
+Precision: 5.42e-08
+match ;  Kinetic energy      ; GREPFIELD(static/info, 'Kinetic     =', 3) ; 10.84808204
+Precision: 1.00e-07
+match ;  External energy     ; GREPFIELD(static/info, 'External    =', 3) ; -20.05839726
+Precision: 7.50e-06
+match ;  Eigenvalue     [1]  ; GREPFIELD(static/info, '1   --', 3) ; -1.499314
+Precision: 1.09e-05
+match ;   Exchange energy (orbitals)   ; GREPFIELD(static/info, 'Energy from the orbitals', 5) ; -2.181947
+Precision: 5.22e-06
+match ;   Exchange energy (virial)     ; GREPFIELD(static/info, 'Energy from the potential', 6) ; -1.043636

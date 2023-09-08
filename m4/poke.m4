@@ -19,7 +19,7 @@
 
 AC_DEFUN([ACX_POKE],
 [
-  
+
   acx_poke_ok=no
 
   dnl BACKUP LIBS AND FCFLAGS

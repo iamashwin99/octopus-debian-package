@@ -17,7 +17,7 @@ TheoryLevel = independent_particles
 %
 
 %Coordinates
-"Na_2D" | 0 | 0 
+"Na_2D" | 0 | 0
 %
 
 TDTimeStep = 1
@@ -53,5 +53,3 @@ TDMaxSteps = round(totaltime/TDTimeStep)
 
 OutputInterval = 600
 RestartWriteInterval = 600
-
-

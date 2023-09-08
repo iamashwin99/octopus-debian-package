@@ -102,7 +102,7 @@ module mesh_function_oct_m
     module procedure zmf_nrm2_1, zmf_nrm2_2
   end interface zmf_nrm2
 
-  type(mesh_t), pointer :: mesh_aux => null()
+  class(mesh_t), pointer :: mesh_aux => null()
 
   type(profile_t), save ::        &
     dPROFILING_MF_INTEGRATE,      &
@@ -117,7 +117,7 @@ module mesh_function_oct_m
 contains
 
   subroutine mesh_init_mesh_aux(mesh)
-    type(mesh_t), target, intent(in) :: mesh
+    class(mesh_t), target, intent(in) :: mesh
 
     PUSH_SUB(mesh_init_mesh_aux)
     mesh_aux => mesh
@@ -130,7 +130,7 @@ contains
   ! in the complex plane.
   ! We then choose the solution that maximizes the real part
   subroutine zmf_fix_phase(mesh, ff)
-    type(mesh_t),      intent(in)     :: mesh
+    class(mesh_t),     intent(in)     :: mesh
     CMPLX,             intent(inout)  :: ff(:)
 
     FLOAT, allocatable :: ff_re(:), ff_im(:)
@@ -185,7 +185,9 @@ contains
 
         !We want to use the same phase on all processors
         if(mesh%parallel_in_domains) then
-          call mesh%mpi_grp%bcast(zval, 1, MPI_FLOAT, 0)
+#ifdef HAVE_MPI
+          call mesh%mpi_grp%bcast(zval, 1, MPI_COMPLEX, 0)
+#endif
         end if
 
         call lalg_scal(mesh%np, abs(zval)/zval, ff)

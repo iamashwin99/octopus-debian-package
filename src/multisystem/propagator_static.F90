@@ -19,6 +19,7 @@
 #include "global.h"
 
 module propagator_static_oct_m
+  use algorithm_oct_m
   use debug_oct_m
   use global_oct_m
   use messages_oct_m
@@ -45,21 +46,29 @@ module propagator_static_oct_m
 contains
 
   ! ---------------------------------------------------------
-  function propagator_static_constructor(dt) result(this)
+  function propagator_static_constructor(dt, nsteps) result(this)
     FLOAT,                     intent(in) :: dt
+    integer,                   intent(in) :: nsteps
     type(propagator_static_t), pointer    :: this
+
+    integer :: istep
 
     PUSH_SUB(propagator_static_constructor)
 
     SAFE_ALLOCATE(this)
 
+    this%is_static = .true.
+
     this%start_step = OP_SKIP
     this%final_step = OP_SKIP
 
-    call this%add_operation(OP_UPDATE_INTERACTIONS)
-    call this%add_operation(OP_FINISHED)
+    do istep = 1, nsteps
+      call this%add_operation(OP_UPDATE_INTERACTIONS)
+    end do
+    call this%add_operation(OP_STEP_DONE)
+    call this%add_operation(OP_REWIND_ALGORITHM)
 
-    this%algo_steps = 1
+    this%algo_steps = nsteps
 
     this%dt = dt
 

@@ -48,7 +48,6 @@ module td_oct_m
   use maxwell_boundary_op_oct_m
   use mesh_oct_m
   use messages_oct_m
-  use modelmb_exchange_syms_oct_m
   use mpi_oct_m
   use multicomm_oct_m
   use namespace_oct_m
@@ -70,6 +69,7 @@ module td_oct_m
   use states_abst_oct_m
   use states_elec_oct_m
   use states_elec_restart_oct_m
+  use stress_oct_m
   use td_write_oct_m
   use types_oct_m
   use unit_oct_m
@@ -82,16 +82,24 @@ module td_oct_m
   implicit none
 
   private
-  public ::               &
-    td_t,                 &
-    td_run,               &
-    td_run_init,          &
-    td_init,              &
-    td_init_run,          &
-    td_end,               &
-    td_end_run,           &
-    td_write_iter,        &
-    td_check_point
+  public ::                    &
+    td_t,                      &
+    td_run,                    &
+    td_run_init,               &
+    td_init,                   &
+    td_init_run,               &
+    td_end,                    &
+    td_end_run,                &
+    td_write_iter,             &
+    td_check_point,            &
+    td_dump,                   &
+    td_allocate_wavefunctions, &
+    td_init_gaugefield,        &
+    td_load_restart_from_gs,   &
+    td_load_restart_from_td,   &
+    td_init_with_wavefunctions,&
+    td_get_from_scratch,       &
+    td_set_from_scratch
 
   !> Parameters.
   integer, parameter, public :: &
@@ -110,13 +118,15 @@ module td_oct_m
 
     type(pes_t),             public :: pesv
 
-    FLOAT,                   public :: mu
     integer,                 public :: dynamics
     integer,                 public :: energy_update_iter
     FLOAT                           :: scissor
 
     logical                         :: freeze_occ
     logical                         :: freeze_u
+    integer                         :: freeze_orbitals
+
+    logical                         :: from_scratch = .false.
 
     type(td_write_t), public        :: write_handler
     type(restart_t)                 :: restart_load
@@ -174,45 +184,6 @@ contains
 
     td%iter = 0
 
-    !%Variable TDIonicTimeScale
-    !%Type float
-    !%Default 1.0
-    !%Section Time-Dependent::Propagation
-    !%Description
-    !% This variable defines the factor between the timescale of ionic
-    !% and electronic movement. It allows reasonably fast
-    !% Born-Oppenheimer molecular-dynamics simulations based on
-    !% Ehrenfest dynamics. The value of this variable is equivalent to
-    !% the role of <math>\mu</math> in Car-Parrinello. Increasing it
-    !% linearly accelerates the time step of the ion
-    !% dynamics, but also increases the deviation of the system from the
-    !% Born-Oppenheimer surface. The default is 1, which means that both
-    !% timescales are the same. Note that a value different than 1
-    !% implies that the electrons will not follow physical behaviour.
-    !%
-    !% According to our tests, values around 10 are reasonable, but it
-    !% will depend on your system, mainly on the width of the gap.
-    !%
-    !% Important: The electronic time step will be the value of
-    !% <tt>TDTimeStep</tt> divided by this variable, so if you have determined an
-    !% optimal electronic time step (that we can call <i>dte</i>), it is
-    !% recommended that you define your time step as:
-    !%
-    !% <tt>TDTimeStep</tt> = <i>dte</i> * <tt>TDIonicTimeScale</tt>
-    !%
-    !% so you will always use the optimal electronic time step
-    !% (<a href=http://arxiv.org/abs/0710.3321>more details</a>).
-    !%End
-    call parse_variable(namespace, 'TDIonicTimeScale', M_ONE, td%mu)
-
-    if (td%mu <= M_ZERO) then
-      write(message(1),'(a)') 'Input: TDIonicTimeScale must be positive.'
-      call messages_fatal(1, namespace=namespace)
-    end if
-
-    call messages_print_var_value('TDIonicTimeScale', td%mu, namespace=namespace)
-
-
     !%Variable TDTimeStep
     !%Type float
     !%Section Time-Dependent::Propagation
@@ -229,9 +200,8 @@ contains
     !% However, you might need to adjust this value.
     !%End
 
-    spacing = minval(gr%mesh%spacing(1:space%dim))
+    spacing = minval(gr%spacing(1:space%dim))
     default_dt = CNST(0.0426) - CNST(0.207)*spacing + CNST(0.808)*spacing**2
-    default_dt = default_dt*td%mu
 
     call parse_variable(namespace, 'TDTimeStep', default_dt, td%dt, unit = units_inp%time)
 
@@ -289,12 +259,12 @@ contains
 
     td%iter = 0
 
-    td%dt = td%dt/td%mu
+    td%dt = td%dt
 
     lasers => list_get_lasers(ext_partners)
 
     ! now the photoelectron stuff
-    call pes_init(td%pesv, namespace, space, gr%mesh, gr%box, st, outp%restart_write_interval, hm%kpoints, &
+    call pes_init(td%pesv, namespace, space, gr, gr%box, st, outp%restart_write_interval, hm%kpoints, &
       hm%abs_boundaries, ext_partners, td%max_iter, td%dt)
 
     !%Variable TDDynamics
@@ -355,9 +325,9 @@ contains
       list_has_gauge_field(ext_partners), family_is_mgga_with_exc(ks%xc))
 
     if (associated(lasers) .and. mpi_grp_is_root(mpi_world)) then
-      call messages_print_stress(msg="Time-dependent external fields", namespace=namespace)
+      call messages_print_with_emphasis(msg="Time-dependent external fields", namespace=namespace)
       call laser_write_info(lasers%lasers, dt=td%dt, max_iter=td%max_iter, namespace=namespace)
-      call messages_print_stress(namespace=namespace)
+      call messages_print_with_emphasis(namespace=namespace)
     end if
 
     !%Variable TDEnergyUpdateIter
@@ -384,11 +354,43 @@ contains
       call messages_fatal(1, namespace=namespace)
     end if
 
+    !%Variable TDFreezeOrbitals
+    !%Type integer
+    !%Default 0
+    !%Section Time-Dependent
+    !%Description
+    !% (Experimental) You have the possibility of "freezing" a number of orbitals during a time-propagation.
+    !% The Hartree and exchange-correlation potential due to these orbitals (which
+    !% will be the lowest-energy ones) will be added during the propagation, but the orbitals
+    !% will not be propagated.
+    !%Option sae -1
+    !% Single-active-electron approximation. This option is only valid for time-dependent
+    !% calculations (<tt>CalculationMode = td</tt>). Also, the nuclei should not move.
+    !% The idea is that all orbitals except the last one are frozen. The orbitals are to
+    !% be read from a previous ground-state calculation. The active orbital is then treated
+    !% as independent (whether it contains one electron or two) -- although it will
+    !% feel the Hartree and exchange-correlation potentials from the ground-state electronic
+    !% configuration.
+    !%
+    !% It is almost equivalent to setting <tt>TDFreezeOrbitals = N-1</tt>, where <tt>N</tt> is the number
+    !% of orbitals, but not completely.
+    !%End
+    call parse_variable(namespace, 'TDFreezeOrbitals', 0, td%freeze_orbitals)
+
+    if (td%freeze_orbitals /= 0) then
+      call messages_experimental('TDFreezeOrbitals', namespace=namespace)
+
+      if (hm%lda_u_level /= DFT_U_NONE) then
+        call messages_not_implemented('TDFreezeOrbitals with DFT+U', namespace=namespace)
+      end if
+    end if
+
+
     POP_SUB(td_init)
   end subroutine td_init
 
   ! ---------------------------------------------------------
-  subroutine td_init_run(td, namespace, mc, gr, ions, st, ks, hm, ext_partners, outp, space, fromScratch)
+  subroutine td_init_run(td, namespace, mc, gr, ions, st, ks, hm, ext_partners, outp, space, from_scratch)
     type(td_t),               intent(inout) :: td
     type(namespace_t),        intent(in)    :: namespace
     type(multicomm_t),        intent(inout) :: mc
@@ -400,29 +402,95 @@ contains
     type(partner_list_t),     intent(in)    :: ext_partners
     type(output_t),           intent(inout) :: outp
     type(space_t),            intent(in)    :: space
-    logical,                  intent(inout) :: fromScratch
-
-    type(gauge_field_t), pointer :: gfield
-    integer :: ierr
+    logical,                  intent(inout) :: from_scratch
 
     PUSH_SUB(td_init_run)
+
+    ! NOTE: please do not change code in this function, but only in functions
+    ! called from here because the logic of this function is replicated in the
+    ! multisystem framework in different places
+
+    call td_allocate_wavefunctions(td, namespace, mc, gr, ions, st, ks, hm, space)
+    call td_init_gaugefield(td, namespace, gr, st, ks, hm, ext_partners, space)
+
+    td%from_scratch = from_scratch
+
+    if (.not. td%from_scratch) then
+      call td_load_restart_from_td(td, namespace, space, mc, gr, ions, ext_partners, st, ks, hm, td%from_scratch)
+      if (td%from_scratch) then
+        message(1) = "Unable to read time-dependent restart information: Starting from scratch"
+        call messages_warning(1, namespace=namespace)
+      end if
+    end if
+
+    if (td%iter >= td%max_iter) then
+      message(1) = "All requested iterations have already been done. Use FromScratch = yes if you want to redo them."
+      call messages_info(1, namespace=namespace)
+      call states_elec_deallocate_wfns(st)
+      if (ion_dynamics_ions_move(td%ions_dyn) .and. td%recalculate_gs) call restart_end(td%restart_load)
+      POP_SUB(td_init_run)
+      return
+    end if
+
+    if (td%from_scratch) then
+      call td_load_restart_from_gs(td, namespace, space, mc, gr, ions, ext_partners, st, ks, hm)
+    end if
+
+    call td_init_with_wavefunctions(td, namespace, space, mc, gr, ions, ext_partners, st, ks, hm, outp, td%from_scratch)
+
+    POP_SUB(td_init_run)
+  end subroutine td_init_run
+
+  ! ---------------------------------------------------------
+  subroutine td_allocate_wavefunctions(td, namespace, mc, gr, ions, st, ks, hm, space)
+    type(td_t),               intent(inout) :: td
+    type(namespace_t),        intent(in)    :: namespace
+    type(multicomm_t),        intent(inout) :: mc
+    type(grid_t),             intent(inout) :: gr
+    type(ions_t),             intent(inout) :: ions
+    type(states_elec_t),      intent(inout) :: st
+    type(v_ks_t),             intent(inout) :: ks
+    type(hamiltonian_elec_t), intent(inout) :: hm
+    type(space_t),            intent(in)    :: space
+
+    PUSH_SUB(td_allocate_wavefunctions)
+
     ! Allocate wavefunctions during time-propagation
     if (td%dynamics == EHRENFEST) then
       !Note: this is not really clean to do this
       if (hm%lda_u_level /= DFT_U_NONE .and. states_are_real(st)) then
         call lda_u_end(hm%lda_u)
         !complex wfs are required for Ehrenfest
-        call states_elec_allocate_wfns(st, gr%mesh, TYPE_CMPLX, packed=.true.)
-        call lda_u_init(hm%lda_u, namespace, space, hm%lda_u_level, gr, ions, st, mc, hm%psolver, &
+        call states_elec_allocate_wfns(st, gr, TYPE_CMPLX, packed=.true.)
+        call lda_u_init(hm%lda_u, namespace, space, hm%lda_u_level, gr, ions, st, mc, &
           hm%kpoints, allocated(hm%hm_base%phase))
+        call lda_u_init_coulomb_integrals(hm%lda_u, namespace, space, gr, st, mc, hm%psolver, allocated(hm%hm_base%phase))
       else
         !complex wfs are required for Ehrenfest
-        call states_elec_allocate_wfns(st, gr%mesh, TYPE_CMPLX, packed=.true.)
+        call states_elec_allocate_wfns(st, gr, TYPE_CMPLX, packed=.true.)
       end if
     else
-      call states_elec_allocate_wfns(st, gr%mesh, packed=.true.)
+      call states_elec_allocate_wfns(st, gr, packed=.true.)
       call scf_init(td%scf, namespace, gr, ions, st, mc, hm, ks, space)
     end if
+
+    POP_SUB(td_allocate_wavefunctions)
+  end subroutine td_allocate_wavefunctions
+
+  ! ---------------------------------------------------------
+  subroutine td_init_gaugefield(td, namespace, gr, st, ks, hm, ext_partners, space)
+    type(td_t),               intent(inout) :: td
+    type(namespace_t),        intent(in)    :: namespace
+    type(grid_t),             intent(inout) :: gr
+    type(states_elec_t),      intent(inout) :: st
+    type(v_ks_t),             intent(inout) :: ks
+    type(hamiltonian_elec_t), intent(inout) :: hm
+    type(partner_list_t),     intent(in)    :: ext_partners
+    type(space_t),            intent(in)    :: space
+
+    type(gauge_field_t), pointer :: gfield
+
+    PUSH_SUB(td_init_gaugefield)
 
     gfield => list_get_gauge_field(ext_partners)
     if(associated(gfield)) then
@@ -432,83 +500,12 @@ contains
 
         ! initialize the vector field and update the hamiltonian
         call gauge_field_init_vec_pot(gfield, st%qtot)
-        call hamiltonian_elec_update(hm, gr%mesh, namespace, space, ext_partners, time = td%dt*td%iter)
+        call hm%update(gr, namespace, space, ext_partners, time = td%dt*td%iter)
       end if
     end if
 
-    call td_init_wfs(td, namespace, space, mc, gr, ions, ext_partners, st, ks, hm, fromScratch)
-
-    if (td%iter > td%max_iter) then
-      call states_elec_deallocate_wfns(st)
-      if (ion_dynamics_ions_move(td%ions_dyn) .and. td%recalculate_gs) call restart_end(td%restart_load)
-      POP_SUB(td_init_run)
-      return
-    end if
-
-    ! This needs to be called before the calculation of the forces,
-    ! as we need to test of we output the forces or not
-    call td_write_init(td%write_handler, namespace, space, outp, gr, st, hm, ions, ext_partners, &
-      ks, ion_dynamics_ions_move(td%ions_dyn), &
-      list_has_gauge_field(ext_partners), hm%kick, td%iter, td%max_iter, td%dt, mc)
-
-    ! Calculate initial forces and kinetic energy
-    if (ion_dynamics_ions_move(td%ions_dyn)) then
-      if (td%iter > 0) then
-        call td_read_coordinates(td, namespace, ions)
-        if (ion_dynamics_drive_ions(td%ions_dyn)) then
-          call ion_dynamics_propagate(td%ions_dyn, ions, td%iter*td%dt, td%dt, namespace)
-        end if
-        call hamiltonian_elec_epot_generate(hm, namespace, space, gr, ions, ext_partners, st, time = td%iter*td%dt)
-        ! recompute potential because the ions have moved
-        call v_ks_calc(ks, namespace, space, hm, st, ions, ext_partners, calc_eigenval=.true., time = td%iter*td%dt)
-      end if
-
-      call forces_calculate(gr, namespace, ions, hm, ext_partners, st, ks, t = td%iter*td%dt, dt = td%dt)
-
-      call ions%update_kinetic_energy()
-    else
-      if (outp%what(OPTION__OUTPUT__FORCES) .or. td%write_handler%out(OUT_SEPARATE_FORCES)%write) then
-        call forces_calculate(gr, namespace, ions, hm, ext_partners, st, ks, t = td%iter*td%dt, dt = td%dt)
-      end if
-    end if
-
-    if (td%scissor > M_EPSILON) then
-      call scissor_init(hm%scissor, namespace, space, st, gr%mesh, hm%d, hm%kpoints, td%scissor, mc)
-    end if
-
-    if (td%iter == 0) call td_run_zero_iter(td, namespace, space, gr, ions, st, ks, hm, ext_partners, outp)
-
-    if(associated(gfield)) then
-      if (gauge_field_is_propagated(gfield)) then
-        if(ks%xc%kernel_lrc_alpha > M_EPSILON) then
-          call gauge_field_get_force(gfield, gr, st%d%spin_channels, st%current, ks%xc%kernel_lrc_alpha)
-          call messages_experimental('TD-LRC kernel')
-        else
-          call gauge_field_get_force(gfield, gr, st%d%spin_channels, st%current)
-        endif
-      endif
-    end if
-
-    !call td_check_trotter(td, sys, h)
-    td%iter = td%iter + 1
-
-    call restart_init(td%restart_dump, namespace, RESTART_TD, RESTART_TYPE_DUMP, mc, ierr, mesh=gr%mesh)
-    if (ion_dynamics_ions_move(td%ions_dyn) .and. td%recalculate_gs) then
-      ! We will also use the TD restart directory as temporary storage during the time propagation
-      call restart_init(td%restart_load, namespace, RESTART_TD, RESTART_TYPE_LOAD, mc, ierr, mesh=gr%mesh)
-    end if
-
-    call messages_print_stress(msg="Time-Dependent Simulation", namespace=namespace)
-    call td_print_header(namespace)
-
-    if (td%pesv%calc_spm .or. td%pesv%calc_mask .and. fromScratch) then
-      call pes_init_write(td%pesv,gr%mesh,st, namespace)
-    end if
-
-    if (st%d%pack_states .and. hamiltonian_elec_apply_packed(hm)) call st%pack()
-
-    POP_SUB(td_init_run)
-  end subroutine td_init_run
+    POP_SUB(td_init_gaugefield)
+  end subroutine td_init_gaugefield
 
   ! ---------------------------------------------------------
   subroutine td_end(td)
@@ -533,7 +530,7 @@ contains
 
     PUSH_SUB(td_end_run)
 
-    if (st%d%pack_states .and. hamiltonian_elec_apply_packed(hm)) call st%unpack()
+    if (st%d%pack_states .and. hm%apply_packed()) call st%unpack()
 
     call restart_end(td%restart_dump)
     call td_write_end(td%write_handler)
@@ -546,7 +543,7 @@ contains
   end subroutine td_end_run
 
   ! ---------------------------------------------------------
-  subroutine td_run(td, namespace, mc, gr, ions, st, ks, hm, ext_partners, outp, space, fromScratch)
+  subroutine td_run(td, namespace, mc, gr, ions, st, ks, hm, ext_partners, outp, space, from_scratch)
     type(td_t),               intent(inout) :: td
     type(namespace_t),        intent(in)    :: namespace
     type(multicomm_t),        intent(inout) :: mc
@@ -558,7 +555,7 @@ contains
     type(partner_list_t),     intent(in)    :: ext_partners
     type(output_t),           intent(inout) :: outp
     type(space_t),            intent(in)    :: space
-    logical,                  intent(inout) :: fromScratch
+    logical,                  intent(inout) :: from_scratch
 
     logical                      :: stopping
     integer                      :: iter, scsteps
@@ -580,11 +577,11 @@ contains
       if (iter > 1) then
         if (((iter-1)*td%dt <= hm%kick%time) .and. (iter*td%dt > hm%kick%time)) then
           if (.not. hm%pcm%localf) then
-            call kick_apply(space, gr%mesh, st, td%ions_dyn, ions, hm%kick, hm%psolver, hm%kpoints)
+            call kick_apply(space, gr, st, td%ions_dyn, ions, hm%kick, hm%psolver, hm%kpoints)
           else
-            call kick_apply(space, gr%mesh, st, td%ions_dyn, ions, hm%kick, hm%psolver, hm%kpoints, pcm = hm%pcm)
+            call kick_apply(space, gr, st, td%ions_dyn, ions, hm%kick, hm%psolver, hm%kpoints, pcm = hm%pcm)
           end if
-          call td_write_kick(outp, namespace, space, gr%mesh, hm%kick, ions, iter)
+          call td_write_kick(outp, namespace, space, gr, hm%kick, ions, iter)
           !We activate the sprial BC only after the kick,
           !to be sure that the first iteration corresponds to the ground state
           if (gr%der%boundaries%spiralBC) gr%der%boundaries%spiral = .true.
@@ -594,7 +591,7 @@ contains
       ! time iterate the system, one time step.
       select case (td%dynamics)
       case (EHRENFEST)
-        call propagator_elec_dt(ks, namespace, space, hm, gr, st, td%tr, iter*td%dt, td%dt, td%mu, iter, td%ions_dyn, &
+        call propagator_elec_dt(ks, namespace, space, hm, gr, st, td%tr, iter*td%dt, td%dt, iter, td%ions_dyn, &
           ions, ext_partners, outp, td%write_handler, scsteps = scsteps, &
           update_energy = (mod(iter, td%energy_update_iter) == 0) .or. (iter == td%max_iter))
       case (BO)
@@ -605,22 +602,22 @@ contains
       !Apply mask absorbing boundaries
       if (hm%abs_boundaries%abtype == MASK_ABSORBING) then
         if (states_are_real(st)) then
-          call dvmask(gr%mesh, hm, st)
+          call dvmask(gr, hm, st)
         else
-          call zvmask(gr%mesh, hm, st)
+          call zvmask(gr, hm, st)
         end if
       end if
 
       !Photoelectron stuff
       if (td%pesv%calc_spm .or. td%pesv%calc_mask .or. td%pesv%calc_flux) then
-        call pes_calc(td%pesv, namespace, space, gr%mesh, st, td%dt, iter, gr%der, hm%kpoints, ext_partners, stopping)
+        call pes_calc(td%pesv, namespace, space, gr, st, td%dt, iter, gr%der, hm%kpoints, ext_partners, stopping)
       end if
 
       call td_write_iter(td%write_handler, namespace, space, outp, gr, st, hm, ions, ext_partners, hm%kick, ks, td%dt, iter)
 
       ! write down data
       call td_check_point(td, namespace, mc, gr, ions, st, ks, hm, ext_partners, outp, space, &
-        iter, scsteps, etime, stopping, fromScratch)
+        iter, scsteps, etime, stopping, from_scratch)
 
       ! check if debug mode should be enabled or disabled on the fly
       call io_debug_on_the_fly(namespace)
@@ -641,7 +638,7 @@ contains
     write(message(1), '(a7,1x,a14,a14,a10,a17)') 'Iter ', 'Time ', 'Energy ', 'SC Steps', 'Elapsed Time '
 
     call messages_info(1, namespace=namespace)
-    call messages_print_stress(namespace=namespace)
+    call messages_print_with_emphasis(namespace=namespace)
 
     POP_SUB(td_print_header)
   end subroutine td_print_header
@@ -667,50 +664,32 @@ contains
     logical,                  intent(inout) :: from_scratch
 
     integer :: ierr
-    integer(i8) :: what_it
-    logical :: output_iter
 
     PUSH_SUB(td_check_point)
 
-    write(message(1), '(i7,1x,2f14.6,i10,f14.3)') iter, units_from_atomic(units_out%time, iter*td%dt), &
-      units_from_atomic(units_out%energy, hm%energy%total + ions%kinetic_energy), scsteps, loct_clock() - etime
+    call td_print_message(td, namespace, ions, hm, iter, scsteps, etime)
 
-    call messages_info(1, namespace=namespace)
-    etime = loct_clock()
-
-    output_iter = .false.
-    do what_it = lbound(outp%output_interval, 1), ubound(outp%output_interval, 1)
-      if (outp%what_now(what_it, iter)) then
-        output_iter = .true.
-        exit
-      end if
-    end do
-
-    if (output_iter) then ! output
-      ! TODO this now overwrites wf inside st. If this is not wanted need to add an optional overwrite=no flag
-      if (st%modelmbparticles%nparticle > 0) then
-        call modelmb_sym_all_states(space, gr%mesh, st)
-      end if
+    if (outp%anything_now(iter)) then ! output
       call td_write_output(namespace, space, gr, st, hm, ks, outp, ions, ext_partners, iter, td%dt)
     end if
 
     if (mod(iter, outp%restart_write_interval) == 0 .or. iter == td%max_iter .or. stopping) then ! restart
       !if (iter == td%max_iter) outp%iter = ii - 1
       call td_write_data(td%write_handler)
-      call td_dump(td%restart_dump, namespace, space, gr, st, hm, td, ks, ext_partners, iter, ierr)
+      call td_dump(td, namespace, space, gr, st, hm, ks, ext_partners, iter, ierr)
       if (ierr /= 0) then
         message(1) = "Unable to write time-dependent restart information."
         call messages_warning(1, namespace=namespace)
       end if
 
-      call pes_output(td%pesv, namespace, space, gr%mesh, st, iter, outp, td%dt, gr, ions)
+      call pes_output(td%pesv, namespace, space, gr, st, iter, outp, td%dt, ions)
 
       if (ion_dynamics_ions_move(td%ions_dyn) .and. td%recalculate_gs) then
-        call messages_print_stress(msg='Recalculating the ground state.', namespace=namespace)
+        call messages_print_with_emphasis(msg='Recalculating the ground state.', namespace=namespace)
         from_scratch = .false.
         call states_elec_deallocate_wfns(st)
         call electrons_ground_state_run(namespace, mc, gr, ions, ext_partners, st, ks, hm, outp, space, from_scratch)
-        call states_elec_allocate_wfns(st, gr%mesh, packed=.true.)
+        call states_elec_allocate_wfns(st, gr, packed=.true.)
         call td_load(td%restart_load, namespace, space, gr, st, hm, ext_partners, td, ks, ierr)
         if (ierr /= 0) then
           message(1) = "Unable to load TD states."
@@ -720,7 +699,7 @@ contains
         call v_ks_calc(ks, namespace, space, hm, st, ions, ext_partners,  &
           calc_eigenval=.true., time = iter*td%dt, calc_energy=.true.)
         call forces_calculate(gr, namespace, ions, hm, ext_partners, st, ks, t = iter*td%dt, dt = td%dt)
-        call messages_print_stress(msg="Time-dependent simulation proceeds", namespace=namespace)
+        call messages_print_with_emphasis(msg="Time-dependent simulation proceeds", namespace=namespace)
         call td_print_header(namespace)
       end if
     end if
@@ -729,106 +708,59 @@ contains
   end subroutine td_check_point
 
   ! ---------------------------------------------------------
-  subroutine td_init_wfs(td, namespace, space, mc, gr, ions, ext_partners, st, ks, hm, from_scratch)
+  subroutine td_print_message(td, namespace, ions, hm, iter, scsteps, etime)
+    type(td_t),               intent(inout) :: td
+    type(namespace_t),        intent(in)    :: namespace
+    type(ions_t),             intent(inout) :: ions
+    type(hamiltonian_elec_t), intent(inout) :: hm
+    integer,                  intent(in)    :: iter
+    integer,                  intent(in)    :: scsteps
+    FLOAT,                    intent(inout) :: etime
+
+    PUSH_SUB(td_print_message)
+
+    write(message(1), '(i7,1x,2f14.6,i10,f14.3)') iter, units_from_atomic(units_out%time, iter*td%dt), &
+      units_from_atomic(units_out%energy, hm%energy%total + ions%kinetic_energy), scsteps, &
+      loct_clock() - etime
+    call messages_info(1, namespace=namespace)
+    call td_update_elapsed_time(etime)
+
+    POP_SUB(td_print_message)
+  end subroutine td_print_message
+
+  ! ---------------------------------------------------------
+  subroutine td_update_elapsed_time(etime)
+    FLOAT, intent(inout) :: etime
+
+    PUSH_SUB(td_update_elapsed_time)
+
+    etime = loct_clock()
+
+    POP_SUB(td_update_elapsed_time)
+  end subroutine td_update_elapsed_time
+
+  ! ---------------------------------------------------------
+  subroutine td_init_with_wavefunctions(td, namespace, space, mc, gr, ions, ext_partners, st, ks, hm, outp, from_scratch)
     type(td_t),                  intent(inout) :: td
     type(namespace_t),           intent(in)    :: namespace
     type(space_t),               intent(in)    :: space
     type(multicomm_t),           intent(in)    :: mc
     type(grid_t),                intent(inout) :: gr
-    type(ions_t),                intent(in)    :: ions
+    type(ions_t),                intent(inout) :: ions
     type(partner_list_t),        intent(in)    :: ext_partners
     type(states_elec_t), target, intent(inout) :: st
     type(v_ks_t),                intent(inout) :: ks
     type(hamiltonian_elec_t),    intent(inout) :: hm
-    logical,                     intent(inout) :: from_scratch
+    type(output_t),              intent(inout) :: outp
+    logical,                     intent(in)    :: from_scratch
 
-    integer :: ierr, freeze_orbitals
+    integer :: ierr
     FLOAT :: x
     logical :: freeze_hxc, freeze_occ, freeze_u
     type(restart_t) :: restart, restart_frozen
+    type(gauge_field_t), pointer :: gfield
 
-    PUSH_SUB(td_init_wfs)
-
-    !%Variable TDFreezeOrbitals
-    !%Type integer
-    !%Default 0
-    !%Section Time-Dependent
-    !%Description
-    !% (Experimental) You have the possibility of "freezing" a number of orbitals during a time-propagation.
-    !% The Hartree and exchange-correlation potential due to these orbitals (which
-    !% will be the lowest-energy ones) will be added during the propagation, but the orbitals
-    !% will not be propagated.
-    !%Option sae -1
-    !% Single-active-electron approximation. This option is only valid for time-dependent
-    !% calculations (<tt>CalculationMode = td</tt>). Also, the nuclei should not move.
-    !% The idea is that all orbitals except the last one are frozen. The orbitals are to
-    !% be read from a previous ground-state calculation. The active orbital is then treated
-    !% as independent (whether it contains one electron or two) -- although it will
-    !% feel the Hartree and exchange-correlation potentials from the ground-state electronic
-    !% configuration.
-    !%
-    !% It is almost equivalent to setting <tt>TDFreezeOrbitals = N-1</tt>, where <tt>N</tt> is the number
-    !% of orbitals, but not completely.
-    !%End
-    call parse_variable(namespace, 'TDFreezeOrbitals', 0, freeze_orbitals)
-
-    if (freeze_orbitals /= 0) then
-      call messages_experimental('TDFreezeOrbitals', namespace=namespace)
-
-      if (hm%lda_u_level /= DFT_U_NONE) then
-        call messages_not_implemented('TDFreezeOrbitals with DFT+U', namespace=namespace)
-      end if
-    end if
-
-    if (.not. from_scratch) then
-      !We redistribute the states before the restarting
-      if (freeze_orbitals > 0) then
-        call states_elec_freeze_redistribute_states(st, namespace, gr%mesh, mc, freeze_orbitals)
-      end if
-
-      call restart_init(restart, namespace, RESTART_TD, RESTART_TYPE_LOAD, mc, ierr, mesh=gr%mesh)
-      if (ierr == 0) then
-        call td_load(restart, namespace, space, gr, st, hm, ext_partners, td, ks, ierr)
-      end if
-      if (ierr /= 0) then
-        from_scratch = .true.
-        td%iter = 0
-        message(1) = "Unable to read time-dependent restart information: Starting from scratch"
-        call messages_warning(1, namespace=namespace)
-      end if
-      call restart_end(restart)
-    end if
-
-    if (td%iter >= td%max_iter) then
-      message(1) = "All requested iterations have already been done. Use FromScratch = yes if you want to redo them."
-      call messages_info(1, namespace=namespace)
-      POP_SUB(td_init_wfs)
-      return
-    end if
-
-    if (from_scratch) then
-      call restart_init(restart, namespace, RESTART_GS, RESTART_TYPE_LOAD, mc, ierr, mesh=gr%mesh, exact=.true.)
-
-      if (.not. st%only_userdef_istates) then
-        if (ierr == 0) then
-          call states_elec_load(restart, namespace, space, st, gr%mesh, hm%kpoints, ierr, label = ": gs")
-        end if
-        if (ierr /= 0) then
-          message(1) = 'Unable to read ground-state wavefunctions.'
-          call messages_fatal(1, namespace=namespace)
-        end if
-      end if
-
-      ! check if we should deploy user-defined wavefunctions.
-      ! according to the settings in the input file the routine
-      ! overwrites orbitals that were read from restart/gs
-      if (parse_is_defined(namespace, 'UserDefinedStates')) then
-        call states_elec_read_user_def_orbitals(gr%mesh, namespace, space, st)
-      end if
-
-      call states_elec_transform(st, namespace, space, restart, gr%mesh, hm%kpoints)
-      call restart_end(restart)
-    end if
+    PUSH_SUB(td_init_with_wavefunctions)
 
     !We activate the sprial BC only after the kick,
     !to be sure that the first iteration corresponds to the ground state
@@ -838,25 +770,26 @@ contains
       end if
       hm%hm_base%spin => st%spin
       !We fill st%spin. In case of restart, we read it in td_load
-      if (from_scratch) call states_elec_fermi(st, namespace, gr%mesh)
+      if (from_scratch) call states_elec_fermi(st, namespace, gr)
     end if
 
+    call lda_u_init_coulomb_integrals(hm%lda_u, namespace, space, gr, st, mc, hm%psolver, allocated(hm%hm_base%phase))
     if (from_scratch) then
-      ! Initialize the occupation matrices and U for LDA+U
+      ! Initialize the occupation matrices and U for DFT+U
       ! This must be called before parsing TDFreezeOccupations and TDFreezeU
       ! in order that the code does properly the initialization.
-      call lda_u_update_occ_matrices(hm%lda_u, namespace, gr%mesh, st, hm%hm_base, hm%energy)
+      call lda_u_update_occ_matrices(hm%lda_u, namespace, gr, st, hm%hm_base, hm%energy)
     end if
 
-    if (freeze_orbitals > 0) then
+    if (td%freeze_orbitals > 0) then
       if (from_scratch) then
         ! In this case, we first freeze the orbitals, then calculate the Hxc potential.
         call states_elec_freeze_orbitals(st, namespace, space, gr, mc, hm%kpoints, &
-          freeze_orbitals, family_is_mgga(ks%xc_family))
+          td%freeze_orbitals, family_is_mgga(ks%xc_family))
       else
-        call restart_init(restart, namespace, RESTART_TD, RESTART_TYPE_LOAD, mc, ierr, mesh=gr%mesh)
+        call restart_init(restart, namespace, RESTART_TD, RESTART_TYPE_LOAD, mc, ierr, mesh=gr)
         if (ierr == 0) then
-          call td_load_frozen(namespace, restart, space, gr%mesh, st, hm, ierr)
+          call td_load_frozen(namespace, restart, space, gr, st, hm, ierr)
         end if
         if (ierr /= 0) then
           td%iter = 0
@@ -865,13 +798,13 @@ contains
         end if
         call restart_end(restart)
       end if
-      write(message(1),'(a,i4,a,i4,a)') 'Info: The lowest', freeze_orbitals, &
+      write(message(1),'(a,i4,a,i4,a)') 'Info: The lowest', td%freeze_orbitals, &
         ' orbitals have been frozen.', st%nst, ' will be propagated.'
       call messages_info(1, namespace=namespace)
       call states_elec_freeze_adjust_qtot(st)
       call density_calc(st, gr, st%rho)
       call v_ks_calc(ks, namespace, space, hm, st, ions, ext_partners, calc_eigenval=.true., time = td%iter*td%dt)
-    else if (freeze_orbitals < 0) then
+    else if (td%freeze_orbitals < 0) then
       ! This means SAE approximation. We calculate the Hxc first, then freeze all
       ! orbitals minus one.
       write(message(1),'(a)') 'Info: The single-active-electron approximation will be used.'
@@ -906,16 +839,16 @@ contains
 
       if (.not. from_scratch) then
 
-        call restart_init(restart_frozen, namespace, RESTART_GS, RESTART_TYPE_LOAD, mc, ierr, mesh=gr%mesh, exact=.true.)
-        call states_elec_load(restart_frozen, namespace, space, st, gr%mesh, hm%kpoints, ierr, label = ": gs")
-        call states_elec_transform(st, namespace, space, restart_frozen, gr%mesh, hm%kpoints)
+        call restart_init(restart_frozen, namespace, RESTART_GS, RESTART_TYPE_LOAD, mc, ierr, mesh=gr, exact=.true.)
+        call states_elec_load(restart_frozen, namespace, space, st, gr, hm%kpoints, ierr, label = ": gs")
+        call states_elec_transform(st, namespace, space, restart_frozen, gr, hm%kpoints)
         call restart_end(restart_frozen)
 
         call density_calc(st, gr, st%rho)
         call v_ks_calc(ks, namespace, space, hm, st, ions, ext_partners, calc_eigenval=.true., time = td%iter*td%dt)
 
-        call restart_init(restart_frozen, namespace, RESTART_TD, RESTART_TYPE_LOAD, mc, ierr, mesh=gr%mesh)
-        call states_elec_load(restart_frozen, namespace, space, st, gr%mesh, hm%kpoints, ierr, iter=td%iter, label = ": td")
+        call restart_init(restart_frozen, namespace, RESTART_TD, RESTART_TYPE_LOAD, mc, ierr, mesh=gr)
+        call states_elec_load(restart_frozen, namespace, space, st, gr, hm%kpoints, ierr, iter=td%iter, label = ": td")
         call restart_end(restart_frozen)
         call propagator_elec_run_zero_iter(hm, gr, td%tr)
 
@@ -929,9 +862,9 @@ contains
     if (st%parallel_in_states) then
       call st%mpi_grp%bcast(x, 1, MPI_FLOAT, 0)
     end if
-    call hm%update_span(minval(gr%mesh%spacing(1:space%dim)), x, namespace)
+    call hm%update_span(minval(gr%spacing(1:space%dim)), x, namespace)
     ! initialize Fermi energy
-    call states_elec_fermi(st, namespace, gr%mesh, compute_spin = .not. gr%der%boundaries%spiralBC)
+    call states_elec_fermi(st, namespace, gr, compute_spin = .not. gr%der%boundaries%spiralBC)
     call energy_calc_total(namespace, space, hm, gr, st, ext_partners)
 
     !%Variable TDFreezeDFTUOccupations
@@ -939,7 +872,7 @@ contains
     !%Default no
     !%Section Time-Dependent
     !%Description
-    !% The occupation matrices than enters in the LDA+U potential
+    !% The occupation matrices than enters in the DFT+U potential
     !% are not evolved during the time evolution.
     !%End
     call parse_variable(namespace, 'TDFreezeDFTUOccupations', .false., freeze_occ)
@@ -950,7 +883,7 @@ contains
 
       !In this case we should reload GS wavefunctions
       if (hm%lda_u_level /= DFT_U_NONE .and. .not. from_scratch) then
-        call restart_init(restart_frozen, namespace, RESTART_GS, RESTART_TYPE_LOAD, mc, ierr, mesh=gr%mesh)
+        call restart_init(restart_frozen, namespace, RESTART_GS, RESTART_TYPE_LOAD, mc, ierr, mesh=gr)
         call lda_u_load(restart_frozen, hm%lda_u, st, hm%energy%dft_u, ierr, occ_only = .true.)
         call restart_end(restart_frozen)
       end if
@@ -961,7 +894,7 @@ contains
     !%Default no
     !%Section Time-Dependent
     !%Description
-    !% The effective U of LDA+U is not evolved during the time evolution.
+    !% The effective U of DFT+U is not evolved during the time evolution.
     !%End
     call parse_variable(namespace, 'TDFreezeU', .false., freeze_u)
     if (freeze_u) then
@@ -971,7 +904,7 @@ contains
 
       !In this case we should reload GS wavefunctions
       if (hm%lda_u_level == DFT_U_ACBN0 .and. .not. from_scratch) then
-        call restart_init(restart_frozen, namespace, RESTART_GS, RESTART_TYPE_LOAD, mc, ierr, mesh=gr%mesh)
+        call restart_init(restart_frozen, namespace, RESTART_GS, RESTART_TYPE_LOAD, mc, ierr, mesh=gr)
         call lda_u_load(restart_frozen, hm%lda_u, st, hm%energy%dft_u, ierr, u_only = .true.)
         call restart_end(restart_frozen)
         write(message(1),'(a)') 'Loaded GS effective U of DFT+U'
@@ -981,9 +914,175 @@ contains
       end if
     end if
 
-    POP_SUB(td_init_wfs)
-  end subroutine td_init_wfs
+    ! This needs to be called before the calculation of the forces,
+    ! as we need to test of we output the forces or not
+    call td_write_init(td%write_handler, namespace, space, outp, gr, st, hm, ions, ext_partners, &
+      ks, ion_dynamics_ions_move(td%ions_dyn), &
+      list_has_gauge_field(ext_partners), hm%kick, td%iter, td%max_iter, td%dt, mc)
 
+    call td_init_ions_and_forces(td, namespace, space, gr, ions, ext_partners, st, ks, hm, outp)
+
+    if (td%scissor > M_EPSILON) then
+      call scissor_init(hm%scissor, namespace, space, st, gr, hm%d, hm%kpoints, td%scissor, mc)
+    end if
+
+    if (td%iter == 0) call td_run_zero_iter(td, namespace, space, gr, ions, st, ks, hm, ext_partners, outp)
+
+    gfield => list_get_gauge_field(ext_partners)
+    if(associated(gfield)) then
+      if (gauge_field_is_propagated(gfield)) then
+        if(ks%xc%kernel_lrc_alpha > M_EPSILON) then
+          call gauge_field_get_force(gfield, gr, st%d%spin_channels, st%current, ks%xc%kernel_lrc_alpha)
+          call messages_experimental('TD-LRC kernel')
+        else
+          call gauge_field_get_force(gfield, gr, st%d%spin_channels, st%current)
+        endif
+      endif
+    end if
+
+    !call td_check_trotter(td, sys, h)
+    td%iter = td%iter + 1
+
+    call restart_init(td%restart_dump, namespace, RESTART_TD, RESTART_TYPE_DUMP, mc, ierr, mesh=gr)
+    if (ion_dynamics_ions_move(td%ions_dyn) .and. td%recalculate_gs) then
+      ! We will also use the TD restart directory as temporary storage during the time propagation
+      call restart_init(td%restart_load, namespace, RESTART_TD, RESTART_TYPE_LOAD, mc, ierr, mesh=gr)
+    end if
+
+    call messages_print_with_emphasis(msg="Time-Dependent Simulation", namespace=namespace)
+    call td_print_header(namespace)
+
+    if (td%pesv%calc_spm .or. td%pesv%calc_mask .and. from_scratch) then
+      call pes_init_write(td%pesv,gr,st, namespace)
+    end if
+
+    if (st%d%pack_states .and. hm%apply_packed()) call st%pack()
+
+    POP_SUB(td_init_with_wavefunctions)
+  end subroutine td_init_with_wavefunctions
+
+  ! ---------------------------------------------------------
+  subroutine td_init_ions_and_forces(td, namespace, space, gr, ions, ext_partners, st, ks, hm, outp)
+    type(td_t),                  intent(inout) :: td
+    type(namespace_t),           intent(in)    :: namespace
+    type(space_t),               intent(in)    :: space
+    type(grid_t),                intent(inout) :: gr
+    type(ions_t),                intent(inout) :: ions
+    type(partner_list_t),        intent(in)    :: ext_partners
+    type(states_elec_t), target, intent(inout) :: st
+    type(v_ks_t),                intent(inout) :: ks
+    type(hamiltonian_elec_t),    intent(inout) :: hm
+    type(output_t),              intent(inout) :: outp
+
+    PUSH_SUB(td_init_ions_and_forces)
+
+    ! Calculate initial forces and kinetic energy
+    if (ion_dynamics_ions_move(td%ions_dyn)) then
+      if (td%iter > 0) then
+        call td_read_coordinates(td, namespace, ions)
+        if (ion_dynamics_drive_ions(td%ions_dyn)) then
+          call ion_dynamics_propagate(td%ions_dyn, ions, td%iter*td%dt, td%dt, namespace)
+        end if
+        call hamiltonian_elec_epot_generate(hm, namespace, space, gr, ions, ext_partners, st, time = td%iter*td%dt)
+        ! recompute potential because the ions have moved
+        call v_ks_calc(ks, namespace, space, hm, st, ions, ext_partners, calc_eigenval=.true., time = td%iter*td%dt)
+      end if
+
+      call forces_calculate(gr, namespace, ions, hm, ext_partners, st, ks, t = td%iter*td%dt, dt = td%dt)
+
+      call ions%update_kinetic_energy()
+    else
+      if (outp%what(OPTION__OUTPUT__FORCES) .or. td%write_handler%out(OUT_SEPARATE_FORCES)%write) then
+        call forces_calculate(gr, namespace, ions, hm, ext_partners, st, ks, t = td%iter*td%dt, dt = td%dt)
+      end if
+    end if
+
+    if (outp%what(OPTION__OUTPUT__STRESS)) then
+      call stress_calculate(namespace, gr, hm, st, ions, ks, ext_partners)
+    end if
+
+    POP_SUB(td_init_ions_and_forces)
+  end subroutine td_init_ions_and_forces
+
+  ! ---------------------------------------------------------
+  subroutine td_load_restart_from_td(td, namespace, space, mc, gr, ions, ext_partners, st, ks, hm, from_scratch)
+    type(td_t),                  intent(inout) :: td
+    type(namespace_t),           intent(in)    :: namespace
+    type(space_t),               intent(in)    :: space
+    type(multicomm_t),           intent(in)    :: mc
+    type(grid_t),                intent(inout) :: gr
+    type(ions_t),                intent(in)    :: ions
+    type(partner_list_t),        intent(in)    :: ext_partners
+    type(states_elec_t), target, intent(inout) :: st
+    type(v_ks_t),                intent(inout) :: ks
+    type(hamiltonian_elec_t),    intent(inout) :: hm
+    logical,                     intent(inout) :: from_scratch
+
+    integer :: ierr
+    type(restart_t) :: restart
+
+    PUSH_SUB(td_load_restart_from_td)
+
+    !We redistribute the states before the restarting
+    if (td%freeze_orbitals > 0) then
+      call states_elec_freeze_redistribute_states(st, namespace, gr, mc, td%freeze_orbitals)
+    end if
+
+    call restart_init(restart, namespace, RESTART_TD, RESTART_TYPE_LOAD, mc, ierr, mesh=gr)
+    if (ierr == 0) then
+      call td_load(restart, namespace, space, gr, st, hm, ext_partners, td, ks, ierr)
+    end if
+    call restart_end(restart)
+    if (ierr /= 0) then
+      from_scratch = .true.
+      td%iter = 0
+    end if
+
+    POP_SUB(td_load_restart_from_td)
+  end subroutine td_load_restart_from_td
+
+  ! ---------------------------------------------------------
+  subroutine td_load_restart_from_gs(td, namespace, space, mc, gr, ions, ext_partners, st, ks, hm)
+    type(td_t),                  intent(inout) :: td
+    type(namespace_t),           intent(in)    :: namespace
+    type(space_t),               intent(in)    :: space
+    type(multicomm_t),           intent(in)    :: mc
+    type(grid_t),                intent(inout) :: gr
+    type(ions_t),                intent(in)    :: ions
+    type(partner_list_t),        intent(in)    :: ext_partners
+    type(states_elec_t), target, intent(inout) :: st
+    type(v_ks_t),                intent(inout) :: ks
+    type(hamiltonian_elec_t),    intent(inout) :: hm
+
+    integer :: ierr
+    type(restart_t) :: restart
+
+    PUSH_SUB(td_load_restart_from_gs)
+
+    call restart_init(restart, namespace, RESTART_GS, RESTART_TYPE_LOAD, mc, ierr, mesh=gr, exact=.true.)
+
+    if (.not. st%only_userdef_istates) then
+      if (ierr == 0) then
+        call states_elec_load(restart, namespace, space, st, gr, hm%kpoints, ierr, label = ": gs")
+      end if
+      if (ierr /= 0) then
+        message(1) = 'Unable to read ground-state wavefunctions.'
+        call messages_fatal(1, namespace=namespace)
+      end if
+    end if
+
+    ! check if we should deploy user-defined wavefunctions.
+    ! according to the settings in the input file the routine
+    ! overwrites orbitals that were read from restart/gs
+    if (parse_is_defined(namespace, 'UserDefinedStates')) then
+      call states_elec_read_user_def_orbitals(gr, namespace, space, st)
+    end if
+
+    call states_elec_transform(st, namespace, space, restart, gr, hm%kpoints)
+    call restart_end(restart)
+
+    POP_SUB(td_load_restart_from_gs)
+  end subroutine td_load_restart_from_gs
 
   ! ---------------------------------------------------------
   subroutine td_run_zero_iter(td, namespace, space, gr, ions, st, ks, hm, ext_partners, outp)
@@ -1007,11 +1106,11 @@ contains
     ! dipole matrix elements in write_proj are wrong
     if (abs(hm%kick%time)  <=  M_EPSILON) then
       if (.not. hm%pcm%localf) then
-        call kick_apply(space, gr%mesh, st, td%ions_dyn, ions, hm%kick, hm%psolver, hm%kpoints)
+        call kick_apply(space, gr, st, td%ions_dyn, ions, hm%kick, hm%psolver, hm%kpoints)
       else
-        call kick_apply(space, gr%mesh, st, td%ions_dyn, ions, hm%kick, hm%psolver, hm%kpoints, pcm = hm%pcm)
+        call kick_apply(space, gr, st, td%ions_dyn, ions, hm%kick, hm%psolver, hm%kpoints, pcm = hm%pcm)
       end if
-      call td_write_kick(outp, namespace, space, gr%mesh, hm%kick, ions, 0)
+      call td_write_kick(outp, namespace, space, gr, hm%kick, ions, 0)
 
       !We activate the sprial BC only after the kick
       if (gr%der%boundaries%spiralBC) then
@@ -1040,7 +1139,7 @@ contains
     PUSH_SUB(td_read_coordinates)
 
     call io_assign(iunit)
-    iunit = io_open(io_workpath('td.general/coordinates', namespace), namespace, action='read', status='old')
+    iunit = io_open('td.general/coordinates', namespace, action='read', status='old')
 
     if (iunit < 0) then
       message(1) = "Could not open file '"//trim(io_workpath('td.general/coordinates', namespace))//"'."
@@ -1075,14 +1174,13 @@ contains
   end subroutine td_read_coordinates
 
   ! ---------------------------------------------------------
-  subroutine td_dump(restart, namespace, space, gr, st, hm, td, ks, ext_partners, iter, ierr)
-    type(restart_t),          intent(in)  :: restart
+  subroutine td_dump(td, namespace, space, gr, st, hm, ks, ext_partners, iter, ierr)
+    type(td_t),               intent(in)  :: td
     type(namespace_t),        intent(in)  :: namespace
     type(space_t),            intent(in)  :: space
     type(grid_t),             intent(in)  :: gr
     type(states_elec_t),      intent(in)  :: st
     type(hamiltonian_elec_t), intent(in)  :: hm
-    type(td_t),               intent(in)  :: td
     type(v_ks_t),             intent(in)  :: ks
     type(partner_list_t),     intent(in)  :: ext_partners
     integer,                  intent(in)  :: iter
@@ -1095,7 +1193,7 @@ contains
 
     ierr = 0
 
-    if (restart_skip(restart)) then
+    if (restart_skip(td%restart_dump)) then
       POP_SUB(td_dump)
       return
     end if
@@ -1106,46 +1204,46 @@ contains
     end if
 
     ! first write resume file
-    call states_elec_dump(restart, space, st, gr%mesh, hm%kpoints, err, iter=iter)
+    call states_elec_dump(td%restart_dump, space, st, gr, hm%kpoints, err, iter=iter)
     if (err /= 0) ierr = ierr + 1
 
-    call states_elec_dump_rho(restart, space, st, gr%mesh, ierr, iter=iter)
+    call states_elec_dump_rho(td%restart_dump, space, st, gr, ierr, iter=iter)
     if (err /= 0) ierr = ierr + 1
 
     if (hm%lda_u_level /= DFT_U_NONE) then
-      call lda_u_dump(restart, hm%lda_u, st, ierr)
+      call lda_u_dump(td%restart_dump, namespace, hm%lda_u, st, gr, ierr)
       if (err /= 0) ierr = ierr + 1
     end if
 
-    call potential_interpolation_dump(td%tr%vksold, space, restart, gr%mesh, st%d%nspin, err2)
+    call potential_interpolation_dump(td%tr%vksold, space, td%restart_dump, gr, st%d%nspin, err2)
     if (err2 /= 0) ierr = ierr + 2
 
-    call pes_dump(td%pesv, namespace, restart, st, gr%mesh, err)
+    call pes_dump(td%pesv, namespace, td%restart_dump, st, gr, err)
     if (err /= 0) ierr = ierr + 4
 
     ! Gauge field restart
     gfield => list_get_gauge_field(ext_partners)
     if(associated(gfield)) then
-      call gauge_field_dump(restart, gfield, ierr)
+      call gauge_field_dump(td%restart_dump, gfield, ierr)
     end if
 
     if (gr%der%boundaries%spiralBC) then
-      call states_elec_dump_spin(restart, st, err)
+      call states_elec_dump_spin(td%restart_dump, st, err)
       if (err /= 0) ierr = ierr + 8
     end if
 
     if (ks%has_photons) then
-      call mf_photons_dump(restart, ks%pt_mx, gr, td%dt, ks%pt, err)
+      call mf_photons_dump(td%restart_dump, ks%pt_mx, gr, td%dt, ks%pt, err)
     end if
     if (err /= 0) ierr = ierr + 16
 
     if (allocated(st%frozen_rho)) then
-      call states_elec_dump_frozen(restart, space, st, gr%mesh, ierr)
+      call states_elec_dump_frozen(td%restart_dump, space, st, gr, ierr)
     end if
     if (err /= 0) ierr = ierr + 32
 
     if (ion_dynamics_ions_move(td%ions_dyn)) then
-      call ion_dynamics_dump(td%ions_dyn, restart, err)
+      call ion_dynamics_dump(td%ions_dyn, td%restart_dump, err)
     end if
     if (err /= 0) ierr = ierr + 64
 
@@ -1188,13 +1286,13 @@ contains
     end if
 
     ! Read states
-    call states_elec_load(restart, namespace, space, st, gr%mesh, hm%kpoints, err, iter=td%iter, label = ": td")
+    call states_elec_load(restart, namespace, space, st, gr, hm%kpoints, err, iter=td%iter, label = ": td")
     if (err /= 0) then
       ierr = ierr + 1
     end if
 
     ! read potential from previous interactions
-    call potential_interpolation_load(td%tr%vksold, namespace, space, restart, gr%mesh, st%d%nspin, err2)
+    call potential_interpolation_load(td%tr%vksold, namespace, space, restart, gr, st%d%nspin, err2)
     if (err2 /= 0) ierr = ierr + 2
 
     if (hm%lda_u_level /= DFT_U_NONE) then
@@ -1216,7 +1314,7 @@ contains
       if (err /= 0) then
         ierr = ierr + 8
       else
-        call hamiltonian_elec_update(hm, gr%mesh, namespace, space, ext_partners, time = td%dt*td%iter)
+        call hm%update(gr, namespace, space, ext_partners, time = td%dt*td%iter)
       end if
     end if
 
@@ -1230,7 +1328,7 @@ contains
       call states_elec_load_spin(restart, st, err)
       !To ensure back compatibility, if the file is not present, we use the
       !current states to get the spins
-      if (err /= 0) call states_elec_fermi(st, namespace, gr%mesh)
+      if (err /= 0) call states_elec_fermi(st, namespace, gr)
     end if
 
     if (ion_dynamics_ions_move(td%ions_dyn)) then
@@ -1251,7 +1349,7 @@ contains
     type(namespace_t),        intent(in)    :: namespace
     type(restart_t),          intent(in)    :: restart
     type(space_t),            intent(in)    :: space
-    type(mesh_t),             intent(in)    :: mesh
+    class(mesh_t),            intent(in)    :: mesh
     type(states_elec_t),      intent(inout) :: st
     type(hamiltonian_elec_t), intent(inout) :: hm
     integer,                  intent(out)   :: ierr
@@ -1288,7 +1386,28 @@ contains
     POP_SUB(td_load_frozen)
   end subroutine td_load_frozen
 
+  ! ---------------------------------------------------------
+  logical function td_get_from_scratch(td)
+    type(td_t), intent(in) :: td
 
+    PUSH_SUB(td_get_from_scratch)
+
+    td_get_from_scratch = td%from_scratch
+
+    POP_SUB(td_get_from_scratch)
+  end function td_get_from_scratch
+
+  ! ---------------------------------------------------------
+  subroutine td_set_from_scratch(td, from_scratch)
+    type(td_t), intent(inout) :: td
+    logical,    intent(in)    :: from_scratch
+
+    PUSH_SUB(td_set_from_scratch)
+
+    td%from_scratch = from_scratch
+
+    POP_SUB(td_set_from_scratch)
+  end subroutine td_set_from_scratch
 end module td_oct_m
 
 !! Local Variables:

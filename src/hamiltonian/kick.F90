@@ -421,7 +421,7 @@ contains
     !%End
     if (periodic_dim > 0 .and. kick%delta_strength_mode == KICK_MAGNON_MODE .and. &
       parse_block(namespace, 'TDReducedMomentumTransfer', blk) == 0) then
- 
+
       kick%nqvec = 1
       SAFE_ALLOCATE(kick%qvector(1:3, 1))
       do idir = 1, 3
@@ -443,27 +443,27 @@ contains
         end do
       end if
 
-    !%Variable TDMomentumTransfer
-    !%Type block
-    !%Section Time-Dependent::Response
-    !%Description
-    !% Momentum-transfer vector for the calculation of the dynamic structure factor.
-    !% When this variable is set, a non-dipole field is applied, and an output file
-    !% <tt>ftchd</tt> is created (it contains the Fourier transform of the charge density
-    !% at each time). The type of the applied external field can be set by
-    !% an optional last number. Possible options are <tt>qexp</tt> (default), <tt>qcos</tt>,
-    !% <tt>qsin</tt>, or <tt>qcos+qsin</tt>. In the formulae below,
-    !% <math>\vec{q}</math> is the momentum-transfer vector.
-    !%Option qexp 1
-    !% External field is <math>e^{i \vec{q} \cdot \vec{r}}</math>.
-    !%Option qcos 2
-    !% External field is <math>\cos \left( i \vec{q} \cdot \vec{r} \right)</math>.
-    !%Option qsin 3
-    !% External field is <math>\sin \left( i \vec{q} \cdot \vec{r} \right)</math>.
-    !%Option qbessel 4
-    !% External field is <math>j_l \left( \vec{q} \cdot \vec{r} \right) Y_{lm} \left(\vec{r} \right)</math>.
-    !% In this case, the block has to include two extra values (<i>l</i> and <i>m</i>).
-    !%End
+      !%Variable TDMomentumTransfer
+      !%Type block
+      !%Section Time-Dependent::Response
+      !%Description
+      !% Momentum-transfer vector for the calculation of the dynamic structure factor.
+      !% When this variable is set, a non-dipole field is applied, and an output file
+      !% <tt>ftchd</tt> is created (it contains the Fourier transform of the charge density
+      !% at each time). The type of the applied external field can be set by
+      !% an optional last number. Possible options are <tt>qexp</tt> (default), <tt>qcos</tt>,
+      !% <tt>qsin</tt>, or <tt>qcos+qsin</tt>. In the formulae below,
+      !% <math>\vec{q}</math> is the momentum-transfer vector.
+      !%Option qexp 1
+      !% External field is <math>e^{i \vec{q} \cdot \vec{r}}</math>.
+      !%Option qcos 2
+      !% External field is <math>\cos \left( i \vec{q} \cdot \vec{r} \right)</math>.
+      !%Option qsin 3
+      !% External field is <math>\sin \left( i \vec{q} \cdot \vec{r} \right)</math>.
+      !%Option qbessel 4
+      !% External field is <math>j_l \left( \vec{q} \cdot \vec{r} \right) Y_{lm} \left(\vec{r} \right)</math>.
+      !% In this case, the block has to include two extra values (<i>l</i> and <i>m</i>).
+      !%End
 
     else if (parse_block(namespace, 'TDMomentumTransfer', blk) == 0) then
       kick%nqvec = 1
@@ -887,7 +887,7 @@ contains
   !
   subroutine kick_function_get(space, mesh, kick, kick_function, iq, to_interpolate)
     type(space_t),        intent(in)    :: space
-    type(mesh_t),         intent(in)    :: mesh
+    class(mesh_t),        intent(in)    :: mesh
     type(kick_t),         intent(in)    :: kick
     CMPLX,                intent(out)   :: kick_function(:)
     integer,              intent(in)    :: iq
@@ -982,7 +982,7 @@ contains
   !
   subroutine kick_pcm_function_get(space, mesh, kick, psolver, pcm, kick_pcm_function)
     type(space_t),        intent(in)    :: space
-    type(mesh_t),         intent(in)    :: mesh
+    class(mesh_t),        intent(in)    :: mesh
     type(kick_t),         intent(in)    :: kick
     type(poisson_t),      intent(in)    :: psolver
     type(pcm_t),          intent(inout) :: pcm
@@ -1024,7 +1024,7 @@ contains
   !! where \f$ E_0 = \frac{- k \hbar}{e} \f$ k = kick\%delta_strength.
   subroutine kick_apply(space, mesh, st, ions_dyn, ions, kick, psolver, kpoints, pcm)
     type(space_t),         intent(in)    :: space
-    type(mesh_t),          intent(in)    :: mesh
+    class(mesh_t),         intent(in)    :: mesh
     type(states_elec_t),   intent(inout) :: st
     type(ion_dynamics_t),  intent(in)    :: ions_dyn
     type(ions_t),          intent(inout) :: ions

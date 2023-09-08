@@ -251,6 +251,7 @@ subroutine X(derivatives_div)(der, ff, op_ff, ghost_update, set_bc, to_cartesian
   class default
     if(optional_default(to_cartesian, .true.)) then
       SAFE_ALLOCATE(ff_uvw(1:der%mesh%np_part, 1:der%dim))
+      !$omp parallel do
       do ip = 1, der%mesh%np_part
         call der%mesh%coord_system%vector_from_cartesian(der%mesh%x(ip, :), ff_uvw(ip, :), src=ff(ip, :))
       end do
@@ -266,6 +267,7 @@ subroutine X(derivatives_div)(der, ff, op_ff, ghost_update, set_bc, to_cartesian
   do idir = 2, der%dim
     call X(derivatives_perform) (der%grad(idir), der, ff_uvw(:, idir), tmp, ghost_update, set_bc)
 
+    !$omp parallel do
     do ii = 1, der%mesh%np
       op_ff(ii) = op_ff(ii) + tmp(ii)
     end do
@@ -292,7 +294,7 @@ end subroutine X(derivatives_div)
 ! ---------------------------------------------------------
 subroutine X(derivatives_curl)(der, ff, op_ff, ghost_update, set_bc)
   type(derivatives_t), intent(in)    :: der
-  R_TYPE,              intent(inout) :: ff(:,:)    !< ff(der%mesh%np_part, der%dim)
+  R_TYPE, contiguous,  intent(inout) :: ff(:,:)    !< ff(der%mesh%np_part, der%dim)
   R_TYPE,              intent(out)   :: op_ff(:,:)
   !< if dim = 2, op_ff(der%mesh%np, der%dim)
   !! if dim = 1, op_ff(der%mesh%np, 1)
@@ -791,7 +793,7 @@ subroutine X(batch_vector_uvw_to_xyz)(der, coord_system, uvw, xyz, metric)
 
 contains
   subroutine uvw_to_xyz_opencl
-    integer :: localsize, dim3, dim2
+    integer(i8) :: localsize, dim3, dim2
     type(accel_mem_t) :: matrix_buffer
 
     PUSH_SUB(uvw_to_xyz_opencl)
@@ -802,20 +804,20 @@ contains
     call accel_set_kernel_arg(kernel_uvw_xyz, 0, der%mesh%np)
     call accel_set_kernel_arg(kernel_uvw_xyz, 1, matrix_buffer)
     call accel_set_kernel_arg(kernel_uvw_xyz, 2, uvw(1)%ff_device)
-    call accel_set_kernel_arg(kernel_uvw_xyz, 3, log2(uvw(1)%pack_size_real(1)))
+    call accel_set_kernel_arg(kernel_uvw_xyz, 3, log2(int(uvw(1)%pack_size_real(1), i4)))
     call accel_set_kernel_arg(kernel_uvw_xyz, 4, xyz_(1)%ff_device)
-    call accel_set_kernel_arg(kernel_uvw_xyz, 5, log2(xyz_(1)%pack_size_real(1)))
+    call accel_set_kernel_arg(kernel_uvw_xyz, 5, log2(int(xyz_(1)%pack_size_real(1), i4)))
     if (der%dim > 1) then
       call accel_set_kernel_arg(kernel_uvw_xyz, 6, uvw(2)%ff_device)
-      call accel_set_kernel_arg(kernel_uvw_xyz, 7, log2(uvw(2)%pack_size_real(1)))
+      call accel_set_kernel_arg(kernel_uvw_xyz, 7, log2(int(uvw(2)%pack_size_real(1), i4)))
       call accel_set_kernel_arg(kernel_uvw_xyz, 8, xyz_(2)%ff_device)
-      call accel_set_kernel_arg(kernel_uvw_xyz, 9, log2(xyz_(2)%pack_size_real(1)))
+      call accel_set_kernel_arg(kernel_uvw_xyz, 9, log2(int(xyz_(2)%pack_size_real(1), i4)))
     end if
     if (der%dim > 2) then
       call accel_set_kernel_arg(kernel_uvw_xyz, 10, uvw(3)%ff_device)
-      call accel_set_kernel_arg(kernel_uvw_xyz, 11, log2(uvw(3)%pack_size_real(1)))
+      call accel_set_kernel_arg(kernel_uvw_xyz, 11, log2(int(uvw(3)%pack_size_real(1), i4)))
       call accel_set_kernel_arg(kernel_uvw_xyz, 12, xyz_(3)%ff_device)
-      call accel_set_kernel_arg(kernel_uvw_xyz, 13, log2(xyz_(3)%pack_size_real(1)))
+      call accel_set_kernel_arg(kernel_uvw_xyz, 13, log2(int(xyz_(3)%pack_size_real(1), i4)))
     end if
 
     localsize = accel_kernel_workgroup_size(kernel_uvw_xyz)/uvw(1)%pack_size_real(1)
@@ -824,7 +826,7 @@ contains
     dim2 = min(accel_max_size_per_dim(2)*localsize, pad(der%mesh%np, localsize))
 
     call accel_kernel_run(kernel_uvw_xyz, (/uvw(1)%pack_size_real(1), dim2, dim3/), &
-      (/uvw(1)%pack_size_real(1), localsize, 1/))
+      (/uvw(1)%pack_size_real(1), localsize, 1_i8/))
     call accel_finish()
 
     call accel_release_buffer(matrix_buffer)
@@ -878,7 +880,7 @@ subroutine X(derivatives_batch_curl_from_gradient)(der, ffb, gradb)
   class(batch_t),      intent(in)    :: gradb(:)
 
   integer :: ip, ist, ivec
-  integer :: localsize, dim2, dim3
+  integer(i8) :: localsize, dim2, dim3
 
   PUSH_SUB(X(derivatives_batch_curl_from_gradient))
 
@@ -911,23 +913,23 @@ subroutine X(derivatives_batch_curl_from_gradient)(der, ffb, gradb)
       end do
     end do
   case (BATCH_DEVICE_PACKED)
-    call accel_set_kernel_arg(aX(kernel_, curl), 0, der%mesh%np)
-    call accel_set_kernel_arg(aX(kernel_, curl), 1, ffb%ff_device)
-    call accel_set_kernel_arg(aX(kernel_, curl), 2, log2(ffb%pack_size(1)))
-    call accel_set_kernel_arg(aX(kernel_, curl), 3, gradb(1)%ff_device)
-    call accel_set_kernel_arg(aX(kernel_, curl), 4, log2(gradb(1)%pack_size(1)))
-    call accel_set_kernel_arg(aX(kernel_, curl), 5, gradb(2)%ff_device)
-    call accel_set_kernel_arg(aX(kernel_, curl), 6, log2(gradb(2)%pack_size(1)))
-    call accel_set_kernel_arg(aX(kernel_, curl), 7, gradb(3)%ff_device)
-    call accel_set_kernel_arg(aX(kernel_, curl), 8, log2(gradb(3)%pack_size(1)))
+    call accel_set_kernel_arg(aX(kernel_,curl), 0, der%mesh%np)
+    call accel_set_kernel_arg(aX(kernel_,curl), 1, ffb%ff_device)
+    call accel_set_kernel_arg(aX(kernel_,curl), 2, log2(int(ffb%pack_size(1), i4)))
+    call accel_set_kernel_arg(aX(kernel_,curl), 3, gradb(1)%ff_device)
+    call accel_set_kernel_arg(aX(kernel_,curl), 4, log2(int(gradb(1)%pack_size(1), i4)))
+    call accel_set_kernel_arg(aX(kernel_,curl), 5, gradb(2)%ff_device)
+    call accel_set_kernel_arg(aX(kernel_,curl), 6, log2(int(gradb(2)%pack_size(1), i4)))
+    call accel_set_kernel_arg(aX(kernel_,curl), 7, gradb(3)%ff_device)
+    call accel_set_kernel_arg(aX(kernel_,curl), 8, log2(int(gradb(3)%pack_size(1), i4)))
 
-    localsize = accel_kernel_workgroup_size(aX(kernel_, curl))/ffb%pack_size(1)
+    localsize = accel_kernel_workgroup_size(aX(kernel_,curl))/ffb%pack_size(1)
 
     dim3 = der%mesh%np/(accel_max_size_per_dim(2)*localsize) + 1
     dim2 = min(accel_max_size_per_dim(2)*localsize, pad(der%mesh%np, localsize))
 
-    call accel_kernel_run(aX(kernel_, curl), (/ffb%pack_size(1), dim2, dim3/), &
-      (/ffb%pack_size(1), localsize, 1/))
+    call accel_kernel_run(aX(kernel_,curl), (/ffb%pack_size(1), dim2, dim3/), &
+      (/ffb%pack_size(1), localsize, 1_i8/))
     call accel_finish()
   end select
 

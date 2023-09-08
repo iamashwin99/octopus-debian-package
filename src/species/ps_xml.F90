@@ -40,6 +40,7 @@ module ps_xml_oct_m
     logical            :: kleinman_bylander
     logical            :: nlcc
     logical            :: has_density
+    logical            :: has_soc
     integer            :: atomic_number
     FLOAT              :: mass
     FLOAT              :: valence_charge
@@ -197,6 +198,11 @@ contains
     if (this%nlcc) then
       SAFE_ALLOCATE(this%nlcc_density(1:this%grid_size))
       call pseudo_nlcc_density(pseudo, this%nlcc_density(1))
+    end if
+
+    this%has_soc = pseudo_has_soc(pseudo)
+    if (this%has_soc) then
+      call messages_not_implemented("XML pseudopotential with spin-orbit coupling")
     end if
 
     if (.not. this%kleinman_bylander) call ps_xml_check_normalization(this, namespace)

@@ -126,6 +126,24 @@ dist_share_DATA =                                \
 	25-Fe_polarized.02-setup.inp             \
 	25-Fe_polarized.03-unocc.inp             \
 	25-Fe_polarized.04-unfold.inp            \
-	25-Fe_polarized.test 
+	25-Fe_polarized.test                     \
+	26-Na.01-gs.inp                          \
+	26-Na.02-kdotp.inp                       \
+	26-Na.test                               \
+	27-Ar.01-gs.inp                          \
+	27-Ar.02-kdotp.inp                       \
+	27-Ar.03-em_resp_mo.inp                  \
+	27-Ar.test                               \
+	28-mgga_kli.01-Si_scan.inp               \
+	28-mgga_kli.test                         \
+	29-soc_solids.01-gs.inp                  \
+	29-soc_solids.test                       \
+	30-stress.01-independent.inp             \
+	30-stress.02-gamma_point.inp             \
+	30-stress.03-par_kpoints.inp             \
+	30-stress.04-kpoint_sym.inp              \
+	30-stress.05-output_scf.inp              \
+	30-stress.test
+
 
 CLEANFILES = *~ *.bak

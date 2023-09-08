@@ -15,7 +15,7 @@ oct-display_partitions - Graphical representation of the mesh partitions.
 
 =head1 DESCRIPTION
 
-This program is one of the B<octopus> utilities. 
+This program is one of the B<octopus> utilities.
 
 It is a script to use gnuplot to plot the partitioning of the
 mesh. The files mesh_partition.XXX as produced in debug/mesh_partition
@@ -58,4 +58,3 @@ This  is free software; see the source for copying conditions.  There is NO warr
 =head1 SEE ALSO
 
 The largest source of documentation is the octopus website: S<http://octopus-code.org>.
-

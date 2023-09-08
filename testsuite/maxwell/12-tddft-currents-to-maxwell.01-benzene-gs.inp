@@ -1,0 +1,19 @@
+CalculationMode = gs
+ExperimentalFeatures = yes
+FromScratch = yes
+
+%RestartOptions
+  restart_gs | "benzene/restart"
+%
+
+Dimensions = 3
+
+XYZCoordinates = "12-tddft-currents-to-maxwell.00-benzene.xyz"
+UnitsXYZFiles = angstrom_units
+
+BoxShape = parallelepiped
+%Lsize
+ 3.0*angstrom | 3.0*angstrom | 2.0*angstrom
+%
+PoissonSolver = fft
+Spacing = 0.2*angstrom

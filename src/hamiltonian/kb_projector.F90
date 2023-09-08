@@ -86,7 +86,7 @@ contains
     kb_p%e = M_ZERO
 
     do ic = 1, n_c
-      call species_real_nl_projector(a%species, sm%np, sm%x, sm%r, l, lm, ic, kb_p%p(:, ic))
+      call species_real_nl_projector(a%species, sm%np, sm%rel_x, sm%r, l, lm, ic, kb_p%p(:, ic))
 
       kb_p%e(ic) = ps%h(l, ic, ic)
     end do

@@ -3,7 +3,7 @@ CalculationMode = opt_control
 ExperimentalFeatures = yes
 
 Dimensions = 2
-fromScratch = yes
+FromScratch = yes
 
 BoxShape = sphere
 Spacing = 0.40
@@ -81,5 +81,3 @@ OCTControlFunctionOmegaMax = 10.0
 OCTFixFluenceTo = -1
 
 OCTDoubleCheck = no
-
-

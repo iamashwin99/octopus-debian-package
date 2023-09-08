@@ -1,7 +1,7 @@
 CalculationMode = test
 
 %Coordinates
-"Na" | 0.0 | 0.0 |  0.0	
+"Na" | 0.0 | 0.0 |  0.0
 %
 
 BoxShape = parallelepiped
@@ -14,5 +14,3 @@ PeriodicDimensions = 3
 PoissonSolver = fft
 FFTLibrary = pfft
 PoissonTestPeriodicThreshold = 1e-1
-
-

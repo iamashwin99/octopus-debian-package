@@ -7,66 +7,95 @@ Enabled    : Yes
 
 Input: 06-h2o_pol_lr.01_gs.inp
 match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
-match ; Total energy ; GREPFIELD(static/info, 'Total       =', 3) ; -17.19773190
-match ; Eigenvalue 1 ; GREPFIELD(static/info, '1   --', 3) ; -0.911840
-match ; Dipole x     ; GREPFIELD(static/info, '<x>', 3)       ;   0.0
-match ; Dipole y     ; GREPFIELD(static/info, '<y>', 3)       ;   7.61189E-01
-match ; Dipole z     ; GREPFIELD(static/info, '<z>', 3)       ;   0.0
 match ; Space group        ; GREPFIELD(out, 'Space group', 4) ; 25
 match ; No. of symmetries  ; GREPFIELD(out, 'symmetries that can be used', 5)  ;   4
+Precision: 8.60e-08
+match ;  Total energy  ; GREPFIELD(static/info, 'Total       =', 3) ; -17.19690408
+Precision: 4.56e-05
+match ;  Eigenvalue 1  ; GREPFIELD(static/info, '1   --', 3) ; -0.911776
+Precision: 5.0e-15
+match ;  Dipole x      ; GREPFIELD(static/info, '<x>', 3) ; -1.3553999999999999e-15
+Precision: 3.81e-05
+match ;  Dipole y      ; GREPFIELD(static/info, '<y>', 3) ; 0.761378
+Precision: 2.30e-14
+match ;  Dipole z      ; GREPFIELD(static/info, '<z>', 3) ; 1.29268e-14
 
 Input: 06-h2o_pol_lr.02_kdotp.inp
-match ; Inverse effective mass 1 ; LINEFIELD(kdotp/kpoint_1_1, 11, 3) ; 0.001511
-match ; Inverse effective mass 2 ; LINEFIELD(kdotp/kpoint_1_1, 17, 3) ; 0.013426
-match ; Inverse effective mass 3 ; LINEFIELD(kdotp/kpoint_1_1, 23, 3) ; 0.016327
-match ; Inverse effective mass 4 ; LINEFIELD(kdotp/kpoint_1_1, 29, 3) ; 0.019946
+Precision: 7.56e-06
+match ;  Inverse effective mass 1  ; LINEFIELD(kdotp/kpoint_1_1, 11, 3) ; 0.001512
+Precision: 6.71e-17
+match ;  Inverse effective mass 2  ; LINEFIELD(kdotp/kpoint_1_1, 17, 3) ; 0.013425000000000001
+Precision: 8.16e-06
+match ;  Inverse effective mass 3  ; LINEFIELD(kdotp/kpoint_1_1, 23, 3) ; 0.016324
+Precision: 9.97e-17
+match ;  Inverse effective mass 4  ; LINEFIELD(kdotp/kpoint_1_1, 29, 3) ; 0.019947000000000003
 
 Input: 06-h2o_pol_lr.03_emresp.inp
 if(available libxc_fxc); then
-  Precision : 0.001
-  match ; Polarizability XX w=0.0   ; LINEFIELD(em_resp/freq_0.0000/alpha, 2, 1) ; 10.361216
-  match ; Polarizability YY w=0.0   ; LINEFIELD(em_resp/freq_0.0000/alpha, 3, 2) ; 10.358802
-  match ; Polarizability ZZ w=0.0   ; LINEFIELD(em_resp/freq_0.0000/alpha, 4, 3) ; 10.358664
-
-  match ; Polarizability XX w=0.1   ; LINEFIELD(em_resp/freq_0.1000/alpha, 2, 1) ; 10.690363
-  match ; Polarizability YY w=0.1   ; LINEFIELD(em_resp/freq_0.1000/alpha, 3, 2) ; 10.828190
-  match ; Polarizability ZZ w=0.1   ; LINEFIELD(em_resp/freq_0.1000/alpha, 4, 3) ; 11.099024
-
-  match ; Cross sect. (avg) w=0.1   ; LINEFIELD(em_resp/freq_0.1000/cross_section, -1, 2) ; 0.10452090E-02
-  match ; Cross sect. (ani) w=0.1   ; LINEFIELD(em_resp/freq_0.1000/cross_section, -1, 3) ; 0.67898503E-03
-
-  match ; Born charge O XX w=0.0    ; LINEFIELD(em_resp/freq_0.0000/Born_charges, 5, 1) ; -0.501594
-  match ; Born charge O YY w=0.0    ; LINEFIELD(em_resp/freq_0.0000/Born_charges, 6, 2) ; -0.356658
-  match ; Born charge O ZZ w=0.0    ; LINEFIELD(em_resp/freq_0.0000/Born_charges, 7, 3) ; -0.634093
-  match ; Born charge diff w=0.0    ; GREPFIELD(em_resp/freq_0.0000/Born_charges, "Discrepancy",  3,  5) ;  0.022272
-
-  match ; Born charge O XX w=0.1    ; LINEFIELD(em_resp/freq_0.1000/Born_charges, 5, 1) ; -0.539031
-  match ; Born charge O YY w=0.1    ; LINEFIELD(em_resp/freq_0.1000/Born_charges, 6, 2) ; -0.392687
-  match ; Born charge O ZZ w=0.1    ; LINEFIELD(em_resp/freq_0.1000/Born_charges, 7, 3) ; -0.688468
-  match ; Born charge diff w=0.1    ; GREPFIELD(em_resp/freq_0.1000/Born_charges, "Discrepancy",  3,  5) ; -0.019057
+  Precision: 5.18e-06
+  match ;  Polarizability XX w=0.0    ; LINEFIELD(em_resp/freq_0.0000/alpha, 2, 1) ; 10.362288
+  Precision: 5.18e-06
+  match ;  Polarizability YY w=0.0    ; LINEFIELD(em_resp/freq_0.0000/alpha, 3, 2) ; 10.360695999999999
+  Precision: 5.18e-06
+  match ;  Polarizability ZZ w=0.0    ; LINEFIELD(em_resp/freq_0.0000/alpha, 4, 3) ; 10.362670999999999
+  Precision: 5.35e-06
+  match ;  Polarizability XX w=0.1    ; LINEFIELD(em_resp/freq_0.1000/alpha, 2, 1) ; 10.691578999999999
+  Precision: 5.42e-06
+  match ;  Polarizability YY w=0.1    ; LINEFIELD(em_resp/freq_0.1000/alpha, 3, 2) ; 10.830393
+  Precision: 5.55e-06
+  match ;  Polarizability ZZ w=0.1    ; LINEFIELD(em_resp/freq_0.1000/alpha, 4, 3) ; 11.104068999999999
+  Precision: 5.23e-10
+  match ;  Cross sect. (avg) w=0.1    ; LINEFIELD(em_resp/freq_0.1000/cross_section, -1, 2) ; 0.0010463077
+  Precision: 1.10e-11
+  match ;  Cross sect. (ani) w=0.1    ; LINEFIELD(em_resp/freq_0.1000/cross_section, -1, 3) ; 0.00068057923
+  Precision: 2.51e-15
+  match ;  Born charge O XX w=0.0     ; LINEFIELD(em_resp/freq_0.0000/born_charges, 5, 1) ; -0.501867
+  Precision: 1.78e-05
+  match ;  Born charge O YY w=0.0     ; LINEFIELD(em_resp/freq_0.0000/born_charges, 6, 2) ; -0.356852
+  Precision: 3.17e-14
+  match ;  Born charge O ZZ w=0.0     ; LINEFIELD(em_resp/freq_0.0000/born_charges, 7, 3) ; -0.634326
+  Precision: 1.11e-05
+  match ;  Born charge diff w=0.0     ; GREPFIELD(em_resp/freq_0.0000/born_charges, "Discrepancy", 3, 5) ; 0.022272
+  Precision: 2.70e-05
+  match ;  Born charge O XX w=0.1     ; LINEFIELD(em_resp/freq_0.1000/born_charges, 5, 1) ; -0.539359
+  Precision: 1.96e-05
+  match ;  Born charge O YY w=0.1     ; LINEFIELD(em_resp/freq_0.1000/born_charges, 6, 2) ; -0.392901
+  Precision: 3.44e-05
+  match ;  Born charge O ZZ w=0.1     ; LINEFIELD(em_resp/freq_0.1000/born_charges, 7, 3) ; -0.688731
+  Precision: 9.53e-06
+  match ;  Born charge diff w=0.1     ; GREPFIELD(em_resp/freq_0.1000/born_charges, "Discrepancy", 3, 5) ; -0.019065
 else
   match ; Error no libxc_fxc ; GREPCOUNT(err, 'not compiled with the fxc support') ; 1
 endif
 
 Input: 06-h2o_pol_lr.04_emresp_mo.inp
 if(available libxc_fxc); then
-  Precision : 0.01
-  match; Susceptibility XX           ; LINEFIELD(em_resp/freq_0.0000/susceptibility, 2, 1) ; -157.494499
-  match; Susceptibility YY           ; LINEFIELD(em_resp/freq_0.0000/susceptibility, 3, 2) ; -160.074578
-  match; Susceptibility ZZ           ; LINEFIELD(em_resp/freq_0.0000/susceptibility, 4, 3) ; -157.801990
-  match; Susceptibility av           ; LINEFIELD(em_resp/freq_0.0000/susceptibility, 5, 3) ; -158.457022
+  Precision: 5.50e-07
+  match ;  Susceptibility XX            ; LINEFIELD(em_resp/freq_0.0000/susceptibility, 2, 1) ; -157.5002415
+  Precision: 8.00e-06
+  match ;  Susceptibility YY            ; LINEFIELD(em_resp/freq_0.0000/susceptibility, 3, 2) ; -160.079362
+  Precision: 7.89e-13
+  match ;  Susceptibility ZZ            ; LINEFIELD(em_resp/freq_0.0000/susceptibility, 4, 3) ; -157.80592800000002
+  Precision: 7.92e-06
+  match ;  Susceptibility av            ; LINEFIELD(em_resp/freq_0.0000/susceptibility, 5, 3) ; -158.46184399999999
 
-  Precision : 0.001
-  match ; Polarizability XX w=0.1    ; LINEFIELD(em_resp/freq_0.1000/alpha, 2, 1) ; 10.690355
-  match ; Polarizability YY w=0.1    ; LINEFIELD(em_resp/freq_0.1000/alpha, 3, 2) ; 10.828163
-  match ; Polarizability ZZ w=0.1    ; LINEFIELD(em_resp/freq_0.1000/alpha, 4, 3) ; 11.099011
-  match ; Cross-section  av w=0.1    ; LINEFIELD(em_resp/freq_0.1000/cross_section, 3, 2) ; 0.10451726E-02
+  Precision: 5.35e-05
+  match ;  Polarizability XX w=0.1     ; LINEFIELD(em_resp/freq_0.1000/alpha, 2, 1) ; 10.69153
+  Precision: 5.42e-06
+  match ;  Polarizability YY w=0.1     ; LINEFIELD(em_resp/freq_0.1000/alpha, 3, 2) ; 10.830429
+  Precision: 5.55e-06
+  match ;  Polarizability ZZ w=0.1     ; LINEFIELD(em_resp/freq_0.1000/alpha, 4, 3) ; 11.103921
+  Precision: 5.23e-10
+  match ;  Cross-section  av w=0.1     ; LINEFIELD(em_resp/freq_0.1000/cross_section, 3, 2) ; 0.0010459644999999999
 
-  Precision : 0.00001
-  match ; Mag.-opt. Re alpha w=0.1   ; GREPFIELD(em_resp/freq_0.1000/alpha_mo, 'Re alpha', 4) ; -0.74507773E-02
-  match ; Mag.-opt. av Im w=0.1      ; GREPFIELD(em_resp/freq_0.1000/alpha_mo, 'Im alpha', 7) ; 0.24864882E-01
-  match ; Mag.-opt. Re eps w=0.1     ; GREPFIELD(em_resp/freq_0.1000/alpha_mo, 'Re epsilon', 8) ; -0.79300556E-05
-  match ; Mag.-opt. Im eps w=0.1     ; GREPFIELD(em_resp/freq_0.1000/alpha_mo, 'Im epsilon', 9) ;  0.25869059E-04
+  Precision: 3.73e-09
+  match ;  Mag.-opt. Re alpha w=0.1    ; GREPFIELD(em_resp/freq_0.1000/alpha_mo, 'Re alpha', 4) ; -0.0074592391999999995
+  Precision: 1.24e-08
+  match ;  Mag.-opt. av Im w=0.1       ; GREPFIELD(em_resp/freq_0.1000/alpha_mo, 'Im alpha', 7) ; 0.024884106000000003
+  Precision: 4.40e-12
+  match ;  Mag.-opt. Re eps w=0.1      ; GREPFIELD(em_resp/freq_0.1000/alpha_mo, 'Re epsilon', 8) ; -7.9364962e-06
+  Precision: 1.29e-11
+  match ;  Mag.-opt. Im eps w=0.1      ; GREPFIELD(em_resp/freq_0.1000/alpha_mo, 'Im epsilon', 9) ; 2.5886676e-05
 else
   match ; Error no libxc_fxc ; GREPCOUNT(err, 'not compiled with the fxc support') ; 1
 endif

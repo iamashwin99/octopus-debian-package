@@ -22,7 +22,7 @@ module interactions_factory_abst_oct_m
   use debug_oct_m
   use ghost_interaction_oct_m
   use global_oct_m
-  use interaction_oct_m
+  use interaction_with_partner_oct_m
   use interaction_partner_oct_m
   use linked_list_oct_m
   use messages_oct_m
@@ -55,11 +55,11 @@ module interactions_factory_abst_oct_m
     function interactions_factory_abst_create(this, type, partner) result(interaction)
       import :: interactions_factory_abst_t
       import interaction_partner_t
-      import interaction_t
+      import interaction_with_partner_t
       class(interactions_factory_abst_t),         intent(in)    :: this
       integer,                                    intent(in)    :: type
       class(interaction_partner_t),       target, intent(inout) :: partner
-      class(interaction_t),                       pointer       :: interaction
+      class(interaction_with_partner_t),          pointer       :: interaction
     end function interactions_factory_abst_create
 
     integer function interactions_factory_abst_default_mode(this, namespace, type)
@@ -151,7 +151,7 @@ contains
 
         if (mode == ONLY_PARTNERS .or. mode == ALL_EXCEPT) then
           ! In these two cases we need to read the names of the selected
-          ! partners (remaining columns) and handled them appropriatly
+          ! partners (remaining columns) and handled them appropriately
           do ic = 2, parse_block_cols(blk, il) - 1
             call parse_block_string(blk, il, ic, input_name)
 
@@ -174,7 +174,7 @@ contains
         end if
 
         ! Now actually create the interactions for the selected partners
-        call create_interaction_with_partners(this, system%namespace, partners, system%interactions, interaction_type)
+        call create_interaction_with_partners(this, system, partners, interaction_type)
 
         ! Remove this interaction type from the list, as it has just been handled
         call interactions_to_create%delete(interaction_type)
@@ -198,12 +198,12 @@ contains
         call messages_fatal(1, namespace=system%namespace)
       end select
 
-      call create_interaction_with_partners(this, system%namespace, partners, system%interactions, interaction_type)
+      call create_interaction_with_partners(this, system, partners, interaction_type)
     end do
 
     ! All systems need to be connected to make sure they remain synchronized.
     ! We enforce that be adding a ghost interaction between all systems
-    call create_interaction_with_partners(this, system%namespace, partners_flat_list, system%interactions)
+    call create_interaction_with_partners(this, system, partners_flat_list)
 
     ! If the system is a multisystem, then we also need to create the interactions for the subsystems
     select type (system)
@@ -235,7 +235,7 @@ contains
 
         select type (partner)
         class is (multisystem_t)
-          ! Also incude the subsystems of a multisystem
+          ! Also include the subsystems of a multisystem
           call flatten_partner_list(partner%list, flat_list)
         end select
 
@@ -247,16 +247,15 @@ contains
   end subroutine interactions_factory_abst_create_interactions
 
   ! ---------------------------------------------------------------------------------------
-  subroutine create_interaction_with_partners(this, namespace, partners, interactions, interaction_type)
+  subroutine create_interaction_with_partners(this, system, partners, interaction_type)
     class(interactions_factory_abst_t), intent(in)    :: this
-    type(namespace_t),                  intent(in)    :: namespace
+    class(system_t),                    intent(inout) :: system
     class(partner_list_t),      target, intent(in)    :: partners
-    class(interaction_list_t),          intent(inout) :: interactions
     integer,                  optional, intent(in)    :: interaction_type
 
     type(partner_iterator_t) :: iter
     class(interaction_partner_t), pointer :: partner
-    class(interaction_t), pointer :: interaction
+    class(interaction_with_partner_t), pointer :: interaction
 
     logical :: interaction_used
 
@@ -270,19 +269,29 @@ contains
       interaction_used = .false.
 
       ! No self-interaction
-      if (partner%namespace%get() /= namespace%get()) then
+      if (partner%namespace%get() /= system%namespace%get()) then
 
         if (present(interaction_type)) then
           ! If the partner also supports this type of interaction, then create the interaction
           if (partner%supported_interactions_as_partner%has(interaction_type)) then
             interaction => this%create(interaction_type, partner)
-            call interactions%add(interaction)
+
+            !Mark all the quantities needed by the interaction from the system and the partner as required
+            if (interaction%n_system_quantities > 0) then
+              system%quantities(interaction%system_quantities)%required = .true.
+            end if
+            if (interaction%n_partner_quantities > 0) then
+              partner%quantities(interaction%partner_quantities)%required = .true.
+            end if
+
+            ! Add interaction to list
+            call system%interactions%add(interaction)
             interaction_used = .true.
           end if
         else
           ! Create a ghost interaction if no interaction type was given
           interaction => ghost_interaction_t(partner)
-          call interactions%add(interaction)
+          call system%interactions%add(interaction)
           interaction_used = .true.
         end if
 
@@ -292,7 +301,7 @@ contains
           else
             write(message(1), '(a)') "Debug: ----  interaction was not associated."
           end if
-          call messages_info(1, namespace=namespace)
+          call messages_info(1, namespace=system%namespace)
         end if
 
       end if

@@ -22,7 +22,6 @@ module hamiltonian_elec_base_oct_m
   use accel_oct_m
   use batch_oct_m
   use batch_ops_oct_m
-  use boundaries_oct_m
   use blas_oct_m
   use comm_oct_m
   use debug_oct_m
@@ -31,7 +30,6 @@ module hamiltonian_elec_base_oct_m
   use global_oct_m
   use hardware_oct_m
   use hgh_projector_oct_m
-  use ions_oct_m
   use kb_projector_oct_m
   use math_oct_m
   use mesh_oct_m
@@ -83,7 +81,9 @@ module hamiltonian_elec_base_oct_m
     projection_t,                                   &
     hamiltonian_elec_base_projector_self_overlap,   &
     hamiltonian_elec_base_set_phase_corr,           &
-    hamiltonian_elec_base_unset_phase_corr
+    hamiltonian_elec_base_unset_phase_corr,         &
+    dhamiltonian_elec_base_r_vnlocal,               &
+    zhamiltonian_elec_base_r_vnlocal
 
   !> This object stores and applies an electromagnetic potential that
   !! can be represented by different types of potentials.
@@ -97,7 +97,9 @@ module hamiltonian_elec_base_oct_m
     type(projector_matrix_t), allocatable, public :: projector_matrices(:)
     FLOAT,                    allocatable, public :: potential(:, :)
     FLOAT,                    allocatable, public :: Impotential(:, :)
-    FLOAT,                    allocatable, public :: uniform_magnetic_field(:)
+    FLOAT,                    allocatable, public :: uniform_magnetic_field(:) ! assumed to be in Gaussian units
+    FLOAT,                    allocatable, public :: magnetic_field(:, :)      ! assumed to be in Gaussian units
+    FLOAT,                    allocatable, public :: zeeman_pot(:, :)
     FLOAT,                    allocatable, public :: uniform_vector_potential(:)
     FLOAT,                    allocatable, public :: vector_potential(:, :)
     integer,                               public :: nprojector_matrices
@@ -110,9 +112,9 @@ module hamiltonian_elec_base_oct_m
     logical                                       :: projector_mix
     CMPLX,                    allocatable, public :: projector_phases(:, :, :, :)
     integer,                  allocatable, public :: projector_to_atom(:)
-    integer                                       :: nregions
     integer,                               public :: nphase
-    integer,                  allocatable         :: regions(:)
+    integer                                       :: nregions    ! number of non-overlapping regions
+    integer,                  allocatable         :: regions(:)  ! list of atomd in each region.
     type(accel_mem_t)                             :: potential_accel
     type(accel_mem_t)                             :: impotential_accel
     type(accel_mem_t),                     public :: vtau_accel
@@ -130,6 +132,7 @@ module hamiltonian_elec_base_oct_m
     CMPLX,                    allocatable, public :: phase_spiral(:,:)
     type(accel_mem_t),                     public :: buff_phase
     type(accel_mem_t),                     public :: buff_phase_spiral
+    type(accel_mem_t),                     public :: buff_phase_corr
     integer,                               public :: buff_phase_qn_start
     logical                                       :: projector_self_overlap  !< if .true. some projectors overlap with themselves
     FLOAT,                    pointer,     public :: spin(:,:,:)
@@ -158,8 +161,8 @@ module hamiltonian_elec_base_oct_m
     FIELD_POTENTIAL                = 1,    &
     FIELD_VECTOR_POTENTIAL         = 2,    &
     FIELD_UNIFORM_VECTOR_POTENTIAL = 4,    &
-    FIELD_UNIFORM_MAGNETIC_FIELD   = 8
-
+    FIELD_UNIFORM_MAGNETIC_FIELD   = 8,    &
+    FIELD_MAGNETIC_FIELD           = 16
   type(profile_t), save :: prof_vnlpsi_start, prof_vnlpsi_finish, prof_magnetic, prof_vlpsi, prof_scatter, &
     prof_matelement, prof_matelement_gather, prof_matelement_reduce
 
@@ -207,6 +210,8 @@ contains
     SAFE_DEALLOCATE_A(this%vector_potential)
     SAFE_DEALLOCATE_A(this%uniform_vector_potential)
     SAFE_DEALLOCATE_A(this%uniform_magnetic_field)
+    SAFE_DEALLOCATE_A(this%magnetic_field)
+    SAFE_DEALLOCATE_A(this%zeeman_pot)
     call hamiltonian_elec_base_destroy_proj(this)
 
     nullify(this%spin)
@@ -219,16 +224,39 @@ contains
   !> This functions sets to zero all fields that are currently
   !! allocated.
   !
-  subroutine hamiltonian_elec_base_clear(this)
+  subroutine hamiltonian_elec_base_clear(this, np)
     type(hamiltonian_elec_base_t), intent(inout) :: this
+    integer,                       intent(in)    :: np
+
+    integer :: ip, ispin
 
     PUSH_SUB(hamiltonian_elec_clear)
 
-    if (allocated(this%potential))                this%potential = M_ZERO
-    if (allocated(this%Impotential))              this%Impotential = M_ZERO
-    if (allocated(this%uniform_vector_potential)) this%uniform_vector_potential = M_ZERO
-    if (allocated(this%vector_potential))         this%vector_potential = M_ZERO
-    if (allocated(this%uniform_magnetic_field))   this%uniform_magnetic_field = M_ZERO
+    if (allocated(this%potential)) then
+      do ispin = 1, this%nspin
+        !$omp parallel do schedule(static)
+        do ip = 1, np
+          this%potential(ip, ispin) = M_ZERO
+        end do
+      end do
+    end if
+    if (allocated(this%Impotential)) then
+      do ispin = 1, this%nspin
+        !$omp parallel do schedule(static)
+        do ip = 1, np
+          this%Impotential(ip, ispin) = M_ZERO
+        end do
+      end do
+    end if
+    if (allocated(this%uniform_vector_potential)) then
+      this%uniform_vector_potential = M_ZERO
+    end if
+    if (allocated(this%vector_potential)) then
+      this%vector_potential = M_ZERO
+    end if
+    if (allocated(this%uniform_magnetic_field)) then
+      this%uniform_magnetic_field = M_ZERO
+    end if
 
     POP_SUB(hamiltonian_elec_clear)
   end subroutine hamiltonian_elec_base_clear
@@ -238,19 +266,31 @@ contains
   !> This function ensures that the corresponding field is allocated.
   subroutine hamiltonian_elec_base_allocate(this, mesh, field, complex_potential)
     type(hamiltonian_elec_base_t), intent(inout) :: this
-    type(mesh_t),             intent(in)    :: mesh
+    class(mesh_t),            intent(in)    :: mesh
     integer,                  intent(in)    :: field
     logical,                  intent(in)    :: complex_potential
+
+    integer :: ip, ispin
 
     PUSH_SUB(hamiltonian_elec_base_allocate)
 
     if (bitand(FIELD_POTENTIAL, field) /= 0) then
       if (.not. allocated(this%potential)) then
         SAFE_ALLOCATE(this%potential(1:mesh%np, 1:this%nspin))
-        this%potential = M_ZERO
+        do ispin = 1, this%nspin
+          !$omp parallel do schedule(static)
+          do ip = 1, mesh%np
+            this%potential(ip, ispin) = M_ZERO
+          end do
+        end do
         if (complex_potential) then
           SAFE_ALLOCATE(this%Impotential(1:mesh%np, 1:this%nspin))
-          this%Impotential = M_ZERO
+          do ispin = 1, this%nspin
+            !$omp parallel do schedule(static)
+            do ip = 1, mesh%np
+              this%Impotential(ip, ispin) = M_ZERO
+            end do
+          end do
         end if
         if (accel_is_enabled()) then
           call accel_create_buffer(this%potential_accel, ACCEL_MEM_READ_ONLY, TYPE_FLOAT, accel_padded_size(mesh%np)*this%nspin)
@@ -284,6 +324,16 @@ contains
       end if
     end if
 
+    if ((bitand(FIELD_MAGNETIC_FIELD, field) /= 0) .or. &
+      bitand(FIELD_UNIFORM_MAGNETIC_FIELD, field) /= 0) then
+      if (.not. allocated(this%magnetic_field)) then
+        SAFE_ALLOCATE(this%magnetic_field(1:mesh%np, 1:max(mesh%box%dim, 3)))
+        this%magnetic_field = M_ZERO
+        SAFE_ALLOCATE(this%zeeman_pot(1:mesh%np, 1:this%nspin))
+        this%zeeman_pot = M_ZERO
+      end if
+    end if
+
     POP_SUB(hamiltonian_elec_base_allocate)
   end subroutine hamiltonian_elec_base_allocate
 
@@ -295,7 +345,7 @@ contains
   !
   subroutine hamiltonian_elec_base_update(this, mesh)
     type(hamiltonian_elec_base_t), intent(inout) :: this
-    type(mesh_t),             intent(in)    :: mesh
+    class(mesh_t),            intent(in)    :: mesh
 
     integer :: idir, ip
 
@@ -321,7 +371,7 @@ contains
 
   subroutine hamiltonian_elec_base_accel_copy_pot(this, mesh, vtau)
     type(hamiltonian_elec_base_t), intent(inout) :: this
-    type(mesh_t),             intent(in)    :: mesh
+    class(mesh_t),            intent(in)    :: mesh
     FLOAT, optional,          intent(in)    :: vtau(:,:)
 
     integer :: offset, ispin
@@ -386,7 +436,7 @@ contains
   subroutine hamiltonian_elec_base_build_proj(this, space, mesh, epot)
     type(hamiltonian_elec_base_t), target, intent(inout) :: this
     type(space_t),                         intent(in)    :: space
-    type(mesh_t),                     intent(in)    :: mesh
+    class(mesh_t),                    intent(in)    :: mesh
     type(epot_t),             target, intent(in)    :: epot
 
     integer :: iatom, iproj, ll, lmax, lloc, mm, ic, jc
@@ -407,9 +457,9 @@ contains
     ! this is most likely a very inefficient algorithm, O(natom**2) or
     ! O(natom**3), probably it should be replaced by something better.
 
-    SAFE_ALLOCATE(order(1:epot%natoms))
-    SAFE_ALLOCATE(head(1:epot%natoms + 1))
-    SAFE_ALLOCATE(region_count(1:epot%natoms))
+    SAFE_ALLOCATE(order(1:epot%natoms))         ! order(iregion) = ?
+    SAFE_ALLOCATE(head(1:epot%natoms + 1))      ! head(iregion) points to the first atom in region iregion
+    SAFE_ALLOCATE(region_count(1:epot%natoms))  ! region_count(iregion): number of atoms in that region
     SAFE_ALLOCATE(atom_counted(1:epot%natoms))
 
     this%projector_self_overlap = .false.
@@ -440,6 +490,8 @@ contains
         end if
 
         if (.not. overlap) then
+          ! iatom did not overlap with any previously counted atoms:
+          ! iatom will be added to the current region
           region_count(nregion) = region_count(nregion) + 1
           order(head(nregion) - 1 + region_count(nregion)) = iatom
           atom_counted(iatom) = .true.
@@ -501,7 +553,7 @@ contains
         this%apply_projector_matrices = .true.
         !The HGH pseudopotentials are now supporting the SOC
         if (epot%reltype /= NOREL .and. &
-          (.not. projector_is(epot%proj(iatom), PROJ_HGH) .or. accel_is_enabled())) then
+          (.not. projector_is(epot%proj(iatom), PROJ_HGH))) then
           this%apply_projector_matrices = .false.
           exit
         end if
@@ -560,7 +612,7 @@ contains
             end do
           end do
 
-          call projector_matrix_allocate(pmat, epot%proj(iatom)%sphere%np, nmat, has_mix_matrix = .false.)
+          call projector_matrix_allocate(pmat, nmat, epot%proj(iatom)%sphere, has_mix_matrix = .false.)
 
           ! generate the matrix
           pmat%dprojectors = M_ZERO
@@ -594,8 +646,8 @@ contains
             end do
           end do
 
-          call projector_matrix_allocate(pmat, epot%proj(iatom)%sphere%np, nmat, has_mix_matrix = .true., &
-            is_cmplx = (epot%reltype == SPIN_ORBIT))
+          call projector_matrix_allocate(pmat, nmat, epot%proj(iatom)%sphere, &
+            has_mix_matrix = .true., is_cmplx = (epot%reltype == SPIN_ORBIT))
 
           ! generate the matrix
           if (epot%reltype == SPIN_ORBIT) then
@@ -662,8 +714,10 @@ contains
 
         do ip = 1, pmat%npoints
           pmat%map(ip) = epot%proj(iatom)%sphere%map(ip)
-          pmat%position(1:3, ip) = epot%proj(iatom)%sphere%x(ip, 1:3)
+          pmat%position(1:3, ip) = epot%proj(iatom)%sphere%rel_x(1:3, ip)
         end do
+
+        pmat%regions = epot%proj(iatom)%sphere%regions
 
         this%full_projection_size = this%full_projection_size + pmat%nprojs
 
@@ -699,6 +753,7 @@ contains
   contains
 
     subroutine build_accel()
+
       integer              :: matrix_size, scal_size
       integer, allocatable :: cnt(:), invmap(:, :), invmap2(:), pos(:)
       integer, allocatable :: offsets(:, :)
@@ -715,7 +770,7 @@ contains
 
       ! Here we construct the offsets for accessing various arrays within the GPU kernels.
       ! The offset(:,:) array contains a number of sizes and offsets, describing how to address the arrays.
-      ! This allows to transfer all these number to the GPU in one memory transfer.
+      ! This allows to transfer all these numbers to the GPU in one memory transfer.
       !
       ! For each projection matrix (addressed by imap), we have:
       !
@@ -724,7 +779,7 @@ contains
       ! offset(MATRIX, imap) : address offset: cumulative of pmat%npoints * pmat%nprojs
       ! offset(MAP, imap)    : address offset: cumulative of pmat%npoints for each imap
       ! offset(SCAL, imap)   : address_offset: cumulative of pmat%nprojs
-      ! offset(MIX, imap)    : address_offset: cumulative of pmat%nprojs**2
+      ! offset(MIX, imap)    : address_offset: cumulative of pmat%nprojs**2 or 4*pmat%nprojs**2 for complex mixing
 
       ! first we count
       matrix_size = 0
@@ -751,9 +806,11 @@ contains
         offsets(SCAL, imat) = scal_size
         scal_size = scal_size + pmat%nprojs
 
-        if (allocated(pmat%dmix) .or. allocated(pmat%zmix)) then
-          offsets(MIX, imat) = mix_offset
+        offsets(MIX, imat) = mix_offset
+        if (allocated(pmat%dmix)) then
           mix_offset = mix_offset + pmat%nprojs**2
+        else if (allocated(pmat%zmix)) then
+          mix_offset = mix_offset + 4 * pmat%nprojs**2
         else
           offsets(MIX, imat) = -1
         end if
@@ -791,23 +848,44 @@ contains
       end do
 
       ! allocate
-      call accel_create_buffer(this%buff_matrices, ACCEL_MEM_READ_ONLY, TYPE_FLOAT, matrix_size)
+      if (this%projector_matrices(1)%is_cmplx) then
+        call accel_create_buffer(this%buff_matrices, ACCEL_MEM_READ_ONLY, TYPE_CMPLX, matrix_size)
+      else
+        call accel_create_buffer(this%buff_matrices, ACCEL_MEM_READ_ONLY, TYPE_FLOAT, matrix_size)
+      end if
       call accel_create_buffer(this%buff_maps, ACCEL_MEM_READ_ONLY, TYPE_INTEGER, this%total_points)
       call accel_create_buffer(this%buff_position, ACCEL_MEM_READ_ONLY, TYPE_FLOAT, 3*this%total_points)
       call accel_create_buffer(this%buff_scals, ACCEL_MEM_READ_ONLY, TYPE_FLOAT, scal_size)
-      if (mix_offset > 0) call accel_create_buffer(this%buff_mix, ACCEL_MEM_READ_ONLY, TYPE_FLOAT, mix_offset)
+
+      if (mix_offset > 0) then
+        if (allocated(this%projector_matrices(1)%zmix)) then
+          call accel_create_buffer(this%buff_mix, ACCEL_MEM_READ_ONLY, TYPE_CMPLX, mix_offset)
+        else
+          call accel_create_buffer(this%buff_mix, ACCEL_MEM_READ_ONLY, TYPE_FLOAT, mix_offset)
+        end if
+      end if
 
       ! now copy
       do imat = 1, this%nprojector_matrices
         pmat => this%projector_matrices(imat)
         ! in parallel some spheres might not have points
         if (pmat%npoints > 0) then
-          call accel_write_buffer(this%buff_matrices, pmat%nprojs*pmat%npoints, pmat%dprojectors, offset = offsets(MATRIX, imat))
+          if (pmat%is_cmplx) then
+            call accel_write_buffer(this%buff_matrices, pmat%nprojs*pmat%npoints, pmat%zprojectors, offset = offsets(MATRIX, imat))
+          else
+            call accel_write_buffer(this%buff_matrices, pmat%nprojs*pmat%npoints, pmat%dprojectors, offset = offsets(MATRIX, imat))
+          end if
           call accel_write_buffer(this%buff_maps, pmat%npoints, pmat%map, offset = offsets(MAP, imat))
           call accel_write_buffer(this%buff_position, 3*pmat%npoints, pmat%position, offset = 3*offsets(MAP, imat))
         end if
         call accel_write_buffer(this%buff_scals, pmat%nprojs, pmat%scal, offset = offsets(SCAL, imat))
-        if (offsets(MIX, imat) /= -1) call accel_write_buffer(this%buff_mix, pmat%nprojs**2, pmat%dmix, offset = offsets(MIX, imat))
+        if (offsets(MIX, imat) /= -1) then
+          if (allocated(pmat%zmix)) then
+            call accel_write_buffer(this%buff_mix, 4*pmat%nprojs**2, pmat%zmix, offset = offsets(MIX, imat))
+          else
+            call accel_write_buffer(this%buff_mix, pmat%nprojs**2, pmat%dmix, offset = offsets(MIX, imat))
+          end if
+        end if
       end do
 
       ! write the offsets
@@ -854,7 +932,7 @@ contains
 
   subroutine hamiltonian_elec_base_set_phase_corr(hm_base, mesh, psib)
     type(hamiltonian_elec_base_t), intent(in) :: hm_base
-    type(mesh_t),                  intent(in) :: mesh
+    class(mesh_t),                 intent(in) :: mesh
     type(wfs_elec_t),           intent(inout) :: psib
 
     logical :: phase_correction
@@ -877,7 +955,7 @@ contains
 
   subroutine hamiltonian_elec_base_unset_phase_corr(hm_base, mesh, psib)
     type(hamiltonian_elec_base_t), intent(in) :: hm_base
-    type(mesh_t),                  intent(in) :: mesh
+    class(mesh_t),                 intent(in) :: mesh
     type(wfs_elec_t),           intent(inout) :: psib
 
     logical :: phase_correction
@@ -900,7 +978,7 @@ contains
 
   subroutine hamiltonian_elec_base_phase(this, mesh, np, conjugate, psib, src)
     type(hamiltonian_elec_base_t),         intent(in)    :: this
-    type(mesh_t),                          intent(in)    :: mesh
+    class(mesh_t),                         intent(in)    :: mesh
     integer,                               intent(in)    :: np
     logical,                               intent(in)    :: conjugate
     type(wfs_elec_t),              target, intent(inout) :: psib
@@ -910,7 +988,7 @@ contains
     type(wfs_elec_t), pointer :: src_
     type(profile_t), save :: phase_prof
     CMPLX :: phase
-    integer :: wgsize, dim2, dim3
+    integer(i8) :: wgsize, dim2, dim3
     type(accel_kernel_t), save :: ker_phase
 
     PUSH_SUB(hamiltonian_elec_base_phase)
@@ -937,7 +1015,8 @@ contains
 
       if (conjugate) then
 
-        !$omp parallel do private(ii, phase)
+        !$omp parallel private(ii, phase)
+        !$omp do
         do ip = 1, min(mesh%np, np)
           phase = conjg(this%phase(ip, psib%ik))
           !$omp simd
@@ -945,9 +1024,10 @@ contains
             psib%zff_pack(ii, ip) = phase*src_%zff_pack(ii, ip)
           end do
         end do
+        !$omp end do nowait
 
         ! Boundary points, if requested
-        !$omp parallel do private(ii, phase)
+        !$omp do
         do ip = sp+1, np
           phase = conjg(this%phase(ip, psib%ik))
           !$omp simd
@@ -955,10 +1035,12 @@ contains
             psib%zff_pack(ii, ip) = phase*src_%zff_pack(ii, ip)
           end do
         end do
+        !$omp end parallel
 
       else
 
-        !$omp parallel do private(ii, phase)
+        !$omp parallel private(ii, phase)
+        !$omp do
         do ip = 1, min(mesh%np, np)
           phase = this%phase(ip, psib%ik)
           !$omp simd
@@ -966,9 +1048,10 @@ contains
             psib%zff_pack(ii, ip) = phase*src_%zff_pack(ii, ip)
           end do
         end do
+        !$omp end do nowait
 
         ! Boundary points, if requested
-        !$omp parallel do private(ii, phase)
+        !$omp do
         do ip = sp+1, np
           phase = this%phase(ip, psib%ik)
           !$omp simd
@@ -976,6 +1059,7 @@ contains
             psib%zff_pack(ii, ip) = phase*src_%zff_pack(ii, ip)
           end do
         end do
+        !$omp end parallel
 
       end if
 
@@ -1034,16 +1118,16 @@ contains
       call accel_set_kernel_arg(ker_phase, 2, np)
       call accel_set_kernel_arg(ker_phase, 3, this%buff_phase)
       call accel_set_kernel_arg(ker_phase, 4, src_%ff_device)
-      call accel_set_kernel_arg(ker_phase, 5, log2(src_%pack_size(1)))
+      call accel_set_kernel_arg(ker_phase, 5, log2(int(src_%pack_size(1), i4)))
       call accel_set_kernel_arg(ker_phase, 6, psib%ff_device)
-      call accel_set_kernel_arg(ker_phase, 7, log2(psib%pack_size(1)))
+      call accel_set_kernel_arg(ker_phase, 7, log2(int(psib%pack_size(1), i4)))
 
       wgsize = accel_kernel_workgroup_size(ker_phase)/psib%pack_size(1)
 
       dim3 = np/(accel_max_size_per_dim(2)*wgsize) + 1
       dim2 = min(accel_max_size_per_dim(2)*wgsize, pad(np, wgsize))
 
-      call accel_kernel_run(ker_phase, (/psib%pack_size(1), dim2, dim3/), (/psib%pack_size(1), wgsize, 1/))
+      call accel_kernel_run(ker_phase, (/psib%pack_size(1), dim2, dim3/), (/psib%pack_size(1), wgsize, 1_i8/))
 
       call accel_finish()
     end select
@@ -1065,7 +1149,7 @@ contains
     integer, allocatable  :: spin_label(:)
     type(accel_mem_t)     :: spin_label_buffer
     type(profile_t), save :: phase_prof
-    integer :: wgsize
+    integer(i8) :: wgsize
 
     PUSH_SUB(hamiltonian_elec_base_phase_spiral)
     call profiling_in(phase_prof, "PBC_PHASE_SPIRAL")
@@ -1163,7 +1247,7 @@ contains
   ! ---------------------------------------------------------------------------------------
   subroutine hamiltonian_elec_base_rashba(this, mesh, der, std, psib, vpsib)
     type(hamiltonian_elec_base_t),  intent(in)    :: this
-    type(mesh_t),                   intent(in)    :: mesh
+    class(mesh_t),                  intent(in)    :: mesh
     type(derivatives_t),            intent(in)    :: der
     type(states_elec_dim_t),        intent(in)    :: std
     type(wfs_elec_t), target,       intent(in)    :: psib

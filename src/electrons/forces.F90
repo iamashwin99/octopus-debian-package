@@ -160,7 +160,7 @@ contains
       end do
     end do
 
-    SAFE_ALLOCATE(derpsi(1:gr%mesh%np_part, 1:ions%space%dim, 1:psi%d%dim))
+    SAFE_ALLOCATE(derpsi(1:gr%np_part, 1:ions%space%dim, 1:psi%d%dim))
 
     dq = CNST(0.001)
 
@@ -169,12 +169,12 @@ contains
     SAFE_ALLOCATE(forceks1p2(1:ions%space%dim))
     SAFE_ALLOCATE(forceks1m2(1:ions%space%dim))
     SAFE_ALLOCATE(dforceks1(1:ions%space%dim))
-    SAFE_ALLOCATE(zpsi(1:gr%mesh%np_part, 1:psi%d%dim))
+    SAFE_ALLOCATE(zpsi(1:gr%np_part, 1:psi%d%dim))
 
     do ist = 1, psi%nst
       do ik = 1, psi%d%nik
         derpsi = M_z0
-        call states_elec_get_state(psi, gr%mesh, ist, ik, zpsi)
+        call states_elec_get_state(psi, gr, ist, ik, zpsi)
         call zderivatives_grad(gr%der, zpsi(:, 1), derpsi(:, :, 1))
         do iatom = 1, ions%natoms
           do j = 1, ions%space%dim
@@ -233,21 +233,21 @@ contains
 
       qold = ions%pos(j, iatom)
       ions%pos(j, iatom) = qq
-      SAFE_ALLOCATE(viapsi(1:gr%mesh%np_part, 1:psi%d%dim))
-      SAFE_ALLOCATE(zpsi(1:gr%mesh%np_part, 1:psi%d%dim))
+      SAFE_ALLOCATE(viapsi(1:gr%np_part, 1:psi%d%dim))
+      SAFE_ALLOCATE(zpsi(1:gr%np_part, 1:psi%d%dim))
       viapsi = M_z0
-      call states_elec_get_state(psi, gr%mesh, ist, ik, zpsi)
+      call states_elec_get_state(psi, gr, ist, ik, zpsi)
       call zhamiltonian_elec_apply_atom(hm, namespace, ions%space, ions%latt, ions%atom(iatom)%species, &
-        ions%pos(:, iatom), iatom, gr%mesh, zpsi, viapsi)
+        ions%pos(:, iatom), iatom, gr, zpsi, viapsi)
 
       res(:) = M_ZERO
       do m = 1, ubound(res, 1)
-        res(m) = TOFLOAT( zmf_dotp(gr%mesh, viapsi(:, 1), derpsi(:, m, 1), reduce = .false.))
+        res(m) = TOFLOAT( zmf_dotp(gr, viapsi(:, 1), derpsi(:, m, 1), reduce = .false.))
       end do
-      if (gr%mesh%parallel_in_domains) call gr%mesh%allreduce(res)
+      if (gr%parallel_in_domains) call gr%allreduce(res)
 
-      call states_elec_get_state(chi, gr%mesh, ist, ik, zpsi)
-      pdot3 = TOFLOAT(M_zI * zmf_dotp(gr%mesh, zpsi(:, 1), viapsi(:, 1)))
+      call states_elec_get_state(chi, gr, ist, ik, zpsi)
+      pdot3 = TOFLOAT(M_zI * zmf_dotp(gr, zpsi(:, 1), viapsi(:, 1)))
       ions%pos(j, iatom) = qold
 
       SAFE_DEALLOCATE_A(viapsi)
@@ -300,7 +300,7 @@ contains
     ! the ion-ion and vdw terms are already calculated
     ! if we use vdw TS, we need to compute it now
     if (ks%vdw_correction == OPTION__VDWCORRECTION__VDW_TS) then
-      call vdw_ts_force_calculate(ks%vdw_ts, hm%ep%vdw_forces, ions, gr%mesh, st, st%rho)
+      call vdw_ts_force_calculate(ks%vdw_ts, hm%ep%vdw_forces, ions, gr, st%d%nspin, st%rho)
     end if
 
     do iatom = 1, ions%natoms
@@ -339,12 +339,12 @@ contains
     end if
 
     if (allocated(st%rho_core)) then
-      call forces_from_nlcc(gr%mesh, ions, st%d%spin_channels, hm%vxc, force_nlcc)
+      call forces_from_nlcc(gr, ions, st%d%spin_channels, hm%vxc, force_nlcc)
     else
       force_nlcc(:, :) = M_ZERO
     end if
     if (present(vhxc_old)) then
-      call forces_from_scf(gr%mesh, ions, st%d%spin_channels, hm%vhxc, vhxc_old, force_scf)
+      call forces_from_scf(gr, ions, st%d%spin_channels, hm%vhxc, vhxc_old, force_scf)
     else
       force_scf = M_ZERO
     end if
@@ -509,6 +509,7 @@ contains
       write(iunit,'(a14, 10es17.8)') ' Total torque', &
         (units_from_atomic(units_out%force*units_out%length, torque(idir)), idir = 1, 3)
     end if
+    write(iunit,'(1x)')
 
 
     iunit2 = io_open(trim(dir)//'/forces', namespace, action='write', position='asis')
@@ -538,7 +539,7 @@ contains
   ! This routine add the contribution to the forces from the nonlinear core correction
   ! see Eq. 9 of Kronik et al., J. Chem. Phys. 115, 4322 (2001)
   subroutine forces_from_nlcc(mesh, ions, spin_channels, vxc, force_nlcc)
-    type(mesh_t),                   intent(in)    :: mesh
+    class(mesh_t),                  intent(in)    :: mesh
     type(ions_t),                   intent(inout) :: ions
     integer,                        intent(in)    :: spin_channels
     FLOAT,                          intent(in)    :: vxc(:,:)
@@ -589,7 +590,7 @@ contains
   ! NTD : No idea if this is good or bad, but this is easy to implement
   !       and works well in practice
   subroutine forces_from_scf(mesh, ions, spin_channels, vhxc, vhxc_old, force_scf)
-    type(mesh_t),                   intent(in)    :: mesh
+    class(mesh_t),                  intent(in)    :: mesh
     type(ions_t),                   intent(inout) :: ions
     integer,                        intent(in)    :: spin_channels
     FLOAT,                          intent(in)    :: vhxc(:,:)
@@ -651,7 +652,7 @@ contains
 
 !---------------------------------------------------------------------------
   subroutine total_force_from_local_potential(mesh, space, vpsl, gdensity, force)
-    type(mesh_t),                   intent(in)    :: mesh
+    class(mesh_t),                  intent(in)    :: mesh
     type(space_t),                  intent(in)    :: space
     FLOAT,                          intent(in)    :: vpsl(:)
     FLOAT,                          intent(in)    :: gdensity(:, :)

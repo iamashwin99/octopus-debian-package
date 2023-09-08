@@ -76,7 +76,7 @@ contains
 
     ASSERT(.not. family_is_mgga_with_exc(hm%xc))
 
-    SAFE_ALLOCATE(vaux(1:gr%mesh%np, 1:st%d%nspin, 1:2))
+    SAFE_ALLOCATE(vaux(1:gr%np, 1:st%d%nspin, 1:2))
 
     atime(1) = (M_HALF-sqrt(M_THREE)/CNST(6.0))*dt
     atime(2) = (M_HALF+sqrt(M_THREE)/CNST(6.0))*dt
@@ -92,13 +92,13 @@ contains
     do j = 1, 2
       ! WARNING: This should be carefully tested, and extended to allow for velocity-gauge laser fields.
       lasers => list_get_lasers(ext_partners)
-      if(associated(lasers)) then 
+      if(associated(lasers)) then
         do i = 1, lasers%no_lasers
           select case (laser_kind(lasers%lasers(i)))
           case (E_FIELD_ELECTRIC)
-            SAFE_ALLOCATE(pot(1:gr%mesh%np))
+            SAFE_ALLOCATE(pot(1:gr%np))
             pot = M_ZERO
-            call laser_potential(lasers%lasers(i), gr%mesh, pot, time - dt + atime(j))
+            call laser_potential(lasers%lasers(i), gr, pot, time - dt + atime(j))
             do is = 1, st%d%nspin
               vaux(:, is, j) = vaux(:, is, j) + pot(:)
             end do
@@ -163,22 +163,22 @@ contains
     t1 = time - dt + c1*dt
     t2 = time - dt + c2*dt
 
-    SAFE_ALLOCATE(vhxc1(1:gr%mesh%np, 1:st%d%nspin))
-    SAFE_ALLOCATE(vhxc2(1:gr%mesh%np, 1:st%d%nspin))
+    SAFE_ALLOCATE(vhxc1(1:gr%np, 1:st%d%nspin))
+    SAFE_ALLOCATE(vhxc2(1:gr%np, 1:st%d%nspin))
 
     call potential_interpolation_interpolate(tr%vksold, 4, time, dt, t1, vhxc1)
     call potential_interpolation_interpolate(tr%vksold, 4, time, dt, t2, vhxc2)
 
     hm%vhxc = M_TWO * (alpha2 * vhxc1 + alpha1 * vhxc2)
-    call hamiltonian_elec_update2(hm, gr%mesh, space, ext_partners, (/ t1, t2 /), (/ M_TWO * alpha2, M_TWO * alpha1 /))
+    call hamiltonian_elec_update2(hm, gr, space, ext_partners, (/ t1, t2 /), (/ M_TWO * alpha2, M_TWO * alpha1 /))
     ! propagate by dt/2
-    call propagation_ops_elec_exp_apply(tr%te, namespace, st, gr%mesh, hm, M_HALF*dt)
+    call propagation_ops_elec_exp_apply(tr%te, namespace, st, gr, hm, M_HALF*dt)
 
     hm%vhxc = M_TWO * (alpha1 * vhxc1 + alpha2 * vhxc2)
-    call hamiltonian_elec_update2(hm, gr%mesh, space, ext_partners, (/ t1, t2 /), (/ M_TWO * alpha1, M_TWO * alpha2 /))
+    call hamiltonian_elec_update2(hm, gr, space, ext_partners, (/ t1, t2 /), (/ M_TWO * alpha1, M_TWO * alpha2 /))
     ! propagate by dt/2
     !TODO: fuse this with density calc
-    call propagation_ops_elec_exp_apply(tr%te, namespace, st, gr%mesh, hm, M_HALF * dt)
+    call propagation_ops_elec_exp_apply(tr%te, namespace, st, gr, hm, M_HALF * dt)
 
     call density_calc(st, gr, st%rho)
 

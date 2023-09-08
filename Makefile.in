@@ -192,8 +192,7 @@ am__define_uniq_tagged_files = \
 ETAGS = etags
 CTAGS = ctags
 CSCOPE = cscope
-DIST_SUBDIRS = build external_libs liboct_parser src share doc \
-	testsuite scripts
+DIST_SUBDIRS = $(SUBDIRS)
 am__DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/config.h.in \
 	$(top_srcdir)/build-aux/compile \
 	$(top_srcdir)/build-aux/config.guess \
@@ -263,6 +262,7 @@ CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
 CFLAGS_CLBLAS = @CFLAGS_CLBLAS@
+CFLAGS_CLBLAST = @CFLAGS_CLBLAST@
 CFLAGS_CLFFT = @CFLAGS_CLFFT@
 CFLAGS_CUDA = @CFLAGS_CUDA@
 CFLAGS_FFTW = @CFLAGS_FFTW@
@@ -340,6 +340,7 @@ LIBS_BERKELEYGW = @LIBS_BERKELEYGW@
 LIBS_BLACS = @LIBS_BLACS@
 LIBS_BLAS = @LIBS_BLAS@
 LIBS_CLBLAS = @LIBS_CLBLAS@
+LIBS_CLBLAST = @LIBS_CLBLAST@
 LIBS_CLFFT = @LIBS_CLFFT@
 LIBS_CUDA = @LIBS_CUDA@
 LIBS_DFTBPLUS = @LIBS_DFTBPLUS@
@@ -461,10 +462,9 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 ACLOCAL_AMFLAGS = -I m4
-@ENABLE_PERL_TRUE@PERL_DIR = scripts
 SUBDIRS = \
-	build external_libs liboct_parser \
-	src share doc testsuite $(PERL_DIR)
+	external_libs liboct_parser \
+	src share doc testsuite scripts
 
 EXTRA_DIST = \
 	ChangeLog PACKAGING \
@@ -970,7 +970,6 @@ uninstall-am:
 
 
 check-unittests:
-	$(MAKE) -C build check
 	$(MAKE) -C external_libs check
 	$(MAKE) -C liboct_parser check
 	$(MAKE) -C src check
@@ -979,7 +978,6 @@ check-unittests:
 	$(MAKE) -C testsuite check-unittests
 
 check-short:
-	$(MAKE) -C build check
 	$(MAKE) -C external_libs check
 	$(MAKE) -C liboct_parser check
 	$(MAKE) -C src check
@@ -988,7 +986,6 @@ check-short:
 	$(MAKE) -C testsuite check-short
 
 check-long:
-	$(MAKE) -C build check
 	$(MAKE) -C external_libs check
 	$(MAKE) -C liboct_parser check
 	$(MAKE) -C src check
@@ -999,19 +996,6 @@ check-long:
 check-performance:
 	$(MAKE) -C share check
 	$(MAKE) -C testsuite check-performance
-
-rpm: dist
-	@topdir=`rpmbuild --showrc | @GREP@ ': *_topdir' | cut -f 2`; \
-	mv -f $(PACKAGE)-$(VERSION).tar.gz $$topdir/SOURCES; \
-	cp build/$(PACKAGE).spec $$topdir/SPECS; \
-	rpmbuild -ba $$topdir/SPECS/$(PACKAGE).spec; \
-	echo "-------------------------------------------------------------"; \
-	echo "  RPMs are built, and are located under:"; \
-	echo "       $$topdir/RPMS/<arch>"; \
-	echo "       $$topdir/SRPMS"; \
-	echo "-------------------------------------------------------------"
-#	scp $(RPM_DIR)/RPMS/*/octopus*.rpm \
-#		marques@nautilus.fis.uc.pt:/server/www/tddft.org/programs/octopus/download/
 
 deb: dist
 	rm -rf $(DEB_DIR)

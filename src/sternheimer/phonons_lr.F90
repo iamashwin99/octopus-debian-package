@@ -42,7 +42,7 @@ module phonons_lr_oct_m
   use multisystem_basic_oct_m
   use namespace_oct_m
   use parser_oct_m
-  use pert_oct_m
+  use perturbation_ionic_oct_m
   use profiling_oct_m
   use restart_oct_m
   use smear_oct_m
@@ -98,7 +98,7 @@ contains
     type(sternheimer_t) :: sh
     type(lr_t)          :: lr(1:1), kdotp_lr(sys%space%dim)
     type(vibrations_t)  :: vib
-    type(pert_t)        :: ionic_pert
+    class(perturbation_ionic_t), pointer  :: pert
 
     type(ions_t),     pointer :: ions
     type(states_elec_t),   pointer :: st
@@ -108,7 +108,7 @@ contains
     CMPLX, allocatable :: force_deriv(:,:)
     character(len=80) :: str_tmp
     character(len=300) :: line(1)
-    type(Born_charges_t) :: born
+    type(born_charges_t) :: born
     logical :: normal_mode_wfs, do_infrared, symmetrize
     type(restart_t) :: restart_load, restart_dump, kdotp_restart, gs_restart
 
@@ -148,7 +148,7 @@ contains
     !%Default true
     !%Section Linear Response::Vibrational Modes
     !%Description
-    !% If set to true, infrared intensities (and Born charges) will be calculated
+    !% If set to true, infrared intensities (and born charges) will be calculated
     !% and written in <tt>vib_modes/infrared</tt>.
     !%End
     call parse_variable(sys%namespace, 'CalcInfrared', .true., do_infrared)
@@ -170,9 +170,9 @@ contains
     natoms = ions%natoms
     ndim = sys%space%dim
 
-    call restart_init(gs_restart, sys%namespace, RESTART_GS, RESTART_TYPE_LOAD, sys%mc, ierr, mesh=gr%mesh, exact=.true.)
+    call restart_init(gs_restart, sys%namespace, RESTART_GS, RESTART_TYPE_LOAD, sys%mc, ierr, mesh=gr, exact=.true.)
     if (ierr == 0) then
-      call states_elec_look_and_load(gs_restart, sys%namespace, sys%space, st, sys%gr%mesh, sys%kpoints)
+      call states_elec_look_and_load(gs_restart, sys%namespace, sys%space, st, sys%gr, sys%kpoints)
       call restart_end(gs_restart)
     else
       message(1) = "Previous gs calculation is required."
@@ -184,7 +184,7 @@ contains
       message(1) = "Reading kdotp wavefunctions for periodic directions."
       call messages_info(1, namespace=sys%namespace)
 
-      call restart_init(kdotp_restart, sys%namespace, RESTART_KDOTP, RESTART_TYPE_LOAD, sys%mc, ierr, mesh=gr%mesh)
+      call restart_init(kdotp_restart, sys%namespace, RESTART_KDOTP, RESTART_TYPE_LOAD, sys%mc, ierr, mesh=gr)
       if (ierr /= 0) then
         message(1) = "Unable to read kdotp wavefunctions."
         message(2) = "Previous kdotp calculation required."
@@ -193,13 +193,13 @@ contains
 
       do idir = 1, sys%space%periodic_dim
         call lr_init(kdotp_lr(idir))
-        call lr_allocate(kdotp_lr(idir), sys%st, sys%gr%mesh)
+        call lr_allocate(kdotp_lr(idir), sys%st, sys%gr)
 
         ! load wavefunctions
         str_tmp = trim(kdotp_wfs_tag(idir))
         call restart_open_dir(kdotp_restart, wfs_tag_sigma(sys%namespace, str_tmp, 1), ierr)
         if (ierr == 0) then
-          call states_elec_load(kdotp_restart, sys%namespace, sys%space, sys%st, sys%gr%mesh, sys%kpoints, ierr, lr=kdotp_lr(idir))
+          call states_elec_load(kdotp_restart, sys%namespace, sys%space, sys%st, sys%gr, sys%kpoints, ierr, lr=kdotp_lr(idir))
         end if
         call restart_close_dir(kdotp_restart)
 
@@ -218,12 +218,12 @@ contains
     call v_ks_h_setup(sys%namespace, sys%space, sys%gr, sys%ions, sys%ext_partners, sys%st, sys%ks, sys%hm)
     call sternheimer_init(sh, sys%namespace, sys%space, sys%gr, sys%st, sys%hm, sys%ks%xc, sys%mc, &
       wfs_are_cplx = states_are_complex(st))
-    call vibrations_init(vib, ions, "lr", sys%namespace)
+    call vibrations_init(vib, ions%space, ions%natoms, ions%mass, "lr", sys%namespace)
 
     call epot_precalc_local_potential(sys%hm%ep, sys%namespace, sys%gr, sys%ions)
 
     if (do_infrared) then
-      call born_charges_init(born, sys%namespace, ions, st, ndim)
+      call born_charges_init(born, sys%namespace, ions, st%val_charge, st%qtot, ndim)
     end if
     SAFE_ALLOCATE(force_deriv(1:ndim, 1:natoms))
 
@@ -241,13 +241,13 @@ contains
         vib%dyn_matrix)
     end if
 
-    call pert_init(ionic_pert, sys%namespace, PERTURBATION_IONIC, ions)
+    pert => perturbation_ionic_t(sys%namespace, ions)
 
     call lr_init(lr(1))
-    call lr_allocate(lr(1), st, gr%mesh)
+    call lr_allocate(lr(1), st, gr)
 
-    call restart_init(restart_dump, sys%namespace, RESTART_VIB_MODES, RESTART_TYPE_DUMP, sys%mc, ierr, mesh=gr%mesh)
-    call restart_init(restart_load, sys%namespace, RESTART_VIB_MODES, RESTART_TYPE_LOAD, sys%mc, ierr, mesh=gr%mesh)
+    call restart_init(restart_dump, sys%namespace, RESTART_VIB_MODES, RESTART_TYPE_DUMP, sys%mc, ierr, mesh=gr)
+    call restart_init(restart_load, sys%namespace, RESTART_VIB_MODES, RESTART_TYPE_LOAD, sys%mc, ierr, mesh=gr)
 
     if (fromScratch) then
       start_mode = 1
@@ -278,7 +278,7 @@ contains
         call messages_info(1, namespace=sys%namespace)
         call restart_open_dir(restart_load, wfs_tag_sigma(sys%namespace, phn_wfs_tag(iatom, idir), 1), ierr)
         if (ierr == 0) then
-          call states_elec_load(restart_load, sys%namespace, sys%space, st, sys%gr%mesh, sys%kpoints, ierr, lr = lr(1))
+          call states_elec_load(restart_load, sys%namespace, sys%space, st, sys%gr, sys%kpoints, ierr, lr = lr(1))
         end if
         if (ierr /= 0) then
           message(1) = "Unable to read response wavefunctions from '"//&
@@ -288,15 +288,15 @@ contains
         call restart_close_dir(restart_load)
       end if
 
-      call pert_setup_atom(ionic_pert, iatom)
-      call pert_setup_dir(ionic_pert, idir)
+      call pert%setup_atom(iatom)
+      call pert%setup_dir(idir)
 
       if (states_are_real(st)) then
-        call dsternheimer_solve(sh, sys%namespace, sys%space, sys%gr, sys%kpoints, sys%st, sys%hm, sys%ks%xc, sys%mc, &
-          lr, 1, M_ZERO, ionic_pert, restart_dump, phn_rho_tag(iatom, idir), phn_wfs_tag(iatom, idir))
+        call dsternheimer_solve(sh, sys%namespace, sys%space, sys%gr, sys%kpoints, sys%st, sys%hm, sys%mc, &
+          lr, 1, M_ZERO, pert, restart_dump, phn_rho_tag(iatom, idir), phn_wfs_tag(iatom, idir))
       else
-        call zsternheimer_solve(sh, sys%namespace, sys%space, sys%gr, sys%kpoints, sys%st, sys%hm, sys%ks%xc, sys%mc, &
-          lr, 1, M_z0, ionic_pert, restart_dump, phn_rho_tag(iatom, idir), phn_wfs_tag(iatom, idir))
+        call zsternheimer_solve(sh, sys%namespace, sys%space, sys%gr, sys%kpoints, sys%st, sys%hm, sys%mc, &
+          lr, 1, M_z0, pert, restart_dump, phn_rho_tag(iatom, idir), phn_wfs_tag(iatom, idir))
       end if
 
       if (states_are_real(st)) then
@@ -317,15 +317,15 @@ contains
         jdir  = vibrations_get_dir (vib, jmat)
 
         vib%dyn_matrix(jmat, imat) = vib%dyn_matrix(jmat, imat) + TOFLOAT(force_deriv(jdir, jatom))
-        vib%dyn_matrix(jmat, imat) = vib%dyn_matrix(jmat, imat) * vibrations_norm_factor(vib, ions, iatom, jatom)
+        vib%dyn_matrix(jmat, imat) = vib%dyn_matrix(jmat, imat) * vibrations_norm_factor(vib, iatom, jatom)
       end do
       call vibrations_out_dyn_matrix_row(vib, imat)
 
       if (do_infrared) then
         if (states_are_real(st)) then
-          call dphonons_lr_infrared(gr%mesh, ions, st, lr(1), kdotp_lr, imat, iatom, idir, vib%infrared)
+          call dphonons_lr_infrared(gr, ions, st, lr(1), kdotp_lr, imat, iatom, idir, vib%infrared)
         else
-          call zphonons_lr_infrared(gr%mesh, ions, st, lr(1), kdotp_lr, imat, iatom, idir, vib%infrared)
+          call zphonons_lr_infrared(gr, ions, st, lr(1), kdotp_lr, imat, iatom, idir, vib%infrared)
         end if
       end if
 
@@ -351,12 +351,12 @@ contains
       call messages_info(1, namespace=sys%namespace)
     end do
 
-    call pert_end(ionic_pert)
+    SAFE_DEALLOCATE_P(pert)
 
     if (symmetrize) call vibrations_symmetrize_dyn_matrix(vib)
     call vibrations_diag_dyn_matrix(vib)
     call vibrations_output(vib)
-    call axsf_mode_output(vib, ions, gr%mesh, sys%namespace)
+    call axsf_mode_output(vib, ions, gr, sys%namespace)
 
     if (do_infrared) then
       if (sys%space%is_periodic() .and. .not. smear_is_semiconducting(st%smear)) then
@@ -364,21 +364,21 @@ contains
         call messages_info(1, namespace=sys%namespace)
       else
         call born_from_infrared(vib, born)
-        call out_Born_charges(born, ions, sys%namespace, ndim, VIB_MODES_DIR, write_real = .true.)
+        call born_output_charges(born, ions, sys%namespace, ndim, VIB_MODES_DIR, write_real = .true.)
         call calc_infrared()
       end if
 
-      call Born_charges_end(born)
+      call born_charges_end(born)
     end if
 
     if (normal_mode_wfs) then
       message(1) = "Calculating response wavefunctions for normal modes."
       call messages_info(1, namespace=sys%namespace)
       if (states_are_real(st)) then
-        call dphonons_lr_wavefunctions(lr(1), sys%namespace, sys%space, st, sys%gr%mesh, sys%kpoints, vib, restart_load, &
+        call dphonons_lr_wavefunctions(lr(1), sys%namespace, sys%space, st, sys%gr, sys%kpoints, vib, restart_load, &
           restart_dump)
       else
-        call zphonons_lr_wavefunctions(lr(1), sys%namespace, sys%space, st, sys%gr%mesh, sys%kpoints, vib, restart_load, &
+        call zphonons_lr_wavefunctions(lr(1), sys%namespace, sys%space, st, sys%gr, sys%kpoints, vib, restart_load, &
           restart_dump)
       end if
     end if
@@ -448,7 +448,7 @@ contains
     subroutine calc_infrared()
 
       integer :: iunit_ir
-      FLOAT :: lir(ndim+1)
+      FLOAT :: lir(1:sys%space%dim+1)
 
       PUSH_SUB(phonons_lr_run_legacy.calc_infrared)
 
@@ -486,7 +486,7 @@ contains
   ! ---------------------------------------------------------
   subroutine born_from_infrared(vib, born)
     type(vibrations_t),   intent(in)    :: vib
-    type(Born_charges_t), intent(inout) :: born
+    type(born_charges_t), intent(inout) :: born
 
     integer :: imat, idir, iatom
 
@@ -546,7 +546,7 @@ contains
   subroutine axsf_mode_output(this, ions, mesh, namespace)
     type(vibrations_t), intent(in) :: this
     type(ions_t),       intent(in) :: ions
-    type(mesh_t),       intent(in) :: mesh
+    class(mesh_t),      intent(in) :: mesh
     type(namespace_t),  intent(in) :: namespace
 
     integer :: iunit, iatom, idir, imat, jmat
@@ -569,7 +569,7 @@ contains
         idir  = vibrations_get_dir (this, jmat)
         forces(idir, iatom) = this%normal_mode(jmat, imat)
       end do
-      call write_xsf_geometry(iunit, ions, mesh, forces = forces, index = imat)
+      call write_xsf_geometry(iunit, ions%space, ions%latt, ions%pos, ions%atom, mesh, forces = forces, index = imat)
     end do
     SAFE_DEALLOCATE_A(forces)
     call io_close(iunit)

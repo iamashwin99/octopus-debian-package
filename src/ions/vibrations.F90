@@ -22,12 +22,12 @@ module vibrations_oct_m
   use debug_oct_m
   use global_oct_m
   use io_oct_m
-  use ions_oct_m
   use lalg_adv_oct_m
   use messages_oct_m
   use mpi_oct_m
   use namespace_oct_m
   use profiling_oct_m
+  use space_oct_m
   use species_oct_m
   use unit_oct_m
   use unit_system_oct_m
@@ -62,6 +62,7 @@ module vibrations_oct_m
     FLOAT, allocatable, public :: freq(:)
     FLOAT,              public :: disp
     FLOAT :: total_mass
+    FLOAT, pointer :: mass(:) => null()
     character (len=2) :: suffix
     character (len=80) :: filename_dynmat
     type(unit_t) :: unit_dynmat
@@ -71,24 +72,27 @@ module vibrations_oct_m
 contains
 
   ! ---------------------------------------------------------
-  subroutine vibrations_init(this, ions, suffix, namespace)
+  subroutine vibrations_init(this, space, natoms, mass, suffix, namespace)
     type(vibrations_t),        intent(out) :: this
-    type(ions_t),              intent(in)  :: ions
+    type(space_t),             intent(in)  :: space
+    integer,                   intent(in)  :: natoms
+    FLOAT, target,             intent(in)  :: mass(:)
     character (len=2),         intent(in)  :: suffix
     type(namespace_t), target, intent(in)  :: namespace
 
     PUSH_SUB(vibrations_init)
 
-    this%ndim = ions%space%dim
-    this%natoms = ions%natoms
-    this%num_modes = ions%natoms*ions%space%dim
+    this%ndim = space%dim
+    this%natoms = natoms
+    this%num_modes = natoms*space%dim
     this%namespace => namespace
     SAFE_ALLOCATE(this%dyn_matrix(1:this%num_modes, 1:this%num_modes))
     SAFE_ALLOCATE(this%infrared(1:this%num_modes, 1:this%ndim))
     SAFE_ALLOCATE(this%normal_mode(1:this%num_modes, 1:this%num_modes))
     SAFE_ALLOCATE(this%freq(1:this%num_modes))
 
-    this%total_mass = sum(ions%mass)
+    this%mass => mass
+    this%total_mass = sum(mass)
 
     ! Since frequencies are reported as invcm, the matrix they are derived from can be expressed in invcm**2.
     ! However, that matrix is the dynamical matrix divided by the total mass, so it has a different unit.
@@ -163,9 +167,8 @@ contains
   end subroutine vibrations_symmetrize_dyn_matrix
 
   ! ---------------------------------------------------------
-  subroutine vibrations_normalize_dyn_matrix(this, ions)
+  subroutine vibrations_normalize_dyn_matrix(this)
     type(vibrations_t), intent(inout) :: this
-    type(ions_t),       intent(in)    :: ions
 
     integer :: iatom, idir, jatom, jdir, imat, jmat
 
@@ -182,7 +185,7 @@ contains
             jmat = vibrations_get_index(this, jatom, jdir)
 
             this%dyn_matrix(jmat, imat) = &
-              this%dyn_matrix(jmat, imat) * vibrations_norm_factor(this, ions, iatom, jatom)
+              this%dyn_matrix(jmat, imat) * vibrations_norm_factor(this, iatom, jatom)
 
           end do
         end do
@@ -194,14 +197,13 @@ contains
   end subroutine vibrations_normalize_dyn_matrix
 
   ! ---------------------------------------------------------
-  FLOAT pure function vibrations_norm_factor(this, ions, iatom, jatom)
+  FLOAT pure function vibrations_norm_factor(this, iatom, jatom)
     type(vibrations_t), intent(in) :: this
-    type(ions_t),       intent(in) :: ions
     integer,            intent(in) :: iatom
     integer,            intent(in) :: jatom
 
     vibrations_norm_factor = this%total_mass / &
-      sqrt(ions%mass(iatom) * ions%mass(jatom))
+      sqrt(this%mass(iatom) * this%mass(jatom))
 
   end function vibrations_norm_factor
 

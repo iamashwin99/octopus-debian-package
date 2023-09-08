@@ -13,7 +13,6 @@
 !! You should have received a copy of the GNU Lesser General Public License
 !! along with this program.  If not, see <http://www.gnu.org/licenses/>.
 !!
-!! $Id$
 
 
 
@@ -43,7 +42,7 @@ module cl_kernel_m
       integer,         intent(out)   :: errcode_ret
     end subroutine clReleaseKernel_low
 
-  end interface
+  end interface clReleaseKernel
 
   ! --------------------------------------------------
 
@@ -58,7 +57,7 @@ module cl_kernel_m
       integer,         intent(out)   :: errcode_ret
     end subroutine clRetainKernel_low
 
-  end interface
+  end interface clRetainKernel
 
   ! --------------------------------------------------
 
@@ -116,19 +115,6 @@ module cl_kernel_m
 
     ! ----------------------------------------------------
 
-    subroutine clsetkernelarg_float(kernel, arg_index, arg_value, errcode_ret)
-      use cl_types_m
-
-      implicit none
-
-      type(cl_kernel), intent(inout) :: kernel
-      integer,         intent(in)    :: arg_index
-      real(4),         intent(in)    :: arg_value
-      integer,         intent(out)   :: errcode_ret
-    end subroutine clsetkernelarg_float
-
-    ! ----------------------------------------------------
-
     subroutine clsetkernelarg_double(kernel, arg_index, arg_value, errcode_ret)
       use cl_types_m
 
@@ -139,19 +125,6 @@ module cl_kernel_m
       real(8),         intent(in)    :: arg_value
       integer,         intent(out)   :: errcode_ret
     end subroutine clsetkernelarg_double
-
-    ! ---------------------------------------------------
-
-    subroutine clsetkernelarg_float2(kernel, arg_index, arg_value, errcode_ret)
-      use cl_types_m
-
-      implicit none
-
-      type(cl_kernel), intent(inout) :: kernel
-      integer,         intent(in)    :: arg_index
-      complex(4),      intent(in)    :: arg_value
-      integer,         intent(out)   :: errcode_ret
-    end subroutine clsetkernelarg_float2
 
     ! ----------------------------------------------------
 
@@ -183,7 +156,7 @@ module cl_kernel_m
       integer,         intent(out)   :: errcode_ret
     end subroutine clSetKernelArgLocal_low
 
-  end interface
+  end interface clSetKernelArgLocal
 
   ! ----------------------------------------------------
 

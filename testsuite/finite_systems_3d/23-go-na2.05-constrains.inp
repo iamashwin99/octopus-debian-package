@@ -6,8 +6,8 @@ ExperimentalFeatures = yes
 dist = 3.0
 
 %Coordinates
-'Na'  | 0 |  1.5 | -dist 
-'Na'  | 0 | -1.5 |  dist 
+'Na'  | 0 |  1.5 | -dist
+'Na'  | 0 | -1.5 |  dist
 %
 
 %GOConstrains

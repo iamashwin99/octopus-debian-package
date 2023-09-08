@@ -8,12 +8,12 @@
  it under the terms of the GNU Lesser General Public License as published by
  the Free Software Foundation; either version 3 of the License, or
  (at your option) any later version.
-  
+
  This program is distributed in the hope that it will be useful,
  but WITHOUT ANY WARRANTY; without even the implied warranty of
  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  GNU Lesser General Public License for more details.
-  
+
  You should have received a copy of the GNU Lesser General Public License
  along with this program; if not, write to the Free Software
  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
@@ -23,31 +23,26 @@
 
 namespace pseudopotential {
 
-  class share_directory {
+class share_directory {
 
-  public:
+public:
+  static void set(const std::string &dir) { directory() = dir; }
 
-    static void set(const std::string & dir){
-      directory() = dir;
-    }
+  static std::string get() {
+    if (directory().size() != 0)
+      return directory();
+    return SHARE_DIR;
+  }
 
-    static std::string get(){
-      if(directory().size() != 0) return directory();
-      return SHARE_DIR;
-    }
-    
-    
-  private:
-    
-    static std::string & directory(){
-      static std::string directory_;
-      return directory_;
-    }
+private:
+  static std::string &directory() {
+    static std::string directory_;
+    return directory_;
+  }
+};
 
-  };
+} // namespace pseudopotential
 
-}
-  
 #endif
 
 // Local Variables:

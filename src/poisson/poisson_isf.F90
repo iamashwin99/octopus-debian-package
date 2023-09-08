@@ -238,11 +238,7 @@ contains
     if (present(sm)) then
       call dsubmesh_to_cube(sm, rho, cube, rho_cf)
     else
-      if (mesh%parallel_in_domains) then
-        call dmesh_to_cube(mesh, rho, cube, rho_cf, local=.true.)
-      else
-        call dmesh_to_cube(mesh, rho, cube, rho_cf)
-      end if
+      call dmesh_to_cube(mesh, rho, cube, rho_cf)
     end if
 
     ! Choose configuration.
@@ -299,11 +295,7 @@ contains
     if (present(sm)) then
       call dcube_to_submesh(cube, rho_cf, sm, pot)
     else
-      if (mesh%parallel_in_domains) then
-        call dcube_to_mesh(cube, rho_cf, mesh, pot, local=.true.)
-      else
-        call dcube_to_mesh(cube, rho_cf, mesh, pot)
-      end if
+      call dcube_to_mesh(cube, rho_cf, mesh, pot)
     end if
 
     call dcube_function_free_RS(cube, rho_cf)

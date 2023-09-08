@@ -2,7 +2,7 @@
 
 CalculationMode = gs
 
-fromScratch = yes
+FromScratch = yes
 
 %Coordinates
  'O'  |  0.000000  | -0.553586  |  0.000000

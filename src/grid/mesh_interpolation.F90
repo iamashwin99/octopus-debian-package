@@ -45,7 +45,7 @@ module mesh_interpolation_oct_m
   type mesh_interpolation_t
     private
 
-    type(mesh_t), pointer :: mesh
+    class(mesh_t),pointer :: mesh
   end type mesh_interpolation_t
 
   interface mesh_interpolation_evaluate
@@ -59,7 +59,7 @@ contains
 
   subroutine mesh_interpolation_init(this, mesh)
     type(mesh_interpolation_t), intent(out)   :: this
-    type(mesh_t), target,       intent(in)    :: mesh
+    class(mesh_t),target,       intent(in)    :: mesh
 
     PUSH_SUB(mesh_interpolation_init)
 

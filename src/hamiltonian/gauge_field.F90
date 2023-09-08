@@ -66,7 +66,7 @@ module gauge_field_oct_m
     gauge_field_load,                     &
     gauge_field_end,                      &
     gauge_field_get_force,                &
-    gauge_field_do_td,                    &
+    gauge_field_do_algorithmic_operation,                    &
     gauge_field_output_write,             &
     gauge_field_check_symmetries
 
@@ -115,7 +115,7 @@ contains
     this%namespace = namespace_t("GaugeField", parent=namespace)
     call space_init(this%space, this%namespace)
 
-    ! Initialize clock without a time-step, as the gauge-field will not be propagated directly 
+    ! Initialize clock without a time-step, as the gauge-field will not be propagated directly
     ! for the moment
     this%clock = clock_t()
 
@@ -387,7 +387,7 @@ contains
     type(gauge_field_t),  intent(in)    :: this
 
     PUSH_SUB(gauge_field_get_energy)
-    
+
     if(allocated(this%vecpot_vel)) then
       energy = this%volume / (CNST(8.0) * M_PI * P_c**2) * sum(this%vecpot_vel(1:this%space%dim)**2)
     else
@@ -505,10 +505,10 @@ contains
         do ispin = 1, spin_channels
           if(lrc_alpha_ > M_EPSILON) then
             this%force(idir) = this%force(idir) + &
-              lrc_alpha*P_c/this%volume*dmf_integrate(gr%mesh, current(:, idir, ispin))
+              lrc_alpha*P_c/this%volume*dmf_integrate(gr, current(:, idir, ispin))
           else
             this%force(idir) = this%force(idir) - &
-              M_FOUR*M_PI*P_c/this%volume*dmf_integrate(gr%mesh, current(:, idir, ispin))
+              M_FOUR*M_PI*P_c/this%volume*dmf_integrate(gr, current(:, idir, ispin))
           endif
         end do
       end do
@@ -522,13 +522,13 @@ contains
 
   ! ---------------------------------------------------------
 
-  subroutine gauge_field_do_td(this, operation, dt, time)
+  subroutine gauge_field_do_algorithmic_operation(this, operation, dt, time)
     class(gauge_field_t),          intent(inout) :: this
     type(algorithmic_operation_t), intent(in)    :: operation
     FLOAT,                         intent(in)    :: dt
     FLOAT,                         intent(in)    :: time
 
-    PUSH_SUB(gauge_field_do_td)
+    PUSH_SUB(gauge_field_do_algorithmic_operation)
 
     select case (operation%id)
     case (VERLET_START)
@@ -548,8 +548,8 @@ contains
       call messages_fatal(1, namespace=this%namespace)
     end select
 
-    POP_SUB(gauge_field_do_td)
-  end subroutine gauge_field_do_td
+    POP_SUB(gauge_field_do_algorithmic_operation)
+  end subroutine gauge_field_do_algorithmic_operation
 
 
   ! ---------------------------------------------------------
@@ -669,8 +669,8 @@ contains
 
     PUSH_SUB(gauge_field_update_exposed_quantities)
 
-    ! We are not allowed to update protected quantities!
-    ASSERT(.not. partner%quantities(iq)%protected)
+    ! We are only allowed to update quantities that can be updated on demand
+    ASSERT(partner%quantities(iq)%updated_on_demand)
 
     select case (iq)
     case default

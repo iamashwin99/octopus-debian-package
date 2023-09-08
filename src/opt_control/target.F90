@@ -279,8 +279,8 @@ contains
 
     call states_elec_copy(tg%st, stin)
     call states_elec_deallocate_wfns(tg%st)
-    call states_elec_allocate_wfns(tg%st, gr%mesh, TYPE_CMPLX)
-    call restart_init(restart, namespace, RESTART_GS, RESTART_TYPE_LOAD, mc, ierr, mesh=gr%mesh, exact=.true.)
+    call states_elec_allocate_wfns(tg%st, gr, TYPE_CMPLX)
+    call restart_init(restart, namespace, RESTART_GS, RESTART_TYPE_LOAD, mc, ierr, mesh=gr, exact=.true.)
     if (ierr /= 0) then
       message(1) = "Could not read gs for OCTTargetOperator."
       call messages_fatal(1, namespace=namespace)
@@ -288,12 +288,12 @@ contains
 
     select case (tg%type)
     case (oct_tg_groundstate)
-      call target_init_groundstate(gr%mesh, namespace, space, tg, td, restart, kpoints)
+      call target_init_groundstate(gr, namespace, space, tg, td, restart, kpoints)
     case (oct_tg_excited)
       call messages_experimental('OCTTargetOperator = oct_tg_excited', namespace=namespace)
-      call target_init_excited(gr%mesh, namespace, space, tg, td, restart, kpoints)
+      call target_init_excited(gr, namespace, space, tg, td, restart, kpoints)
     case (oct_tg_exclude_state)
-      call target_init_exclude(gr%mesh, namespace, space, tg, td, restart, kpoints)
+      call target_init_exclude(gr, namespace, space, tg, td, restart, kpoints)
     case (oct_tg_gstransformation)
       call target_init_gstransformation(gr, namespace, space, tg, td, restart, kpoints)
     case (oct_tg_userdefined)
@@ -396,9 +396,9 @@ contains
     case (oct_tg_userdefined)
       call target_output_userdefined(tg, namespace, space, gr, dir, ions, hm, outp)
     case (oct_tg_jdensity)
-      call target_output_density(tg, namespace, space, gr%mesh, dir, ions, outp)
+      call target_output_density(tg, namespace, space, gr, dir, ions, outp)
     case (oct_tg_local)
-      call target_output_local(tg, namespace, space, gr%mesh, dir, ions, outp)
+      call target_output_local(tg, namespace, space, gr, dir, ions, outp)
     case (oct_tg_td_local)
       call target_output_tdlocal(tg, namespace, space, gr, dir, ions, outp)
     case (oct_tg_hhg)
@@ -419,7 +419,7 @@ contains
   ! ---------------------------------------------------------
   !> Calculates, at a given point in time marked by the integer
   !! index, the integrand of the target functional:
-  !! <Psi(t)|\hat{O}(t)|Psi(t)>.
+  !! \f$ <Psi(t)|\hat{O}(t)|Psi(t)> \f$.
   subroutine target_tdcalc(tg, namespace, space, hm, gr, ions, ext_partners, psi, time, max_time)
     type(target_t),           intent(inout) :: tg
     type(namespace_t),        intent(in)    :: namespace
@@ -478,7 +478,7 @@ contains
 
     PUSH_SUB(target_inh)
 
-    SAFE_ALLOCATE(zpsi(1:gr%mesh%np))
+    SAFE_ALLOCATE(zpsi(1:gr%np))
 
     select case (tg%type)
     case (oct_tg_td_local)
@@ -488,9 +488,9 @@ contains
       do ik = inh%d%kpt%start, inh%d%kpt%end
         do ist = inh%st_start, inh%st_end
           do idim = 1, inh%d%dim
-            call states_elec_get_state(psi, gr%mesh, idim, ist, ik, zpsi)
-            zpsi(1:gr%mesh%np) = -psi%occ(ist, ik)*tg%rho(1:gr%mesh%np)*zpsi(1:gr%mesh%np)
-            call states_elec_set_state(inh, gr%mesh, idim, ist, ik, zpsi)
+            call states_elec_get_state(psi, gr, idim, ist, ik, zpsi)
+            zpsi(1:gr%np) = -psi%occ(ist, ik)*tg%rho(1:gr%np)*zpsi(1:gr%np)
+            call states_elec_set_state(inh, gr, idim, ist, ik, zpsi)
           end do
         end do
       end do
@@ -501,11 +501,11 @@ contains
       do ik = inh%d%kpt%start, inh%d%kpt%end
         do ist = inh%st_start, inh%st_end
           do idim = 1, inh%d%dim
-            call states_elec_get_state(psi, gr%mesh, idim, ist, ik, zpsi)
-            do ip = 1, gr%mesh%np
+            call states_elec_get_state(psi, gr, idim, ist, ik, zpsi)
+            do ip = 1, gr%np
               zpsi(ip) = -psi%occ(ist, ik)*M_TWO*sum(tg%grad_local_pot(1, ip, 1:gr%box%dim)*gvec(:))*zpsi(ip)
             end do
-            call states_elec_set_state(inh, gr%mesh, idim, ist, ik, zpsi)
+            call states_elec_set_state(inh, gr, idim, ist, ik, zpsi)
           end do
         end do
       end do
@@ -515,11 +515,11 @@ contains
       do ik = inh%d%kpt%start, inh%d%kpt%end
         do ist = inh%st_start, inh%st_end
           do idim = 1, inh%d%dim
-            call states_elec_get_state(psi, gr%mesh, idim, ist, ik, zpsi)
-            do ip = 1, gr%mesh%np
+            call states_elec_get_state(psi, gr, idim, ist, ik, zpsi)
+            do ip = 1, gr%np
               zpsi(ip) = -psi%occ(ist, ik)*tg%rho(ip)*zpsi(ip)
             end do
-            call states_elec_set_state(inh, gr%mesh, idim, ist, ik, zpsi)
+            call states_elec_set_state(inh, gr, idim, ist, ik, zpsi)
           end do
         end do
       end do
@@ -551,8 +551,8 @@ contains
 
   ! ---------------------------------------------------------
   !> Calculates the J1 functional, i.e.:
-  !! <Psi(T)|\hat{O}|Psi(T) in the time-independent
-  !! case, or else \int_0^T dt <Psi(t)|\hat{O}(t)|Psi(t) in
+  !! \f$ <Psi(T)|\hat{O}|Psi(T)> \f$ in the time-independent
+  !! case, or else \f$ \int_0^T dt <Psi(t)|\hat{O}(t)|Psi(t)> \f$ in
   !! the time-dependent case.
   FLOAT function target_j1(tg, namespace, gr, kpoints, qcpsi, ions) result(j1)
     type(target_t),             intent(inout)   :: tg
@@ -581,7 +581,7 @@ contains
     case (oct_tg_jdensity)
       j1 = target_j1_density(gr, kpoints, tg, psi)
     case (oct_tg_local)
-      j1 = target_j1_local(gr%mesh, tg, psi)
+      j1 = target_j1_local(gr, tg, psi)
     case (oct_tg_td_local)
       j1 = target_j1_tdlocal(tg)
     case (oct_tg_exclude_state)
@@ -605,7 +605,7 @@ contains
 
 
   ! ---------------------------------------------------------
-  !> Calculate |chi(T)> = \hat{O}(T) |psi(T)>
+  !> Calculate \f$ |chi(T)> = \hat{O}(T) |psi(T)> \f$
   subroutine target_chi(tg, namespace, gr, kpoints, qcpsi_in, qcchi_out, ions)
     type(target_t),                    intent(inout) :: tg
     type(namespace_t),                 intent(in)    :: namespace
@@ -635,7 +635,7 @@ contains
     case (oct_tg_jdensity)
       call target_chi_density(tg, gr, kpoints, psi_in, chi_out)
     case (oct_tg_local)
-      call target_chi_local(tg, gr%mesh, psi_in, chi_out)
+      call target_chi_local(tg, gr, psi_in, chi_out)
     case (oct_tg_td_local)
       call target_chi_tdlocal(chi_out)
     case (oct_tg_exclude_state)

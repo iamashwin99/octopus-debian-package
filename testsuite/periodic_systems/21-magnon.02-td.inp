@@ -1,7 +1,6 @@
 CalculationMode = td
 ExperimentalFeatures = yes
 FromScratch = yes
-DisableAccel = yes
 
 ParKPoints = 2
 ParDomains = 2
@@ -41,7 +40,7 @@ SpinComponents = spinors
 TDDeltaStrength = 0.05
 TDDeltaStrengthMode = kick_magnon
 %TDMomentumTransfer
- 0 | 0 | 2*pi/a
+ 0 | 0 | pi/a
 %
 %TDEasyAxis
  0 | 0 | 1
@@ -55,8 +54,8 @@ TDPropagationTime = 10
 RestartWriteInterval = 100
 SpiralBoundaryCondition = yes
 
-%TDOutput 
- total_magnetization 
+%TDOutput
+ total_magnetization
  energy
 %
 %Output

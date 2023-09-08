@@ -5,13 +5,13 @@ Program    : octopus
 TestGroups : long-run, optimal_control
 Enabled    : no-GPU
 
-# The test checks several optimal-control algorithm. 
-# It calculates the optimal laser field that transfers the ground state to the first excited state. 
-# 
+# The test checks several optimal-control algorithm.
+# It calculates the optimal laser field that transfers the ground state to the first excited state.
+#
 # We do the following intermediate steps:
 # First, the two lowest eigenstates of the box
 # V(x) = -5*step(x+5)*step(5-x),
-# are calculated. 
+# are calculated.
 Input: 04-box.01-ground_state.inp
 match ; Total energy ; GREPFIELD(static/info, 'Total       =', 3) ; -4.95697718
 

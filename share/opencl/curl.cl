@@ -35,29 +35,29 @@ __kernel void X(curl)(const int np,
   int idim = ist % 3;
   int offset = ist / 3;
   /* get the right pointers for the current component of the curl */
-  const rtype *grad1, *grad2;
-  const int *ldgrad1, *ldgrad2;
+  __global const rtype *grad1, *grad2;
+  int ldgrad1, ldgrad2;
   if(idim == 0) {
     grad1 = grady;
     grad2 = gradz;
-    ldgrad1 = &ldgrady;
-    ldgrad2 = &ldgradz;
+    ldgrad1 = ldgrady;
+    ldgrad2 = ldgradz;
   } else if (idim == 1) {
     grad1 = gradz;
     grad2 = gradx;
-    ldgrad1 = &ldgradz;
-    ldgrad2 = &ldgradx;
+    ldgrad1 = ldgradz;
+    ldgrad2 = ldgradx;
   } else {
     grad1 = gradx;
     grad2 = grady;
-    ldgrad1 = &ldgradx;
-    ldgrad2 = &ldgrady;
+    ldgrad1 = ldgradx;
+    ldgrad2 = ldgrady;
   }
   
   /* now subtract the right component: the modulo is needed to get the right
    * anticyclic indices */
   if(ip < np) {
-    ff[(ip<<ldff) + ist] = grad1[(ip<<*ldgrad1) + ((idim+2)%3) + offset] - grad2[(ip<<*ldgrad2) + ((idim+1)%3) + offset];
+    ff[(ip<<ldff) + ist] = grad1[(ip<<ldgrad1) + ((idim+2)%3) + offset] - grad2[(ip<<ldgrad2) + ((idim+1)%3) + offset];
   }
 }
 

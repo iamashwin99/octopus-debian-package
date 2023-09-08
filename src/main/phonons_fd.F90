@@ -97,9 +97,9 @@ contains
     call init_()
 
     ! load wavefunctions
-    call restart_init(gs_restart, sys%namespace, RESTART_GS, RESTART_TYPE_LOAD, sys%mc, ierr, mesh=sys%gr%mesh, exact=.true.)
+    call restart_init(gs_restart, sys%namespace, RESTART_GS, RESTART_TYPE_LOAD, sys%mc, ierr, mesh=sys%gr, exact=.true.)
     if (ierr == 0) then
-      call states_elec_load(gs_restart, sys%namespace, sys%space, sys%st, sys%gr%mesh, sys%kpoints, ierr)
+      call states_elec_load(gs_restart, sys%namespace, sys%space, sys%st, sys%gr, sys%kpoints, ierr)
     end if
     if (ierr /= 0) then
       message(1) = "Unable to read wavefunctions."
@@ -112,7 +112,7 @@ contains
     call messages_info(1, namespace=sys%namespace)
     call v_ks_h_setup(sys%namespace, sys%space, sys%gr, sys%ions, sys%ext_partners, sys%st, sys%ks, sys%hm)
 
-    call vibrations_init(vib, sys%ions, "fd", sys%namespace)
+    call vibrations_init(vib, sys%ions%space, sys%ions%natoms, sys%ions%mass, "fd", sys%namespace)
 
     !%Variable Displacement
     !%Type float
@@ -143,7 +143,7 @@ contains
     subroutine init_()
 
       PUSH_SUB(phonons_run_legacy.init_)
-      call states_elec_allocate_wfns(sys%st, sys%gr%mesh)
+      call states_elec_allocate_wfns(sys%st, sys%gr)
 
       POP_SUB(phonons_run_legacy.init_)
     end subroutine init_
@@ -175,13 +175,13 @@ contains
     type(space_t),            intent(in)    :: space
 
     type(scf_t)               :: scf
-    type(mesh_t),     pointer :: mesh
+    class(mesh_t),    pointer :: mesh
     integer :: iatom, jatom, alpha, beta, imat, jmat
     FLOAT, allocatable :: forces(:,:), forces0(:,:)
 
     PUSH_SUB(get_dyn_matrix)
 
-    mesh => gr%mesh
+    mesh => gr
 
     call scf_init(scf, namespace, gr, ions, st, mc, hm, ks, space)
     SAFE_ALLOCATE(forces0(1:space%dim, 1:ions%natoms))
@@ -230,7 +230,7 @@ contains
           do beta = 1, space%dim
             jmat = vibrations_get_index(vib, jatom, beta)
             vib%dyn_matrix(jmat, imat) = (forces0(beta, jatom) - forces(beta, jatom)) / (M_TWO*vib%disp) &
-              * vibrations_norm_factor(vib, ions, iatom, jatom)
+              * vibrations_norm_factor(vib, iatom, jatom)
           end do
         end do
         call vibrations_out_dyn_matrix_row(vib, imat)

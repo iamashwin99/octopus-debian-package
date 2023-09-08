@@ -20,40 +20,38 @@
 
 #include <config.h>
 
+#include <dirent.h>
+#include <gsl/gsl_rng.h>
+#include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <locale.h>
-#include <dirent.h>
 #include <sys/time.h>
-#include <gsl/gsl_rng.h>
 
 #include "string_f.h"
 
-unsigned long int random_seed()
-{
- unsigned long int seed;
- FILE *devrandom;
+unsigned long int random_seed() {
+  unsigned long int seed;
+  FILE *devrandom;
 
- if ((devrandom = fopen("/dev/urandom","r")) == NULL) {
+  if ((devrandom = fopen("/dev/urandom", "r")) == NULL) {
 #ifdef HAVE_GETTIMEOFDAY
-   struct timeval tv;
-   gettimeofday(&tv, 0);
-   seed = tv.tv_sec + tv.tv_usec;
+    struct timeval tv;
+    gettimeofday(&tv, 0);
+    seed = tv.tv_sec + tv.tv_usec;
 #else
-   seed = 0;
+    seed = 0;
 #endif
- } else {
-   fread(&seed, sizeof(seed), 1, devrandom);
-   fclose(devrandom);
- }
+  } else {
+    fread(&seed, sizeof(seed), 1, devrandom);
+    fclose(devrandom);
+  }
 
- return seed;
+  return seed;
 }
 
-void FC_FUNC_(oct_printrecipe, OCT_PRINTRECIPE)
-  (STR_F_TYPE _dir, STR_F_TYPE filename STR_ARG2)
-{
+void FC_FUNC_(oct_printrecipe, OCT_PRINTRECIPE)(STR_F_TYPE _dir,
+                                                STR_F_TYPE filename STR_ARG2) {
 
 #if defined(HAVE_SCANDIR) && defined(HAVE_ALPHASORT)
   char *lang, *tmp, dir[512];
@@ -63,7 +61,8 @@ void FC_FUNC_(oct_printrecipe, OCT_PRINTRECIPE)
 
   /* get language */
   lang = getenv("LANG");
-  if(lang == NULL) lang = "en";
+  if (lang == NULL)
+    lang = "en";
 
   /* convert directory from Fortran to C string */
   TO_C_STR1(_dir, tmp);
@@ -74,29 +73,29 @@ void FC_FUNC_(oct_printrecipe, OCT_PRINTRECIPE)
 
   /* check out if lang dir exists */
   nn = scandir(dir, &namelist, 0, alphasort);
-  if (nn < 0){
+  if (nn < 0) {
     printf("Directory does not exist: %s", dir);
     return;
   }
 
-  for(ii=0; ii<nn; ii++)
-    if(strncmp(lang, namelist[ii]->d_name, 2) == 0){
+  for (ii = 0; ii < nn; ii++)
+    if (strncmp(lang, namelist[ii]->d_name, 2) == 0) {
       strcat(dir, "/");
       strcat(dir, namelist[ii]->d_name);
       break;
     }
 
-  if(ii == nn)
+  if (ii == nn)
     strcat(dir, "/en"); /* default */
 
   /* clean up */
-  for(ii=0; ii<nn; ii++)
+  for (ii = 0; ii < nn; ii++)
     free(namelist[ii]);
   free(namelist);
 
   /* now we read the recipes */
   nn = scandir(dir, &namelist, 0, alphasort);
-	
+
   /* initialize random numbers */
   gsl_rng_env_setup();
   rng = gsl_rng_alloc(gsl_rng_default);
@@ -105,16 +104,17 @@ void FC_FUNC_(oct_printrecipe, OCT_PRINTRECIPE)
   gsl_rng_free(rng);
 
   strcat(dir, "/");
-  strcat(dir, namelist[ii+2]->d_name); /* skip ./ and ../ */
+  strcat(dir, namelist[ii + 2]->d_name); /* skip ./ and ../ */
 
   /* clean up again */
-  for(ii=0; ii<nn; ii++)
+  for (ii = 0; ii < nn; ii++)
     free(namelist[ii]);
   free(namelist);
 
   TO_F_STR2(dir, filename);
 
 #else
-  printf("Sorry, recipes cannot be printed unless scandir and alphasort are available with your C compiler.\n");
+  printf("Sorry, recipes cannot be printed unless scandir and alphasort are "
+         "available with your C compiler.\n");
 #endif
 }

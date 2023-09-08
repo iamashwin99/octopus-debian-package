@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML-full"></script>
 <style>
-   BODY {background-color: white; 
+   BODY {background-color: white;
          font-size: 10pt; font-family: verdana,helvetica;}
    A  {text-decoration: none;color: blue}
 </style>
@@ -32,7 +32,7 @@
 <br/><i>Type</i>: logical
 <br/><i>Default</i>: yes
 <br/><br> If set to yes, Octopus will normalize the atomic orbitals individually.
- This variable is ignored is <tt>AOLoewdin<\tt> is set to yes.
+ This variable is ignored is <tt>AOLoewdin</tt> is set to yes.
 
 </p><hr width='30%' align='left'/>
 
@@ -44,7 +44,7 @@
  their phase instead of storing them on the mesh. This is usually slower for small
  periodic systems, but becomes advantageous for large supercells.
  Submeshes are not compatible with Loewdin orthogonalization.
- For periodic systems, the default is set to ye, whereas it is set to no for isolated systems.
+ For periodic systems, the default is set to no, whereas it is set to yes for isolated systems.
 
 </p><hr width='30%' align='left'/>
 
@@ -53,7 +53,7 @@
 <br/><i>Section</i>: Atomic Orbitals
 <br/><i>Type</i>: float
 <br/><i>Default</i>: 0.01
-<br/><br> Determines the threshold used to compute the radius of the atomic orbitals for LDA+U and for Wannier90.
+<br/><br> Determines the threshold used to compute the radius of the atomic orbitals for DFT+U and for Wannier90.
  This radius is computed by making sure that the
  absolute value of the radial part of the atomic orbital is below the specified threshold.
  This value should be converged to be sure that results do not depend on this value.
@@ -66,7 +66,7 @@
 <br/><i>Section</i>: Atomic Orbitals
 <br/><i>Type</i>: flag
 <br/><i>Default</i>: ao_full
-<br/><br> This option determines how Octopus will truncate the orbitals used for LDA+U.
+<br/><br> This option determines how Octopus will truncate the orbitals used for DFT+U.
  Except for the full method, the other options are only there to get a quick idea.
 
 <br/><i>Options</i>:

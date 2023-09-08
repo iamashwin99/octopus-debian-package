@@ -7,7 +7,7 @@ FromScratch = yes
 BoxShape = parallelepiped
 acell = 15
 spacing = 0.05
-%Lsize 
+%Lsize
  acell
 %
 
@@ -21,13 +21,13 @@ a=1.0
 'He1D' | 0.0 |no
 %
 
-XCFunctional = lda_x_1d + lda_c_1d_csc
+XCFunctional = lda_x_1d_soft + lda_c_1d_csc
 
 MixingScheme = linear
 
 %Output
  density | axis_X
-% 
+%
 
 ConvRelDens = 1e-8
 Eigensolver = cg_new

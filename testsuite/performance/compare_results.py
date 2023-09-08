@@ -3,7 +3,7 @@ import sys
 import yaml
 
 if len(sys.argv) != 3:
-    print("Error: need two arguments, reference and current yaml files.")
+    print('Error: need two arguments, reference and current yaml files.')
     sys.exit(1)
 
 with open(sys.argv[1]) as reference_file:
@@ -28,13 +28,13 @@ for run, times in time_data.items():
     for key, time in times.items():
         num_tests += 1
         if time['current'] < time['reference']:
-            print("Run {}, key {} is slower than reference "
-                  "(by {:.1%}, {} s vs {} s).".format(
+            print('Run {}, key {} is slower than reference '
+                  '(by {:.1%}, {} s vs {} s).'.format(
                       run, key, 1-time['current']/time['reference'],
                       time['current'], time['reference']))
             num_slower_tests += 1
 
 if num_slower_tests > 0:
-    print("Error: {:d} runs of {:d} are slower than the reference.".format(
+    print('Error: {:d} runs of {:d} are slower than the reference.'.format(
         num_slower_tests, num_tests))
     sys.exit(1)

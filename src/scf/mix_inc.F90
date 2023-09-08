@@ -504,17 +504,22 @@ subroutine X(mixing_build_matrix)(this, df, size, d2, d3, ww, beta)
   ! Thus we compute w0 as 0.01 of the minimum of the values on the diagonal
   ! to improve the numerical stability. This enables convergence to very
   ! high accuracies.
+  !
+  ! NTD: I changed the logic to be 0.01^2 times the smallest diagonal value.
+  ! Else, for a small value of 1e-10, we were getting w0 to be 1e-24
+  ! For 1e-6, we were getting w0=1e-16.
+  ! Overall, this was having no practical effect apart for large numbers.
   w0 = M_HUGE
   do i = 1, size
     w0 = min(w0, abs(beta(i, i)))
   end do
-  w0 = w0 * CNST(0.01)
+  w0 = w0 * CNST(1e-4)
   ! safeguard if w0 should be exactly zero or underflow
   if (w0 < CNST(1e-150)) then
-    w0 = CNST(0.01)
+    w0 = CNST(1e-4)
   end if
   do i = 1, size
-    beta(i, i) = w0**2 + beta(i, i)
+    beta(i, i) = w0 + beta(i, i)
   end do
 
   POP_SUB(X(mixing_build_matrix))

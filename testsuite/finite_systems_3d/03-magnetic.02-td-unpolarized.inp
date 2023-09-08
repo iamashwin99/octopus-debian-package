@@ -13,7 +13,7 @@ ExtraStates = 2
 Smearing = 0.01
 SmearingFunction = fermi_dirac
 
-%StaticMagneticField 
+%StaticMagneticField
  1.0 | -1.0 | 2.0
 %
 

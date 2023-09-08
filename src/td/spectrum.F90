@@ -124,7 +124,7 @@ contains
 
     PUSH_SUB(spectrum_init)
 
-    call messages_print_stress(msg="Spectrum Options", namespace=namespace)
+    call messages_print_with_emphasis(msg="Spectrum Options", namespace=namespace)
 
     !%Variable PropagationSpectrumType
     !%Type integer
@@ -324,7 +324,7 @@ contains
     call parse_variable(namespace, 'PropagationSpectrumSigmaDiagonalization', .false., spectrum%sigma_diag)
     call messages_print_var_value('PropagationSpectrumSigmaDiagonalization', spectrum%sigma_diag, namespace=namespace)
 
-    call messages_print_stress(namespace=namespace)
+    call messages_print_with_emphasis(namespace=namespace)
 
     POP_SUB(spectrum_init)
   end subroutine spectrum_init

@@ -28,6 +28,8 @@ module cube_oct_m
   use global_oct_m
   use io_oct_m
   use lattice_vectors_oct_m
+  use mesh_cube_map_oct_m
+  use mesh_oct_m
   use messages_oct_m
   use mpi_oct_m
   use namespace_oct_m
@@ -45,6 +47,7 @@ module cube_oct_m
     cube_t,             &
     dimensions_t,       &
     cube_init,          &
+    cube_init_cube_map, &
     cube_point_to_process, &
     cube_partition,     &
     cube_global2local,  &
@@ -76,12 +79,15 @@ module cube_oct_m
 
 
     type(fft_t), allocatable :: fft        !< the fft object
-    logical, private :: has_cube_mapping   !< Saves if a mapping with the cube is needed.
-    !!                                        Until now, is needed with par_states (without par_domains) and PES.
+    logical, private :: has_cube_mapping = .false. !< Saves if a mapping with the cube is needed.
+    !!                                                Until now, is needed with par_states (without par_domains) and PES.
 
     FLOAT                   :: spacing(3)
     ! latt is declared as allocatable as a work-around for a bug in gfortran when invoking the finalizer of latt.
     type(lattice_vectors_t), allocatable :: latt
+
+    type(mesh_cube_map_t) :: cube_map
+    logical :: cube_map_present = .false.
   end type cube_t
 
   !> It is intended to be used within a vector.
@@ -90,7 +96,6 @@ module cube_oct_m
   !! mapping between x,y,z index and process is saved, in a compact
   !! way.
   type dimensions_t
-    private
     integer :: start_xyz(1:3) !< First index X, Y, Z, which this process has
     integer :: end_xyz(1:3)   !< Last  index X, Y, Z, which this process has
   end type dimensions_t
@@ -294,6 +299,10 @@ contains
       SAFE_DEALLOCATE_A(cube%np_local_fs)
       SAFE_DEALLOCATE_A(cube%xlocal_fs)
       SAFE_DEALLOCATE_A(cube%local_fs)
+    end if
+
+    if (cube%cube_map_present) then
+      call mesh_cube_map_end(cube%cube_map)
     end if
 
     SAFE_DEALLOCATE_A(cube%Lrs)
@@ -586,7 +595,7 @@ contains
     found = .false.
     do proc = 1, mpi_world%size
       !Compare XYZ index
-      if (all(xyz >= part(proc)%start_xyz) .and. all(xyz < part(proc)%end_xyz)) then
+      if (all(xyz >= part(proc)%start_xyz) .and. all(xyz <= part(proc)%end_xyz)) then
         process = proc
         found = .true.
         exit
@@ -653,9 +662,9 @@ contains
       part(process)%start_xyz(1) = local_sizes(position)
       part(process)%start_xyz(2) = local_sizes(position+1)
       part(process)%start_xyz(3) = local_sizes(position+2)
-      part(process)%end_xyz(1)   = local_sizes(position)+local_sizes(position+3)
-      part(process)%end_xyz(2)   = local_sizes(position+1)+local_sizes(position+4)
-      part(process)%end_xyz(3)   = local_sizes(position+2)+local_sizes(position+5)
+      part(process)%end_xyz(1)   = local_sizes(position)+local_sizes(position+3)-1
+      part(process)%end_xyz(2)   = local_sizes(position+1)+local_sizes(position+4)-1
+      part(process)%end_xyz(3)   = local_sizes(position+2)+local_sizes(position+5)-1
 
     end do
 
@@ -717,6 +726,18 @@ contains
     POP_SUB(cube_partition_messages_debug)
   end subroutine cube_partition_messages_debug
 
+  ! ---------------------------------------------------------
+  subroutine cube_init_cube_map(cube, mesh)
+    type(cube_t),  intent(inout) :: cube
+    class(mesh_t), intent(in)    :: mesh
+
+    PUSH_SUB(cube_init_cube_map)
+
+    call mesh_cube_map_init(cube%cube_map, mesh, mesh%np)
+    cube%cube_map_present = .true.
+
+    POP_SUB(cube_init_cube_map)
+  end subroutine cube_init_cube_map
 end module cube_oct_m
 
 

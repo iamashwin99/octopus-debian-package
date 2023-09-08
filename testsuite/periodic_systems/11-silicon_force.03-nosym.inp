@@ -1,7 +1,5 @@
 FromScratch = yes
 
-DisableAccel = yes
-
 CalculationMode = gs
 
 PeriodicDimensions = 3
@@ -23,11 +21,11 @@ PseudopotentialSet = pseudodojo_lda
   "Si" |   0.1       | -0.05     | 0.075
   "Si" |   1/2       | 1/2       | 0.0
   "Si" |   1/2       | 0.0       | 1/2
-  "Si" |   0.0       | 1/2       | 1/2 
-  "Si" |   1/4       | 1/4       | 1/4 
+  "Si" |   0.0       | 1/2       | 1/2
+  "Si" |   1/4       | 1/4       | 1/4
   "Si" |   1/4 + 1/2 | 1/4 + 1/2 | 1/4
   "Si" |   1/4 + 1/2 | 1/4       | 1/4 + 1/2
-  "Si" |   1/4       | 1/4 + 1/2 | 1/4 + 1/2 
+  "Si" |   1/4       | 1/4 + 1/2 | 1/4 + 1/2
 %
 
 %KPointsGrid
@@ -36,6 +34,7 @@ PseudopotentialSet = pseudodojo_lda
 %
 
 KPointsUseSymmetries = no
+ParKpoints=4
 ExperimentalFeatures = yes
 SymmetrizeDensity = yes
 
@@ -43,6 +42,3 @@ ExtraStates = 1
 ConvRelDens = 1e-8
 EigensolverTolerance = 1e-9
 ConvEigenError = yes
-
-SCFCalculateStress = yes
-

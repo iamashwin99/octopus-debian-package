@@ -1,5 +1,5 @@
 CalculationMode = casida
-  
+
 ExperimentalFeatures = yes
 DerivativesOrder = 1
 

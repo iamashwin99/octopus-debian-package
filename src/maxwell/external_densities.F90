@@ -59,7 +59,7 @@ contains
   !----------------------------------------------------------
   subroutine get_rs_density_ext(st, mesh, time, rs_current_density_ext)
     type(states_mxll_t), intent(inout) :: st
-    type(mesh_t),        intent(in)    :: mesh
+    class(mesh_t),       intent(in)    :: mesh
     FLOAT,               intent(in)    :: time
     CMPLX,     optional, intent(inout) :: rs_current_density_ext(:,:)
 
@@ -81,7 +81,7 @@ contains
   !----------------------------------------------------------
   subroutine external_current_init(st, namespace, mesh)
     type(states_mxll_t), intent(inout) :: st
-    type(mesh_t),        intent(in)    :: mesh
+    class(mesh_t),       intent(in)    :: mesh
     type(namespace_t),   intent(in)    :: namespace
 
     type(block_t)        :: blk
@@ -187,7 +187,7 @@ contains
   !----------------------------------------------------------
   subroutine external_current_calculation(st, mesh, time, current)
     type(states_mxll_t), intent(inout) :: st
-    type(mesh_t),        intent(in)    :: mesh
+    class(mesh_t),       intent(in)    :: mesh
     FLOAT,               intent(in)    :: time
     FLOAT,               intent(inout) :: current(:,:)
 

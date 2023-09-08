@@ -12,15 +12,22 @@ match ; Reduced k-points ; GREPFIELD(static/info, 'Number of symmetry-reduced k-
 match ; Space group        ; GREPFIELD(out, 'Space group', 4) ; 229
 match ; No. of symmetries  ; GREPFIELD(out, 'symmetries that can be used', 5)  ;  8
 
-match ; SCF convergence    ; GREPCOUNT(static/info, 'SCF converged') ; 1
-match ; Total energy       ; GREPFIELD(static/info, 'Total       =', 3) ; -253.54686336
-match ; Ion-ion energy     ; GREPFIELD(static/info, 'Ion-ion     =', 3) ; -156.63361293
-match ; Eigenvalues sum    ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -30.44095851
-match ; Hartree energy     ; GREPFIELD(static/info, 'Hartree     =', 3) ;  66.91363604
-match ; Exchange energy    ; GREPFIELD(static/info, 'Exchange    =', 3) ; -33.18712278
-match ; Correlation energy ; GREPFIELD(static/info, 'Correlation =', 3) ; -2.74189818
-match ; Kinetic energy     ; GREPFIELD(static/info, 'Kinetic     =', 3) ;  121.44577412
-match ; External energy    ; GREPFIELD(static/info, 'External    =', 3) ; -249.34363979
+Precision: 7.01e-06
+match ;  Total energy        ; GREPFIELD(static/info, 'Total       =', 3) ; -251.61187258
+Precision: 7.83e-08
+match ;  Ion-ion energy      ; GREPFIELD(static/info, 'Ion-ion     =', 3) ; -156.63361293
+Precision: 2.04e-06
+match ;  Eigenvalues sum     ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -30.4462729
+Precision: 4.90e-06
+match ;  Hartree energy      ; GREPFIELD(static/info, 'Hartree     =', 3) ; 64.99005973999999
+Precision: 6.54e-07
+match ;  Exchange energy     ; GREPFIELD(static/info, 'Exchange    =', 3) ; -33.040903695000004
+Precision: 1.35e-07
+match ;  Correlation energy  ; GREPFIELD(static/info, 'Correlation =', 3) ; -2.70209757
+Precision: 5.61e-06
+match ;  Kinetic energy      ; GREPFIELD(static/info, 'Kinetic     =', 3) ; 119.3627662
+Precision: 9.78e-06
+match ;  External energy     ; GREPFIELD(static/info, 'External    =', 3) ; -243.5880827
 
 MPIUtil: oct-unfold
 Input: 25-Fe_polarized.02-setup.inp
@@ -31,7 +38,9 @@ Input: 25-Fe_polarized.03-unocc.inp
 MPIUtil: oct-unfold
 Input: 25-Fe_polarized.04-unfold.inp
 
-Precision : 0.002
-match ; AkE kpt 1 ; LINEFIELD(static/ake.dat,  4955, 3) ; 8.903142998019E-01
-match ; AkE kpt 1 ; LINEFIELD(static/ake.dat,  4956, 3) ; 8.639581878911E-01
-match ; AkE kpt 1 ; LINEFIELD(static/ake.dat,  4957, 3) ; 8.388164997222E-01
+Precision: 2.59e-07
+match ;  AkE kpt 1  ; LINEFIELD(static/ake.dat, 4955, 3) ; 0.1327251310115
+Precision: 2.56e-07
+match ;  AkE kpt 1  ; LINEFIELD(static/ake.dat, 4956, 3) ; 0.1315918256522
+Precision: 2.52e-07
+match ;  AkE kpt 1  ; LINEFIELD(static/ake.dat, 4957, 3) ; 0.1304738276208

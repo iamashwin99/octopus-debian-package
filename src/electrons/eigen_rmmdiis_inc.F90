@@ -46,7 +46,7 @@ subroutine X(eigensolver_rmmdiis) (namespace, mesh, st, hm, pre, tol, niter, con
 
   PUSH_SUB(X(eigensolver_rmmdiis))
 
-  pack = hamiltonian_elec_apply_packed(hm)
+  pack = hm%apply_packed()
 
   SAFE_ALLOCATE(lambda(1:st%nst))
   SAFE_ALLOCATE(psib(1:niter))
@@ -255,13 +255,13 @@ subroutine X(eigensolver_rmmdiis) (namespace, mesh, st, hm, pre, tol, niter, con
         ii = ist - minst + 1
 
         failed(ii) = .false.
-        
+
         aa = mm(1:iter, 1:iter, 1, ii)
         ! Here we do not use lalg_lowest_geneigensolve as the sign of the eigenvectors is sometimes
         ! flipped and the matrices we consider are very small
         call lalg_geneigensolve(iter, aa, mm(:, :, 2, ii), eval(:, ii), preserve_mat=.true., &
           bof = failed(ii), err_code = err)
-        evec(1:iter, ii) = aa(1:iter, 1)        
+        evec(1:iter, ii) = aa(1:iter, 1)
 
         if (err < 0 .or. err > iter) then
 
@@ -275,7 +275,7 @@ subroutine X(eigensolver_rmmdiis) (namespace, mesh, st, hm, pre, tol, niter, con
           end do
 
           failed(ii) = .false.
- 
+
           aa = mm(1:iter, 1:iter, 1, ii)
           ! Here we do not use lalg_lowest_geneigensolve as the sign of the eigenvectors is sometimes
           ! flipped and the matrices we consider are very small
@@ -298,7 +298,7 @@ subroutine X(eigensolver_rmmdiis) (namespace, mesh, st, hm, pre, tol, niter, con
           failed(ii) = .false.
         end if
       end do
- 
+
       SAFE_DEALLOCATE_A(aa)
 
       call resb(iter)%batch%end()
@@ -470,7 +470,7 @@ subroutine X(eigensolver_rmmdiis_min) (namespace, mesh, st, hm, pre, niter, conv
 
   sd_steps = niter
 
-  pack = hamiltonian_elec_apply_packed(hm)
+  pack = hm%apply_packed()
 
   SAFE_ALLOCATE(me1(1:2, 1:st%d%block_size))
   SAFE_ALLOCATE(me2(1:4, 1:st%d%block_size))

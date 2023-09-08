@@ -373,7 +373,7 @@ contains
   end function curv_modine_surface_element
 
   ! ---------------------------------------------------------
-  subroutine curv_modine_chi2chi2(this, chi_, chi2, Jac)
+  pure subroutine curv_modine_chi2chi2(this, chi_, chi2, Jac)
     class(curv_modine_t), intent(in)  :: this
     FLOAT,                intent(in)  :: chi_(:)
     FLOAT,                intent(out) :: chi2(:)
@@ -414,7 +414,7 @@ contains
   end subroutine curv_modine_chi2chi2
 
   ! ---------------------------------------------------------
-  subroutine curv_modine_jacobian_inv(this, chi, xx, Jac)
+  pure subroutine curv_modine_jacobian_inv(this, chi, xx, Jac)
     type(curv_modine_t), intent(in)  :: this
     FLOAT,               intent(in)  :: chi(:)
     FLOAT,               intent(out) :: xx(:)
@@ -454,11 +454,10 @@ contains
       Jac(idim, :) = Jac(idim, :) * J2(:)
     end do
 
-    POP_SUB(curv_modine_jacobian_inv)
   end subroutine curv_modine_jacobian_inv
 
   ! ---------------------------------------------------------
-  subroutine getf(yy, ff, jf)
+  pure subroutine getf(yy, ff, jf)
     FLOAT, intent(in)  :: yy(:)
     FLOAT, intent(out) :: ff(:), jf(:, :)
 

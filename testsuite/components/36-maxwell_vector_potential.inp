@@ -1,0 +1,30 @@
+CalculationMode = test
+TestMode = vecpot_analytical
+Debug = trace
+PoissonSolver = fft
+
+# coordinates are not used at all
+%Coordinates
+"dummy" | 0.0
+%
+%Species
+"dummy" | species_user_defined | potential_formula | "0" | valence | 1
+%
+
+Dimensions = 3
+BoxShape = parallelepiped
+
+lsize_mx = 20.0
+dx_mx    = 0.25
+
+BoxShape   = parallelepiped
+
+%Lsize
+  lsize_mx | lsize_mx | lsize_mx
+%
+
+%Spacing
+  dx_mx | dx_mx | dx_mx
+%
+
+TestRepetitions = 1

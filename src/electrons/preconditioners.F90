@@ -123,7 +123,7 @@ contains
     !% Multigrid preconditioner.
     !%End
 
-    if (gr%mesh%use_curvilinear) then
+    if (gr%use_curvilinear) then
       default = PRE_NONE
     else
       default = PRE_FILTER
@@ -174,7 +174,7 @@ contains
       if (this%op%const_w) then
         maxp = 1
       else
-        maxp = gr%mesh%np
+        maxp = gr%np
       end if
 
       !We change the weights to be the one of the kinetic energy operator
@@ -185,7 +185,7 @@ contains
 
       do ip = 1, maxp
 
-        if (gr%mesh%use_curvilinear) vol = sum(gr%mesh%vol_pp(ip + this%op%ri(1:ns, this%op%rimap(ip))))
+        if (gr%use_curvilinear) vol = sum(gr%vol_pp(ip + this%op%ri(1:ns, this%op%rimap(ip))))
 
         !The filter preconditioner is given by two iterations of the Relaxation Jacobi method
         !This leads to \tilde{\psi} =  \omega D^{-1}(2\psi - \omega D^{-1} (-0.5\Laplacian) \psi),
@@ -203,21 +203,22 @@ contains
           end if
           this%op%w(is, ip) = this%op%w(is, ip) * omega / this%diag_lapl(ip)
 
-          if (gr%mesh%use_curvilinear) then
+          if (gr%use_curvilinear) then
             ip2 = ip + this%op%ri(is, this%op%rimap(ip))
-            this%op%w(is, ip) = this%op%w(is, ip)*(ns*gr%mesh%vol_pp(ip2)/vol)
+            this%op%w(is, ip) = this%op%w(is, ip)*(ns*gr%vol_pp(ip2)/vol)
           end if
         end do
       end do
 
       SAFE_DEALLOCATE_A(this%diag_lapl)
 
+      call nl_operator_update_gpu_buffers(this%op)
       call nl_operator_output_weights(this%op)
 
     case (PRE_JACOBI, PRE_MULTIGRID)
-      SAFE_ALLOCATE(this%diag_lapl(1:gr%mesh%np))
+      SAFE_ALLOCATE(this%diag_lapl(1:gr%np))
       call derivatives_lapl_diag(gr%der, this%diag_lapl)
-      call lalg_scal(gr%mesh%np, -M_HALF, this%diag_lapl(:))
+      call lalg_scal(gr%np, -M_HALF, this%diag_lapl(:))
     end select
 
     if (this%which == PRE_MULTIGRID) then
@@ -248,7 +249,7 @@ contains
       !%End
       call parse_variable(namespace, 'PreconditionerIterationsPost', 2, this%npost)
 
-      call multigrid_init(this%mgrid, namespace, space, gr%mesh, gr%der, gr%stencil, mc, used_for_preconditioner = .true.)
+      call multigrid_init(this%mgrid, namespace, space, gr, gr%der, gr%stencil, mc, used_for_preconditioner = .true.)
     end if
 
     POP_SUB(preconditioner_init)

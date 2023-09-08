@@ -366,7 +366,7 @@ contains
         end do
 
         if (isite_symm > n_sites) then
-          write(message(1),'(a,i6)') 'Internal error: could not find symetric partner for atom number', isite
+          write(message(1),'(a,i6)') 'Internal error: could not find symmetric partner for atom number', isite
           write(message(2),'(a,i3,a)') 'with symmetry operation number ', iop, '.'
           call messages_fatal(2, namespace=namespace)
         end if
@@ -509,18 +509,18 @@ contains
 
     PUSH_SUB(symmetries_write_info)
 
-    call messages_print_stress(msg='Symmetries', iunit=iunit, namespace=namespace)
+    call messages_print_with_emphasis(msg='Symmetries', iunit=iunit, namespace=namespace)
 
     if (this%any_non_spherical) then
       message(1) = "Symmetries are disabled since non-spherically symmetric species may be present."
       call messages_info(1,iunit = iunit, namespace=namespace)
-      call messages_print_stress(iunit=iunit, namespace=namespace)
+      call messages_print_with_emphasis(iunit=iunit, namespace=namespace)
     end if
 
     if (.not. this%symmetries_compute) then
       message(1) = "Symmetries have been disabled by SymmetriesCompute = false."
       call messages_info(1, iunit=iunit, namespace=namespace)
-      call messages_print_stress(iunit=iunit, namespace=namespace)
+      call messages_print_with_emphasis(iunit=iunit, namespace=namespace)
       POP_SUB(symmetries_write_info)
       return
     end if
@@ -562,7 +562,7 @@ contains
       write(message(1), '(a,i5,a)') 'Info: The system has ', this%nops, ' symmetries that can be used.'
       call messages_info(iunit=iunit, namespace=namespace)
     end if
-    call messages_print_stress(iunit=iunit, namespace=namespace)
+    call messages_print_with_emphasis(iunit=iunit, namespace=namespace)
 
     POP_SUB(symmetries_write_info)
   end subroutine symmetries_write_info

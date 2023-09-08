@@ -19,8 +19,31 @@
 
 #include "global.h"
 
+!> @brief This module implements the abstract multisystem class
+!!
+!! In there is the possibility to group several systems into containers, which are implemented in the
+!! multisystem_basic_oct_m::multisystem_basic_t class. Containers can have different purposes and applications.
+!! In the simplest case, containers are simply a collection of other systems, and do not have their own interactions
+!! with anything else. In this case, containers do not introduce any different physics (or approximations),
+!! but simply help in the book-keeping of the problem.
+!!
+!! \note
+!! Containers do not correspond to a given region in space, but only to a selection of systems.
+!! In many cases, these systems *might* be confined to a certain region in space, but this is not a property of the container.
+!! In many other cases, e.g. combining matter and maxwell fields, both systems occupy the same space, or have a substantial overlap.
+!!
+!! Another use case might be to group systems into a container, and then only interact with the whole container,
+!! instead of the individual systems. This, however, is an approximation, and furthermore (at least, at the moment)
+!! has some limitations due to the implementation.
+!!
+!! \note
+!! Note, that containers themselves do not move. This has consequences to the definition of the energy contributions.
+!! In particular, a container does not have its own kinetic energy, and all kinetic energy contributions of the
+!! constituents are accounted for in the internal energy.
+!!
 module multisystem_oct_m
   use algorithm_oct_m
+  use algorithm_factory_oct_m
   use clock_oct_m
   use debug_oct_m
   use global_oct_m
@@ -36,8 +59,6 @@ module multisystem_oct_m
   use namespace_oct_m
   use parser_oct_m
   use profiling_oct_m
-  use propagator_oct_m
-  use propagator_static_oct_m
   use system_oct_m
   use system_factory_abst_oct_m
   implicit none
@@ -48,23 +69,30 @@ module multisystem_oct_m
     multisystem_init,     &
     multisystem_end
 
+  !> @brief the abstract multisystem class
+  !!
+  !! The multisystem_oct_m::multisystem_basic_t class is a special kind of system_oct_m::system_t, which can contain
+  !! other multisystems, allowing a hierarchy of grouped systems.
+  !!
   type, extends(system_t), abstract :: multisystem_t
     type(system_list_t) :: list
   contains
-    procedure :: dt_operation =>  multisystem_dt_operation
+    procedure :: execute_algorithm =>  multisystem_execute_algorithm
     procedure :: init_parallelization => multisystem_init_parallelization
     procedure :: smallest_algo_dt => multisystem_smallest_algo_dt
+    procedure :: largest_dt => multisystem_largest_dt
     procedure :: next_time_on_largest_dt => multisystem_next_time_on_largest_dt
     procedure :: reset_clocks => multisystem_reset_clocks
-    procedure :: init_propagator => multisystem_init_propagator
+    procedure :: init_algorithm => multisystem_init_algorithm
+    procedure :: algorithm_finished => multisystem_algorithm_finished
+    procedure :: init_clocks => multisystem_init_clocks
     procedure :: propagation_start => multisystem_propagation_start
     procedure :: propagation_finish => multisystem_propagation_finish
-    procedure :: has_reached_final_propagation_time => multisystem_has_reached_final_propagation_time
     procedure :: init_all_interactions => multisystem_init_all_interactions
     procedure :: init_interaction => multisystem_init_interaction
     procedure :: write_interaction_graph => multisystem_write_interaction_graph
     procedure :: initial_conditions => multisystem_initial_conditions
-    procedure :: do_td_operation => multisystem_do_td_operation
+    procedure :: do_algorithmic_operation => multisystem_do_algorithmic_operation
     procedure :: is_tolerance_reached => multisystem_is_tolerance_reached
     procedure :: update_quantity => multisystem_update_quantity
     procedure :: update_exposed_quantity => multisystem_update_exposed_quantity
@@ -87,10 +115,14 @@ module multisystem_oct_m
 contains
 
   ! ---------------------------------------------------------------------------------------
+  !> @brief initialize the multisystem class
+  !!
+  !! This routine parses the system block in the input file and creates the systems, contained in the multisystem container.
+  !!
   recursive subroutine multisystem_init(this, namespace, factory)
     class(multisystem_t),      intent(inout) :: this
-    type(namespace_t),            intent(in) :: namespace
-    class(system_factory_abst_t), intent(in) :: factory
+    type(namespace_t),            intent(in) :: namespace !< namespace for the multisystem container
+    class(system_factory_abst_t), intent(in) :: factory   !< system factory to instantiate the systems in the container
 
     integer :: isys, system_type, ic
     character(len=128) :: system_name
@@ -128,12 +160,14 @@ contains
   end subroutine multisystem_init
 
   ! ---------------------------------------------------------------------------------------
+  !> @brief create a system in the container
+  !!
   recursive subroutine multisystem_create_system(this, system_name, system_type, isys, factory)
     class(multisystem_t),      intent(inout) :: this
-    character(len=128),           intent(in) :: system_name
-    integer,                      intent(in) :: system_type
-    integer,                      intent(in) :: isys
-    class(system_factory_abst_t), intent(in) :: factory
+    character(len=128),           intent(in) :: system_name !< name of the system to be created
+    integer,                      intent(in) :: system_type !< system type as defined in system_factory_oct_m
+    integer,                      intent(in) :: isys        !< system counter
+    class(system_factory_abst_t), intent(in) :: factory     !< system factory
 
     type(system_iterator_t) :: iter
     class(system_t), pointer :: sys, other
@@ -155,7 +189,7 @@ contains
     do while (iter%has_next())
       other => iter%get_next()
       if (sys%namespace == other%namespace) then
-        call messages_input_error(this%namespace, factory%block_name(), 'Duplicated system in multisystem', &
+        call messages_input_error(this%namespace, factory%block_name(), 'Duplicated system in multi-system', &
           row=isys-1, column=0)
       end if
     end do
@@ -167,6 +201,8 @@ contains
   end subroutine multisystem_create_system
 
   ! ---------------------------------------------------------------------------------------
+  !> brief initialize the parallelization of the multisystem
+  !!
   recursive subroutine multisystem_init_parallelization(this, grp)
     class(multisystem_t), intent(inout) :: this
     type(mpi_grp_t),      intent(in)    :: grp
@@ -192,8 +228,9 @@ contains
   end subroutine multisystem_init_parallelization
 
   ! ---------------------------------------------------------------------------------------
+  !> @brief return the time step of the shortest algorithm of the multisystem
   recursive function multisystem_smallest_algo_dt(this) result(smallest_algo_dt)
-    class(multisystem_t), intent(inout) :: this
+    class(multisystem_t), intent(in) :: this
     FLOAT :: smallest_algo_dt
 
     type(system_iterator_t) :: iter
@@ -209,12 +246,40 @@ contains
       class is (multisystem_t)
         smallest_algo_dt = min(smallest_algo_dt, system%smallest_algo_dt())
       class default
-        smallest_algo_dt = min(smallest_algo_dt, system%prop%dt/system%prop%algo_steps)
+        smallest_algo_dt = min(smallest_algo_dt, system%algo%dt/system%algo%algo_steps)
       end select
     end do
 
     POP_SUB(multisystem_smallest_algo_dt)
   end function multisystem_smallest_algo_dt
+
+  ! ---------------------------------------------------------------------------------------
+  !> @brief return the time step of the longest algorithm of the multisystem
+  recursive function multisystem_largest_dt(this) result(largest_dt)
+    class(multisystem_t), intent(in) :: this
+    FLOAT :: largest_dt
+
+    type(system_iterator_t) :: iter
+    class(system_t), pointer :: system
+
+    PUSH_SUB(multisystem_largest_dt)
+
+    largest_dt = M_ZERO
+    call iter%start(this%list)
+    do while (iter%has_next())
+      system => iter%get_next()
+      select type (system)
+      class is (multisystem_t)
+        largest_dt = max(largest_dt, system%largest_dt())
+      class default
+        largest_dt = max(largest_dt, system%algo%dt)
+      end select
+    end do
+
+    POP_SUB(multisystem_largest_dt)
+  end function multisystem_largest_dt
+
+
 
   ! ---------------------------------------------------------------------------------------
   recursive function multisystem_next_time_on_largest_dt(this) result(next_time_on_largest_dt)
@@ -244,7 +309,7 @@ contains
   end function multisystem_next_time_on_largest_dt
 
   ! ---------------------------------------------------------------------------------------
-  recursive subroutine multisystem_dt_operation(this)
+  recursive subroutine multisystem_execute_algorithm(this)
     class(multisystem_t),     intent(inout) :: this
 
     type(system_iterator_t) :: iter
@@ -252,23 +317,23 @@ contains
 
     type(event_handle_t) :: debug_handle
 
-    PUSH_SUB(multisystem_dt_operation)
+    PUSH_SUB(multisystem_execute_algorithm)
 
     if (debug%info) then
       write(message(1), '(a,a,1X,a)') "Debug: Start multisystem_dt_operation for '" + trim(this%namespace%get()) + "'"
       call messages_info(1, namespace=this%namespace)
     end if
     debug_handle = multisystem_debug_write_event_in(this%namespace, event_function_call_t("multisystem_dt_operation"), &
-      system_clock = this%clock, prop_clock = this%prop%clock)
+      system_clock = this%clock, prop_clock = this%algo%clock)
 
     ! Multisystem
-    call system_dt_operation(this)
+    call system_execute_algorithm(this)
 
     ! Subsystems
     call iter%start(this%list)
     do while (iter%has_next())
       system => iter%get_next()
-      call system%dt_operation()
+      call system%execute_algorithm()
     end do
 
     if (debug%info) then
@@ -276,10 +341,10 @@ contains
       call messages_info(1, namespace=this%namespace)
     end if
 
-    call multisystem_debug_write_event_out(debug_handle, system_clock = this%clock, prop_clock = this%prop%clock)
+    call multisystem_debug_write_event_out(debug_handle, system_clock = this%clock, prop_clock = this%algo%clock)
 
-    POP_SUB(multisystem_dt_operation)
-  end subroutine multisystem_dt_operation
+    POP_SUB(multisystem_execute_algorithm)
+  end subroutine multisystem_execute_algorithm
 
   ! ---------------------------------------------------------------------------------------
   recursive subroutine multisystem_reset_clocks(this, accumulated_ticks)
@@ -305,55 +370,90 @@ contains
   end subroutine multisystem_reset_clocks
 
   ! ---------------------------------------------------------------------------------------
-  recursive subroutine multisystem_init_propagator(this)
-    class(multisystem_t),      intent(inout) :: this
+  recursive subroutine multisystem_init_algorithm(this, factory)
+    class(multisystem_t),       intent(inout) :: this
+    class(algorithm_factory_t), intent(in)    :: factory
 
     type(system_iterator_t) :: iter
     class(system_t), pointer :: system
-    type(interaction_iterator_t) :: inter_iter
-    class(interaction_t), pointer :: interaction
 
-    PUSH_SUB(multisystem_init_propagator)
+    PUSH_SUB(multisystem_init_algorithm)
 
     ! Now initialized the propagators of the subsystems
     call iter%start(this%list)
     do while (iter%has_next())
       system => iter%get_next()
-      call system%init_propagator()
+      call system%init_algorithm(factory)
     end do
 
     ! Initialize the propagator of the multisystem. By default the
-    ! multisystem itself and its own quantities are kept unchaged
+    ! multisystem itself and its own quantities are kept unchanged
     ! by using the static propagator. However, the subsystems are allowed to have
     ! their own propagators and those do not have to be static.
     ! Needs to be done after initializing the subsystems propagators,
-    ! as we use the smallest dt of the subsystems.
-    this%prop => propagator_static_t(this%smallest_algo_dt())
+    ! as we use the largest dt of the subsystems.
+    this%algo => factory%create_static(this)
     this%interaction_timing = OPTION__INTERACTIONTIMING__TIMING_EXACT
-    call this%prop%rewind()
+    call this%algo%rewind()
 
-    ! Initialize propagator clock
-    this%prop%clock = clock_t(time_step=this%prop%dt/this%prop%algo_steps)
+    call system_init_clocks(this)
 
-    ! Initialize system clock
-    this%clock = clock_t(time_step=this%prop%dt)
-
-    ! Interaction clocks
-    call inter_iter%start(this%interactions)
-    do while (inter_iter%has_next())
-      interaction => inter_iter%get_next()
-      interaction%clock = this%prop%clock - CLOCK_TICK
-    end do
-
-    ! Required quantities clocks
-    where (this%quantities%required)
-      this%quantities%clock = this%prop%clock
-    end where
-
-    POP_SUB(multisystem_init_propagator)
-  end subroutine multisystem_init_propagator
+    POP_SUB(multisystem_init_algorithm)
+  end subroutine multisystem_init_algorithm
 
   ! ---------------------------------------------------------------------------------------
+  recursive function multisystem_algorithm_finished(this) result(finished)
+    class(multisystem_t),       intent(in) :: this
+    logical :: finished
+
+    type(system_iterator_t) :: iter
+    class(system_t), pointer :: system
+
+    ! Check if multisystem itself is finished
+    if (this%algo%is_static) then
+      ! For a multisystem using a static algorithm, only the state of the
+      ! subsystems matters to determine if it is finished
+      finished = .true.
+    else
+      finished = this%algo%finished()
+    end if
+
+    ! Check subsystems
+    call iter%start(this%list)
+    do while (iter%has_next())
+      system => iter%get_next()
+      finished = finished .and. system%algorithm_finished()
+    end do
+
+  end function multisystem_algorithm_finished
+
+  ! ---------------------------------------------------------------------------------------
+  !> @brief initialize the clocks of the contained systems
+  !!
+  recursive subroutine multisystem_init_clocks(this)
+    class(multisystem_t),       intent(inout) :: this
+
+    type(system_iterator_t) :: iter
+    class(system_t), pointer :: system
+
+    PUSH_SUB(multisystem_init_clocks)
+
+    ! initialize multisystem clocks
+    call system_init_clocks(this)
+
+    ! initialize clocks of subsystems
+    call iter%start(this%list)
+    do while (iter%has_next())
+      system => iter%get_next()
+      call system%init_clocks()
+    end do
+
+    POP_SUB(multisystem_init_clocks)
+  end subroutine multisystem_init_clocks
+
+  ! ---------------------------------------------------------------------------------------
+  !> @brief call the propagation_start routine for all contained systems
+  !!
   recursive subroutine multisystem_propagation_start(this)
     class(multisystem_t),      intent(inout) :: this
 
@@ -365,7 +465,7 @@ contains
     PUSH_SUB(multisystem_propagation_start)
 
     debug_handle = multisystem_debug_write_event_in(this%namespace, event_function_call_t("multisystem_propagation_start"), &
-      system_clock = this%clock, prop_clock = this%prop%clock)
+      system_clock = this%clock, prop_clock = this%algo%clock)
 
     ! Start the propagation of the multisystem
     call system_propagation_start(this)
@@ -377,12 +477,14 @@ contains
       call system%propagation_start()
     end do
 
-    call multisystem_debug_write_event_out(debug_handle, system_clock = this%clock, prop_clock = this%prop%clock)
+    call multisystem_debug_write_event_out(debug_handle, system_clock = this%clock, prop_clock = this%algo%clock)
 
     POP_SUB(multisystem_propagation_start)
   end subroutine multisystem_propagation_start
 
   ! ---------------------------------------------------------------------------------------
+  !> @brief call the propagation_finish routine for all contained systems
+  !!
   recursive subroutine multisystem_propagation_finish(this)
     class(multisystem_t),      intent(inout) :: this
 
@@ -394,7 +496,7 @@ contains
     PUSH_SUB(multisystem_propagation_finish)
 
     debug_handle = multisystem_debug_write_event_in(this%namespace, event_function_call_t("multisystem_propagation_finish"), &
-      system_clock = this%clock, prop_clock = this%prop%clock)
+      system_clock = this%clock, prop_clock = this%algo%clock)
 
     ! Finish the propagation of the multisystem
     call system_propagation_finish(this)
@@ -406,33 +508,17 @@ contains
       call system%propagation_finish()
     end do
 
-    call multisystem_debug_write_event_out(debug_handle, system_clock = this%clock, prop_clock = this%prop%clock)
+    call multisystem_debug_write_event_out(debug_handle, system_clock = this%clock, prop_clock = this%algo%clock)
 
     POP_SUB(multisystem_propagation_finish)
   end subroutine multisystem_propagation_finish
 
-  ! ---------------------------------------------------------------------------------------
-  recursive logical function multisystem_has_reached_final_propagation_time(this, final_time)
-    class(multisystem_t),      intent(inout) :: this
-    FLOAT,                     intent(in)    :: final_time
-
-    type(system_iterator_t) :: iter
-    class(system_t), pointer :: system
-
-    PUSH_SUB(multisystem_has_reached_final_propagation_time)
-
-    multisystem_has_reached_final_propagation_time = system_has_reached_final_propagation_time(this, final_time)
-    call iter%start(this%list)
-    do while (iter%has_next())
-      system => iter%get_next()
-      multisystem_has_reached_final_propagation_time = multisystem_has_reached_final_propagation_time .and. &
-        system%has_reached_final_propagation_time(final_time)
-    end do
-
-    POP_SUB(multisystem_has_reached_final_propagation_time)
-  end function multisystem_has_reached_final_propagation_time
-
   ! ---------------------------------------------------------
+  !> @brief initialize all interactions of the multisystem
+  !!
+  !! This routine initializes the interactions of the container, as well as all
+  !! interactions between the contained systems
+  !!
   recursive subroutine multisystem_init_all_interactions(this)
     class(multisystem_t), intent(inout) :: this
 
@@ -469,22 +555,26 @@ contains
   end subroutine multisystem_init_all_interactions
 
   ! ---------------------------------------------------------
+  !> @brief initialize a specific interaction
+  !!
   subroutine multisystem_init_interaction(this, interaction)
     class(multisystem_t), target, intent(inout) :: this
     class(interaction_t),         intent(inout) :: interaction
 
     PUSH_SUB(multisystem_init_interaction)
 
-    ! The multitystem class should never know about any specific interaction.
+    ! The multisystem class should never know about any specific interaction.
     ! Only classes that extend it can know about specific interactions.
     ! Such classes should override this method to add new supported interactions.
-    message(1) = "Trying to initialize an interaction in the multisystem class"
+    message(1) = "Trying to initialize an interaction in the multi-system container class"
     call messages_fatal(1, namespace=this%namespace)
 
     POP_SUB(multisystem_init_interaction)
   end subroutine multisystem_init_interaction
 
   ! ---------------------------------------------------------------------------------------
+  !> @brief write a graphical representation of the interactions
+  !!
   recursive subroutine multisystem_write_interaction_graph(this, iunit, include_ghosts)
     class(multisystem_t), intent(in) :: this
     integer,              intent(in) :: iunit
@@ -550,22 +640,17 @@ contains
   end subroutine multisystem_initial_conditions
 
   ! ---------------------------------------------------------
-  subroutine multisystem_do_td_operation(this, operation)
+  logical function multisystem_do_algorithmic_operation(this, operation) result(done)
     class(multisystem_t),           intent(inout) :: this
     class(algorithmic_operation_t), intent(in)    :: operation
 
-    PUSH_SUB(multisystem_do_td_operation)
+    PUSH_SUB(multisystem_do_algorithmic_operation)
 
-    select case (operation%id)
-    case (SKIP)
-      ! Nothing to do
-    case default
-      message(1) = "Unsupported TD operation."
-      call messages_fatal(1, namespace=this%namespace)
-    end select
+    ! Currently there are no multisystem specific algorithmic operations
+    done = .false.
 
-    POP_SUB(multisystem_do_td_operation)
-  end subroutine multisystem_do_td_operation
+    POP_SUB(multisystem_do_algorithmic_operation)
+  end function multisystem_do_algorithmic_operation
 
   ! ---------------------------------------------------------
   recursive logical function multisystem_is_tolerance_reached(this, tol) result(converged)
@@ -594,10 +679,10 @@ contains
 
     PUSH_SUB(multisystem_update_quantity)
 
-    ! The multitystem class should never know about any specific quantities.
+    ! The multisystem class should never know about any specific quantities.
     ! Only classes that extend it can know about specific quantities.
     ! Such classes should override this method to add new supported quantities.
-    message(1) = "Trying to update a quantity in the multisystem class"
+    message(1) = "Trying to update a quantity in the multi-system container class"
     call messages_fatal(1, namespace=this%namespace)
 
     POP_SUB(multisystem_update_quantity)
@@ -610,10 +695,10 @@ contains
 
     PUSH_SUB(multisystem_update_exposed_quantity)
 
-    ! The multitystem class should never know about any specific quantities.
+    ! The multisystem class should never know about any specific quantities.
     ! Only classes that extend it can know about specific quantities.
     ! Such classes should override this method to add new supported quantities.
-    message(1) = "Trying to update an exposed quantity in the multisystem class"
+    message(1) = "Trying to update an exposed quantity in the multi-system container class"
     call messages_fatal(1, namespace=partner%namespace)
 
     POP_SUB(multisystem_update_exposed_quantity)
@@ -626,10 +711,10 @@ contains
 
     PUSH_SUB(multisystem_init_interaction_as_partner)
 
-    ! The multitystem class should never know about any specific interaction.
+    ! The multisystem class should never know about any specific interaction.
     ! Only classes that extend it can know about specific interactions.
     ! Such classes should override this method to add new supported interactions.
-    message(1) = "Trying to initialize an interaction as partner in the multisystem class"
+    message(1) = "Trying to initialize an interaction as partner in the multi-system container class"
     call messages_fatal(1, namespace=partner%namespace)
 
     POP_SUB(multisystem_init_interaction_as_partner)
@@ -642,10 +727,10 @@ contains
 
     PUSH_SUB(multisystem_copy_quantities_to_interaction)
 
-    ! The multitystem class should never know about any specific quantities.
+    ! The multisystem class should never know about any specific quantities.
     ! Only classes that extend it can know about specific quantities.
     ! Such classes should override this method to add new supported quantities.
-    message(1) = "Trying to copy quantities to interaction in the multisystem class"
+    message(1) = "Trying to copy quantities to interaction in the multi-system container class"
     call messages_fatal(1, namespace=partner%namespace)
 
     POP_SUB(multisystem_copy_quantities_to_interaction)
@@ -673,13 +758,13 @@ contains
   !--------------------------------------------------------------------
   !> Calculate the kinetic energy:
   !! The kinetic energy of a container (multisystem) is defined by the
-  !! kinetic energy with respect to the centre or mass motion.
+  !! kinetic energy with respect to the center or mass motion.
   recursive subroutine multisystem_update_kinetic_energy(this)
     class(multisystem_t), intent(inout) :: this
 
     PUSH_SUB(multisystem_update_kinetic_energy)
 
-    ! We currently do not have the centre of mass coordinates implemented for multisystems,
+    ! We currently do not have the center of mass coordinates implemented for multisystems,
     ! hence we set the kinetic energy to zero.
     ! The kinetic energies of the constituents are contributing to the internal energy.
 
@@ -699,8 +784,8 @@ contains
 
     PUSH_SUB(multisystem_update_internal_energy)
 
-    ! The internal energy of the multisystem containes the kinetic and internal energies of the consistuents
-    !TODO: the kinetic energy wrt the centre of mass motion should be subtracted.
+    ! The internal energy of the multisystem contains the kinetic and internal energies of the consistuents
+    !TODO: the kinetic energy wrt the center of mass motion should be subtracted.
 
     this%internal_energy = M_ZERO
 
@@ -727,7 +812,7 @@ contains
         !! of the subsystem, which was already added above.
         if(.not. associated(system, system_2)) then
           this%internal_energy = this%internal_energy + multisystem_pair_energy(system, system_2)
-        endif
+        end if
       end do ! system_iter_2
 
     end do ! system_iter
@@ -1016,6 +1101,8 @@ contains
       system => iter%get_next()
       call system%restart_write()
     end do
+    message(1) = "Wrote restart data for multisystem "//trim(this%namespace%get())
+    call messages_info(1, namespace=this%namespace)
 
     POP_SUB(multisystem_restart_write)
   end subroutine multisystem_restart_write
@@ -1038,6 +1125,11 @@ contains
       multisystem_restart_read = multisystem_restart_read .and. &
         system%restart_read()
     end do
+
+    if (multisystem_restart_read) then
+      message(1) = "Successfully read restart data for multisystem "//trim(this%namespace%get())
+      call messages_info(1, namespace=this%namespace)
+    end if
 
     POP_SUB(multisystem_restart_read)
   end function multisystem_restart_read

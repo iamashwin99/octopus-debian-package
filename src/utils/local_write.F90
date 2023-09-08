@@ -234,7 +234,7 @@ contains
     character(len=15),        intent(in)    :: lab
     logical,                  intent(in)    :: ions_mask(:)
     logical,                  intent(in)    :: mesh_mask(:)
-    type(mesh_t),             intent(in)    :: mesh
+    class(mesh_t),            intent(in)    :: mesh
     type(states_elec_t),      intent(inout) :: st
     type(hamiltonian_elec_t), intent(inout) :: hm
     type(v_ks_t),             intent(inout) :: ks
@@ -284,7 +284,7 @@ contains
     type(local_write_prop_t), intent(inout) :: out_pot
     character(len=15),        intent(in)    :: lab
     logical,                  intent(in)    :: mesh_mask(:)
-    type(mesh_t),             intent(in)    :: mesh
+    class(mesh_t),            intent(in)    :: mesh
     type(ions_t),             intent(inout) :: ions
     type(partner_list_t),     intent(in)    :: ext_partners
     type(states_elec_t),      intent(inout) :: st
@@ -317,7 +317,7 @@ contains
         folder = 'local.general/densities/'//trim(lab)//'.densities/'
         write(out_name, '(a,a1,i0,a1,i7.7)') trim(lab), '.', is,'.', iter
         call dio_function_output(how,  trim(folder), trim(out_name), namespace, space, mesh, tmp_rho(1:mesh%np), &
-          units_out%length, ierr, ions = ions)
+          units_out%length, ierr, pos=ions%pos, atoms=ions%atom)
       end if
 
       if (out_pot%write) then
@@ -327,7 +327,7 @@ contains
         folder = 'local.general/potential/'//trim(lab)//'.potential/'
         write(out_name, '(a,i0,a1,i7.7)') 'vh.', is, '.', iter
         call dio_function_output(how, trim(folder), trim(out_name), namespace, space, mesh, tmp_vh, units_out%length, ierr, &
-          ions = ions)
+          pos=ions%pos, atoms=ions%atom)
         !Computes XC potential
         where (mesh_mask)
           st%rho(:, is) = st_rho
@@ -338,7 +338,7 @@ contains
         folder = 'local.general/potential/'//trim(lab)//'.potential/'
         write(out_name, '(a,i0,a1,i7.7)') 'vxc.', is, '.', iter
         call dio_function_output(how, trim(folder), trim(out_name), namespace, space, mesh, hm%vxc(:,is), units_out%length, ierr, &
-          ions = ions)
+          pos=ions%pos, atoms=ions%atom)
         st%rho(:,is) = st_rho(:)
       end if
     end do
@@ -350,13 +350,13 @@ contains
         folder = 'local.general/potential/'
         write(out_name, '(a,i0,a1,i7.7)') 'global-vh.', is, '.', iter
         call dio_function_output(how, trim(folder), trim(out_name), namespace, space, mesh, hm%vhartree, units_out%length, ierr, &
-          ions = ions)
+          pos=ions%pos, atoms=ions%atom)
         !Computes global XC potential
         call v_ks_calc(ks, namespace, space, hm, st, ions, ext_partners, calc_eigenval = .false. , calc_energy = .false.)
         folder = 'local.general/potential/'
         write(out_name, '(a,i0,a1,i7.7)') 'global-vxc.', is, '.', iter
         call dio_function_output(how, trim(folder), trim(out_name), namespace, space, mesh, hm%vxc(:,is), units_out%length, ierr, &
-          ions = ions)
+          pos=ions%pos, atoms=ions%atom)
       end do
     end if
 
@@ -375,7 +375,7 @@ contains
     type(space_t),            intent(in)    :: space
     character(len=15),        intent(in)    :: lab
     logical,                  intent(in)    :: mesh_mask(:)
-    type(mesh_t),             intent(in)    :: mesh
+    class(mesh_t),            intent(in)    :: mesh
     type(ions_t),             intent(inout) :: ions
     type(partner_list_t),     intent(in)    :: ext_partners
     type(states_elec_t),      intent(inout) :: st
@@ -528,7 +528,7 @@ contains
     character(len=15),        intent(in)    :: lab
     logical,                  intent(in)    :: ions_mask(:)
     logical,                  intent(in)    :: mesh_mask(:)
-    type(mesh_t),             intent(in)    :: mesh
+    class(mesh_t),            intent(in)    :: mesh
     type(ions_t),             intent(in)    :: ions
     type(states_elec_t),      intent(in)    :: st
     integer,                  intent(in)    :: lmax

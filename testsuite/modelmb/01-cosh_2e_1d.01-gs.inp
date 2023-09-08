@@ -9,11 +9,11 @@ TheoryLevel = independent_particles
 Dimensions = 2
 FromScratch = yes
 
-ExtraStates = 2 
+ExtraStates = 2
 
 BoxShape = parallelepiped
 acell = 10
-%Lsize 
+%Lsize
  acell | acell
 %
 spacing = 0.2
@@ -45,7 +45,7 @@ k=1.0
 "electron"      | 1 | 3
 %
 
-%Output 
+%Output
  mmb_den
  mmb_wfs | plane_z + axis_x
  density | plane_z + axis_x

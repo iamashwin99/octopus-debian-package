@@ -71,7 +71,7 @@ contains
     type(namespace_t),           intent(in)    :: namespace
     type(space_t),               intent(in)    :: space
     type(states_elec_t), target, intent(inout) :: st
-    type(mesh_t),                intent(in)    :: mesh
+    class(mesh_t),               intent(in)    :: mesh
     type(kpoints_t),             intent(in)    :: kpoints
     logical,           optional, intent(in)    :: is_complex
 
@@ -147,7 +147,7 @@ contains
     type(restart_t),      intent(in)  :: restart
     type(space_t),        intent(in)  :: space
     type(states_elec_t),  intent(in)  :: st
-    type(mesh_t),         intent(in)  :: mesh
+    class(mesh_t),        intent(in)  :: mesh
     type(kpoints_t),      intent(in)  :: kpoints
     integer,              intent(out) :: ierr
     integer,    optional, intent(in)  :: iter
@@ -337,7 +337,7 @@ contains
     type(namespace_t),          intent(in)    :: namespace
     type(space_t),              intent(in)    :: space
     type(states_elec_t),        intent(inout) :: st
-    type(mesh_t),               intent(in)    :: mesh
+    class(mesh_t),              intent(in)    :: mesh
     type(kpoints_t),            intent(in)    :: kpoints
     integer,                    intent(out)   :: ierr
     integer,          optional, intent(out)   :: iter
@@ -711,7 +711,7 @@ contains
       else
         write(str, '(a,i5)') 'Reading states information for linear response.'
       end if
-      call messages_print_stress(msg=trim(str), namespace=namespace)
+      call messages_print_with_emphasis(msg=trim(str), namespace=namespace)
       if (.not. present(skip)) then
         write(message(1),'(a,i6,a,i6,a)') 'Only ', iread,' files out of ', &
           st%nst * st%d%nik * st%d%dim, ' could be read.'
@@ -721,7 +721,7 @@ contains
         ierr = 0
       end if
       call messages_info(1, namespace=namespace)
-      call messages_print_stress(namespace=namespace)
+      call messages_print_with_emphasis(namespace=namespace)
     end if
 
     message(1) = 'Info: States reading done.'
@@ -773,7 +773,7 @@ contains
     type(restart_t),      intent(in)    :: restart
     type(space_t),        intent(in)    :: space
     type(states_elec_t),  intent(in)    :: st
-    type(mesh_t),         intent(in)    :: mesh
+    class(mesh_t),        intent(in)    :: mesh
     integer,              intent(out)   :: ierr
     integer,    optional, intent(in)    :: iter
 
@@ -848,7 +848,7 @@ contains
     type(restart_t),      intent(in)    :: restart
     type(space_t),        intent(in)    :: space
     type(states_elec_t),  intent(inout) :: st
-    type(mesh_t),         intent(in)    :: mesh
+    class(mesh_t),        intent(in)    :: mesh
     integer,              intent(out)   :: ierr
 
     integer              :: err, err2, isp
@@ -904,7 +904,7 @@ contains
     type(restart_t),      intent(in)    :: restart
     type(space_t),        intent(in)    :: space
     type(states_elec_t),  intent(in)    :: st
-    type(mesh_t),         intent(in)    :: mesh
+    class(mesh_t),        intent(in)    :: mesh
     integer,              intent(out)   :: ierr
 
     integer :: isp, err, err2(2), idir
@@ -991,7 +991,7 @@ contains
     type(restart_t),      intent(in)    :: restart
     type(space_t),        intent(in)    :: space
     type(states_elec_t),  intent(inout) :: st
-    type(mesh_t),         intent(in)    :: mesh
+    class(mesh_t),        intent(in)    :: mesh
     integer,              intent(out)   :: ierr
 
     integer              :: err, err2, isp, idir
@@ -1072,7 +1072,7 @@ contains
   !> the routine reads formulas for user-defined wavefunctions
   !! from the input file and fills the respective orbitals
   subroutine states_elec_read_user_def_orbitals(mesh, namespace, space, st)
-    type(mesh_t),        intent(in)    :: mesh
+    class(mesh_t),       intent(in)    :: mesh
     type(namespace_t),   intent(in)    :: namespace
     type(space_t),       intent(in)    :: space
     type(states_elec_t), intent(inout) :: st
@@ -1141,7 +1141,7 @@ contains
     !%End
     if (parse_block(namespace, 'UserDefinedStates', blk) == 0) then
 
-      call messages_print_stress(msg=trim('Substitution of orbitals'), namespace=namespace)
+      call messages_print_with_emphasis(msg=trim('Substitution of orbitals'), namespace=namespace)
 
       ! find out how many lines (i.e. states) the block has
       nstates = parse_block_n(blk)
@@ -1254,7 +1254,7 @@ contains
       SAFE_DEALLOCATE_A(zpsi)
 
       call parse_block_end(blk)
-      call messages_print_stress(namespace=namespace)
+      call messages_print_with_emphasis(namespace=namespace)
 
     else
       call messages_variable_is_block(namespace, 'UserDefinedStates')
@@ -1391,7 +1391,7 @@ contains
     type(namespace_t),          intent(in)    :: namespace
     type(space_t),              intent(in)    :: space
     type(restart_t),            intent(inout) :: restart
-    type(mesh_t),               intent(in)    :: mesh
+    class(mesh_t),              intent(in)    :: mesh
     type(kpoints_t),            intent(in)    :: kpoints
     character(len=*), optional, intent(in)    :: prefix
 

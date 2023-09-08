@@ -5,7 +5,7 @@ Program    : octopus
 TestGroups : long-run, optimal_control
 Enabled    : Yes
 
-# The test ensures the optimal control algorithm ZBR98. 
+# The test ensures the optimal control algorithm ZBR98.
 # It calculates the optimal laser field that transfers one particle
 # localized in one particle well to other.
 #

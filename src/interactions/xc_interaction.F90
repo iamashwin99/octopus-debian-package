@@ -44,7 +44,7 @@ module xc_interaction_oct_m
     xc_interaction_t,      &
     xc_interaction_compute,&
     calc_tb09_c,           &
-    calc_mvorb_alpha 
+    calc_mvorb_alpha
 
   type, extends(density_interaction_t) :: xc_interaction_t
     private
@@ -120,7 +120,7 @@ contains
 
 
   ! ---------------------------------------------------------
-  subroutine xc_interaction_compute(this) 
+  subroutine xc_interaction_compute(this)
     class(xc_interaction_t),             intent(inout) :: this
     PUSH_SUB(xc_interaction_compute)
 
@@ -156,22 +156,22 @@ contains
 
   ! -----------------------------------------------------
   subroutine calc_tb09_c(mesh, space, functl, dens, gdens, ispin, rcell_volume)
-    type(mesh_t),          intent(in) :: mesh
+    class(mesh_t),         intent(in) :: mesh
     type(space_t),         intent(in) :: space
     type(xc_functional_t), intent(inout) :: functl(:)
     FLOAT,                 intent(in) :: dens(:,:)
     FLOAT,                 intent(in) :: gdens(:,:,:)
     integer,               intent(in) :: ispin
     FLOAT,                 intent(in) :: rcell_volume
-  
+
     FLOAT, allocatable :: gnon(:)
     FLOAT :: gn(MAX_DIM), n, parameters(1)
     integer :: ii
-  
+
     PUSH_SUB(calc_tb09_c)
-  
+
     SAFE_ALLOCATE(gnon(1:mesh%np))
-  
+
     do ii = 1, mesh%np
       if (ispin == UNPOLARIZED) then
         n = dens(ii, 1)
@@ -180,27 +180,27 @@ contains
         n = dens(ii, 1) + dens(ii, 2)
         gn(1:space%dim) = gdens(ii, 1:space%dim, 1) + gdens(ii, 1:space%dim, 2)
       end if
-  
+
       if (n <= CNST(1e-7)) then
         gnon(ii) = M_ZERO
       else
         gnon(ii) = sqrt(sum((gn(1:space%dim)/n)**2))
       end if
     end do
-  
+
     parameters(1) =  -CNST(0.012) + CNST(1.023)*sqrt(dmf_integrate(mesh, gnon)/rcell_volume)
-  
+
     call xc_f03_func_set_ext_params(functl(1)%conf, parameters)
-  
+
     SAFE_DEALLOCATE_A(gnon)
-  
+
     POP_SUB(calc_tb09_c)
   end subroutine calc_tb09_c
-  
+
   ! ---------------------------------------------------------
   subroutine calc_mvorb_alpha(mesh, namespace, space, functl, dens, gdens, ispin, rcell_volume, &
     cam_alpha, cam_beta, cam_omega)
-    type(mesh_t),          intent(in) :: mesh
+    class(mesh_t),         intent(in) :: mesh
     type(namespace_t),     intent(in) :: namespace
     type(space_t),         intent(in) :: space
     type(xc_functional_t), intent(inout) :: functl(:)
@@ -209,17 +209,17 @@ contains
     integer,               intent(in) :: ispin
     FLOAT,                 intent(in) :: rcell_volume
     FLOAT,                 intent(inout) :: cam_alpha, cam_beta, cam_omega
-  
+
     FLOAT, allocatable :: gnon(:)
     FLOAT :: tb09_c, alpha
     FLOAT :: gn(MAX_DIM), n
     integer :: ii
     FLOAT :: parameters(3)
-  
+
     PUSH_SUB(calc_mvorb_alpha)
-  
+
     SAFE_ALLOCATE(gnon(1:mesh%np))
-  
+
     do ii = 1, mesh%np
       if (ispin == UNPOLARIZED) then
         n = dens(ii, 1)
@@ -228,7 +228,7 @@ contains
         n = dens(ii, 1) + dens(ii, 2)
         gn(1:space%dim) = gdens(ii, 1:space%dim, 1) + gdens(ii, 1:space%dim, 2)
       end if
-  
+
       if (n <= CNST(1e-7)) then
         gnon(ii) = M_ZERO
       else
@@ -236,22 +236,22 @@ contains
         gnon(ii) = sqrt(gnon(ii))
       end if
     end do
-  
+
     tb09_c =  dmf_integrate(mesh, gnon)/rcell_volume
-  
+
     SAFE_DEALLOCATE_A(gnon)
-  
+
     select case (functl(FUNC_C)%id)
     case (XC_HYB_GGA_XC_MVORB_HSE06)
       alpha = CNST(0.121983)+CNST(0.130711)*tb09_c**4
-  
+
       if (alpha > 1) then
         write(message(1), '(a,f6.3,a)') 'MVORB mixing parameter bigger than one (' , alpha ,').'
         call messages_warning(1, namespace=namespace)
         alpha = CNST(0.25)
       end if
-  
-  
+
+
       parameters(1) = alpha
       parameters(2) = cam_omega
       parameters(3) = cam_omega
@@ -259,10 +259,10 @@ contains
       !The name is confusing. Here alpha is the beta of hybrids in functionals,
       !but is called alpha in the original paper.
       cam_beta = alpha
-  
+
     case (XC_HYB_GGA_XC_MVORB_PBEH)
       alpha = -CNST(1.00778)+CNST(1.10507)*tb09_c
-  
+
       if (alpha > 1) then
         write(message(1), '(a,f6.3,a)') 'MVORB mixing parameter bigger than one (' , alpha ,').'
         call messages_warning(1, namespace=namespace)
@@ -273,18 +273,18 @@ contains
         call messages_warning(1, namespace=namespace)
         alpha = CNST(0.25)
       end if
-  
-  #if defined HAVE_LIBXC5
+
+#if defined HAVE_LIBXC5
       parameters(1) = alpha
       call xc_f03_func_set_ext_params(functl(FUNC_C)%conf, parameters)
-  #else
+#else
       call messages_not_implemented("MVORB with PBE0 requires libxc 5", namespace=namespace)
-  #endif
+#endif
       cam_alpha = alpha
     case default
       call messages_not_implemented("MVORB density-based mixing for functionals other than PBE0 and HSE06", namespace=namespace)
     end select
-  
+
     POP_SUB(calc_mvorb_alpha)
   end subroutine calc_mvorb_alpha
 

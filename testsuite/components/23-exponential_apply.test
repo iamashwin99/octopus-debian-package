@@ -7,7 +7,7 @@ Enabled    : Yes
 
 Input: 23-exponential_apply.01-jellium.inp
 Precision: 2.4e+04
-match ;  Norm state  1 ; GREPFIELD(out, 'Norm state  1', 4) ; 2.38616e+19
-match ;  Norm state  2 ; GREPFIELD(out, 'Norm state  2', 4) ; 2.39172e+19
-match ;  Norm state  3 ; GREPFIELD(out, 'Norm state  3', 4) ; 2.39284e+19
-match ;  Norm state  4 ; GREPFIELD(out, 'Norm state  4', 4) ; 2.39503e+19
+match ;  Norm state   1 ; GREPFIELD(out, 'Norm state   1', 4) ; 2.38616e+19
+match ;  Norm state   2 ; GREPFIELD(out, 'Norm state   2', 4) ; 2.39172e+19
+match ;  Norm state   3 ; GREPFIELD(out, 'Norm state   3', 4) ; 2.39284e+19
+match ;  Norm state   4 ; GREPFIELD(out, 'Norm state   4', 4) ; 2.39503e+19

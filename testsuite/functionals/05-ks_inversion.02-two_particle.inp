@@ -8,7 +8,7 @@ FromScratch = yes
 BoxShape = parallelepiped
 acell = 15
 spacing = 0.05
-%Lsize 
+%Lsize
  acell
 %
 
@@ -32,6 +32,6 @@ InvertKSTargetDensity = "static/density.y=0,z=0"
 
 %Output
  potential | axis_x
-% 
+%
 
 FilterPotentials = filter_none

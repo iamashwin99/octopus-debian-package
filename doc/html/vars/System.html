@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML-full"></script>
 <style>
-   BODY {background-color: white; 
+   BODY {background-color: white;
          font-size: 10pt; font-family: verdana,helvetica;}
    A  {text-decoration: none;color: blue}
 </style>
@@ -89,6 +89,9 @@
 </li>
 <li><b>maxwell_field_to_medium</b>:   (interaction type)
  Electric field resulting from the Maxwell solver.
+</li>
+<li><b>lennard_jones</b>:   (interaction type)
+ Force resulting from a Lennard Jones potential between classical particles.
 </li>
 </ul>
 </p><hr width='30%' align='left'/>
@@ -219,18 +222,6 @@
 </p><hr width='30%' align='left'/>
 
 
-<p><b><a name='PDBClassical'></a>PDBClassical</b>
-<br/><i>Section</i>: System::Coordinates
-<br/><i>Type</i>: string
-<br/><br> If this variable is present, the program tries to read the atomic coordinates for classical atoms.
- from the file specified by its value. The same as <tt>PDBCoordinates</tt>, except that the
- classical charge colum must be present. The interaction from the
- classical atoms is specified by <tt>ClassicalPotential</tt>, for QM/MM calculations.
- Not available in periodic systems.
-
-</p><hr width='30%' align='left'/>
-
-
 <p><b><a name='PDBCoordinates'></a>PDBCoordinates</b>
 <br/><i>Section</i>: System::Coordinates
 <br/><i>Type</i>: string
@@ -315,6 +306,54 @@
 <H2>System::Species</H2>
 
 
+<p><b><a name='AllElectronANCParam'></a>AllElectronANCParam</b>
+<br/><i>Section</i>: System::Species
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: 4
+<br/><br> Default values for the parameter <tt>anc_a</tt>. This is usefull
+ for specifying multiple atoms without specifying the species block.
+<br><br>
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='AllElectronSigma'></a>AllElectronSigma</b>
+<br/><i>Section</i>: System::Species
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: 0.6
+<br/><br> Default value for the parameter <tt>gaussian_width</tt>. This is useful
+ for specifying multiple atoms without specifying the species block. The
+ default value is taken from the recommendation in
+ <i>Phys. Rev. B</i> <b>55</b>, 10289 (1997).
+<br><br>
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='AllElectronType'></a>AllElectronType</b>
+<br/><i>Section</i>: System::Species
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: no
+<br/><br> Selects the type of all-electron species that applies by default to all
+ atoms. This is not compatible with <tt>PseudopotentialSet</tt>, but it is
+ compatible with the <tt>Species</tt> block.
+<br><br>
+
+<br/><i>Options</i>:
+<ul>
+<li><b>no</b>:  Do not specify any default all-electron type of species. All species must be
+ specified in the Species block.
+</li>
+<li><b>full_delta</b>:  All atoms are supposed to be by default of type <tt>species_full_delta</tt>.
+</li>
+<li><b>full_gaussian</b>:  All atoms are supposed to be by default of type <tt>species_full_gaussian</tt>.
+</li>
+<li><b>full_anc</b>:  All atoms are supposed to be by default of type <tt>species_full_anc</tt>.
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+
 <p><b><a name='PseudopotentialSet'></a>PseudopotentialSet</b>
 <br/><i>Section</i>: System::Species
 <br/><i>Type</i>: integer
@@ -336,15 +375,9 @@
 </li>
 <li><b>pseudodojo_pbe</b>:  PBE version of the pseudopotentials of http://pseudo-dojo.org. Version 0.4.
 </li>
-<li><b>pseudodojo_pbe_stringent</b>:  High-accuracy PBE version of the pseudopotentials of http://pseudo-dojo.org. Version 0.4.
-</li>
 <li><b>pseudodojo_lda</b>:  LDA pseudopotentials of http://pseudo-dojo.org. Version 0.4.
 </li>
-<li><b>pseudodojo_lda_stringent</b>:  High-accuracy LDA pseudopotentials of http://pseudo-dojo.org. Version 0.4.
-</li>
 <li><b>pseudodojo_pbesol</b>:  PBEsol version of the pseudopotentials of http://pseudo-dojo.org. Version 0.3.
-</li>
-<li><b>pseudodojo_pbesol_stringent</b>:  High-accuracy PBEsol version of the pseudopotentials of http://pseudo-dojo.org. Version 0.4.
 </li>
 <li><b>standard</b>:  The standard set of Octopus that provides LDA pseudopotentials
  in the PSF format for some elements: H, Li, C, N, O, Na, Si, S, Ti, Se, Cd.
@@ -353,6 +386,7 @@
  PBE pseudopotentials. Ref: M. Schlipf and F. Gygi, <i>Comp. Phys. Commun.</i> <b>196</b>, 36 (2015).
  This set provides pseudopotentials for elements up to Z = 83
  (Bi), excluding Lanthanides.
+ Current version of the set is 1.2.
 </li>
 <li><b>hgh_lda_sc</b>:  The semicore set of Hartwigsen-Goedecker-Hutter LDA pseudopotentials.
  Ref: C. Hartwigsen, S. Goedecker, and J. Hutter, <i>Phys. Rev. B</i> <b>58</b>, 3641 (1998).
@@ -423,6 +457,7 @@
  <br>&nbsp;&nbsp;'He_all'  | species_full_delta
  <br>&nbsp;&nbsp;'H_all'   | species_full_gaussian  |  gaussian_width |  0.2
  <br>&nbsp;&nbsp;'Li1D'    | species_soft_coulomb   |  softening | 1.5 | valence | 3
+ <br>&nbsp;&nbsp;'H_all'   | species_full_anc       |  anc_a | 4
  <br>%</tt>
 
 <br/><i>Options</i>:
@@ -436,15 +471,16 @@
  <a href=http://www.nist.gov/pml/data/comp.cfm>NIST values</a>.
  For other species, the default is 1.0.
 </li>
-<li><b>valence</b>:  The number of electrons of the species. It is set automatically for pseudopotentials,
- but is mandatory for other species.
+<li><b>valence</b>:  The number of electrons of the species. It is set automatically from the name of the species.
+ if it correspond to the name in the periodic table. If not specified and if the name
+ does not match an atom name, a value of 0 is assumed.
 </li>
 <li><b>jellium_radius</b>:  The radius of the sphere for <tt>species_jellium</tt>. If this value is not specified,
  the default of 0.5 bohr is used.
 </li>
 <li><b>gaussian_width</b>:  The width of the Gaussian (in units of spacing) used to represent
  the nuclear charge for <tt>species_full_gaussian</tt>. If not present,
- the default is 0.25.
+ the default is 0.6.
 </li>
 <li><b>softening</b>:  The softening parameter <i>a</i> for <tt>species_soft_coulomb</tt> in units of length.
 </li>
@@ -470,12 +506,15 @@
 </li>
 <li><b>hubbard_l</b>:  The angular-momentum for which the effective U will be applied.
 </li>
-<li><b>hubbard_u</b>:  The effective U that will be used for the LDA+U calculations.
+<li><b>hubbard_u</b>:  The effective U that will be used for the DFT+U calculations.
 </li>
 <li><b>hubbard_j</b>:  The value of j (hubbard_l-1/2 or hubbard_l+1/2) on which the effective U is applied.
 </li>
 <li><b>hubbard_alpha</b>:  The strength of the potential constraining the occupations of the localized subspace
  as defined in PRB 71, 035105 (2005)
+</li>
+<li><b>anc_a</b>:  The value of the parameter a of the ANC potential, as defined in [Gygi, JCTC 2023, 19, 1300−1309].
+ This parameter has the unit of inverse length and determines the range of regularization.
 </li>
 <li><b>species_pspio</b>:  (experimental) Alternative method to read pseudopotentials
  using the PSPIO library. This species uses the same parameters
@@ -528,6 +567,9 @@
  The charge associated with this species must be given by the <tt>valence</tt> parameter.
 </li>
 <li><b>species_jellium_charge_density</b>:  The parameter is the name of a volume block specifying the shape of the jellium.
+</li>
+<li><b>species_full_anc</b>:  Analytical norm-conserving regulized Coulomb potential from
+ [Gygi J. Chem. Theory Comput. 2023, 19, 1300−1309].
 </li>
 <li><b>species_jellium</b>:  Jellium sphere.
  The charge associated with this species must be given by the <tt>valence</tt> parameter.

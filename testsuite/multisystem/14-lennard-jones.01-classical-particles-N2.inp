@@ -1,0 +1,36 @@
+CalculationMode = td
+ExperimentalFeatures = yes
+FromScratch = yes
+
+Dimensions = 3
+
+%Systems
+ "H1" | classical_particle
+ "H2" | classical_particle
+%
+
+%Interactions
+ lennard_jones | all_partners
+%
+
+# Parameters for N2
+ParticleMass = 14.0*1822.89 # atomic mass units times electron mass
+LennardJonesEpsilon = 0.043*ev
+LennardJonesSigma = 3.12*angstrom
+eqm_distance = LennardJonesSigma*2.0^(1.0/6.0)
+
+%H1.ParticleInitialPosition
+  0.0 | 0.0 | 0.0
+%
+%H2.ParticleInitialPosition
+  eqm_distance + 0.5 | 0.0 | 0.0
+%
+
+%ParticleInitialVelocity
+ 0.0 | 0.0 | 0.0
+%
+
+TDSystemPropagator = verlet
+
+TDTimeStep = 1000.0
+TDPropagationTime = 50000.0

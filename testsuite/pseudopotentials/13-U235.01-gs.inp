@@ -1,4 +1,5 @@
 CalculationMode = gs
+Debug = info
 
 PseudopotentialSet = hscv_pbe
 
@@ -10,11 +11,7 @@ PseudopotentialSet = hscv_pbe
  'U' | 0.0 | 0.0 | 0.0
 %
 
-ExperimentalFeatures = yes
-
 Radius = 10.0
 Spacing = 0.4
-
-Debug = info
 
 PoissonSolver = isf

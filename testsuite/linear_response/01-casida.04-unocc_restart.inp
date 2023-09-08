@@ -5,12 +5,12 @@ CalculationMode = unocc
 bond_length = 2.0744
 
 %Coordinates
-"N" |  -bond_length/2 |  0.0 |  0.0 
-"N" |   bond_length/2 |  0.0 |  0.0 
+"N" |  -bond_length/2 |  0.0 |  0.0
+"N" |   bond_length/2 |  0.0 |  0.0
 %
 
 %Species
-"N" | species_pseudo | lmax | 2 | lloc | 0  
+"N" | species_pseudo | lmax | 2 | lloc | 0
 %
 
 BoxShape = sphere
@@ -28,7 +28,7 @@ LCAODimension = 18
 
 
 MaximumIter = 1
-ExtraStates = 9
+ExtraStates = 10
 
 PoissonSolver = fft
 PoissonFFTKernel = multipole_correction

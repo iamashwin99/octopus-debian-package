@@ -7,12 +7,12 @@ FromScratch = yes
 bond_length = 2.0744
 
 %Coordinates
-"N" |  -bond_length/2 |  0.0 |  0.0 
-"N" |   bond_length/2 |  0.0 |  0.0 
+"N" |  -bond_length/2 |  0.0 |  0.0
+"N" |   bond_length/2 |  0.0 |  0.0
 %
 
 %Species
-"N" | species_pseudo | lmax | 2 | lloc | 0  
+"N" | species_pseudo | lmax | 2 | lloc | 0
 %
 
 BoxShape = sphere
@@ -31,3 +31,5 @@ LCAOMaximumOrbitalRadius = 50
 PoissonSolver = fft
 PoissonFFTKernel = multipole_correction
 MixField = density
+
+LCAOSaveMemory = yes

@@ -101,7 +101,7 @@ subroutine X(nl_operator_operate_batch)(op, fi, fo, ghost_update, profile, point
         ASSERT(ubound(fo%X(ff_pack), dim = 2) >= op%mesh%np)
 
         call X(operate_ri_vec)(op%stencil%size, wre(1), nri_loc, ri(1, ini), imin(ini), imax(ini), &
-          fi%X(ff_pack)(1, 1), log2(fi%pack_size_real(1)), fo%X(ff_pack)(1, 1))
+          fi%X(ff_pack)(1, 1), log2(int(fi%pack_size_real(1), i4)), fo%X(ff_pack)(1, 1))
       else
         do ist = 1, fi%nst_linear
 
@@ -257,7 +257,7 @@ contains
   subroutine operate_opencl()
     integer    :: pnri, bsize, isize, localsize, ist, eff_size, iarg, npoints, dim2, dim3
     integer(i8) :: local_mem_size
-    type(accel_mem_t) :: buff_weights
+    type(accel_mem_t), pointer :: buff_weights
     type(profile_t), save :: prof
     type(accel_kernel_t) :: kernel_operate
 
@@ -269,13 +269,26 @@ contains
 
     kernel_operate = op%kernel
 
-    call accel_create_buffer(buff_weights, ACCEL_MEM_READ_ONLY, TYPE_FLOAT, op%stencil%size)
-
-    call accel_write_buffer(buff_weights, op%stencil%size, wre)
+    ! In some cases we can avoid copying the weights to the GPU at every application
+    if (.not. op%const_w) then
+      SAFE_ALLOCATE(buff_weights)
+      call accel_create_buffer(buff_weights, ACCEL_MEM_READ_ONLY, TYPE_FLOAT, op%stencil%size)
+      call accel_write_buffer(buff_weights, op%stencil%size, wre)
+    else
+      if (.not. present(factor)) then
+        buff_weights => op%buff_weights
+      else if (abs(factor+M_HALF)<M_EPSILON) then
+        buff_weights => op%buff_half_weights
+      else
+        SAFE_ALLOCATE(buff_weights)
+        call accel_create_buffer(buff_weights, ACCEL_MEM_READ_ONLY, TYPE_FLOAT, op%stencil%size)
+        call accel_write_buffer(buff_weights, op%stencil%size, wre)
+      end if
+    end if
 
     ASSERT(fi%pack_size_real(1) == fo%pack_size_real(1))
 
-    eff_size = fi%pack_size_real(1)
+    eff_size = int(fi%pack_size_real(1), i4)
 
     select case (function_opencl)
     case (OP_INVMAP)
@@ -429,14 +442,27 @@ contains
       end select
     end if
 
+    if (.not. op%const_w) then
+      call accel_release_buffer(buff_weights)
+      SAFE_DEALLOCATE_P(buff_weights)
+    else
+      if (.not. present(factor)) then
+        nullify(buff_weights)
+      else if (abs(factor+M_HALF)<M_EPSILON) then
+        nullify(buff_weights)
+      else
+        call accel_release_buffer(buff_weights)
+        SAFE_DEALLOCATE_P(buff_weights)
+      end if
+    end if
+
+
     ! when doing the inner points the synchronization is done
     ! in X(ghost_update_batch_finish) after a Waitall call to
     ! overlap communication and computation
     if (points_ /= OP_INNER) then
       call accel_finish()
     end if
-
-    call accel_release_buffer(buff_weights)
 
     call profiling_out(prof)
     POP_SUB(X(nl_operator_operate_batch).operate_opencl)

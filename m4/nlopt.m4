@@ -22,13 +22,13 @@ AC_MSG_CHECKING([for NLOPT])
 if test "$acx_nlopt_ok" != disabled; then
   for librarydir in "lib" "lib64"; do
     if test "$librarydir" = "lib"; then
-      LIBS_NLOPT="-L$with_nlopt_prefix/lib -lnlopt"; 
+      LIBS_NLOPT="-L$with_nlopt_prefix/lib -lnlopt";
       FCFLAGS_NLOPT="$ax_cv_f90_modflag$with_nlopt_prefix/include";
     else
-      LIBS_NLOPT="-L$with_nlopt_prefix/lib64 -lnlopt"; 
+      LIBS_NLOPT="-L$with_nlopt_prefix/lib64 -lnlopt";
       FCFLAGS_NLOPT="$ax_cv_f90_modflag$with_nlopt_prefix/include";
     fi
-	
+
     FCFLAGS="$FCFLAGS_NLOPT $acx_nlopt_save_FCFLAGS"
     LIBS="$LIBS_NLOPT $acx_nlopt_save_LIBS"
     AC_LINK_IFELSE(AC_LANG_PROGRAM([],[
@@ -44,7 +44,7 @@ dnl Finally, execute ACTION-IF-FOUND/ACTION-IF-NOT-FOUND:
 if test x"$acx_nlopt_ok" = xyes; then
   AC_DEFINE(HAVE_NLOPT,1,[Defined if you have the NLOPT library.])
 else
-  AC_MSG_WARN([Could not find NLOPT library. 
+  AC_MSG_WARN([Could not find NLOPT library.
            *** Will compile without NLOPT support])
   FCFLAGS_NLOPT=""
   LIBS_NLOPT=""

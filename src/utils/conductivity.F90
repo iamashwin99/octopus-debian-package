@@ -254,7 +254,7 @@ program conductivity
         do kk = 1, space%dim
           javerage = M_ZERO
           do iter = 1, ntime
-            javerage = javerage + total_current(kk, iter)  
+            javerage = javerage + total_current(kk, iter)
           end do
           javerage = javerage/ntime
           do iter = 1, ntime

@@ -22,27 +22,26 @@
 
 #ifdef HAVE_GDLIB
 
-#include <ctype.h>
-#include <string.h>
 #include <assert.h>
+#include <ctype.h>
 #include <gd.h>
+#include <string.h>
 
 /* ---------------------- Interface to GD functions ------------------------ */
-gdImagePtr gdlib_image_create_from(char * name)
-{
+gdImagePtr gdlib_image_create_from(char *name) {
   char *ext;
   FILE *in;
   gdImagePtr im;
 
-  if((in = fopen(name, "rb")) == NULL) {
+  if ((in = fopen(name, "rb")) == NULL) {
     return NULL; /* could not open file */
   }
 
   /* get extension of filename */
-  for(ext=name+strlen(name); *ext!='.' && ext>=name; ext--){
+  for (ext = name + strlen(name); *ext != '.' && ext >= name; ext--) {
     *ext = tolower(*ext);
   }
-  if(ext < name || ext == name+strlen(name)) {
+  if (ext < name || ext == name + strlen(name)) {
     fclose(in);
     return NULL; /* could not find file type */
   }
@@ -53,8 +52,8 @@ gdImagePtr gdlib_image_create_from(char * name)
   /* load image file */
   im = NULL;
 #ifdef HAVE_GD_JPEG
-  if((strcmp(ext, "jpg") == 0) || (strcmp(ext, "JPG") == 0) ||
-     (strcmp(ext, "jpeg") == 0) || (strcmp(ext, "JPEG") == 0))
+  if ((strcmp(ext, "jpg") == 0) || (strcmp(ext, "JPG") == 0) ||
+      (strcmp(ext, "jpeg") == 0) || (strcmp(ext, "JPEG") == 0))
     im = gdImageCreateFromJpeg(in);
 #endif
 
@@ -73,40 +72,40 @@ gdImagePtr gdlib_image_create_from(char * name)
   return im;
 }
 
-int gdlib_image_sx(const gdImagePtr *im)
-{
+int gdlib_image_sx(const gdImagePtr *im) {
   assert(*im != NULL);
 
   return gdImageSX(*im);
 }
 
-int gdlib_image_sy(const gdImagePtr *im)
-{
+int gdlib_image_sy(const gdImagePtr *im) {
   assert(*im != NULL);
 
   return gdImageSY(*im);
 }
 
-void gdlib_image_get_pixel_rgb(const gdImagePtr *im, const int *x, const int *y, int *r, int *g, int *b)
-{
+void gdlib_image_get_pixel_rgb(const gdImagePtr *im, const int *x, const int *y,
+                               int *r, int *g, int *b) {
   int color;
 
   assert(*im != NULL);
 
-  if(gdImageBoundsSafe(*im, *x, *y)){
+  if (gdImageBoundsSafe(*im, *x, *y)) {
     color = gdImageGetPixel(*im, *x, *y);
-    *r = gdImageRed  (*im, color);
+    *r = gdImageRed(*im, color);
     *g = gdImageGreen(*im, color);
-    *b = gdImageBlue (*im, color);
-  }else{
+    *b = gdImageBlue(*im, color);
+  } else {
     /* this will happen for boundary points */
     //    fprintf(stderr, "Illegal pixel coordinate %d %d\n", *x, *y);
-    *r = 0; *g = 0; *b = 0;
+    *r = 0;
+    *g = 0;
+    *b = 0;
   }
 }
 
 #else
 /* this is to avoid an empty source file (not allowed by ANSI C)*/
-void useless(){}
+void useless() {}
 #endif
 /* defined HAVEGDLIB */

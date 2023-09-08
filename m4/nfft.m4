@@ -25,13 +25,13 @@ nfft_func="nfft_init_1d"
 nfft_libs="-lnfft3"
 
 dnl Check if the library was given in the command line
-AC_ARG_WITH([nfft], [AS_HELP_STRING([--with-nfft=DIR], [use NFFT library (optional) 
+AC_ARG_WITH([nfft], [AS_HELP_STRING([--with-nfft=DIR], [use NFFT library (optional)
                                                                http://www-user.tu-chemnitz.de/~potts/nfft/index.php])],
                                                                [],
                                                                [with_nfft=no] )
 case $with_nfft in
   no ) acx_nfft_ok=disable ;;
-  *) LIBS_NFFT="-L$with_nfft/lib $nfft_libs" 
+  *) LIBS_NFFT="-L$with_nfft/lib $nfft_libs"
      CFLAGS_NFFT="-I$with_nfft/include" ;;
 esac
 
@@ -44,7 +44,7 @@ if test $acx_nfft_ok = no; then
   AC_MSG_CHECKING([for nfft])
   # If LIBS_NFFT has been passed with --with-nfft just test this
   if test "$LIBS_NFFT"; then
-    nfft_cflags="$CFLAGS_NFFT" 
+    nfft_cflags="$CFLAGS_NFFT"
     nfft_libs="$LIBS_NFFT"
     CFLAGS="$nfft_cflags $CFLAGS_FFTW"
     LIBS="$nfft_libs $LIBS_FFT"
@@ -55,7 +55,7 @@ if test $acx_nfft_ok = no; then
  {
    nfft_plan p;
    nfft_init_1d(&p,2,3);
-   nfft_finalize(&p);   
+   nfft_finalize(&p);
    return 1;
  }
     ])],[acx_nfft_ok=yes; CFLAGS_NFFT="$nfft_cflags"; LIBS_NFFT="$nfft_libs"], [])
@@ -77,7 +77,7 @@ dnl Finally, execute ACTION-IF-FOUND/ACTION-IF-NOT-FOUND:
 if test x"$acx_nfft_ok" = xyes; then
    AC_DEFINE(HAVE_NFFT,1,[Defined if you have NFFT library.])
 else
-   if test $acx_nfft_ok != disable; then 
+   if test $acx_nfft_ok != disable; then
      AC_MSG_WARN([Could not find NFFT library.
                 *** Will compile without NFFT support])
    fi

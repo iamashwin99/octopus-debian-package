@@ -57,7 +57,7 @@ contains
   subroutine basins_init(this, namespace, mesh)
     type(basins_t),    intent(out) :: this
     type(namespace_t), intent(in)  :: namespace
-    type(mesh_t),      intent(in)  :: mesh
+    class(mesh_t),     intent(in)  :: mesh
 
     PUSH_SUB(basins_init)
 
@@ -94,7 +94,7 @@ contains
   subroutine basins_analyze(this, namespace, mesh, f, rho, threshold)
     type(basins_t),    intent(inout) :: this
     type(namespace_t), intent(in)    :: namespace
-    type(mesh_t),      intent(in)    :: mesh
+    class(mesh_t),     intent(in)    :: mesh
     FLOAT,             intent(in)    :: f(:)
     FLOAT,             intent(in)    :: rho(:, :)
     FLOAT,             intent(in)    :: threshold
@@ -257,7 +257,7 @@ contains
   !----------------------------------------------------------------
   subroutine basins_write(this, mesh, iunit)
     type(basins_t), intent(in) :: this
-    type(mesh_t),   intent(in) :: mesh
+    class(mesh_t),  intent(in) :: mesh
     integer,        intent(in) :: iunit
 
     integer :: ii

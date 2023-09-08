@@ -9,8 +9,8 @@ Enabled    : Yes
 # nuclei are not in their minimum configuration). Note that there is only
 # one electron, since it makes use of pseudopotentials.
 #
-# Then, it propagates its  evolution under the influence of an electric 
-# field in the dipole approximation, first in the length gauge, and then 
+# Then, it propagates its  evolution under the influence of an electric
+# field in the dipole approximation, first in the length gauge, and then
 # in the velocity gauge.
 #
 # The test compares the z component of the dipole moment after 0.2 atomic

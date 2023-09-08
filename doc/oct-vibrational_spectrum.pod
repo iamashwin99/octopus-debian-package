@@ -1,6 +1,6 @@
 =head1 NAME
 
-oct-vibrational_spectrum - Calculates the vibrational spectrum from a molecular-dynamics run. 
+oct-vibrational_spectrum - Calculates the vibrational spectrum from a molecular-dynamics run.
 
 =head1 SYNOPSIS
 
@@ -49,4 +49,3 @@ This is free software; see the source for copying conditions.  There is NO warra
 The largest source of documentation is the octopus website: S<http://octopus-code.org>.
 
 At the usual standard locations, you will also find an info file, F<octopus.info>.
-

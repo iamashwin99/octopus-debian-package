@@ -7,7 +7,7 @@ Dimensions = 1
 # The Morse potential is given by:
 # V(r) = D{exp[-beta*(r-r0)]-1}**2 - D
 # where, for the OH case:
-# 
+#
 D = 0.1994
 beta = 1.189
 r0 = 1.821
@@ -22,8 +22,8 @@ mu = 0.948204436
 #
 # The eigenenergies of this system are given by:
 #
-# E[nu] = -D + \hbar* [ omega*(nu+0.5) - Delta*(nu+0.5)^2 ] 
-# 
+# E[nu] = -D + \hbar* [ omega*(nu+0.5) - Delta*(nu+0.5)^2 ]
+#
 # where Delta is the anharmonicity constant:
 #Delta = omega^2 / (4*D)
 # The numerical value is .00040895133 Ha
@@ -63,11 +63,11 @@ TheoryLevel = independent_particles
 # The following calculation corresponds with Fig. 1 (C), of G. K. Paramonov, Chem. Phys. 177, 169 (1993).
 # The figure should be perfectly reproduced if the calculation is done until 1 picosecond.
 
-%TDOutput 
- energy 
- laser 
- multipoles 
- td_occup 
+%TDOutput
+ energy
+ laser
+ multipoles
+ td_occup
  populations
 %
 

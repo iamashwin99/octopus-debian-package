@@ -29,7 +29,6 @@ module electrons_ground_state_oct_m
   use lcao_oct_m
   use mesh_oct_m
   use messages_oct_m
-  use mpi_oct_m
   use multicomm_oct_m
   use namespace_oct_m
   use output_oct_m
@@ -91,7 +90,7 @@ contains
       end if
     end if
 
-    call states_elec_allocate_wfns(st, gr%mesh, packed=.true.)
+    call states_elec_allocate_wfns(st, gr, packed=.true.)
 
     ! sometimes a deadlock can occur here (if some nodes can allocate and other cannot)
     if (st%dom_st_kpt_mpi_grp%comm > 0) call st%dom_st_kpt_mpi_grp%barrier()
@@ -101,10 +100,10 @@ contains
     if (.not. fromScratch) then
       ! load wavefunctions
       ! in RDMFT we need the full ground state
-      call restart_init(restart_load, namespace, RESTART_GS, RESTART_TYPE_LOAD, mc, ierr, mesh=gr%mesh, &
+      call restart_init(restart_load, namespace, RESTART_GS, RESTART_TYPE_LOAD, mc, ierr, mesh=gr, &
         exact = (ks%theory_level == RDMFT))
       if (ierr == 0) then
-        call states_elec_load(restart_load, namespace, space, st, gr%mesh, hm%kpoints, ierr)
+        call states_elec_load(restart_load, namespace, space, st, gr, hm%kpoints, ierr)
       end if
 
       if (ierr /= 0) then
@@ -116,7 +115,8 @@ contains
       end if
     end if
 
-    call write_canonicalized_xyz_file("exec", "initial_coordinates", ions, gr%box, namespace)
+    call write_canonicalized_xyz_file("exec", "initial_coordinates", space, ions%latt, ions%pos, ions%atom, &
+      gr%box, namespace)
 
     if (ks%theory_level /= RDMFT) then
       call scf_init(scfv, namespace, gr, ions, st, mc, hm, ks, space)
@@ -137,13 +137,13 @@ contains
     end if
 
     if (restart_init_dump) then
-      call restart_init(restart_dump, namespace, RESTART_GS, RESTART_TYPE_DUMP, mc, ierr, mesh=gr%mesh)
+      call restart_init(restart_dump, namespace, RESTART_GS, RESTART_TYPE_DUMP, mc, ierr, mesh=gr)
     end if
 
     ! run self-consistency
     call scf_state_info(namespace, st)
 
-    if (st%d%pack_states .and. hamiltonian_elec_apply_packed(hm)) then
+    if (st%d%pack_states .and. hm%apply_packed()) then
       call st%pack()
     end if
 
@@ -176,7 +176,7 @@ contains
       call restart_end(restart_dump)
     end if
 
-    if (st%d%pack_states .and. hamiltonian_elec_apply_packed(hm)) then
+    if (st%d%pack_states .and. hm%apply_packed()) then
       call st%unpack()
     end if
 

@@ -25,7 +25,7 @@ if test $acx_scalapack_ok = no; then
   esac
 fi
 
-dnl Backup LIBS 
+dnl Backup LIBS
 acx_scalapack_save_LIBS="$LIBS"
 LIBS="$LIBS_SCALAPACK $LIBS_BLACS $LIBS_LAPACK $LIBS_BLAS $LIBS $FLIBS"
 
@@ -56,7 +56,7 @@ if test x"$acx_scalapack_ok" = xyes; then
   AC_DEFINE(HAVE_SCALAPACK,1,[Defined if you have SCALAPACK library.])
 else
   if test "x$acx_blacs_ok" == xyes; then
-  AC_MSG_WARN([Could not find Scalapack library. 
+  AC_MSG_WARN([Could not find Scalapack library.
                *** Will compile without Scalapack support])
   fi
 fi

@@ -14,14 +14,12 @@
  Maxwell.ParDomains = auto
  Maxwell.ParStates  = no
 
- LinearMediumBoxShape = medium_box_file
- LinearMediumBoxFile = "09-drude-medium-from-file.01-gold-np-r80nm.off"
  MediumPoleEnergy = 9.03*ev
  MediumPoleDamping = 0.053*ev
  MediumDispersionType = drude_medium
  %MediumCurrentCoordinates
    -160.0*nm | 0.0 | 0.0
-   -80.0*nm | 0.0 | 0.0 
+   -80.0*nm | 0.0 | 0.0
 %
 # ----- Maxwell box variables ---------------------------------------------------------------------
 
@@ -32,6 +30,8 @@
 
  dx_mx    = 20*nm
  BoxShape   = parallelepiped
+ NP.BoxShape = box_cgal
+ NP.BoxCgalFile = "09-drude-medium-from-file.01-gold-np-r80nm.off"
 
  %Lsize
   lsize_mx+0.25*l_zero | lsize_myz+0.25*l_zero | lsize_myz+0.25*l_zero
@@ -66,8 +66,9 @@
 
 # ----- Maxwell output variables ------------------------------------------------------------------
 
- %MaxwellOutput 
+ %MaxwellOutput
   electric_field
+  total_current_mxll
  %
 
  MaxwellOutputInterval = 10
@@ -80,7 +81,8 @@
 
 # ----- Time step variables -----------------------------------------------------------------------
 
- TDSystemPropagator = exp_mid
+ Maxwell.TDSystemPropagator = prop_expmid
+ NP.TDSystemPropagator      = prop_rk4
  timestep                = S_c*dx_mx/c
  TDTimeStep              = timestep
  TDPropagationTime       = 30*timestep
@@ -94,7 +96,7 @@
  Ez    = 1.0
  sigma = 40.0*c
  p_s     = -lsize_mx
- 
+
  %UserDefinedInitialMaxwellStates
    use_incident_waves
  %

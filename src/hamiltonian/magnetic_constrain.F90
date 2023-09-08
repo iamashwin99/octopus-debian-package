@@ -21,7 +21,7 @@
 module magnetic_constrain_oct_m
   use debug_oct_m
   use global_oct_m
-  use ions_oct_m
+  use lattice_vectors_oct_m
   use magnetic_oct_m
   use messages_oct_m
   use mesh_oct_m
@@ -62,13 +62,14 @@ module magnetic_constrain_oct_m
 
 contains
 
-  subroutine magnetic_constrain_init(this, namespace, mesh, std, rho, ions)
+  subroutine magnetic_constrain_init(this, namespace, mesh, std, rho, natoms, min_dist)
     type(magnetic_constrain_t), intent(inout) :: this
     type(namespace_t),         intent(in)    :: namespace
-    type(mesh_t),              intent(in)    :: mesh
+    class(mesh_t),             intent(in)    :: mesh
     type(states_elec_dim_t),   intent(in)    :: std
     FLOAT, target,             intent(in)    :: rho(:,:)
-    type(ions_t),              intent(in)    :: ions
+    integer,                   intent(in)    :: natoms
+    FLOAT,                     intent(in)    :: min_dist
 
     integer :: ia, idir
     FLOAT   :: rmin, norm
@@ -118,7 +119,7 @@ contains
       call messages_fatal(2, namespace=namespace)
     end if
 
-    if (parse_block_n(blk) /= ions%natoms) then
+    if (parse_block_n(blk) /= natoms) then
       message(1) = "AtomsMagnetDirection block has the wrong number of rows."
       call messages_fatal(1, namespace=namespace)
     end if
@@ -128,8 +129,8 @@ contains
       call messages_fatal(1, namespace=namespace)
     end if
 
-    SAFE_ALLOCATE(this%constrain(1:3, ions%natoms))
-    do ia = 1, ions%natoms
+    SAFE_ALLOCATE(this%constrain(1:3, natoms))
+    do ia = 1, natoms
       !Read from AtomsMagnetDirection block
       if (std%ispin == SPIN_POLARIZED) then
         call parse_block_float(blk, ia-1, 0, this%constrain(3, ia))
@@ -152,7 +153,7 @@ contains
     SAFE_ALLOCATE(this%pot(1:mesh%np, std%nspin))
     this%pot = M_ZERO
 
-    rmin = ions%min_distance()
+    rmin = min_dist
     call parse_variable(namespace, 'LocalMagneticMomentsSphereRadius', min(M_HALF*rmin, CNST(100.0)), &
       this%lmm_r)
 
@@ -174,17 +175,20 @@ contains
   end subroutine magnetic_constrain_end
 
 ! ---------------------------------------------------------
-  subroutine magnetic_constrain_update(this, mesh, std, ions)
+  subroutine magnetic_constrain_update(this, mesh, std, space, latt, pos)
     type(magnetic_constrain_t), intent(inout) :: this
-    type(mesh_t),               intent(in)    :: mesh
+    class(mesh_t),              intent(in)    :: mesh
     type(states_elec_dim_t),    intent(in)    :: std
-    type(ions_t),               intent(in)    :: ions
+    type(space_t),              intent(in)    :: space
+    type(lattice_vectors_t),    intent(in)    :: latt
+    FLOAT,                      intent(in)    :: pos(:,:)
 
     integer :: ia, idir, ip
     FLOAT :: bb(3), b2, lmm(3), dotp, norm, xx
     FLOAT, allocatable :: md(:,:), mdf(:), mask(:)
     type(submesh_t) :: sphere
     type(profile_t), save :: prof
+    integer :: natoms
 
     if (this%level == CONSTRAIN_NONE) return
 
@@ -199,8 +203,10 @@ contains
     SAFE_ALLOCATE(mdf(1:mesh%np))
     call magnetic_density(mesh, std, this%rho, md)
 
-    do ia = 1, ions%natoms
-      call submesh_init(sphere, ions%space, mesh, ions%latt, ions%pos(:, ia), this%lmm_r)
+    natoms = size(pos, dim=2)
+
+    do ia = 1, natoms
+      call submesh_init(sphere, space, mesh, latt, pos(:, ia), this%lmm_r)
 
       SAFE_ALLOCATE(mask(1:sphere%np))
       mask = M_ZERO

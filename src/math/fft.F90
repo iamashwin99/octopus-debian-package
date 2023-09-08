@@ -35,6 +35,7 @@ module fft_oct_m
   use debug_oct_m
   use global_oct_m
   use,intrinsic :: iso_c_binding
+  use lattice_vectors_oct_m
   use lalg_basic_oct_m
   use loct_math_oct_m
   use messages_oct_m
@@ -72,7 +73,8 @@ module fft_oct_m
     zfft_forward,      &
     dfft_backward,     &
     zfft_backward,     &
-    fft_scaling_factor
+    fft_scaling_factor,&
+    fft_gg_transform
 
 
   !> global constants
@@ -394,14 +396,7 @@ contains
       end if
 
       do ii = 1, fft_dim
-        ! the AMD OpenCL FFT only supports sizes 2, 3 and 5, but size
-        ! 5 gives an fpe error on the Radeon 7970 (APPML 1.8), so we
-        ! only use factors 2 and 3
-#ifdef HAVE_CLFFT
-        nn_temp(ii) = fft_size(nn(ii), (/2, 3/), optimize_parity(ii))
-#else
         nn_temp(ii) = fft_size(nn(ii), (/2, 3, 5, 7/), optimize_parity(ii))
-#endif
         if (fft_optimize .and. optimize(ii)) nn(ii) = nn_temp(ii)
       end do
 
@@ -1119,6 +1114,25 @@ contains
     POP_SUB(fft_operation_count)
   end subroutine fft_operation_count
 
+  !-----------------------------------------------------------------
+  subroutine fft_gg_transform(gg_in, temp, periodic_dim, latt, qq, gg, modg2)
+    integer,                 intent(in)    :: gg_in(:)
+    FLOAT,                   intent(in)    :: temp(:)
+    integer,                 intent(in)    :: periodic_dim
+    type(lattice_vectors_t), intent(in)    :: latt
+    FLOAT,                   intent(in)    :: qq(:)
+    FLOAT,                   intent(inout) :: gg(:)
+    FLOAT,                   intent(out)   :: modg2
+
+    ! no PUSH_SUB, called too frequently
+
+    gg(1:3) = gg_in(1:3)
+    gg(1:periodic_dim) = gg(1:periodic_dim) + qq(1:periodic_dim)
+    gg(1:3) = gg(1:3) * temp(1:3)
+    gg(1:3) = matmul(latt%klattice_primitive(1:3,1:3),gg(1:3))
+    modg2 = sum(gg(1:3)**2)
+
+  end subroutine fft_gg_transform
 
   ! ----------------------------------------------------------
 

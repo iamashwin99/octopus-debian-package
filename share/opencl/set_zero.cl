@@ -20,8 +20,8 @@
 
 #include <cl_global.h>
 
-__kernel void set_zero(const int np, const int offset, __global double * restrict aa){
-  int ip = get_global_id(0);
+__kernel void set_zero(const long np, const long offset, __global double * restrict aa){
+  long long ip = get_global_id(0);
 
   if(ip < np) aa[offset + ip] = 0.0;
 }

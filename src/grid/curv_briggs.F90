@@ -120,7 +120,7 @@ contains
   end subroutine curv_briggs_copy
 
   ! ---------------------------------------------------------
-  function curv_briggs_to_cartesian(this, chi) result(xx)
+  pure function curv_briggs_to_cartesian(this, chi) result(xx)
     class(curv_briggs_t), target, intent(in)  :: this
     FLOAT,                        intent(in)  :: chi(:)  !< chi(dim)
     FLOAT :: xx(1:this%dim)
@@ -146,7 +146,7 @@ contains
   end function curv_briggs_from_cartesian
 
   ! ---------------------------------------------------------
-  FLOAT function curv_briggs_det_jac(this, xx, chi) result(jdet)
+  pure FLOAT function curv_briggs_det_jac(this, xx, chi) result(jdet)
     class(curv_briggs_t), intent(in)  :: this
     FLOAT,                intent(in)  :: xx(:)
     FLOAT,                intent(in)  :: chi(:)

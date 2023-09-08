@@ -25,6 +25,7 @@ module absorbing_boundaries_oct_m
   use cube_function_oct_m
   use debug_oct_m
   use global_oct_m
+  use grid_oct_m
   use io_function_oct_m
   use mesh_oct_m
   use messages_oct_m
@@ -62,12 +63,11 @@ module absorbing_boundaries_oct_m
 contains
 
   ! ---------------------------------------------------------
-  subroutine absorbing_boundaries_init(this, namespace, space, mesh, sb)
+  subroutine absorbing_boundaries_init(this, namespace, space, gr)
     type(absorbing_boundaries_t), intent(out) :: this
     type(namespace_t),            intent(in)  :: namespace
     type(space_t),                intent(in)  :: space
-    type(mesh_t),                 intent(in)  :: mesh
-    class(box_t),                 intent(in)  :: sb
+    type(grid_t),                 intent(in)  :: gr
 
     integer             :: ip
     FLOAT               :: bounds(space%dim, 2)
@@ -114,7 +114,7 @@ contains
     end if
 
     if (this%abtype /= NOT_ABSORBING) then
-      call messages_print_stress(msg='Absorbing Boundaries', namespace=namespace)
+      call messages_print_with_emphasis(msg='Absorbing Boundaries', namespace=namespace)
 
       !%Variable ABCapHeight
       !%Type float
@@ -153,7 +153,7 @@ contains
         message(1) = "Input: ABShape not specified. Using default values for absorbing boundaries."
         call messages_info(1, namespace=namespace)
 
-        select type (sb)
+        select type (sb=>gr%box)
         type is (box_sphere_t)
           bounds(1,1) = sb%radius/M_TWO
           bounds(1,2) = sb%radius
@@ -177,7 +177,7 @@ contains
           call parse_block_float(blk, 0, 0, bounds(1,1), units_inp%length)
           call parse_block_float(blk, 0, 1, bounds(1,2), units_inp%length)
 
-          select type (sb)
+          select type (sb=>gr%box)
           type is (box_sphere_t)
             if (bounds(1,2) > sb%radius) then
               bounds(1,2) = sb%radius
@@ -205,13 +205,13 @@ contains
 
         case (3)
           this%ab_user_def = .true.
-          SAFE_ALLOCATE(this%ab_ufn(1:mesh%np))
+          SAFE_ALLOCATE(this%ab_ufn(1:gr%np))
           this%ab_ufn = M_ZERO
           call parse_block_float( blk, 0, 0, bounds(1,1), units_inp%length)
           call parse_block_float( blk, 0, 1, bounds(1,2), units_inp%length)
           call parse_block_string(blk, 0, 2, user_def_expr)
-          do ip = 1, mesh%np
-            xx = units_from_atomic(units_inp%length, mesh%x(ip, :))
+          do ip = 1, gr%np
+            xx = units_from_atomic(units_inp%length, gr%x(ip, :))
             rr = norm2(xx)
             call parse_expression(ufn_re, ufn_im, space%dim, xx, rr, M_ZERO, user_def_expr)
             this%ab_ufn(ip) = ufn_re
@@ -239,7 +239,7 @@ contains
       call parse_variable(namespace, 'ABWidth', abwidth_def, abwidth, units_inp%length)
       bounds(:, 1) = bounds(:, 2) - abwidth
 
-      select type (sb)
+      select type (sb=>gr%box)
       type is (box_sphere_t)
         maxdim = 1
       type is (box_cylinder_t)
@@ -260,11 +260,11 @@ contains
       call messages_info(2, namespace=namespace)
 
       ! generate boundary function
-      SAFE_ALLOCATE(mf(1:mesh%np))
-      call absorbing_boundaries_generate_mf(this, space, mesh, sb, bounds, mf)
+      SAFE_ALLOCATE(mf(1:gr%np))
+      call absorbing_boundaries_generate_mf(this, space, gr, bounds, mf)
 
       ! mask or cap
-      SAFE_ALLOCATE(this%mf(1:mesh%np))
+      SAFE_ALLOCATE(this%mf(1:gr%np))
 
       select case (this%abtype)
       case (MASK_ABSORBING)
@@ -273,9 +273,9 @@ contains
         this%mf(:) = abheight * mf(:)
       end select
 
-      if (debug%info) call absorbing_boundaries_write_info(this, mesh, namespace, space)
+      if (debug%info) call absorbing_boundaries_write_info(this, gr, namespace, space)
 
-      call messages_print_stress(namespace=namespace)
+      call messages_print_with_emphasis(namespace=namespace)
 
       SAFE_DEALLOCATE_A(mf)
     end if
@@ -299,7 +299,7 @@ contains
   ! ---------------------------------------------------------
   subroutine absorbing_boundaries_write_info(this, mesh, namespace, space)
     type(absorbing_boundaries_t), intent(in) :: this
-    type(mesh_t),                 intent(in) :: mesh
+    class(mesh_t),                intent(in) :: mesh
     type(namespace_t),            intent(in) :: namespace
     type(space_t),                intent(in) :: space
 
@@ -327,11 +327,10 @@ contains
   end subroutine absorbing_boundaries_write_info
 
   ! ---------------------------------------------------------
-  subroutine absorbing_boundaries_generate_mf(this, space, mesh, sb, bounds, mf)
+  subroutine absorbing_boundaries_generate_mf(this, space, gr, bounds, mf)
     type(absorbing_boundaries_t), intent(inout) :: this
     type(space_t),                intent(in)    :: space
-    type(mesh_t),                 intent(in)    :: mesh
-    class(box_t),                 intent(in)    :: sb
+    type(grid_t),                 intent(in)    :: gr
     FLOAT,                        intent(in)    :: bounds(1:space%dim, 1:2)
     FLOAT,                        intent(inout) :: mf(:)
 
@@ -346,8 +345,8 @@ contains
     ! generate the boundaries on the mesh
     width = bounds(:, 2) - bounds(:,1)
 
-    do ip = 1, mesh%np
-      xx = mesh%x(ip, :)
+    do ip = 1, gr%np
+      xx = gr%x(ip, :)
 
       if (this%ab_user_def) then
         dd = this%ab_ufn(ip) - bounds(1,1)
@@ -361,7 +360,7 @@ contains
 
       else ! this%ab_user_def == .false.
 
-        select type (sb)
+        select type (sb => gr%box)
         type is (box_sphere_t)
           rr = norm2(xx - sb%center)
           dd = rr -  bounds(1,1)

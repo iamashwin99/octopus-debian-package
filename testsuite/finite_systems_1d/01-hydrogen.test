@@ -28,5 +28,5 @@ match ; Cutoff (Ry)  ; GREPFIELD(out, 'Grid Cutoff', 10)        ; 39.478418
 match ; Mesh points  ; GREPFIELD(out, 'total mesh', 5)        ; 409
 
 Input: 01-hydrogen.04-absorbing_boundaries.inp
-Precision: 1e-7
+Precision: 3e-9
 match; electronic charge at last timestep ; GREPFIELD(td.general/multipoles, '  22064', 3) ; 9.997342745415e-01

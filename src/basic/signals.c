@@ -22,13 +22,13 @@
 #ifdef HAVE_SIGNAL_H
 #include <signal.h>
 #endif
-#include <stdlib.h>
-#include <unistd.h>
-#include <fortran_types.h>
 #include "string_f.h" /* fortran <-> c string compatibility issues */
+#include <fortran_types.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
-void FC_FUNC_(block_signals, BLOCK_SIGNALS)(){
+void FC_FUNC_(block_signals, BLOCK_SIGNALS)() {
 #if defined(HAVE_SIGACTION) && defined(HAVE_SIGNAL_H)
   struct sigaction act;
 
@@ -38,10 +38,10 @@ void FC_FUNC_(block_signals, BLOCK_SIGNALS)(){
 
   sigaction(SIGINT, &act, 0);
   sigaction(SIGTERM, &act, 0);
-#endif    
+#endif
 }
 
-void FC_FUNC_(unblock_signals, UNBLOCK_SIGNALS)(){
+void FC_FUNC_(unblock_signals, UNBLOCK_SIGNALS)() {
 #if defined(HAVE_SIGACTION) && defined(HAVE_SIGNAL_H)
   struct sigaction act;
 
@@ -58,16 +58,16 @@ void FC_FUNC_(unblock_signals, UNBLOCK_SIGNALS)(){
 void handle_segv(int *);
 
 #if defined(HAVE_SIGACTION) && defined(HAVE_SIGNAL_H)
-					       
-void segv_handler(int signum, siginfo_t * si, void * vd){
+
+void segv_handler(int signum, siginfo_t *si, void *vd) {
   handle_segv(&signum);
   signal(signum, SIG_DFL);
   kill(getpid(), signum);
 }
 
 #endif
-						
-void FC_FUNC_(trap_segfault, TRAP_SEGFAULT)(){
+
+void FC_FUNC_(trap_segfault, TRAP_SEGFAULT)() {
 #if defined(HAVE_SIGACTION) && defined(HAVE_SIGNAL_H)
   struct sigaction act;
 
@@ -79,18 +79,20 @@ void FC_FUNC_(trap_segfault, TRAP_SEGFAULT)(){
   sigaction(SIGKILL, &act, 0);
   sigaction(SIGSEGV, &act, 0);
   sigaction(SIGABRT, &act, 0);
-  sigaction(SIGINT,  &act, 0);
-  sigaction(SIGBUS,  &act, 0);
-  sigaction(SIGILL,  &act, 0);
+  sigaction(SIGINT, &act, 0);
+  sigaction(SIGBUS, &act, 0);
+  sigaction(SIGILL, &act, 0);
   sigaction(SIGTSTP, &act, 0);
   sigaction(SIGQUIT, &act, 0);
-  sigaction(SIGFPE,  &act, 0);
-  sigaction(SIGHUP,  &act, 0);
-  
+  sigaction(SIGFPE, &act, 0);
+  sigaction(SIGHUP, &act, 0);
+
 #endif
 }
 
-void FC_FUNC_(get_signal_description, GET_SIGNAL_DESCRIPTION)(fint * signum, STR_F_TYPE const signame STR_ARG1){
+void FC_FUNC_(get_signal_description,
+              GET_SIGNAL_DESCRIPTION)(fint *signum,
+                                      STR_F_TYPE const signame STR_ARG1) {
 #if defined(HAVE_STRSIGNAL) && defined(HAVE_STRING_H)
   TO_F_STR1(strsignal(*signum), signame);
 #else

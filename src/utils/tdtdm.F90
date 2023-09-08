@@ -26,6 +26,7 @@ program tdtdm
   use electrons_oct_m
   use fft_oct_m
   use global_oct_m
+  use grid_oct_m
   use hamiltonian_elec_oct_m
   use io_oct_m
   use io_function_oct_m
@@ -45,7 +46,6 @@ program tdtdm
   use states_elec_dim_oct_m
   use states_elec_restart_oct_m
   use symmetries_oct_m
-  use symmetrizer_oct_m
   use symm_op_oct_m
   use types_oct_m
   use unit_oct_m
@@ -79,7 +79,6 @@ program tdtdm
   type(unit_t) :: fn_unit
   integer :: kpt_start, kpt_end, supercell(3), nomega, ncols
   type(block_t) :: blk
-  type(symmetrizer_t) :: symmetrizer
   FLOAT :: pos_h(3), norm
 
   ! Initializion
@@ -111,10 +110,10 @@ program tdtdm
   end if
 
   if(st%parallel_in_states) then
-   call messages_not_implemented("oct-tdtdm with states parallelization")
+    call messages_not_implemented("oct-tdtdm with states parallelization")
   end if
 
-  if(sys%gr%mesh%parallel_in_domains) then
+  if(sys%gr%parallel_in_domains) then
     call messages_not_implemented("oct-tdtdm with domain parallelization")
   end if
 
@@ -161,7 +160,7 @@ program tdtdm
 
   SAFE_DEALLOCATE_A(gs_st%node)
 
-  call restart_init(restart, global_namespace, RESTART_PROJ, RESTART_TYPE_LOAD, sys%mc, ierr, mesh=sys%gr%mesh)
+  call restart_init(restart, global_namespace, RESTART_PROJ, RESTART_TYPE_LOAD, sys%mc, ierr, mesh=sys%gr)
   if(ierr == 0) call states_elec_look(restart, ii, jj, gs_st%nst, ierr)
   if(ierr /= 0) then
     message(1) = "oct-tdtdm: Unable to read states information."
@@ -189,8 +188,8 @@ program tdtdm
     SAFE_ALLOCATE(gs_st%spin(1:3, 1:gs_st%nst, 1:gs_st%d%nik))
   end if
 
-  call states_elec_allocate_wfns(gs_st, sys%gr%mesh, TYPE_CMPLX)
-  call states_elec_load(restart, global_namespace, sys%space, gs_st, sys%gr%mesh, sys%kpoints, ierr)
+  call states_elec_allocate_wfns(gs_st, sys%gr, TYPE_CMPLX)
+  call states_elec_load(restart, global_namespace, sys%space, gs_st, sys%gr, sys%kpoints, ierr)
   if(ierr /= 0 .and. ierr /= (gs_st%st_end-gs_st%st_start+1)*(kpt_end-kpt_start+1)*gs_st%d%dim) then
     message(1) = "oct-tdtdm: Unable to read wavefunctions for TDOutput."
     call messages_fatal(1)
@@ -199,22 +198,22 @@ program tdtdm
 
 
   in_file = io_open('td.general/projections', action='read', status='old', die=.false.)
-  if(in_file < 0) then 
+  if(in_file < 0) then
     message(1) = "oct-tdtdm: Cannot open file '"//trim(io_workpath('td.general/projections'))//"'"
     call messages_fatal(1)
   end if
   call io_skip_header(in_file)
   call spectrum_count_time_steps(global_namespace, in_file, time_steps, dt)
   dt = units_to_atomic(units_out%time, dt)
-  
+
 
   SAFE_ALLOCATE(tmp(1:st%nst*gs_st%nst*st%d%nik*2))
   SAFE_ALLOCATE(proj_r(1:time_steps, 1:gs_st%nst, 1:st%nst, 1:st%d%nik))
   SAFE_ALLOCATE(proj_i(1:time_steps, 1:gs_st%nst, 1:st%nst, 1:st%d%nik))
 
-  
+
   call io_skip_header(in_file)
-  
+
   do ii = 1, time_steps
     read(in_file, *) jj, tt, (tmp(kk), kk = 1, st%nst*gs_st%nst*st%d%nik*2)
     do ik = 1, st%d%nik
@@ -241,7 +240,7 @@ program tdtdm
 
   ! Phase correction of the projections before doing the Fourier transforms
   ! See Eq. (5) of Williams et al., JCTC 17, 1795 (2021)
-  ! We need to multiply C_ik(t)e^{-ie_kt} (the projection of \phi_i(t) on \phi_k^GS) 
+  ! We need to multiply C_ik(t)e^{-ie_kt} (the projection of \phi_i(t) on \phi_k^GS)
   ! by e^{ie_it}, which is obtained by the cc of the projection of \phi_i(t) on \phi_i^GS
   ! Here we only care about optical transitions (so TD occupied to GS unocc)
   SAFE_ALLOCATE(proj_r_corr(1:time_steps, 1:gs_st%nst*st%nst*(kpt_end-kpt_start+1)))
@@ -255,9 +254,9 @@ program tdtdm
         do ii = 1, time_steps
           norm = hypot(proj_r(ii, ist, ist, ik),proj_i(ii, ist, ist, ik))
           proj_r_corr(ii, jj) = (proj_r(ii, uist, ist, ik) * proj_r(ii, ist, ist, ik) &
-                               + proj_i(ii, uist, ist, ik) * proj_i(ii, ist, ist, ik))/norm
+            + proj_i(ii, uist, ist, ik) * proj_i(ii, ist, ist, ik))/norm
           proj_i_corr(ii, jj) =(-proj_r(ii, uist, ist, ik) * proj_i(ii, ist, ist, ik) &
-                               + proj_i(ii, uist, ist, ik) * proj_r(ii, ist, ist, ik))/norm
+            + proj_i(ii, uist, ist, ik) * proj_r(ii, ist, ist, ik))/norm
         end do
       end do
     end do
@@ -293,9 +292,9 @@ program tdtdm
 
   SAFE_ALLOCATE(ftcmplx(1:energy_steps, 1:st%nst*gs_st%nst*(kpt_end-kpt_start+1)))
   do ii = 1, st%nst*gs_st%nst*(kpt_end-kpt_start+1)
-    ftcmplx(1:energy_steps,ii) =  ftreal(1:energy_steps,ii,1) + M_zI*ftimag(1:energy_steps,ii,1) 
+    ftcmplx(1:energy_steps,ii) =  ftreal(1:energy_steps,ii,1) + M_zI*ftimag(1:energy_steps,ii,1)
   end do
- 
+
   write(message(1), '(a)') "oct-tdtdm: Fourier transforming imaginary part of the projections"
   call messages_info(1)
 
@@ -347,7 +346,7 @@ program tdtdm
       call parse_block_end(blk)
     end if
   else
-    supercell(1:sys%space%dim) = sys%kpoints%nik_axis(1:sys%space%dim) 
+    supercell(1:sys%space%dim) = sys%kpoints%nik_axis(1:sys%space%dim)
   end if
 
   Nreplica = product(supercell(1:sys%space%dim))
@@ -374,7 +373,7 @@ program tdtdm
     irep = max(irep, kpoints_get_num_symmetry_ops(sys%kpoints, ikpoint))
   end do
   SAFE_ALLOCATE(phase(kpt_start:kpt_end, 1:irep, 1:Nreplica))
-  do irep = 1, Nreplica 
+  do irep = 1, Nreplica
     do ik = kpt_start, kpt_end
       ikpoint = gs_st%d%get_kpoint_index(ik)
       kpoint(1:sys%space%dim) = sys%kpoints%get_point(ikpoint)
@@ -420,20 +419,19 @@ program tdtdm
   SAFE_ALLOCATE(Xiak(1:st%nst, 1:gs_st%nst, 1:st%d%nik))
   SAFE_ALLOCATE(Yiak(1:st%nst, 1:gs_st%nst, 1:st%d%nik))
   SAFE_ALLOCATE(Et(1:Ntrans*st%d%nik))
-  SAFE_ALLOCATE(psi(1:sys%gr%mesh%np, 1:gs_st%d%dim))
-  SAFE_ALLOCATE(upsi(1:sys%gr%mesh%np, 1:gs_st%d%dim))
+  SAFE_ALLOCATE(psi(1:sys%gr%np, 1:gs_st%d%dim))
+  SAFE_ALLOCATE(upsi(1:sys%gr%np, 1:gs_st%d%dim))
 
   if(sys%kpoints%use_symmetries) then
-    call symmetrizer_init(symmetrizer, sys%gr%mesh, sys%gr%symm)
-    SAFE_ALLOCATE(psi_sym(1:sys%gr%mesh%np, 1:st%d%dim))
-    SAFE_ALLOCATE(upsi_sym(1:sys%gr%mesh%np, 1:st%d%dim))
+    SAFE_ALLOCATE(psi_sym(1:sys%gr%np, 1:st%d%dim))
+    SAFE_ALLOCATE(upsi_sym(1:sys%gr%np, 1:st%d%dim))
   end if
 
   select case(sys%space%dim)
   case(2,3)
-    SAFE_ALLOCATE(tdm(1:sys%gr%mesh%np, 1:Nreplica))
+    SAFE_ALLOCATE(tdm(1:sys%gr%np, 1:Nreplica))
   case(1)
-    SAFE_ALLOCATE(tdm_1D(1:sys%gr%mesh%np, 1:sys%gr%mesh%np, 1:Nreplica, 1:Nreplica))
+    SAFE_ALLOCATE(tdm_1D(1:sys%gr%np, 1:sys%gr%np, 1:Nreplica, 1:Nreplica))
   end select
 
   do ifreq = 1, nomega
@@ -447,7 +445,7 @@ program tdtdm
     case(1)
       tdm_1D = M_z0
     end select
- 
+
     Et = M_ZERO
     Xiak = M_z0
     Yiak = M_z0
@@ -461,9 +459,9 @@ program tdtdm
       do ist = 1, st%nst
         if(abs(gs_st%occ(ist, ik)) < M_EPSILON) cycle
 
-        call states_elec_get_state(gs_st, sys%gr%mesh, ist, ik, psi)
+        call states_elec_get_state(gs_st, sys%gr, ist, ik, psi)
         if(allocated(sys%hm%hm_base%phase)) then
-          call states_elec_set_phase(gs_st%d, psi, sys%hm%hm_base%phase(1:sys%gr%mesh%np, ik), sys%gr%mesh%np, .false.)
+          call states_elec_set_phase(gs_st%d, psi, sys%hm%hm_base%phase(1:sys%gr%np, ik), sys%gr%np, .false.)
         end if
 
         do uist = 1, gs_st%nst
@@ -478,14 +476,14 @@ program tdtdm
           istep = int((+omega(ifreq)-spectrum%min_energy)/spectrum%energy_step)
           Yiak(ist, uist, ik) = ftcmplx(istep, jj)
 
-  
+
           weight = gs_st%d%kweights(ik) * (gs_st%occ(ist, ik)-gs_st%occ(uist, ik)) &
-                      / kpoints_get_num_symmetry_ops(sys%kpoints, ikpoint)
+            / kpoints_get_num_symmetry_ops(sys%kpoints, ikpoint)
           if(abs(weight) < M_EPSILON) cycle
 
-          call states_elec_get_state(gs_st, sys%gr%mesh, uist, ik, upsi)
+          call states_elec_get_state(gs_st, sys%gr, uist, ik, upsi)
           if(allocated(sys%hm%hm_base%phase)) then
-            call states_elec_set_phase(gs_st%d, upsi, sys%hm%hm_base%phase(1:sys%gr%mesh%np, ik), sys%gr%mesh%np, .false.)
+            call states_elec_set_phase(gs_st%d, upsi, sys%hm%hm_base%phase(1:sys%gr%np, ik), sys%gr%np, .false.)
           end if
 
           do ii = 1, kpoints_get_num_symmetry_ops(sys%kpoints, ikpoint)
@@ -493,16 +491,16 @@ program tdtdm
 
             if(sys%kpoints%use_symmetries) then
               do idim = 1, st%d%dim
-                call zsymmetrizer_apply_single(symmetrizer, sys%gr%mesh, iop, psi(:,idim), psi_sym(:,idim))
-                call zsymmetrizer_apply_single(symmetrizer, sys%gr%mesh, iop, upsi(:,idim), upsi_sym(:,idim))
+                call zgrid_symmetrize_single(sys%gr, iop, psi(:,idim), psi_sym(:,idim))
+                call zgrid_symmetrize_single(sys%gr, iop, upsi(:,idim), upsi_sym(:,idim))
               end do
 
               ! We need to get the position of the hole after applying the symmetry operation too
               xx_h_sym = symm_op_apply_cart(sys%kpoints%symm%ops(iop), pos_h)
               xx_h_sym = sys%ions%latt%fold_into_cell(xx_h_sym)
               ! At the moment, we ignore rankmin
-              ASSERT(.not.sys%gr%mesh%parallel_in_domains)
-              ip_h_sym = mesh_nearest_point(sys%gr%mesh, xx_h_sym, dmin, rankmin)
+              ASSERT(.not.sys%gr%parallel_in_domains)
+              ip_h_sym = mesh_nearest_point(sys%gr, xx_h_sym, dmin, rankmin)
             else
               psi_sym => psi
               upsi_sym => upsi
@@ -514,28 +512,28 @@ program tdtdm
             ! We take here the complex conjugate of the 2-body wavefunction
             select case(sys%space%dim)
             case(2,3)
-              do irep = 1, Nreplica 
-                call lalg_axpy(sys%gr%mesh%np, phase(ik, ii, irep) * weight &
-                        * conjg(Xiak(ist,uist,ik))*conjg(psi_sym(ip_h_sym,1)), upsi_sym(:, 1), tdm(:,irep))
-                call lalg_axpy(sys%gr%mesh%np, phase(ik, ii, irep) * weight &
-                        * Yiak(ist,uist,ik)*conjg(upsi_sym(ip_h_sym,1)), psi_sym(:, 1), tdm(:,irep))
+              do irep = 1, Nreplica
+                call lalg_axpy(sys%gr%np, phase(ik, ii, irep) * weight &
+                  * conjg(Xiak(ist,uist,ik))*conjg(psi_sym(ip_h_sym,1)), upsi_sym(:, 1), tdm(:,irep))
+                call lalg_axpy(sys%gr%np, phase(ik, ii, irep) * weight &
+                  * Yiak(ist,uist,ik)*conjg(upsi_sym(ip_h_sym,1)), psi_sym(:, 1), tdm(:,irep))
               end do
             case(1)
               ! In the 1D case, we contruct the full TDTDM of r_e, r_h
               do irep_h = 1, Nreplica
                 do irep = 1, Nreplica
-                  do ip_h = 1, sys%gr%mesh%np
-                    call lalg_axpy(sys%gr%mesh%np, phase(ik, ii, irep) * conjg(phase(ik, ii, irep_h)) & 
-                               * weight * conjg(Xiak(ist,uist,ik)) * conjg(psi_sym(ip_h,1)), &
-                                upsi_sym(:, 1), tdm_1D(:, ip_h, irep, irep_h))
-                    call lalg_axpy(sys%gr%mesh%np, phase(ik, ii, irep) * conjg(phase(ik, ii, irep_h)) &
-                               * weight * conjg(Yiak(ist,uist,ik)) * conjg(upsi_sym(ip_h,1)), &
-                                psi_sym(:, 1), tdm_1D(:, ip_h, irep, irep_h))
+                  do ip_h = 1, sys%gr%np
+                    call lalg_axpy(sys%gr%np, phase(ik, ii, irep) * conjg(phase(ik, ii, irep_h)) &
+                      * weight * conjg(Xiak(ist,uist,ik)) * conjg(psi_sym(ip_h,1)), &
+                      upsi_sym(:, 1), tdm_1D(:, ip_h, irep, irep_h))
+                    call lalg_axpy(sys%gr%np, phase(ik, ii, irep) * conjg(phase(ik, ii, irep_h)) &
+                      * weight * conjg(Yiak(ist,uist,ik)) * conjg(upsi_sym(ip_h,1)), &
+                      psi_sym(:, 1), tdm_1D(:, ip_h, irep, irep_h))
                   end do
                 end do
               end do
             end select
- 
+
           end do ! ii
 
           Et(it) = gs_st%eigenval(uist, ik) - gs_st%eigenval(ist, ik)
@@ -544,7 +542,7 @@ program tdtdm
       end do
     end do
 
-#if defined(HAVE_MPI)        
+#if defined(HAVE_MPI)
     if(gs_st%d%kpt%parallel) then
       if(sys%space%dim > 1) then
         call comm_allreduce(gs_st%d%kpt%mpi_grp, tdm)
@@ -555,7 +553,7 @@ program tdtdm
       call comm_allreduce(gs_st%d%kpt%mpi_grp, Xiak)
       call comm_allreduce(gs_st%d%kpt%mpi_grp, Yiak)
     end if
-#endif  
+#endif
 
     call tdtdm_output_density()
 
@@ -571,7 +569,7 @@ program tdtdm
 
   SAFE_DEALLOCATE_A(psi)
   SAFE_DEALLOCATE_A(upsi)
-  if(sys%kpoints%use_symmetries) then 
+  if(sys%kpoints%use_symmetries) then
     SAFE_DEALLOCATE_P(psi_sym)
     SAFE_DEALLOCATE_P(upsi_sym)
   end if
@@ -580,7 +578,7 @@ program tdtdm
   SAFE_DEALLOCATE_A(phase)
   SAFE_DEALLOCATE_A(omega)
 
-  SAFE_DEALLOCATE_P(sys) 
+  SAFE_DEALLOCATE_P(sys)
   call states_elec_end(gs_st)
   call fft_all_end()
   call io_end()
@@ -589,225 +587,225 @@ program tdtdm
   call parser_end()
   call global_end()
 
-  contains
+contains
 
-    ! -----------------------------------------------------------------
-    ! Determines the position of the hole, either from the input or using the
-    ! first atom in the cell.
-    ! This returns the index of the point in the mesh closest to the position.
-    subroutine tdtdm_get_hole_position(xx_h, ip_h)
-      FLOAT,   intent(out) :: xx_h(1:sys%space%dim)
-      integer, intent(out) :: ip_h
+  ! -----------------------------------------------------------------
+  ! Determines the position of the hole, either from the input or using the
+  ! first atom in the cell.
+  ! This returns the index of the point in the mesh closest to the position.
+  subroutine tdtdm_get_hole_position(xx_h, ip_h)
+    FLOAT,   intent(out) :: xx_h(1:sys%space%dim)
+    integer, intent(out) :: ip_h
 
-      FLOAT :: dmin
-      integer :: idir, rankmin
+    FLOAT :: dmin
+    integer :: idir, rankmin
 
-      PUSH_SUB(tdtdm_get_hole_position)
+    PUSH_SUB(tdtdm_get_hole_position)
 
-      !%Variable TDTDMHoleCoordinates
+    !%Variable TDTDMHoleCoordinates
+    !%Type float
+    !%Section Utilities::oct-tdtdm
+    !%Description
+    !% The position of the hole used to compute the TDTDM,
+    !% in Cartesian coordinates.
+    !% Note that the code will use the closest grid point.
+    !%
+    !% The coordinates of the hole are specified in the following way
+    !% <tt>%TDTDMHoleCoordinates
+    !% <br>&nbsp;&nbsp;hole_x | hole_y | hole_z
+    !% <br>%</tt>
+    !%
+    !% If TDTDMHoleCoordinates or TDTDMHoleReducedCoordinates are not specified,
+    !% the code will use the coordinate of the first atom in the cell.
+    !%End
+
+    if(parse_block(global_namespace, 'TDTDMHoleCoordinates', blk) == 0) then
+      if(parse_block_cols(blk,0) < sys%space%dim) then
+        call messages_input_error(global_namespace, 'TDTDMHoleCoordinates')
+      end if
+      do idir = 1, sys%space%dim
+        call parse_block_float(blk, 0, idir - 1, xx_h(idir), units_inp%length)
+      end do
+      call parse_block_end(blk)
+    else
+      !%Variable TDTDMHoleReducedCoordinates
       !%Type float
       !%Section Utilities::oct-tdtdm
       !%Description
-      !% The position of the hole used to compute the TDTDM,
-      !% in Cartesian coordinates.
-      !% Note that the code will use the closest grid point.
-      !%
-      !% The coordinates of the hole are specified in the following way
-      !% <tt>%TDTDMHoleCoordinates
-      !% <br>&nbsp;&nbsp;hole_x | hole_y | hole_z
-      !% <br>%</tt>
-      !% 
-      !% If TDTDMHoleCoordinates or TDTDMHoleReducedCoordinates are not specified, 
-      !% the code will use the coordinate of the first atom in the cell.
+      !% Same as TDTDMHoleCoordinates, except that coordinates are given in reduced coordinates
       !%End
 
-      if(parse_block(global_namespace, 'TDTDMHoleCoordinates', blk) == 0) then
+      if(parse_block(global_namespace, 'TDTDMHoleReducedCoordinates', blk) == 0) then
         if(parse_block_cols(blk,0) < sys%space%dim) then
-          call messages_input_error(global_namespace, 'TDTDMHoleCoordinates')
+          call messages_input_error(global_namespace, 'TDTDMHoleReducedCoordinates')
         end if
         do idir = 1, sys%space%dim
           call parse_block_float(blk, 0, idir - 1, xx_h(idir), units_inp%length)
         end do
-        call parse_block_end(blk) 
+        call parse_block_end(blk)
+        xx_h = sys%ions%latt%red_to_cart(xx_h)
       else
-       !%Variable TDTDMHoleReducedCoordinates
-       !%Type float
-       !%Section Utilities::oct-tdtdm
-       !%Description
-       !% Same as TDTDMHoleCoordinates, except that coordinates are given in reduced coordinates
-       !%End
+        xx_h(1:sys%space%dim) = sys%ions%pos(1:sys%space%dim, 1)
+      end if
+    end if
 
-        if(parse_block(global_namespace, 'TDTDMHoleReducedCoordinates', blk) == 0) then
-          if(parse_block_cols(blk,0) < sys%space%dim) then
-            call messages_input_error(global_namespace, 'TDTDMHoleReducedCoordinates')
-          end if
-          do idir = 1, sys%space%dim
-            call parse_block_float(blk, 0, idir - 1, xx_h(idir), units_inp%length)
+    ! We bring back the hole into the cell
+    xx_h = sys%ions%latt%fold_into_cell(xx_h)
+
+    ! At the moment, we ignore rankmin
+    ASSERT(.not.sys%gr%parallel_in_domains)
+    ip_h = mesh_nearest_point(sys%gr, xx_h, dmin, rankmin)
+    write(message(1), '(a, 3(1x,f7.4,a))') "oct-tdtdm: Requesting the hole at (", xx_h(1), &
+      ",", xx_h(2), ",", xx_h(3), ")."
+    call mesh_r(sys%gr, ip_h, dmin, coords=xx_h)
+    write(message(2), '(a, 3(1x,f7.4,a))') "oct-tdtdm: Setting the hole at (", xx_h(1), &
+      ",", xx_h(2), ",", xx_h(3), ")."
+
+    call messages_info(2)
+
+    POP_SUB(tdtdm_get_hole_position)
+  end subroutine tdtdm_get_hole_position
+
+  subroutine tdtdm_output_density()
+    FLOAT, allocatable :: den(:,:), den_1D(:,:,:,:)
+    FLOAT :: norm, xx(3), xx_h(3)
+    integer :: iunit
+
+    PUSH_SUB(tdtdm_output_density)
+
+    ! We compute the TDM density
+    select case(sys%space%dim)
+    case(2,3)
+      SAFE_ALLOCATE(den(1:sys%gr%np, 1:Nreplica))
+      do irep = 1, Nreplica
+        do ii = 1, sys%gr%np
+          den(ii, irep) = TOFLOAT(tdm(ii, irep)*conjg(tdm(ii, irep)))
+        end do
+      end do
+
+      ! Here we renormalize to avoid too small numbers in the outputs
+      norm = maxval(den)
+      call lalg_scal(sys%gr%np, Nreplica, M_ONE/norm, den)
+
+    case(1)
+      SAFE_ALLOCATE(den_1D(1:sys%gr%np, 1:sys%gr%np, 1:Nreplica, 1:Nreplica))
+      do irep_h = 1, Nreplica
+        do irep = 1, Nreplica
+          do ip_h = 1, sys%gr%np
+            do ii = 1, sys%gr%np
+              tdm_1D(ii, ip_h, irep, irep_h) = conjg(tdm_1D(ii, ip_h, irep, irep_h))
+              den_1D(ii, ip_h, irep, irep_h) = TOFLOAT(tdm_1D(ii, ip_h, irep, irep_h)*conjg(tdm_1D(ii,ip_h, irep, irep_h)))
+            end do
           end do
-          call parse_block_end(blk)
-          xx_h = sys%ions%latt%red_to_cart(xx_h) 
-        else
-          xx_h(1:sys%space%dim) = sys%ions%pos(1:sys%space%dim, 1)
-        end if
+        end do
+      end do
+    end select
+
+    fn_unit = units_out%length**(-sys%space%dim)
+
+    select case(sys%space%dim)
+    case(2,3)
+      write(fname, '(a, f0.4)') 'tdm_density-0', omega(ifreq)
+      call io_function_output_supercell(io_function_fill_how("XCrySDen"), "td.general", fname, &
+        sys%gr, sys%space, sys%ions%latt, den, centers, supercell, fn_unit, &
+        ierr, global_namespace, pos=sys%ions%pos, atoms=sys%ions%atom, grp = st%dom_st_kpt_mpi_grp, extra_atom=pos_h)
+
+      call io_function_output_supercell(io_function_fill_how("PlaneZ"), "td.general", fname, &
+        sys%gr, sys%space, sys%ions%latt, den, centers, supercell, fn_unit, &
+        ierr, global_namespace, grp = st%dom_st_kpt_mpi_grp)
+
+      SAFE_DEALLOCATE_A(den)
+
+    case(1)
+
+      call tdtdm_get_hole_position(pos_h, ip_h)
+      irep_h = floor(supercell(1)/M_TWO)
+
+      write(fname, '(a, f0.4)') 'tdm_density-0', omega(ifreq)
+      call io_function_output_supercell(io_function_fill_how("AxisX"), "td.general", fname, &
+        sys%gr, sys%space, sys%ions%latt, &
+        den_1D(:,ip_h,:,irep_h), centers, supercell, fn_unit, ierr, global_namespace, &
+        grp = st%dom_st_kpt_mpi_grp)
+
+      write(fname, '(a, f0.4)') 'tdm_wfn-0', omega(ifreq)
+      call io_function_output_supercell(io_function_fill_how("AxisX"), "td.general", fname, &
+        sys%gr, sys%space, sys%ions%latt, &
+        tdm_1D(:,ip_h,:,irep_h), centers, supercell, fn_unit, ierr, global_namespace, &
+        grp = st%dom_st_kpt_mpi_grp)
+
+      ASSERT(.not.sys%gr%parallel_in_domains)
+      if (mpi_grp_is_root(mpi_world)) then
+        write(fname, '(a, f0.4)') 'td.general/tdm_density-0', omega(ifreq)
+        iunit = io_open(fname, action='write')
+        write(iunit, '(a)', iostat=ierr) '# r_e    r_h    Re(\Psi(r_e,r_h)) Im(\Psi(r_e,r_h)) |\Psi(r_e,r_h)|^2'
+
+        do irep_h = 1, Nreplica
+          do ip_h = 1, sys%gr%np
+            xx_h = units_from_atomic(units_out%length, mesh_x_global(sys%gr, i4_to_i8(ip_h)) &
+              + centers(1:sys%space%dim, irep_h))
+
+            do irep = 1, Nreplica
+              do ii = 1, sys%gr%np
+                xx = units_from_atomic(units_out%length, mesh_x_global(sys%gr, i4_to_i8(ii)) &
+                  + centers(1:sys%space%dim, irep))
+                write(iunit, '(5es23.14E3)', iostat=ierr) xx(1), xx_h(1), &
+                  TOFLOAT(units_from_atomic(fn_unit, tdm_1D(ii, ip_h, irep, irep_h))) ,&
+                  aimag(units_from_atomic(fn_unit, tdm_1D(ii, ip_h, irep, irep_h))), &
+                  units_from_atomic(fn_unit, den_1D(ii, ip_h, irep, irep_h))
+              end do
+            end do
+          end do
+        end do
       end if
 
-      ! We bring back the hole into the cell
-      xx_h = sys%ions%latt%fold_into_cell(xx_h)
+      SAFE_DEALLOCATE_A(den_1D)
+    end select
 
-      ! At the moment, we ignore rankmin
-      ASSERT(.not.sys%gr%mesh%parallel_in_domains)
-      ip_h = mesh_nearest_point(sys%gr%mesh, xx_h, dmin, rankmin)
-      write(message(1), '(a, 3(1x,f7.4,a))') "oct-tdtdm: Requesting the hole at (", xx_h(1), &
-                     ",", xx_h(2), ",", xx_h(3), ")."
-      call mesh_r(sys%gr%mesh, ip_h, dmin, coords=xx_h)
-      write(message(2), '(a, 3(1x,f7.4,a))') "oct-tdtdm: Setting the hole at (", xx_h(1), &
-                     ",", xx_h(2), ",", xx_h(3), ")."
-      
-      call messages_info(2)
- 
-      POP_SUB(tdtdm_get_hole_position)
-    end subroutine tdtdm_get_hole_position
 
-    subroutine tdtdm_output_density()
-      FLOAT, allocatable :: den(:,:), den_1D(:,:,:,:)
-      FLOAT :: norm, xx(3), xx_h(3)
-      integer :: iunit
+    POP_SUB(tdtdm_output_density)
+  end subroutine tdtdm_output_density
 
-      PUSH_SUB(tdtdm_output_density)
-  
-      ! We compute the TDM density 
-      select case(sys%space%dim)
-      case(2,3)
-        SAFE_ALLOCATE(den(1:sys%gr%mesh%np, 1:Nreplica))
-        do irep = 1, Nreplica
-          do ii = 1, sys%gr%mesh%np
-            den(ii, irep) = TOFLOAT(tdm(ii, irep)*conjg(tdm(ii, irep)))
-          end do
-        end do
+  subroutine tdtdm_excitonic_weight()
+    FLOAT, allocatable :: weight(:,:)
 
-        ! Here we renormalize to avoid too small numbers in the outputs
-        norm = maxval(den)
-        call lalg_scal(sys%gr%mesh%np, Nreplica, M_ONE/norm, den)
+    if (.not. mpi_grp_is_root(mpi_world)) return
 
-      case(1)
-        SAFE_ALLOCATE(den_1D(1:sys%gr%mesh%np, 1:sys%gr%mesh%np, 1:Nreplica, 1:Nreplica))
-        do irep_h = 1, Nreplica
-          do irep = 1, Nreplica
-            do ip_h = 1, sys%gr%mesh%np
-              do ii = 1, sys%gr%mesh%np
-                tdm_1D(ii, ip_h, irep, irep_h) = conjg(tdm_1D(ii, ip_h, irep, irep_h))
-                den_1D(ii, ip_h, irep, irep_h) = TOFLOAT(tdm_1D(ii, ip_h, irep, irep_h)*conjg(tdm_1D(ii,ip_h, irep, irep_h)))
-              end do
-            end do
-          end do
-        end do
-      end select
-       
-      fn_unit = units_out%length**(-sys%space%dim)
+    PUSH_SUB(tdtdm_excitonic_weight)
 
-      select case(sys%space%dim)
-      case(2,3)
-        write(fname, '(a, f0.4)') 'tdm_density-0', omega(ifreq)
-        call io_function_output_supercell(io_function_fill_how("XCrySDen"), "td.general", fname, &
-          sys%gr%mesh, sys%space, den, centers, supercell, fn_unit, &
-          ierr, global_namespace, ions = sys%ions, grp = st%dom_st_kpt_mpi_grp, extra_atom=pos_h)
+    SAFE_ALLOCATE(weight(1:st%d%nik, 1:gs_st%nst))
+    weight = M_ZERO
 
-        call io_function_output_supercell(io_function_fill_how("PlaneZ"), "td.general", fname, &
-          sys%gr%mesh, sys%space, den, centers, supercell, fn_unit, &
-          ierr, global_namespace, ions = sys%ions, grp = st%dom_st_kpt_mpi_grp)
+    do ik = 1, st%d%nik
+      do ist = 1, st%nst
+        if(abs(gs_st%occ(ist, ik)) < M_EPSILON) cycle
 
-        SAFE_DEALLOCATE_A(den)
+        do uist = ist+1, gs_st%nst
+          if(abs(gs_st%occ(uist, ik)) > M_EPSILON) cycle
 
-      case(1)
-
-        call tdtdm_get_hole_position(pos_h, ip_h)
-        irep_h = floor(supercell(1)/M_TWO)
-
-        write(fname, '(a, f0.4)') 'tdm_density-0', omega(ifreq)
-        call io_function_output_supercell(io_function_fill_how("AxisX"), "td.general", fname, &
-          sys%gr%mesh, sys%space, &
-          den_1D(:,ip_h,:,irep_h), centers, supercell, fn_unit, ierr, global_namespace, &
-            ions = sys%ions, grp = st%dom_st_kpt_mpi_grp)
-
-        write(fname, '(a, f0.4)') 'tdm_wfn-0', omega(ifreq)
-        call io_function_output_supercell(io_function_fill_how("AxisX"), "td.general", fname, &
-            sys%gr%mesh, sys%space, &
-            tdm_1D(:,ip_h,:,irep_h), centers, supercell, fn_unit, ierr, global_namespace, &
-            ions = sys%ions, grp = st%dom_st_kpt_mpi_grp)
-
-        ASSERT(.not.sys%gr%mesh%parallel_in_domains)
-        if (mpi_grp_is_root(mpi_world)) then
-          write(fname, '(a, f0.4)') 'td.general/tdm_density-0', omega(ifreq)
-          iunit = io_open(fname, action='write')
-          write(iunit, '(a)', iostat=ierr) '# r_e    r_h    Re(\Psi(r_e,r_h)) Im(\Psi(r_e,r_h)) |\Psi(r_e,r_h)|^2'
-
-          do irep_h = 1, Nreplica
-            do ip_h = 1, sys%gr%mesh%np
-              xx_h = units_from_atomic(units_out%length, mesh_x_global(sys%gr%mesh, i4_to_i8(ip_h)) &
-                + centers(1:sys%space%dim, irep_h))
-
-              do irep = 1, Nreplica
-                do ii = 1, sys%gr%mesh%np
-                  xx = units_from_atomic(units_out%length, mesh_x_global(sys%gr%mesh, i4_to_i8(ii)) &
-                    + centers(1:sys%space%dim, irep))
-                  write(iunit, '(5es23.14E3)', iostat=ierr) xx(1), xx_h(1), &
-                    TOFLOAT(units_from_atomic(fn_unit, tdm_1D(ii, ip_h, irep, irep_h))) ,&
-                    aimag(units_from_atomic(fn_unit, tdm_1D(ii, ip_h, irep, irep_h))), &
-                    units_from_atomic(fn_unit, den_1D(ii, ip_h, irep, irep_h))
-                end do
-              end do
-            end do
-          end do
-        end if
-
-        SAFE_DEALLOCATE_A(den_1D)
-      end select
-      
-
-      POP_SUB(tdtdm_output_density)
-    end subroutine tdtdm_output_density
-
-    subroutine tdtdm_excitonic_weight()
-      FLOAT, allocatable :: weight(:,:)
-
-      if (.not. mpi_grp_is_root(mpi_world)) return
-
-      PUSH_SUB(tdtdm_excitonic_weight)
-
-      SAFE_ALLOCATE(weight(1:st%d%nik, 1:gs_st%nst))
-      weight = M_ZERO
-
-      do ik = 1, st%d%nik
-        do ist = 1, st%nst
-          if(abs(gs_st%occ(ist, ik)) < M_EPSILON) cycle
-
-          do uist = ist+1, gs_st%nst
-            if(abs(gs_st%occ(uist, ik)) > M_EPSILON) cycle
-            
-            weight(ik, ist)  = weight(ik, ist) + abs(Xiak(ist, uist, ik))**2
-            weight(ik, uist) = weight(ik,uist) + abs(Yiak(ist, uist, ik))**2
-          end do
+          weight(ik, ist)  = weight(ik, ist) + abs(Xiak(ist, uist, ik))**2
+          weight(ik, uist) = weight(ik,uist) + abs(Yiak(ist, uist, ik))**2
         end do
       end do
+    end do
 
-      write(fname, '(a, f0.4)') 'td.general/tdm_weights-0', omega(ifreq)
-      out_file = io_open(fname, action='write')
-      write(out_file, '(a)') '# ik - kx - ky - kz - sum weights - eigenval and weights(ist,ik) '
-      do ik = 1, st%d%nik 
-        ikpoint = st%d%get_kpoint_index(ik)
-        kpoint(1:sys%space%dim) = sys%kpoints%reduced%point1BZ(1:sys%space%dim,ikpoint)
-        write(out_file, '(i4,4e15.6)', advance='no') ik, kpoint(1:3), sum(weight(ik, 1:gs_st%nst))
-        do uist = 1, gs_st%nst-1
-          write(out_file, '(2e15.6)', advance='no') gs_st%eigenval(uist, ik), weight(ik, uist) 
-        end do
-        write(out_file, '(e15.6)') weight(ik, uist)
+    write(fname, '(a, f0.4)') 'td.general/tdm_weights-0', omega(ifreq)
+    out_file = io_open(fname, action='write')
+    write(out_file, '(a)') '# ik - kx - ky - kz - sum weights - eigenval and weights(ist,ik) '
+    do ik = 1, st%d%nik
+      ikpoint = st%d%get_kpoint_index(ik)
+      kpoint(1:sys%space%dim) = sys%kpoints%reduced%point1BZ(1:sys%space%dim,ikpoint)
+      write(out_file, '(i4,4e15.6)', advance='no') ik, kpoint(1:3), sum(weight(ik, 1:gs_st%nst))
+      do uist = 1, gs_st%nst-1
+        write(out_file, '(2e15.6)', advance='no') gs_st%eigenval(uist, ik), weight(ik, uist)
       end do
-      call io_close(out_file) 
+      write(out_file, '(e15.6)') weight(ik, uist)
+    end do
+    call io_close(out_file)
 
-      SAFE_DEALLOCATE_A(weight)
+    SAFE_DEALLOCATE_A(weight)
 
-      POP_SUB(tdtdm_excitonic_weight)
-    end subroutine tdtdm_excitonic_weight
+    POP_SUB(tdtdm_excitonic_weight)
+  end subroutine tdtdm_excitonic_weight
 
 end program tdtdm
 

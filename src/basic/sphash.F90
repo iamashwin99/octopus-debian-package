@@ -229,23 +229,26 @@ contains
     class(*),  pointer             :: value
 
     type(sphash_value_t), pointer :: tmp_value
+    character(kind=c_char), dimension(c_str_len(key)) :: c_key
 
     interface
       subroutine sphash_map_lookup(map, key, ifound, val) bind(c)
         use iso_c_binding
         implicit none
 
-        type(c_ptr),            value         :: map
-        character(kind=c_char), intent(in)    :: key(*)
-        integer(kind=c_int),    intent(out)   :: ifound
-        type(c_ptr),            intent(out)   :: val
+        type(c_ptr),                  value         :: map
+        character(kind=c_char),       intent(in)    :: key(*)
+        integer(kind=c_int),          intent(out)   :: ifound
+        type(c_ptr),                  intent(out)   :: val
       end subroutine sphash_map_lookup
     end interface
 
     integer :: ifound
     type(c_ptr) :: val
 
-    call sphash_map_lookup(h%map, string_f_to_c(key), ifound, val)
+    c_key = string_f_to_c(key)
+    !Passing string_f_to_c as an arg creates a temporary array (ifort)
+    call sphash_map_lookup(h%map, c_key, ifound, val)
 
     found = (ifound == 1)
 

@@ -49,6 +49,7 @@ module pseudo_oct_m
     pseudo_radial_potential,             &
     pseudo_has_nlcc,                     &
     pseudo_nlcc_density,                 &
+    pseudo_has_soc,                      &
     pseudo_dij,                          &
     pseudo_has_density,                  &
     pseudo_density,                      &
@@ -423,6 +424,27 @@ contains
     pseudo_has_density = (pseudo_has_density_low(pseudo) /= 0)
 
   end function pseudo_has_density
+
+
+  ! -------------------------------------------------
+
+  logical function pseudo_has_soc(pseudo)
+    type(pseudo_t),   intent(in)      :: pseudo
+
+    interface
+      integer function pseudo_has_soc_low(pseudo)
+        import :: pseudo_t
+        implicit none
+
+        type(pseudo_t),   intent(in)      :: pseudo
+      end function pseudo_has_soc_low
+    end interface
+
+    pseudo_has_soc = (pseudo_has_soc_low(pseudo) /= 0)
+
+  end function pseudo_has_soc
+
+
   ! -------------------------------------------------
 
   logical function pseudo_has_total_angular_momentum(pseudo)

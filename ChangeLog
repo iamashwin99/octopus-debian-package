@@ -615,7 +615,7 @@
 	  src/poisson/solver_3d_inc.F90: Corrections in the explanations of
 	  Hamiltonian/Poisson input variables
 	  Deleted unused input variables
-	  
+
 	  Changes by Pablo Garcia Risueño
 
 2013-01-24 14:41  joseba
@@ -730,7 +730,7 @@
 	* [r9902] src/math/oct_gsl_min_f.c, src/td/spectrum.F90:
 	  Initialized a variable that sometimes could be used
 	  uninitialized.
-	  
+
 	  Added gsl_set_error_handler_off in oct_1dminimize routine, since
 	  the code
 	  should continue even if the minimization is not successful.
@@ -1061,7 +1061,7 @@
 	* [r9949] configure.ac: The new name for the development version
 	  (chosen by David) is 'octopus
 	  superciliosus', the frilled pygmy octopus:
-	  
+
 	  http://portphillipmarinelife.net.au/species/7307
 
 2013-02-09 05:06  xavier
@@ -1082,7 +1082,7 @@
 	* [r9953] src/math/fft.F90, src/poisson/poisson.F90,
 	  testsuite/components/11-hartree_cl.01-fft.inp: * Now the Poisson
 	  test honors the TestRepetitions variable.
-	  
+
 	  * The OpenCL fft Poisson solver has some problems with the real
 	  FFT,
 	  it segfaults for more than one call to the Poisson solver, so I
@@ -1104,7 +1104,7 @@
 	  src/math/fft_inc.F90: * The real FFT is done directly, instead of
 	  using an intermediate
 	  complex array (that was used to simplify testing).
-	  
+
 	  * Fixed non-cl compilation.
 
 2013-02-10 01:32  xavier
@@ -1145,7 +1145,7 @@
 	  progress, as there are still some functionallities that do not
 	  work, like parallelization in states, and the code still needs
 	  some improvements.
-	  
+
 	  Most of this work was done by Myrta Gruning and Pedro Melo.
 
 2013-02-12 20:08  dstrubbe
@@ -1475,7 +1475,7 @@
 	* [r10024] src/system/eigensolver.F90: * Added a messages about the
 	  memory requirements of the rmmdiis
 	  eigensolver.
-	  
+
 	  * The eigensolver output is now "stressed".
 
 2013-02-20 03:17  dstrubbe
@@ -1498,7 +1498,7 @@
 	  fictitious value of 10000, making it impossible to choose joint
 	  parallelization wisely, and generally resulting in a choice of
 	  only one domain group. This should be fixed later.
-	  
+
 	  * For now, I have made domain parallelization the default for
 	  Casida.
 	  * Clarified that the parallelization is not in e-h pairs really,
@@ -1602,7 +1602,7 @@
 	* [r10045] src/system/eigen_rmmdiis_inc.F90: * In rmmdiis the
 	  residual is recalculated instead of calculated as a
 	  linear combination.
-	  
+
 	  * Simplified the allocation in rmmdiis.
 
 2013-02-21 01:12  xavier
@@ -1716,17 +1716,17 @@
 	  src/poisson/poisson_libisf.F90, src/poisson/solver_3d_inc.F90:
 	  Implemented a new Poisson solver using ISF solver of BigDFT
 	  (version 1.6.0)
-	  
+
 	  I did this to get a separate library ISF library:
 	  - Compile BigDFT in the machine
 	  - Install it
 	  - Copy all these libraries to a empty directory:
 	  libabinit.a libbigdft.a libdft_common.a libpoissonsolver.a
 	  libxc.a
-	  
+
 	  - Extract all *.o of those libraries:
 	  ar x lib*.a
-	  
+
 	  - Collect all *.o in a new library:
 	  ar cru libisfsolver.a *.o
 	  ranlib libisfsolver.a
@@ -1735,7 +1735,7 @@
 	  Include both when compiling with this new library. Mandatory to
 	  include also blas and lapack librari
 	  es.
-	  
+
 	  @TODO Prepare a m4 script to link with the library
 	  @TODO Adapt this library to all options that now has the previous
 	  ISF
@@ -2038,7 +2038,7 @@
 	  src/states/states_inc.F90: * Added the states_get_points
 	  function, that returns the value of the
 	  states for a range of points.
-	  
+
 	  * Removed an access to st%X(psi) from the Casida code, replaced
 	  by a
 	  states_get_points call.
@@ -2072,17 +2072,17 @@
 	  was failing pass, since the results will no longer be dependent
 	  on the arbitrary choice of orbitals in the degenerate subspaces.
 	  Also, Petersilka spectrum matches are enabled.
-	  
+
 	  The Petersilka results used to differ strongly from both Casida
 	  and Tamm-Dancoff for the N2 test. Now the Petersilka spectrum
 	  looks identical to Tamm-Dancoff, actually, as it should when
 	  there is little mixing between (non-degenerate) transitions.
-	  
+
 	  As a result, we no longer can write the 'From' and 'To' indices
 	  for Petersilka eigenvalues, since they may be a mixture in
 	  degenerate subspaces, but we write an 'excitations' directory
 	  like for Casida, where you can see what the eigenvector is.
-	  
+
 	  Still to be done: better treatment of degeneracy threshold,
 	  better progress bar.
 
@@ -2330,7 +2330,7 @@
 	  src/system/subspace_inc.F90: * Added a function that returns the
 	  points block-size for a batch. For
 	  the moment this is a constant.
-	  
+
 	  * Removed an extra operation count.
 
 2013-03-02 18:07  dstrubbe
@@ -2418,7 +2418,7 @@
 	* [r10166] src/math/lalg_adv.F90, src/xc/fxc_inc.F90,
 	  src/xc/vxc_inc.F90: Made sure that some constants are used with
 	  the correct precision.
-	  
+
 	  Removed some unused variables.
 
 2013-03-07 14:17  askhl
@@ -2980,7 +2980,7 @@
 
 	* [r10268] src/math/fft.F90, src/opt_control/controlfunction.F90: A
 	  message in controlfunction.F90 was not properly output.
-	  
+
 	  In the fft_init routine, I have moved the warning about
 	  non-optimal grid sizes
 	  to the place where the info about the grid size is printed. This
@@ -2993,9 +2993,9 @@
 
 	* [r10269] src/scf/ground_state.F90, src/scf/rdmft.F90: * The rdmft
 	  file was in DOS format, converted to Unix format.
-	  
+
 	  * Several style fixes and code cleaning.
-	  
+
 	  * Removed unnecessary arguments.
 
 2013-03-20 11:50  xavier
@@ -3009,7 +3009,7 @@
 	  src/opt_control/opt_control.F90: Defines an intermediate function
 	  for multidimensional minimization
 	  instead of calling GSL directly.
-	  
+
 	  Alberto: Do you think we can integrate Newuoa to this function,
 	  instead of calling it directly?
 
@@ -3019,7 +3019,7 @@
 	  src/opt_control/opt_control.F90: * Now the minimize functions
 	  receive an array instead of the first
 	  element.
-	  
+
 	  * Started the implementation of a native version of steepest
 	  descent.
 	  Nicole and Iris are having issues with the GSL minimization
@@ -3407,9 +3407,9 @@
 	  Since the complex scaling module does not have anything to do
 	  with the
 	  grid, I moved it from grid/ to states/ where I think it belongs.
-	  
+
 	  * Improved formatting.
-	  
+
 	  * td_m needs to include cmplxscl_m.
 
 2013-04-11 13:27  joseba
@@ -3482,7 +3482,7 @@
 	  was read different depending on the input variable. Since this is
 	  a
 	  bad idea, the extra field is now always present.
-	  
+
 	  This change breaks backwards compatibility of the restart files,
 	  if
 	  you want to fix an old 'occs' file you need to add a column of
@@ -3508,7 +3508,7 @@
 	  src/hamiltonian/hamiltonian_base_inc.F90: * Now the kernels
 	  required for the projectors are compiled by the
 	  subroutine that calls them.
-	  
+
 	  * Started the implementation of opencl support for k-points.
 
 2013-04-15 04:00  xavier
@@ -3682,7 +3682,7 @@
 	* [r10363] src/basic/messages.F90: * Now the error messages for
 	  experimental variables points to the
 	  website and does not mention the ExperimentalFeatures variable.
-	  
+
 	  * The url form experimental features is given in the
 	  documentation for
 	  the variable.
@@ -4362,7 +4362,7 @@
 	* [r10483] src/grid/mesh_batch_inc.F90: Partly correcte the bug
 	  introduced by myself in r10466 and reported by David.
 	  Still working
-	  
+
 	  Thanks David!
 
 2013-05-01 19:56  dstrubbe
@@ -4429,7 +4429,7 @@
 	  1->3
 	  2->1
 	  3->2
-	  
+
 
 2013-05-02 19:25  dstrubbe
 
@@ -4685,12 +4685,12 @@
 	  * fft-lib is now turned into prefix with an optional fft-include
 	  * added a test for fftw3_mpi for more flexibility
 	  * moved @LIBS_FFT@ to core_LIBS where it should belong
-	  
+
 	  Setting
 	  --with-pfft-prefix=$PFFT_PREFIX \
 	  --with-fft-prefix=$FFT_PREFIX \
 	  --with-pnfft-prefix=$PNFFT_PREFIX
-	  
+
 	  should now allow to compile with P/N/FFT libraries
 
 2013-05-06 16:35  umberto
@@ -4730,7 +4730,7 @@
 	  StatesOrthogonalization are Gram-Schmidt any more: there is
 	  'modified Gram-Schmidt', but the ones called gram_schmidt and
 	  par_gram_schmidt are actually Cholesky decomposition.
-	  
+
 	  * Clarified documentation regarding meaning and range of validity
 	  of orthogonalization methods.
 	  * Warnings and errors refer more specifically to the actual
@@ -4797,7 +4797,7 @@
 	  A minimal set of configure options would be:
 	  --with-fft-lib=$FFTW_PREFIX/lib/libfftw3.a
 	  --with-pfft-prefix=$PFFT_PREFIX
-	  
+
 
 2013-05-07 21:51  dstrubbe
 
@@ -5254,7 +5254,7 @@
 	  to quadrupole moments. Does not affect the results of the test I
 	  added recently though.
 	  * Incorrect default was listed for MainAxis.
-	  
+
 	  These problems go all the way back to initial implementation of
 	  this utility in r745-r746.
 
@@ -5356,7 +5356,7 @@
 	  src/grid/mesh_partition.F90, src/grid/metis.c: * Fixed
 	  compilation with metis-5.1
 	  * Removed metis-4.0 support and source.
-	  
+
 
 2013-05-18 01:50  xavier
 
@@ -5530,7 +5530,7 @@
 	  anymore with PFFT 1.0.5 as it uses one less parameter. Now PFFT
 	  and FFTW3 flags are in a single parameter.
 	  Modified m4 to be able to compile it.
-	  
+
 	  Compiling instructions at
 	  http://www-user.tu-chemnitz.de/~mpip/software.php?lang=en
 
@@ -5570,7 +5570,7 @@
 
 	* [r10664] m4/pfft.m4: Reverted the need of the fftw3 library
 	  Removed unused variables in the check program
-	  
+
 	  Thanks to David and Umberto
 
 2013-05-21 16:58  dstrubbe
@@ -5594,13 +5594,13 @@
 
 	* [r10668] m4/dune_metis.m4, m4/parmetis.m4: * The dune metis check
 	  gave the ridiculous output:
-	  
+
 	  checking for METIS library... failed
 	  yes
-	  
+
 	  Now, an if-condition is written properly so that it doesn't write
 	  'yes' when the check fails.
-	  
+
 	  * Using 'no' rather than 'failed' as a test result in m4 macros,
 	  according to the standard for all our other macros.
 
@@ -5624,7 +5624,7 @@
 	  m4/scalapack.m4: Replacing AC_TRY_LINK_FUNC with AC_LINK_IFELSE.
 	  The former has been considered obsolete since at least autoconf
 	  version 2.59.
-	  
+
 	  http://www.gnu.org/software/autoconf/manual/autoconf-2.64/html_node/Obsolete-Macros.html#index-AC_005fTRY_005fLINK_005fFUNC-1990
 
 2013-05-21 18:12  dstrubbe
@@ -5802,7 +5802,7 @@
 	  definition what this could mean. I changed this, I think the
 	  computation is
 	  more robust now (thanks to Vittorio Zecca for reporting this).
-	  
+
 	  Also, the two-dimensional case had a bug.
 
 2013-05-23 17:28  micael
@@ -5840,7 +5840,7 @@
 	  purposes. This is a problem particularly on a Mac, where /lib/cpp
 	  does not exist, and the default cpp in the path (/usr/bin/cpp)
 	  will fail in compilation.
-	  
+
 	  On the other hand, autoconf is finding cpp for C properly. So why
 	  not just work with that? I abolished the FCCPP variable, and now
 	  we use CPP for all purposes. However, we need to check that CPP
@@ -5855,7 +5855,7 @@
 	  peculiar compilation failures later. This change may mean we now
 	  use some unnecessary flags for cpp on C files, but I don't see
 	  any problem with that.
-	  
+
 	  In case you wonder how good the previous set up was, note these
 	  original comments in the source from Miguel in r799:
 	  "this should not be hardwired"
@@ -5975,7 +5975,7 @@
 2013-05-24 18:16  dstrubbe
 
 	* [r10722] configure.ac, m4/fortran.m4: Another try at r10704:
-	  
+
 	  Better guesses and check for cpp for Fortran preprocessing. We
 	  use a variable FCCPP for Fortran preprocessing, which was
 	  previously set independently of CPP, with a value of either the
@@ -5998,7 +5998,7 @@
 	  So, we perform these two checks, and add -ansi if necessary to
 	  make them work, or otherwise throw an error, rather than have
 	  peculiar compilation failures later.
-	  
+
 	  In case you wonder how good the previous set up was, note these
 	  original comments in the source from Miguel:
 	  r112: "this should not be hardwired" (regarding /lib/cpp)
@@ -6008,12 +6008,12 @@
 
 	* [r10723] configure.ac, m4/fortran.m4: * autoconf on some machines
 	  would give this error on the previous commit:
-	  
+
 	  sh: -c: line 0: syntax error near unexpected token `('
-	  
+
 	  Now, it doesn't, though it makes a number of warnings instead
 	  about AC_LANG_PREPROC(Fortran).
-	  
+
 	  * /lib/cpp should be tried before CPP, since the check somehow
 	  does not fail if '//' gets turned into '/ /'.
 
@@ -6031,7 +6031,7 @@
 	* [r10728] m4/libfm.m4, src/poisson/poisson_fmm.F90: Updated m4 of
 	  libfm to the library that creates Scafacos
 	  Corrected the execution with 1 MPI process of the FMM
-	  
+
 	  Note. I used to compile with FMM the next line:
 	  --with-libfm=" -I$LIBFM_HOME/include -L$LIBFM_HOME/lib -lfcs
 	  -lfcs_fmm -lfcs_common -lfcs_direct -lfcs_near -lfcs_gridsort
@@ -6041,14 +6041,14 @@
 
 	* [r10729] libxc/src/libxc_master.F90, libxc/src/xc_f.c: Patch by
 	  Yann Pouillon:
-	  
+
 	  Please find attached a patch for LibXC 2.0.1 adding the following
 	  Fortran
 	  wrappers:
-	  
+
 	  * subroutine xc_f90_functional_get_name(id, name)
 	  * integer function xc_f90_functional_get_number(name)
-	  
+
 	  that have been requested many times for various projects. In
 	  particular, it
 	  solves the issue of getting a functional number from the
@@ -6312,7 +6312,7 @@
 	* [r10771] src/grid/io_function_inc.F90,
 	  src/td/pes_mask_out_inc.F90: Adding unit conversion to NetCDF
 	  output. Guillermo pointed out this was missing.
-	  
+
 	  Umberto -- an appropriate unit should be specified for the PES
 	  mask output.
 
@@ -6731,11 +6731,11 @@
 	* [r10830] configure.ac, m4/fortran.m4: Writing my own EGREP macro
 	  for Fortran preprocessing, which will hopefully work generally
 	  and not cause warnings.
-	  
+
 	  My previous attempt at a proper check for FCCPP in the configure
 	  script worked but caused a series of warnings in the autconf
 	  stage of the form:
-	  
+
 	  configure.ac:190: warning: AC_LANG_PREPROC(Fortran) is
 	  m4_require'd but is not m4_defun'd
 	  configure.ac:190: AC_LANG_PREPROC(Fortran) is required by...
@@ -6743,12 +6743,12 @@
 	  autoconf/general.m4:2129: AC_EGREP_CPP is expanded from...
 	  m4/fortran.m4:134: ACX_FCCPP is expanded from...
 	  configure.ac:190: the top level
-	  
+
 	  I could not properly do AC_DEFUN([AC_LANG_PREPROC(Fortran)])
 	  since there is a bug in older autoconf that was fixed by 2.69,
 	  that makes that this cause autconf to crash.
 	  (http://osdir.com/ml/sysutils.automake.general/2002-10/msg00018.html)
-	  
+
 	  I guess I should have taken more seriously the statement in
 	  autconf documentation regarding AC_EGREP_CPP: "The macros
 	  described in this section cannot be used for tests in Erlang,
@@ -6878,7 +6878,7 @@
 	  libxc/src/gga_xc_oblyp_d.c, libxc/src/mgga_c_pkzb.c,
 	  libxc/src/mgga_x_tpss.c, libxc/src/mgga_xc_otpss_d.c,
 	  libxc/src/xc.h: Added a few functionals:
-	  
+
 	  *) mgga_x_modtpss : tpss with optimized coefficients
 	  *) gga_x_oblyp_d, opwlyp_d, opbe_d, tpss_d : reoptimizations by
 	  Grimme to include dispersion terms.
@@ -7013,7 +7013,7 @@
 	  testsuite/finite_systems_3d/Makefile.am: Merged tested features
 	  from finite_systems_3d/18-current.test into
 	  finite_systems_3d/13-full_potential_hydrogen.01-gs.inp.
-	  
+
 	  The test finite_systems_3d/18-current takes a long time, since it
 	  cannot do LCAO for more than one state because there is only one
 	  bound state for its H psf pseudopotential. SCF was converging
@@ -7320,10 +7320,10 @@
 	  for a new process with the same pid to have started before the
 	  check occurred. This happened on the chum_x86_64_pgi_test slave,
 	  producing error message:
-	  
+
 	  ./oct-run_testsuite.sh: line 123: wait: pid 23407 is not a child
 	  of this shell
-	  
+
 	  The new approach is to capture the return code into a variable
 	  named after the test, which will then be read when the job has
 	  finished.
@@ -7436,7 +7436,7 @@
 
 	* [r10926] src/grid/cube_function_inc.F90: Bugfix: A CL buffer was
 	  initialized with the wrong mode.
-	  
+
 	  With this changes Octopus appears to run correctly on the Intel
 	  Xeon Phi.
 
@@ -7464,7 +7464,7 @@
 	* [r10930] src/basic/opencl.F90: * The OpenCL code now defines the
 	  SHARED_MEM preprocessor macro. It is
 	  defined for GPUs and undefined for accelerators and CPUs.
-	  
+
 	  * The type of processor is not printed.
 
 2013-07-01 19:00  xavier
@@ -7665,7 +7665,7 @@
 	  defined expressions is very slow. Since soft-Coulomb potentials
 	  are used quite
 	  often, I think they deserve their own type.
-	  
+
 	  [Perhaps a better solution would be to improve the parser to make
 	  it faster,
 	  but this is not an easy task]
@@ -7744,7 +7744,7 @@
 	  and
 	  integer(8) types, respectively. (I still have to implement the
 	  autoconf checks required to define the types.)
-	  
+
 	  C code that defines Fortran functions (using FC_FUNC) should
 	  always
 	  use these types in the interface to ensure compatibility with
@@ -8150,9 +8150,9 @@
 	  what the object names will be, so we have to extract it
 	  ourselves. LTPREF=libxcf90_la-, or blank for older
 	  libtool/automake versions.
-	  
+
 	  Produces these warnings on some systems. Does not seem to matter.
-	  
+
 	  src/Makefile.am:140: subst xc_f.lo,,$(firstword
 	  $(am_libxcf90_la_OBJECTS: non-POSIX variable name
 	  src/Makefile.am:140: (probably a GNU make extension)
@@ -8196,7 +8196,7 @@
 	  output, restart, or both. I have separated its functionality into
 	  OutputInterval and RestartWriteInterval. OutputInterval now works
 	  with OutputDuringSCF (whereas OutputEvery did not).
-	  
+
 	  Three subtleties:
 	  * RecalculateGSDuringEvolution presumably would make more sense
 	  to work with OutputEvery than RestartWriteInterval, however it
@@ -8465,7 +8465,7 @@
 	  and openmpif90; Intel MPI calls the mpiicc and mpiifort. I made
 	  true_compiler.sh be a bit more general, and try -show as long as
 	  the name contains 'mpi', which includes all these cases.
-	  
+
 	  Also, for consistency and general good practice, I used
 	  /usr/bin/env bash rather than just bash, and did the same for
 	  svn_release_number.sh.
@@ -8605,7 +8605,7 @@
 	* [r11044] src/opt_control/Makefile.am, src/opt_control/filter.F90,
 	  src/opt_control/filters.F90: * Missing dependencies.
 	  * Renaming filters.F90 for consistency with its module filter_m.
-	  
+
 	  (Alberto, you should make the target and propagation modules and
 	  filenames consistent too.)
 
@@ -8694,7 +8694,7 @@
 	  dimensions of energy**2 instead of energy. This error was
 	  discovered
 	  by Jacob Sanders.
-	  
+
 	  * The dynamical matrix is now printed in scientific notation.
 
 2013-08-02 11:35  xavier
@@ -9197,11 +9197,11 @@
 2013-08-18 21:31  jrfsousa
 
 	* [r11138] src/species/species.F90: * Add parameter SPEC_FROZEN = 5
-	  
+
 	  * Add subroutine species_set_type
-	  
+
 	  * Add subroutine species_nullify
-	  
+
 	  * Add subroutine species_end_species acessible trough generic
 	  interface species_end
 
@@ -9221,7 +9221,7 @@
 	* [r11140] src/basic/json.F90, src/basic/json_parser.F90,
 	  src/grid/io_function.F90: * Add parameter C_OUTPUT_HOW_JSON =
 	  524288 to grid/io_function.F90
-	  
+
 	  * Numerous updates to json*.F90 files
 
 2013-08-19 18:45  jrfsousa
@@ -9254,7 +9254,7 @@
 	* [r11143] src/system/Makefile.am, src/system/output.F90,
 	  src/system/output_fio.F90: * Add parameter C_OUTPUT_FROZEN =
 	  1073741824 for frozen output.
-	  
+
 	  * Add output support for frozen calculations.
 
 2013-08-19 20:21  jrfsousa
@@ -9354,9 +9354,9 @@
 	  src/frozen/thash.F90, src/frozen/tlist.F90, src/frozen/tpair.F90,
 	  src/ions/atom.F90: * Add equal and not equal operators to
 	  atom.F90
-	  
+
 	  * Code cleanup, add PUSH_SUB, POP_SUB
-	  
+
 	  * Remove redundant files.
 
 2013-08-24 13:54  jrfsousa
@@ -9430,7 +9430,7 @@
 	  src/frozen/fio_simul_box.F90, src/ions/symmetries_finite.c: * Add
 	  variable initialization and final variable cleanup to
 	  symmetries_finite.c
-	  
+
 	  * Code cleanup, add PUSH_SUB POP_SUB and turn on the compiling of
 	  a few more files.
 
@@ -9474,9 +9474,9 @@
 	  src/frozen/fio_mesh.F90, src/frozen/fio_simulation.F90,
 	  src/grid/mesh_init.F90: * Make mesh_get_vol_pp in mesh_init.F90
 	  visible.
-	  
+
 	  * Add PUSH_SUB and POP_SUB and some more small changes.
-	  
+
 	  * Turn on the compilation of a few more files.
 
 2013-08-28 13:07  joseba
@@ -9593,11 +9593,11 @@
 
 	* [r11199] src/frozen/fio_mesh.F90, src/grid/mesh_init.F90:
 	  ./src/grid/
-	  
+
 	  * Revert mesh_init.F90 to revision 11179.
-	  
+
 	  ./src/frozen/
-	  
+
 	  * Reflect changes.
 
 2013-08-30 15:21  joseba
@@ -9775,7 +9775,7 @@
 	  testsuite/finite_systems_2d/02-fock-darwin.test,
 	  testsuite/finite_systems_2d/Makefile.am: A couple of lines of the
 	  Rashba spin-orbit operator were not very clear.
-	  
+
 	  Also, added a test that demonstrates the use of effective atomic
 	  units for 2D
 	  electron gas quantum dots.
@@ -9941,7 +9941,7 @@
 	  testsuite/real_time/10-bomd.03-td_restart.inp,
 	  testsuite/real_time/Makefile.am: * Removed the CPMD
 	  implementation, since it is not used.
-	  
+
 	  * The MoveIons variable is boolean, but in several tests the
 	  value
 	  'vel_verlet', defined by CPMD, was given instead of 'yes'.
@@ -10327,7 +10327,7 @@
 	  has to skip the header too.
 	  MPI_File_close inside an "if" statement to avoid the optimization
 	  Corrected the number of print lines with messages_fatal
-	  
+
 	  This passes all the tests with gfortran 4.4 in my machine (Ubuntu
 	  12.04, x86_64, openmpi), let's hope in tigger too.
 
@@ -10367,7 +10367,7 @@
 	* [r11314] src/basic/space.F90: Please don't try to initialize
 	  members of types. They often cause
 	  errors from valgrind. In this case, we had:
-	  
+
 	  Uninitialised value was created by a stack allocation
 	  at 0x6A660D: __system_m_MOD_system_init (system.F90:56)
 
@@ -11273,7 +11273,7 @@
 	  the oct_tg_classical target (actually, the previous
 	  implementation of this
 	  had a bug).
-	  
+
 	  Removed the corresponding test.
 
 2013-11-03 19:03  dstrubbe
@@ -11343,7 +11343,7 @@
 
 	* [r11463] m4/isf.m4: Removed BLAS and LAPACK lines, following the
 	  advice of David
-	  
+
 	  Thanks David!
 
 2013-11-05 08:08  joseba
@@ -11815,7 +11815,7 @@
 	  testsuite/functionals/03-xc.test: Testing Int[n*v_xc] for each
 	  functional. Committed with this perl script, and some manual
 	  intervention.
-	  
+
 	  {{{
 	  while (<>) {
 	  if($_ =~ /match ; (.*?)\s*; GREP\(static\/info, '([^']*)
@@ -11941,7 +11941,7 @@
 	* [r11537] src/poisson/poisson.F90: Updated the reference of the
 	  Poisson survey
 	  Added a more verbose information about the chosen Poisson solver
-	  
+
 	  By Pablo and me
 
 2013-11-19 13:32  joseba
@@ -12446,7 +12446,7 @@
 
 	* [r11597] src/grid/io_function.F90, src/utils/convert.F90: Typos,
 	  PUSH/POP's, formatting.
-	  
+
 	  Joseba, don't you want units_output%length**(-1/3) rather than
 	  "my_unit"? Also this would still only be correct for the density,
 	  not for other quantities (e.g. wavefunction, potential, etc.).
@@ -12567,30 +12567,30 @@
 	  formats. The pseudos I am adding here were generated from the
 	  following input file with APE 2.2.0, trying to use analogous
 	  parameters to our C.psf.
-	  
+
 	  Title = "carbon"
 	  CalculationMode = ae + pp
 	  Verbose = 40
-	  
+
 	  XCFunctional = lda_x + lda_c_pz
-	  
+
 	  NuclearCharge = 6
-	  
+
 	  %Orbitals
 	  1 | 0 | 2
 	  2 | 0 | 2
 	  2 | 1 | 2
 	  3 | 2 | 0
 	  %
-	  
+
 	  %PPComponents
 	  2 | 0 | 1.47 | tm
 	  2 | 1 | 1.47 | tm
 	  3 | 2 | 1.47 | tm
 	  %
-	  
+
 	  PPOutputFileFormat = abinit6 + fhi
-	  
+
 	  LLocal = 1
 
 2014-01-19 16:07  dstrubbe
@@ -13155,7 +13155,7 @@
 	  external_libs/spglib-1.5.2/src/symmetry.h: Importing spglib-1.5.2
 	  in preparation for updating. The current version is 0.5.1 I
 	  think, from 5 years ago. I proceeded as follows:
-	  
+
 	  wget
 	  http://sourceforge.net/projects/spglib/files/spglib/spglib-1.5/spglib-1.5.2.tar.gz
 	  tar xvzf spglib-1.5.2.tar.gz
@@ -13820,7 +13820,7 @@
 	  to give a fatal error for QMR breakdown. The result is simply
 	  that it isn't converged. For example, it may still pass the test
 	  matches for periodic_system/04-silicon when breakdown occurs.
-	  
+
 	  Nonetheless, I think the recent batch-ification of the linear
 	  solver may have a problem because we never got QMR breakdown
 	  errors before in the tests.
@@ -14115,7 +14115,7 @@
 	  course, such a family will never be returned from libxc 2.0.2,
 	  but this way is simpler than hiding all possible uses of the
 	  constant in preprocessor directives.
-	  
+
 	  Fun fact: previously if you asked for a hybrid meta-GGA, you
 	  would instead get KS inversion! The family for KS inversion was
 	  using the value 64 which is supposed to be for hybrid meta-GGAs.
@@ -14393,7 +14393,7 @@
 	  only the eigenvectors needed by the current batch are gathered.
 	  This allows to save a considerable amount of memory when running
 	  calculations with a very large number of states.
-	  
+
 	  Note that the case where ScaLAPACK is used is still treated the
 	  old way.
 
@@ -14492,10 +14492,10 @@
 	  must be some way we can make the code not compile if this isn't
 	  done. I fixed everything (outside of the frozen directory) that I
 	  could find via the query
-	  
+
 	  grep -R 'SAFE_ALLOCATE(' src/* | grep -v '(1:' | grep -v '(0:' |
 	  grep '))'
-	  
+
 	  which does turn up many statements that are ok too of course.
 	  Most of the ones I changed are size 1, in which case the
 	  profiling would still be ok I think, but it helps for checking
@@ -14914,23 +14914,23 @@
 	  src/pcm/pcm.F90, src/system/system.F90, src/system/v_ks.F90: Most
 	  of the suggestions made by David to commit 11839 were
 	  implemented. More details as follows,
-	  
+
 	  1- pcm/pcm.F90: A new type 'pcm_t' that handles all PCM variables
 	  has been designed. The subroutines
 	  'v_electrons_cav', 'v_nuclei_cav' and 'pcm_pot_rs' were moved to
 	  'pcm/pcm.F90'. All PCM variables
 	  are initialized by subroutine 'pcm_init'.
-	  
+
 	  2- system/system.F90: Call to subroutine "pcm_init' from there
 	  was removed. Now it is called from subroutine
 	  'hamiltonian_init'. Parsing solvation variables was moved back to
 	  subroutine 'pcm_init'.
-	  
+
 	  3- hamiltonian/epot.F90: The fields 'ep%v_pcm_n(:)' and
 	  'ep%v_pcm_e(:)' were removed from the 'epot_t' type.
 	  Subroutines related to PCM calculations are now encapsulated in
 	  'pcm/pcm.F90'.
-	  
+
 	  4- hamiltonian/hamiltonian.F90: The new field 'pcm' of type
 	  'pcm_t' is now accesible through variables of
 	  type 'hamiltonian_t'. PCM contributions to the KS hamiltonian
@@ -14939,7 +14939,7 @@
 	  and "hm%pcm%v_n_rs(:)'.
 	  SAFE_DEALLOCATE's of PCM variables was incorporated in subroutine
 	  'hamiltonian_end'.
-	  
+
 	  5- system/v_ks.F90: The procedure to calculate the Hartree
 	  potential at the tesserae representative points
 	  was encapsulated in the subroutine 'v_electrons_cav', implemented
@@ -15296,7 +15296,7 @@
 2014-03-27 20:04  dstrubbe
 
 	* [r11927] libxc/src/functionals.c: Fixing this warning:
-	  
+
 	  libtool: compile: cc -DHAVE_CONFIG_H -I. -I.. -fast -c
 	  functionals.c -o functionals.o
 	  PGC-W-0095-Type cast required for this conversion (functionals.c:
@@ -15320,7 +15320,7 @@
 
 	* [r11930] testsuite/oct-run_regression_test.pl: Fixing some issues
 	  pointed out by 'use warnings' in Perl regression script.
-	  
+
 	  Unquoted string "stderr" may clash with future reserved word at
 	  ../oct-run_regression_test.pl line 250.
 	  Unquoted string "stderr" may clash with future reserved word at
@@ -15400,7 +15400,7 @@
 
 	* [r11940] testsuite/oct-run_regression_test.pl: Fixing these
 	  warnings in the Perl testsuite script:
-	  
+
 	  main::find_executables() called too early to check prototype at
 	  ../oct-run_regression_test.pl line 187.
 	  main::run_match_new() called too early to check prototype at
@@ -15457,7 +15457,7 @@
 	  * An off-diagonal element is now tested.
 	  * The temp array for reductions in parallel was allocated to the
 	  wrong size.
-	  
+
 	  * More explicit call with keyword.
 	  * Comment on proper size of argument.
 	  * No need to accumulate into eff_mass_inv when it is definitely
@@ -15609,7 +15609,7 @@
 	  - src/ions/box_union.F90: new functions box_union_get_nboxes and
 	  box_union_get_center have been added.
 	  - src/ions/simul_box.F90: BADER parameter has been removed.
-	  
+
 
 2014-04-01 14:08  jjornet
 
@@ -15807,7 +15807,7 @@
 
 	* [r11998] src/hamiltonian/epot.F90: Suppressing compiler warnings
 	  by making type conversions explicit.
-	  
+
 	  What is the reason to make local_potential a real*4 though? Seems
 	  odd. This was introduced by Xavier in r4915.
 
@@ -15833,7 +15833,7 @@
 2014-04-07 06:54  micael
 
 	* [r12002] libxc: Removed all Libxc sources.
-	  
+
 	  Note that the new Libxc repository can be found at the following
 	  address: http://www.tddft.org/svn/libxc
 
@@ -16050,22 +16050,22 @@
 	  src/system/energy_calc.F90, src/system/v_ks.F90: Solute-solvent
 	  electrostatic interaction term is added to the total energy of
 	  the system by using PCM.
-	  
+
 	  - pcm/pcm.F90: subroutine 'v_electrons_cav_li' was coded to
 	  calculate the Hartree potential at the tesserae representative
 	  points by means of a trilinear interpolation. function
 	  'pcm_classic_energy' is added to calculate nuclei-solvent
 	  interaction energy.
-	  
+
 	  - hamiltonian/energy.F90: variables 'int_e_pcm' and 'int_n_pcm'
 	  were added to 'energy_t' to strore the electrons-solvent and
 	  nuclei-solvent interaction energies, respectively.
-	  
+
 	  - system/v_ks.F90: Now the subroutine 'v_electrons_cav_li' is
 	  used to evaluate the Hartree pot at the tesserae. The energy term
 	  'int_e_pcm' is calculated just after calculated the PCM field in
 	  real-space.
-	  
+
 	  - system/energy_calc.F90: The term 'int_n_pcm' is computed by
 	  using the function 'pcm_classic_energy'. For the case
 	  'hm%theory_level=KOHN_SHAM_DFT' the PCM contributions to the
@@ -16487,7 +16487,7 @@
 	  space. The set of actual arguments of the latter subroutine in
 	  the calling subprograms in 'hamiltonian/hamiltonian.F90' and
 	  'system/v_ks.F90' has been updated.
-	  
+
 	  * In 'system/energy_calc.F90' the calculation of
 	  'hm%energy%int_n_pcm' was moved, so that this quantity is also
 	  computed during time propagation if 'hm%pcm%run_pcm=.true.'.
@@ -16700,7 +16700,7 @@
 	  index_m.
 	  * Renamed restart_read_lxyz to mesh_check_dump_compatibility, as
 	  the previous name was very misleading, and moved it to mesh_m.
-	  
+
 
 2014-05-09 14:26  joseba
 
@@ -17021,27 +17021,27 @@
 	  (in fact, these two variables have been deleted in this commit)
 	  * Reading or writing restart information outside the restart
 	  directories.
-	  
+
 	  This new scheme implies that a restart object must always be used
 	  to access the content of a restart directory. This object takes
 	  care of making several checks, in particular the ones concerning
 	  the mesh compatibility. Unfortunately there are still a couple of
 	  places that partially bypasses this framework, namely in the PES
 	  and open boundaries modules.
-	  
+
 	  Some of the code is still crude and improvements are needed, like
 	  the parallel writing/reading of files which is still not
 	  completely transparent and consistent, but the basic features are
 	  there.
-	  
+
 	  Note that all the routines for loading and dumping the grid
 	  information, including the partition, have been kept outside this
 	  new framework, although they are used by it. The reason behind
 	  this is that I will soon make some more changes to the restart
 	  module that are going to make it quite Octopus specific, while I
 	  would like to keep the grid stuff as generic as possible.
-	  
-	  
+
+
 	  Other changes:
 	  * io_mkdir now has an option to create parent directories if
 	  needed.
@@ -17178,7 +17178,7 @@
 	  testsuite/periodic_systems/03-sodium_chain.02-ground_state_disp.inp:
 	  Introduced new input variable RestartOptions, which replaces
 	  TmpDir and RestartDir.
-	  
+
 	  The idea is that, instead of selecting a global directory to be
 	  used for writing and another one for reading, one can now select
 	  a different restart directory that is going to be used both for
@@ -17196,7 +17196,7 @@
 	  of the TDOutput variable, as one could want to project the TD
 	  states over a ground-state that is different from the
 	  ground-state used to start the TD calculation.
-	  
+
 	  All the run modes should nevertheless behave exactly as before,
 	  with the only exception of CalculationMode=unocc. In that case,
 	  if FromScratch = yes, the restart information is read from the
@@ -17236,7 +17236,7 @@
 	  previous call did not exit immediately, but rather attempted to
 	  get solution
 	  several orders of magnitude better.
-	  
+
 	  I change it here to a stopping scheme that does not depend on the
 	  initial
 	  guess.
@@ -17260,7 +17260,7 @@
 	  comparison
 	  purposes, since it is a "classical" propagator that appears in
 	  textbooks.
-	  
+
 	  It needs the sparskit library. Also, seems to work well only for
 	  some of the
 	  linear solvers (gmres in particular), and not others.
@@ -17278,7 +17278,7 @@
 	  Forced the failure if the mixing information is not properly
 	  read, otherwise it gets stuck in parallel without any
 	  information.
-	  
+
 	  Added SVN Id to fft_inc.F90 file
 
 2014-06-02 16:26  jjornet
@@ -17651,8 +17651,8 @@
 	  overlooked since the new restart module has been introduced that
 	  makes the PES restart incompatible with previous versions. I will
 	  try to fix it in another commit.
-	  
-	  
+
+
 
 2014-06-23 16:19  dstrubbe
 
@@ -17714,7 +17714,7 @@
 	  ** Warning:
 	  ** LCAO alternative implementation is under development.
 	  ** It might not work or produce wrong results.
-	  
+
 	  [tigger:865] *** An error occurred in MPI_Allreduce
 	  [tigger:865] *** on communicator MPI_COMM_WORLD
 	  [tigger:865] *** MPI_ERR_OP: invalid reduce operation
@@ -18421,7 +18421,7 @@
 	* [r12310] src/td/propagator_rk_inc.F90: Setting svn:keywords so
 	  that $Id$ gets replaced automatically. For
 	  future reference the command is:
-	  
+
 	  svn propset svn:keywords 'Id' src/td/propagator_rk_inc.F90
 
 2014-07-23 21:19  dstrubbe
@@ -18467,7 +18467,7 @@
 	  another. Now, only processor 0 opens and writes, though some of
 	  the routines have to be called from all processors in order for
 	  the information to be properly gathered over domains.
-	  
+
 	  Sample error:
 	  {{{
 	  ***
@@ -18936,7 +18936,7 @@
 	  testsuite/real_time/19-propagators.test: o Removed several
 	  complex to real conversions in the tdfunction_m module,
 	  which is designed to have only-real functions.
-	  
+
 	  o Changed a "$Id $" string to "$Id$".
 
 2014-08-07 15:22  dstrubbe
@@ -19073,7 +19073,7 @@
 	* [r12385] src/td/propagator_rk_inc.F90,
 	  testsuite/real_time/04-etrs_single.test: o The 04-etrs_single
 	  test was trying to use deleted files.
-	  
+
 	  o Bug fix in the RK2 method. It was only caught by two of the
 	  slaves.
 
@@ -20597,7 +20597,7 @@
 	* [r12604] src/basic/string.F90: Added a temporary variable to
 	  suppress valgrind error: "Source and destination overlap in
 	  memcpy"
-	  
+
 
 2014-10-30 15:25  micael
 
@@ -20646,26 +20646,26 @@
 	  'SmearingFactor=1' to regularize possible Coulomb singularities
 	  at grid points infinitesimally close to the tesserae
 	  representative points.
-	  
+
 	  - 'system/energy_calc.F90': the subroutine 'pcm_elect_energy' is
 	  called to calculate the interaction energy. Independent
 	  contribution to the interaction energy are printed to 'pcm_info'
 	  file. The total energy was defined accordingly to
 	  'pcm_elect_energy'.
-	  
+
 	  - 'system/v_ks.F90': The term 'hm%energy%pcm_corr' entering the
 	  final expression for the total energy is evaluated. The
 	  estimation of the total electronic molecule's charge in terms of
 	  the apparent charges is defined with the proper sign.
-	  
+
 	  - 'hamiltonian/energy.F90': new variables are defined inside
 	  'energy_t' to store the independent contributions to the
 	  electrostatic interaction energy.
-	  
+
 	  - 'hamiltonian/hamiltonian.F90': The estimation of the total
 	  nuclear molecule's charge in terms of the apparent charges is
 	  defined with the proper sign.
-	  
+
 	  - 'td/td_write.F90': The time-dependent electrostatic interaction
 	  energy is computed in terms of the individual contributions as
 	  defined in 'energy_t'.
@@ -20828,7 +20828,7 @@
 	  src/poisson/poisson_init_direct_inc.F90: With this change,
 	  combined parallelization of domains and states, and also
 	  independent parallelization work with LibISF Poisson solver.
-	  
+
 	  Note: still failing PFFT solver with only states parallelization.
 
 2014-11-26 10:57  joseba
@@ -21185,11 +21185,11 @@
 	* [r12690] src/basic/io_binary_f_inc.F90: Made a read or write of a
 	  file not to crash the execution. Two useful
 	  examples:
-	  
+
 	  1.- Reading can happen that a restart/td has been created, but
 	  nothing
 	  written. When trying to restart there, without this change fails.
-	  
+
 	  2.- Writing can fail due to a I/O error, which can be solved the
 	  next
 	  time a restart is going to be saved.
@@ -21248,7 +21248,7 @@
 	  src/system/output_h_inc.F90, src/system/output_me_inc.F90,
 	  src/system/output_states_inc.F90, src/system/system.F90: * Added
 	  an output_end function.
-	  
+
 	  * The current output now uses the new current calculator. This
 	  means now
 	  it will include corrections due to pseudopotentials.
@@ -21333,27 +21333,27 @@
 2015-01-25 14:48  jrfsousa
 
 	* [r12713] src/basic/json.F90: json.F90:
-	  
+
 	  Adding new public procedures foremost json_copy and json_hash
 
 2015-01-25 15:19  jrfsousa
 
 	* [r12714] src/basic/Makefile.am, src/basic/loct.F90,
 	  src/basic/oct_f.c, src/basic/path.F90: oct_f.c:
-	  
+
 	  Adds support for dirname, basename and realpath.
-	  
+
 	  loct.F90:
-	  
+
 	  Adds the procedures loct_dirname, loct_basename and
 	  loct_realpath.
-	  
+
 	  path.F90:
-	  
+
 	  New module for improved path handling.
-	  
+
 	  Makefile.am:
-	  
+
 	  Reflects the changes to the building step.
 
 2015-01-25 21:04  acastro
@@ -21374,7 +21374,7 @@
 	  src/opt_control/target_gstransformation_inc.F90: Corrected a bug
 	  that affected the "gstransformation" target
 	  for many-electron sysmtes.
-	  
+
 	  Removed a single ' character in a comment, that may be a
 	  problem for some compilers.
 
@@ -21388,16 +21388,16 @@
 2015-01-25 22:03  jrfsousa
 
 	* [r12719] src/ions/symmetries.F90: symmetries.F90:
-	  
+
 	  Added SPEC_FROZEN species to the non-spherically symmetric
 	  species list.
-	  
+
 	  Added a short circuit logic step to the loop.
 
 2015-01-25 22:05  jrfsousa
 
 	* [r12720] src/species/species.F90: species.F90:
-	  
+
 	  Added species type to json input/output
 
 2015-01-26 17:11  dstrubbe
@@ -21473,13 +21473,13 @@
 	  src/frozen/igrid.F90, src/frozen/imesh.F90,
 	  src/frozen/interface_xc.F90, src/frozen/lda.F90,
 	  src/frozen/strng.F90: Frozen:
-	  
+
 	  A large series of long due updates.
 
 2015-01-27 21:35  jrfsousa
 
 	* [r12735] src/system/output_fio.F90: output_fio.F90:
-	  
+
 	  Solves compilation problem and partly resolves problems with
 	  restart mechanism.
 
@@ -21498,7 +21498,7 @@
 	* [r12738] src/frozen/tdict.F90, src/frozen/template.h,
 	  src/frozen/thash.F90, src/frozen/tlist.F90, src/frozen/tpair.F90,
 	  src/frozen/tsingle.F90, src/frozen/util.h: Frozen:
-	  
+
 	  Adds some missing template files.
 
 2015-01-27 22:50  mjv500
@@ -21515,13 +21515,13 @@
 2015-01-28 11:27  jrfsousa
 
 	* [r12741] src/frozen/Makefile.am, src/frozen/domain.F90: Frozen:
-	  
+
 	  Some more files a small commit to check compilers.
 
 2015-01-28 11:49  jrfsousa
 
 	* [r12742] src/frozen/Makefile.am, src/frozen/tdarr.F90: Frozen:
-	  
+
 	  Adds forgotten template file.
 
 2015-01-28 13:35  joseba
@@ -21530,7 +21530,7 @@
 	  share/recipes/eu, share/recipes/eu/Makefile.am,
 	  share/recipes/eu/txipiroiak_bere_tintan.txt: Txipiroien errezeta
 	  gehituta*
-	  
+
 	  squid recipe in Basque
 
 2015-01-28 13:43  dstrubbe
@@ -21543,10 +21543,10 @@
 	* [r12745] src/frozen/Makefile.am,
 	  src/frozen/interpolation_frozen.F90, src/frozen/intrpl.F90,
 	  src/frozen/simulation.F90, src/frozen/storage.F90: Frozen:
-	  
+
 	  interpolation_frozen.F90 -> intrpl.F90:
 	  Renamed the file to be shorter while still avoiding clashes.
-	  
+
 	  Updated some more files.
 
 2015-01-28 15:08  joseba
@@ -21564,7 +21564,7 @@
 2015-01-28 16:06  jrfsousa
 
 	* [r12748] src/frozen/Makefile.am: Frozen:
-	  
+
 	  Adds missing line.
 
 2015-01-28 16:21  xavier
@@ -21601,13 +21601,13 @@
 	  src/frozen/domain.F90, src/frozen/simulation.F90,
 	  src/frozen/storage.F90, src/frozen/tdarr.F90,
 	  src/frozen/tlist.F90: Frozen:
-	  
+
 	  Adding another group of files.
 
 2015-01-28 19:07  jrfsousa
 
 	* [r12755] src/frozen/Makefile.am: Frozen:
-	  
+
 	  The necessary Makefile alterations where forgotten.
 
 2015-01-28 19:14  xavier
@@ -21623,7 +21623,7 @@
 2015-01-28 20:05  jrfsousa
 
 	* [r12758] src/frozen/strng.F90: Frozen:
-	  
+
 	  Tries to solve a compilation error with pathf95
 
 2015-01-28 21:34  jrfsousa
@@ -21721,7 +21721,7 @@
 	  src/frozen/fio_simulation.F90, src/frozen/fio_states.F90,
 	  src/frozen/fio_system.F90, src/frozen/intrpl.F90,
 	  src/frozen/storage.F90: Frozen:
-	  
+
 	  A new batch of files and a few modifications.
 
 2015-01-29 16:53  xavier
@@ -22118,50 +22118,50 @@
 	  src/frozen/fio_simul_box.F90, src/frozen/fio_simulation.F90,
 	  src/frozen/fio_states.F90, src/frozen/fio_system.F90,
 	  src/frozen/storage.F90: Frozen:
-	  
+
 	  Changes naming conventions to be more clear.
-	  
+
 	  The name convention used is:
-	  
+
 	  {Calculation model name}_{Part of the calculation}.F90
-	  
+
 	  Calculation model mane:
-	  
+
 	  base:
-	  
+
 	  Implements basic features to be used by other calculations
-	  
+
 	  fio:
-	  
+
 	  Basic I/O "calculation" model
-	  
+
 	  Part of the calculation:
-	  
+
 	  handle:
-	  
+
 	  Implements the externally available interface to "handle" the
 	  calculation.
-	  
+
 	  model:
-	  
+
 	  Implements a calculation "model".
-	  
+
 	  config:
-	  
+
 	  Prepares imput.
-	  
+
 	  The other calculation parts have intuitive names.
 
 2015-01-30 11:57  jrfsousa
 
 	* [r12786] src/frozen/Makefile.am: Frozen:
-	  
+
 	  Forgot the Makefile
 
 2015-01-30 12:02  jrfsousa
 
 	* [r12787] src/frozen/base_potential.F90: Frozen:
-	  
+
 	  Corrected procedure name.
 
 2015-01-30 12:32  mjv500
@@ -22189,9 +22189,9 @@
 	  src/frozen/frozen_hamiltonian.F90, src/frozen/frozen_handle.F90,
 	  src/frozen/frozen_model.F90, src/frozen/frozen_states.F90,
 	  src/frozen/frozen_system.F90, src/frozen/simulation.F90: Frozen:
-	  
+
 	  Commits the "Frozen" calculation model layer.
-	  
+
 	  General code clean-up.
 
 2015-01-30 21:02  dstrubbe
@@ -22336,7 +22336,7 @@
 
 	* [r12806] src/frozen/base_density.F90, src/frozen/fio_density.F90:
 	  Frozen:
-	  
+
 	  Tries to fix compilation problems with pathf95.
 
 2015-01-31 16:43  joseba
@@ -22983,9 +22983,9 @@
 	  src/grid/symmetrizer_inc.F90: * Disabled single-precision
 	  compilation for some subroutines in
 	  mesh_function that use interpolation.
-	  
+
 	  * par_vec_m is now compiled in single precision too.
-	  
+
 	  * Declared an interface for the par_vec functions.
 
 2015-02-07 19:16  xavier
@@ -23133,7 +23133,7 @@
 	  st%X(psi) from the inhomogeneous term in
 	  Runge-Kutta. This part of the code does not seem to be tested
 	  anywhere.
-	  
+
 	  * Removed an unnecessary allocation.
 
 2015-02-09 16:12  xavier
@@ -23181,11 +23181,11 @@
 	  testsuite/real_time/15-crank_nicolson.02-kick.inp: * If
 	  velocities are somehow set or controlled, then the ions are moved
 	  by default.
-	  
+
 	  * The CAETRS and Crank-Nicolson tests set the velocities, but do
 	  not
 	  move the ions. In this case, now one has to set MoveIons = no.
-	  
+
 	  * Removed the MoveIons declaration from places where it is not
 	  necessary.
 
@@ -23286,7 +23286,7 @@
 	  default Octopus strategy would be to arrange them as 4 3 3 3,
 	  while
 	  to be compatible with scalapack we have to do 4 4 4 1 .
-	  
+
 	  To make this work better we would need to initialize the
 	  parallelization later, after we know what kind of calculation we
 	  are
@@ -23392,10 +23392,10 @@
 	  testsuite/real_time/18-hhg.01-gs.inp,
 	  testsuite/real_time/18-hhg.02-td.inp: Changed the input interface
 	  to set number of propagation steps:
-	  
+
 	  * Defined a new variable TDPropagationTime that directly sets the
 	  propagation time.
-	  
+
 	  * The variable TDMaximumIter is now called TDMaxSteps.
 
 2015-02-10 23:57  dstrubbe
@@ -23455,9 +23455,9 @@
 2015-02-11 14:44  jrfsousa
 
 	* [r12956] src/basic/json.F90: * Improved type safety.
-	  
+
 	  * Implements json_update procedures.
-	  
+
 	  * Implements json_del procedures.
 
 2015-02-11 16:14  theophilou
@@ -23573,7 +23573,7 @@
 	  src/frozen/thamiltonian.F90, src/frozen/tpotential.F90,
 	  src/frozen/tstates.F90, src/frozen/tsystem.F90,
 	  src/frozen/tterm.F90, src/frozen/twrap.F90: Frozen:
-	  
+
 	  Cleanup commit, remove old unused files.
 
 2015-02-12 16:52  dstrubbe
@@ -23627,14 +23627,14 @@
 	  compilers that do not give an error here. g95 says:
 	  {{{
 	  In file ps_qso_oct.f90:206
-	  
+
 	  call xml_tag_get_tag_value_array(tag, 'radial_potential', size,
 	  this%pote
 	  1
 	  Warning (165): Implicit interface 'xml_tag_get_tag_value_array'
 	  called at (1)
 	  In file ps_qso_oct.f90:207
-	  
+
 	  call xml_tag_get_tag_value_array(tag, 'radial_function', size,
 	  this%wavef
 	  1
@@ -23691,7 +23691,7 @@
 	  (masses are not negative) it is possible to detect the old format
 	  and
 	  read it anyways (with a warning).
-	  
+
 	  The idea of this change is that in the future we can make the
 	  Species
 	  block more flexible by not having to always give the mass, that
@@ -23866,7 +23866,7 @@
 	  verbose: it lists the required and available options.
 	  * Some FIXME comments for further improvement to the testsuite
 	  script.
-	  
+
 	  Yes, unfortunately all these elements had to be committed
 	  together...
 
@@ -23889,10 +23889,10 @@
 	  even
 	  and odd sizes are possible and the selected size is the one that
 	  produces the smaller change in the spacing.
-	  
+
 	  * Modified the tests so that they keep using the same spacing as
 	  before, so results do not change.
-	  
+
 	  * Added a warning when the spacing is changed due to periodicity.
 
 2015-02-13 05:06  dstrubbe
@@ -23957,33 +23957,33 @@
 	  src/frozen/live_model.F90, src/frozen/live_states.F90,
 	  src/frozen/live_system.F90, src/frozen/simulation.F90,
 	  src/frozen/storage.F90, src/frozen/thash.F90: Frozen:
-	  
+
 	  Adds "live" wrapper level for handling the live part of the
 	  subsystems.
-	  
+
 	  Split recursive and non-recursive interfaces.
-	  
+
 	  Added subsystem access by name.
-	  
+
 	  General code clean-up avoiding internal renamings.
 
 2015-02-13 14:45  jrfsousa
 
 	* [r13002] src/frozen/storage.F90: Frozen:
-	  
+
 	  Fix wrong index name.
 
 2015-02-13 15:03  jrfsousa
 
 	* [r13003] src/frozen/base_handle.F90: Frozen:
-	  
+
 	  Fix missing subroutine declaration. (Will add a propper interface
 	  on moving to Fortran 200x)
 
 2015-02-13 15:44  jrfsousa
 
 	* [r13004] src/frozen/Makefile.am: Frozen:
-	  
+
 	  Corrects makefile to compile all the files.
 
 2015-02-13 17:17  xavier
@@ -24417,7 +24417,7 @@
 	  testsuite/real_time/18-hhg.02-td.inp: * I think "spec" is a bad
 	  abbreviation for "species", so I renamed
 	  all the spec_ variables to species_.
-	  
+
 	  * Also renamed the internal variables of the species module.
 
 2015-02-17 04:11  xavier
@@ -24761,7 +24761,7 @@
 	* [r13087] src/hamiltonian/species_pot.F90, src/scf/lcao.F90: * The
 	  initialization with the square root of the local potential is
 	  now done for CPI and FHI pseudopotentials too.
-	  
+
 	  * Updated the documentation for LCAOStart.
 
 2015-02-18 19:52  xavier
@@ -24812,7 +24812,7 @@
 	* [r13100] src/hamiltonian/projector.F90, src/species/ps.F90,
 	  src/species/ps_upf.F90: * The two channels in a UPF2 file are
 	  used.
-	  
+
 	  * Octopus assumed that all lmax == 0 pseudos are local, this is
 	  not the
 	  case with Hamann pseudos. Now the ps_t%local variable is used.
@@ -24861,7 +24861,7 @@
 	* [r13116] src/hamiltonian/energy.F90, src/system/energy_calc.F90:
 	  * Now the external energy is calculated in two parts: local and
 	  non-local.
-	  
+
 	  * The non-local part is printed to static/info.
 
 2015-02-19 20:51  dstrubbe
@@ -24922,7 +24922,7 @@
 	  some assumptions that are not
 	  valid for Hamann/Optimized Vanderbilt pseudopotentials: only one
 	  channel for l=0 and scaling of the projectors.
-	  
+
 	  Now I added some checks to avoid this. With this the pseudos of
 	  the
 	  SG15 set seem to give reasonable results.
@@ -24965,7 +24965,7 @@
 	  src/species/species.F90, src/system/system.F90: * The new
 	  variable PseudopotentialSet will control which pseudos are
 	  used by default.
-	  
+
 	  * The defaults file now contains the path to the pseudopotential.
 	  This
 	  is passed to the initialization.
@@ -25085,9 +25085,9 @@
 	  for most elements) by default. To be safe, for the moment I used
 	  a
 	  very conservative default spacing (0.3) and radius (8.0).
-	  
+
 	  * The routine species_init_global is called automatically.
-	  
+
 	  * Added some sanity checks.
 
 2015-02-20 16:44  dstrubbe
@@ -25108,7 +25108,7 @@
 	  a
 	  merge of species_nullify, species_set_label, and
 	  species_set_index.
-	  
+
 	  * Removed the unused subroutine species_set_type.
 
 2015-02-20 17:37  xavier
@@ -25117,7 +25117,7 @@
 	  src/species/species.F90: * Updated the documentation to reflect
 	  the changes in the default
 	  pseudopotentials.
-	  
+
 	  * Removed any mention to the "defaults" file. It does not exist
 	  anymore, and in my opinion, we do not want users messing with
 	  Octopus
@@ -25237,7 +25237,7 @@
 	  The routine that printed out the KS multipoles matrix
 	  elements was assuming 3D, printing out spherical multipole
 	  moments. Now it considers separately the 1D and 2D cases.
-	  
+
 	  For the 2D case, it only prints the dipole matrices;
 	  eventually we could consider the cylindrical multipoles,
 	  although I find it unlikely that someone will ever need it.
@@ -25449,26 +25449,26 @@
 2015-02-26 11:01  jrfsousa
 
 	* [r13209] src/species/species.F90: Species:
-	  
+
 	  species.F90
-	  
+
 	  * Started adding a species_copy procedure.
-	  
+
 	  * Now *_data_object procedures also handle mass.
 
 2015-02-26 11:16  jrfsousa
 
 	* [r13210] src/system/output.F90, src/system/output_fio.F90:
 	  System:
-	  
+
 	  output_fio.F90
-	  
+
 	  * Large rewrite of output_fio.F90.
-	  
+
 	  output.F90
-	  
+
 	  * Rename output option frozen to frozen_system.
-	  
+
 	  * Reflect changes in output_fio.
 
 2015-02-26 14:43  jrfsousa
@@ -25477,7 +25477,7 @@
 	  src/frozen/igrid.F90, src/frozen/imesh.F90,
 	  src/frozen/interface_xc.F90, src/frozen/intrpl.F90,
 	  src/frozen/simulation.F90, src/frozen/storage.F90: Frozen:
-	  
+
 	  * Code cleanup.
 
 2015-02-26 15:50  jrfsousa
@@ -25488,17 +25488,17 @@
 	  src/frozen/base_model.F90, src/frozen/base_potential.F90,
 	  src/frozen/base_states.F90, src/frozen/base_system.F90,
 	  src/frozen/base_term.F90: Frozen:
-	  
+
 	  * Code cleanup.
-	  
+
 	  * Reflect changes on species_m.
 
 2015-02-26 16:29  jrfsousa
 
 	* [r13214] src/grid/double_grid.F90: Grid:
-	  
+
 	  double_grid.F90
-	  
+
 	  * Add double_grid_nullify procedure.
 
 2015-02-26 16:51  dstrubbe
@@ -25517,9 +25517,9 @@
 	  src/frozen/fio_grid.F90, src/frozen/fio_mesh.F90,
 	  src/frozen/fio_model.F90, src/frozen/fio_simul_box.F90,
 	  src/frozen/fio_simulation.F90: Frozen:
-	  
+
 	  * Code cleanup.
-	  
+
 	  * Improved initializations.
 
 2015-02-26 17:40  dstrubbe
@@ -25598,13 +25598,13 @@
 	* [r13236] src/frozen/Makefile.am, src/frozen/frozen_density.F90,
 	  src/frozen/frozen_handle.F90, src/frozen/frozen_model.F90,
 	  src/frozen/live_config.F90: Frozen:
-	  
+
 	  * Bug fixes.
-	  
+
 	  * Wrong procedure call.
-	  
+
 	  * Missing dependencies in makefile.
-	  
+
 	  * Minor code cleanup.
 
 2015-02-27 15:21  micael
@@ -25827,7 +25827,7 @@
 	  improvements
 	  to the system of default pseudos, that did not consider this
 	  behavior.
-	  
+
 	  I am now disabling this "feature" since it is confusing and it
 	  does
 	  not make much sense: the default values for our set of
@@ -25849,7 +25849,7 @@
 	* [r13258] testsuite/linear_response/04-vib_modes.test: Updated the
 	  results for the vibrational modes tests to match the
 	  slightly different values for the mass.
-	  
+
 	  I had to increase a bit the tolerance to get the test to pass in
 	  my
 	  machine (the reference values were taken from
@@ -25880,7 +25880,7 @@
 	  testsuite/periodic_systems/05-lithium.02-td.inp: * Converted all
 	  pseudopotential tests to use the default_mass value
 	  (except the ones that use a modified mass).
-	  
+
 	  * Updated the results for the vibrational matches in the casida
 	  test.
 
@@ -25994,7 +25994,7 @@
 	  when
 	  the default mass is 0, so I now made 1.0 the default for these
 	  species.
-	  
+
 	  I am not sure what is the right thing to do, I think a very
 	  large value would be reasonable since in most cases you do not
 	  expect
@@ -26102,10 +26102,10 @@
 	  the partition is not adequate, it is not read and it is
 	  recalculated. Even if the problem with the writing still exists,
 	  it is not creating a crash in future runs.
-	  
+
 	  To make this possible, change in get_info_binary to be able to
 	  get the real size of the file.
-	  
+
 
 2015-03-04 16:48  xavier
 
@@ -26133,21 +26133,21 @@
 	  src/frozen/strng.F90, src/frozen/tdarr.F90, src/frozen/thash.F90,
 	  src/frozen/tlist.F90, src/frozen/tsingle.F90,
 	  src/system/output_fio.F90: Frozen:
-	  
+
 	  * Code cleanup, simplification and reorganization.
-	  
+
 	  * Add forgotten access by name interface.
-	  
+
 	  * Better separation of recursive and non-recursive interfaces.
-	  
+
 	  * Starts to implement *_new and *_del interfaces.
-	  
+
 	  * Add support for fine meshs.
-	  
+
 	  System:
-	  
+
 	  output_fio.F90:
-	  
+
 	  * Temporary comments in order not to break builds.
 
 2015-03-05 13:56  jrfsousa
@@ -26158,11 +26158,11 @@
 	  src/frozen/base_model.F90, src/frozen/base_potential.F90,
 	  src/frozen/base_states.F90, src/frozen/base_system.F90,
 	  src/frozen/base_term.F90: Frozen:
-	  
+
 	  * Code cleanup, simplification and reorganization.
-	  
+
 	  * Better separation of recursive and non-recursive interfaces.
-	  
+
 	  * Continues to implement *_new and *_del interfaces.
 
 2015-03-05 15:15  jrfsousa
@@ -26174,25 +26174,25 @@
 	  src/frozen/fio_model.F90, src/frozen/fio_simulation.F90,
 	  src/frozen/fio_states.F90, src/frozen/fio_system.F90,
 	  src/system/output_fio.F90: Frozen:
-	  
+
 	  base:
-	  
+
 	  * Add forgotten interfaces.
-	  
+
 	  fio:
-	  
+
 	  * Propagate changes.
-	  
+
 	  System:
-	  
+
 	  output_fio.F90:
-	  
+
 	  * Revert changes.
 
 2015-03-05 15:22  jrfsousa
 
 	* [r13286] src/frozen/base_density.F90: Forzen:
-	  
+
 	  * Uniformize coding style.
 
 2015-03-05 15:45  jrfsousa
@@ -26202,7 +26202,7 @@
 	  src/frozen/frozen_hamiltonian.F90, src/frozen/frozen_handle.F90,
 	  src/frozen/frozen_model.F90, src/frozen/frozen_states.F90,
 	  src/frozen/frozen_system.F90: Frozen:
-	  
+
 	  * Propagate interface changes.
 
 2015-03-05 15:57  jrfsousa
@@ -26211,7 +26211,7 @@
 	  src/frozen/live_external.F90, src/frozen/live_hamiltonian.F90,
 	  src/frozen/live_model.F90, src/frozen/live_states.F90,
 	  src/frozen/live_system.F90: Frozen:
-	  
+
 	  * Propagate interface changes.
 
 2015-03-06 14:53  jrfsousa
@@ -26222,7 +26222,7 @@
 	  src/frozen/base_states.F90, src/frozen/base_system.F90,
 	  src/frozen/base_term.F90, src/frozen/domain.F90,
 	  src/frozen/simulation.F90: Frozen:
-	  
+
 	  * Improvements to *_init and *_start interfaces.
 
 2015-03-06 18:45  xavier
@@ -26233,31 +26233,31 @@
 
 	* [r13291] src/frozen/base_geom.F90, src/frozen/thash.F90,
 	  src/frozen/tlist.F90: Frozen:
-	  
+
 	  * Bug fixes.
 
 2015-03-07 14:06  jrfsousa
 
 	* [r13292] src/ions/geometry.F90: Ions:
-	  
+
 	  geometry.F90:
-	  
+
 	  * Add geometry_nullify procedure.
 
 2015-03-07 14:15  jrfsousa
 
 	* [r13293] src/ions/geometry.F90: Ions:
-	  
+
 	  geometry.F90:
-	  
+
 	  * Fix intent.
-	  
+
 	  * Forgot a few lines.
 
 2015-03-07 14:26  jrfsousa
 
 	* [r13294] src/frozen/base_geom.F90: Frozen:
-	  
+
 	  * Reflect changes in geometry.F90
 
 2015-03-07 14:39  jrfsousa
@@ -26265,7 +26265,7 @@
 	* [r13295] src/frozen/Makefile.am, src/frozen/base_geom.F90,
 	  src/frozen/ssys_density.F90, src/frozen/ssys_states.F90,
 	  src/frozen/ssys_system.F90: Frozen:
-	  
+
 	  * Start to commint Subsystem topmost level.
 
 2015-03-08 07:04  xavier
@@ -26275,7 +26275,7 @@
 	  src/species/species.F90: * The hgh pseudopotentials are now a
 	  PseudopotentialSet. No default
 	  spacing or radius is defined for these pseudos.
-	  
+
 	  * The element class now strips the name of the species.
 
 2015-03-08 07:13  xavier
@@ -26343,7 +26343,7 @@
 	  using pairs of flag/value. Current flags are lmax, lloc,
 	  min_radius, and
 	  max_spacing.
-	  
+
 	  (I haven't updated the documentation for %Species yet, I will do
 	  it after finishing
 	  with the changes to the species block.)
@@ -26561,7 +26561,7 @@
 	  testsuite/real_time/18-hhg.01-gs.inp,
 	  testsuite/real_time/18-hhg.02-td.inp: The mass field of the
 	  Species block is no longer mandatory.
-	  
+
 
 2015-03-09 05:49  xavier
 
@@ -26758,21 +26758,21 @@
 2015-03-09 12:12  jrfsousa
 
 	* [r13309] src/states/states.F90: States:
-	  
+
 	  states.F90:
-	  
+
 	  * Add pointer to subsystem states.
-	  
+
 	  * Add procedure to set the pointer.
-	  
+
 	  * Add code to manage pointer lifecycle (init, copy, end).
 
 2015-03-09 12:13  jrfsousa
 
 	* [r13310] src/states/states.F90: States:
-	  
+
 	  states.F90:
-	  
+
 	  * Correct variable name.
 
 2015-03-09 16:20  xavier
@@ -26791,7 +26791,7 @@
 	  src/frozen/domain.F90, src/frozen/iterator_code.F90,
 	  src/frozen/simulation.F90, src/frozen/template.h,
 	  src/frozen/tpair.F90: Frozen:
-	  
+
 	  * Factor out iterator code.
 
 2015-03-09 17:31  xavier
@@ -26807,13 +26807,13 @@
 	  it is the square root of the previous value and it has units of
 	  length
 	  (and units are properly converted).
-	  
+
 	  * Started updating the documentation for %Species.
 
 2015-03-09 21:43  jrfsousa
 
 	* [r13314] src/states/states.F90: States:
-	  
+
 	  * Changes subroutine name.
 
 2015-03-10 05:25  xavier
@@ -26856,12 +26856,12 @@
 	  src/utils/local_multipoles.F90, src/utils/local_write.F90,
 	  src/utils/vibrational.F90, src/xc/functionals.F90, src/xc/xc.F90:
 	  Improvement of the input_error subroutine;
-	  
+
 	  * Renamed to messages_input_error.
-	  
+
 	  * Added an optional argument to include additional details of the
 	  error.
-	  
+
 	  * The documentation for the variable is no longer printed,
 	  instead the
 	  use of the oct-help command is suggested.
@@ -26869,34 +26869,34 @@
 2015-03-10 10:03  jrfsousa
 
 	* [r13316] src/states/density.F90: States:
-	  
+
 	  density.F90
-	  
+
 	  * Add pointers to the subsystem density and the total density.
-	  
+
 	  * Add code to set the pointers.
-	  
+
 	  * Add code to calculate the total density.
 
 2015-03-10 10:11  jrfsousa
 
 	* [r13317] src/scf/lcao.F90: SCF:
-	  
+
 	  lcao.F90:
-	  
+
 	  * Add code to add the frozen density to the guess density.
 
 2015-03-10 10:19  jrfsousa
 
 	* [r13318] src/system/output.F90, src/system/output_states_inc.F90:
 	  System:
-	  
+
 	  output.F90
-	  
+
 	  * Add use clauses.
-	  
+
 	  output_states_inc.F90
-	  
+
 	  * Add code to output the subsystems densities.
 
 2015-03-10 14:37  jjornet
@@ -26922,60 +26922,60 @@
 	  src/frozen/base_term.F90, src/frozen/ssys_system.F90,
 	  src/frozen/tdarr.F90, src/frozen/tdict.F90, src/frozen/thash.F90,
 	  src/frozen/tlist.F90: Frozen:
-	  
+
 	  * Code clenup and some minor changes.
 
 2015-03-11 13:14  jrfsousa
 
 	* [r13322] src/frozen/Makefile.am, src/frozen/ssys_external.F90,
 	  src/frozen/ssys_hamiltonian.F90: Frozen:
-	  
+
 	  * Continues to comit Subsystem topmost level.
 
 2015-03-11 13:50  jrfsousa
 
 	* [r13323] src/hamiltonian/epot.F90: Hamiltonian:
-	  
+
 	  * Add pointer to subsystems external potential.
-	  
+
 	  * Add optional argument to epot_init to pass the subsytem
 	  hamiltonian.
-	  
+
 	  * Add code to handle the pointer lifecycle (init, end).
-	  
+
 	  * Add code to set the pointers to the total and the "live" part
 	  of the potential.
 
 2015-03-11 14:02  jrfsousa
 
 	* [r13324] src/hamiltonian/hamiltonian.F90: Hamiltonian:
-	  
+
 	  * Add pointer to Subsystems Hamiltonian.
-	  
+
 	  * Add optional argument to hamiltonian_init to pass the Subsytem
 	  Hamiltonian.
-	  
+
 	  * Add code to handle the pointer lifecycle (init, end).
 
 2015-03-11 14:13  jrfsousa
 
 	* [r13325] src/system/output.F90, src/system/output_h_inc.F90:
 	  System:
-	  
+
 	  output.F90
-	  
+
 	  * Add use clauses.
-	  
+
 	  output_h_inc.F90
-	  
+
 	  * Add code to output the subsystems external potentials.
 
 2015-03-11 14:24  jrfsousa
 
 	* [r13326] src/system/output_fio.F90: System:
-	  
+
 	  output_fio.F90
-	  
+
 	  * Add charge to output.
 
 2015-03-11 16:26  philipp
@@ -26987,13 +26987,13 @@
 2015-03-11 16:35  jrfsousa
 
 	* [r13328] src/frozen/base_hamiltonian.F90: Frozen:
-	  
+
 	  * Remove spurious print.
 
 2015-03-11 16:36  jrfsousa
 
 	* [r13329] src/frozen/fio_config.F90: Frozen:
-	  
+
 	  * Read charge.
 
 2015-03-11 16:50  jrfsousa
@@ -27002,7 +27002,7 @@
 	  src/frozen/frozen_config.F90, src/frozen/frozen_hamiltonian.F90,
 	  src/frozen/frozen_ionic.F90, src/frozen/ssys_hamiltonian.F90,
 	  src/frozen/ssys_ionic.F90: Frozen:
-	  
+
 	  * Add ionic term.
 
 2015-03-11 22:43  philipp
@@ -27059,13 +27059,13 @@
 2015-03-13 13:59  jrfsousa
 
 	* [r13339] src/hamiltonian/epot.F90: Hamiltonian:
-	  
+
 	  epot.F90
-	  
+
 	  * Add pointer to subsystems ionic term.
-	  
+
 	  * Add code to handle the pointer lifecycle (init, end).
-	  
+
 	  * Add code to calculated the ionic interaction forces and
 	  energies.
 
@@ -27081,7 +27081,7 @@
 	  files. First, a gather of different data to each process is done,
 	  and
 	  then, all together write the files (a file per process).
-	  
+
 	  It is at least 5 times faster with a system with 157 atoms
 	  (578645
 	  domain points and 209 states) running with 16 processes (in a
@@ -27116,7 +27116,7 @@
 	  can be read from the code. For an option abc the macro OPTION_ABC
 	  is defined
 	  through global.h.
-	  
+
 	  * The new scheme is used in species.F90.
 
 2015-03-14 06:28  xavier
@@ -27215,7 +27215,7 @@
 	  testsuite/real_time/02-propagators.03-rungekutta2.inp,
 	  testsuite/real_time/02-propagators.04-rungekutta4.inp: Octopus no
 	  longer tries to guess the pseudopotential file.
-	  
+
 	  Pseudopotentials defined in the Species block must be given the
 	  path
 	  to the pseudopotential through the file or db_file parameters
@@ -27297,9 +27297,9 @@
 2015-03-14 23:22  jrfsousa
 
 	* [r13355] src/hamiltonian/epot.F90: Hamiltonian:
-	  
+
 	  epot.F90
-	  
+
 	  * Reverting comit 13339 in order reinstate compilation until a
 	  workaround to pathscale bugs is found.
 
@@ -27436,11 +27436,11 @@
 2015-03-15 09:46  jrfsousa
 
 	* [r13359] src/hamiltonian/epot.F90: Hamiltonian:
-	  
+
 	  epot.F90
-	  
+
 	  * Remove unused module.
-	  
+
 	  * Add missing target attribute.
 
 2015-03-16 01:06  xavier
@@ -27587,7 +27587,7 @@
 	* [r13381] testsuite/components/03-derivatives_3d.01.inp: Reduced
 	  the size of the grid for the derivatives tests, this should
 	  reduce the memory required considerably.
-	  
+
 	  (This tests needs more precise reference value, I will fix that
 	  once
 	  the slaves have run the test with the new parameters.)
@@ -27600,10 +27600,10 @@
 	  ------------------------------------------------------------------------
 	  r13272 | joseba | 2015-03-03 17:33:38 +0100 (ar., 03 mar 2015) |
 	  3 lines
-	  
+
 	  Fix to correct the compilation with preprocessed forall
-	  
-	  
+
+
 	  ------------------------------------------------------------------------
 
 2015-03-18 14:55  joseba
@@ -27654,7 +27654,7 @@
 	  src/poisson/poisson_fmm.F90, src/poisson/poisson_isf.F90,
 	  src/poisson/poisson_libisf.F90: intent(in) for the Poisson object
 	  (and related).
-	  
+
 	  This change is necessary to properly implement scdm
 
 2015-03-18 18:42  dstrubbe
@@ -27684,7 +27684,7 @@
 
 	* [r13395] src/main/main.F90, src/main/run.F90: More fixes for the
 	  IBM compiler:
-	  
+
 	  The definition of sys, hm, and calc_mode_prof was causing another
 	  ICE. I merged run_init, run, and run_end into a single function
 	  and
@@ -27805,7 +27805,7 @@
 	  level).
 	  For hybrid functionals the default TheoryLevel is now
 	  hartree_fock.
-	  
+
 	  This is to be consistent with the rest of the world and avoid
 	  confusion for users who would expect that hybrids calculate
 	  exchange
@@ -28061,7 +28061,7 @@
 	  precision. With gcc 4.9, in my machine at least, spglib produces
 	  slightly different results, that caused the detection of integer
 	  transitions to fail for silicon.
-	  
+
 	  Now the precision for the detection is 'symprec', the value
 	  passed to
 	  spglib.
@@ -28089,7 +28089,7 @@
 	* [r13470] testsuite/oct-run_testsuite.sh.in: * The number of jobs
 	  for the testsuite is reduced when the executable
 	  has been compiled with MPI or OpenMP.
-	  
+
 	  * Improved the output of the testsuite script. A warning is
 	  printed
 	  about the possible duration of the test.
@@ -28143,7 +28143,7 @@
 	* [r13487] configure.ac: * clFFT, the open sourced version of
 	  clAmdFft, can now be detected by
 	  the configure script.
-	  
+
 	  * Changed the description in the configure to match the new
 	  libraries.
 
@@ -28255,10 +28255,10 @@
 	  Bugfix: properly deallocate st%eigenval in states_freeze_orbitals
 	  by first deallocating the target pointer. This was causing
 	  SAFE_DEALLOCATE_P to fail.
-	  
+
 	  * Added the same allocation/deallocation structure in
 	  states_look_and_load.
-	  
+
 	  This code including the allocation/deallocation of wavefunctions
 	  and occupations could probably be gathered into a subroutine
 	  taking care of the proper resizing of state structures.
@@ -28299,10 +28299,10 @@
 2015-03-24 17:12  xavier
 
 	* [r13527] src/species/species.F90: Improvements in species:
-	  
+
 	  * Converted the thickness of the jellium slab to a parameter.
 	  * Updated the documentation for the species variable.
-	  
+
 	  With this change the updated interface for the Species block
 	  is complete.
 
@@ -28589,12 +28589,12 @@
 	  src/frozen/ssys_hamiltonian.dummy.F90,
 	  src/frozen/ssys_states.dummy.F90: Adds conditional compilation to
 	  frozen.
-	  
+
 	  If enabled will compile octopus with full frozen support.
-	  
+
 	  If disabled (the default) will just compile octopus against a
 	  dummy library.
-	  
+
 	  Should greatly speedup compilation and ease debugging in some
 	  platforms.
 
@@ -28861,7 +28861,7 @@
 	  src/basic/varinfo.F90: Now Octopus checks each variable upon
 	  parsing, and prints a warning each time an
 	  undocumented variable is found.
-	  
+
 	  (For the moment this only works with parse_logical, other parse
 	  functions coming soon.)
 
@@ -29212,11 +29212,11 @@
 	* [r13695] src/species/species.F90: * Improved the error checking
 	  for the %Species block. Now checks are
 	  based on the set of read parameters rather than negative values.
-	  
+
 	  * species_user_defined, species_charge_density, and
 	  species_from_file
 	  now all have a default valence of 0.
-	  
+
 	  * The valence option is now mentioned in the documentation for
 	  all
 	  non-atomic species.
@@ -29235,7 +29235,7 @@
 
 	* [r13698] src/species/species.F90: Improved documentation for the
 	  Species block:
-	  
+
 	  * Fixed an error in the example block.
 	  * Information about the default values for lmax and lloc.
 	  * Better documentation for species_pspio.
@@ -29290,29 +29290,29 @@
 	  prints huge amounts of information to the terminal that is
 	  impossible
 	  to follow and can consume a lot of the computer time.
-	  
+
 	  I have modified the way we print eigevalues to the screen
 	  (static/info
 	  and other eigenvalue output is unchanged):
-	  
+
 	  * Eigenvalues are not separated by k point and are sorted by
 	  value.
 	  The k-point index is printed as an extra column (when the system
 	  is
 	  periodic).
-	  
+
 	  * Up to 33 eigenvalues are printed: the 8 lowest eigenvalues, the
 	  homo
 	  and 16 values around and the 8 highest energy ones.
-	  
+
 	  * The values printed for each eigenvalue depend on the
 	  calculation.
 	  For example the spin column is only included for spin polarized
 	  calculations.
-	  
+
 	  * Auxiliary change: Moved the sort functions from math_m to a new
 	  module sort_m and enabled sort functions for integer arguments.
-	  
+
 	  The new output almost certainly will need some tuning, but I
 	  think it
 	  is the scalable way to keep printing eigenvalue output. (Most
@@ -29449,7 +29449,7 @@
 	  testsuite/optimal_control/08-velocities.02-oct.inp: Documentation
 	  of three undocumented variables (OCTEta, OCTDelta,
 	  and OCTTdTarget).
-	  
+
 	  Also, declared experimental some of the QOCT targets.
 
 2015-04-03 18:21  dstrubbe
@@ -29463,16 +29463,16 @@
 	  src/frozen/base_model.F90, src/frozen/fio_grid.F90,
 	  src/frozen/fio_mesh.F90, src/frozen/igrid.F90,
 	  src/frozen/imesh.F90, src/frozen/simulation.F90: Frozen:
-	  
+
 	  * Deleting useless files.
-	  
+
 	  * Propagating changes.
 
 2015-04-03 18:46  jrfsousa
 
 	* [r13725] src/frozen/simulation.F90, src/frozen/storage.F90:
 	  Frozen:
-	  
+
 	  * Improved handling of fine grids.
 
 2015-04-03 19:07  jrfsousa
@@ -29481,11 +29481,11 @@
 	  src/frozen/functional.F90, src/frozen/gga.F90,
 	  src/frozen/interface_xc.F90, src/frozen/lda.F90,
 	  src/frozen/simulation.F90: Frozen:
-	  
+
 	  * Removal of old files.
-	  
+
 	  * Major rewrite of interface_xc.F90 and functional.F90
-	  
+
 	  * Removal of support for spinors. It was broken anyway.
 
 2015-04-03 20:44  jrfsousa
@@ -29497,16 +29497,16 @@
 	  src/frozen/frozen_hamiltonian.F90, src/frozen/intrpl_inc.F90,
 	  src/frozen/live_hamiltonian.F90, src/frozen/ssys_hamiltonian.F90:
 	  Frozen:
-	  
+
 	  * Some code cleanup.
-	  
+
 	  * Reflecting the changes.
 
 2015-04-03 21:52  jrfsousa
 
 	* [r13728] src/frozen/base_hamiltonian.F90,
 	  src/frozen/base_potential.F90, src/frozen/base_term.F90: Frozen:
-	  
+
 	  * Some forgotten code and some fixes.
 
 2015-04-03 22:49  jrfsousa
@@ -29515,19 +29515,19 @@
 	  src/frozen/base_hamiltonian.F90, src/frozen/functional.F90,
 	  src/frozen/live_functional.F90, src/frozen/ssys_functional.F90:
 	  Frozen:
-	  
+
 	  * Add support for functional term.
 
 2015-04-03 23:11  jrfsousa
 
 	* [r13730] src/frozen/base_hamiltonian.F90: Frozen:
-	  
+
 	  * Add storage to base_hamiltonian.F90
 
 2015-04-03 23:52  jrfsousa
 
 	* [r13731] src/frozen/Makefile.am: Frozen:
-	  
+
 	  * Add missing dependency.
 
 2015-04-04 15:58  xavier
@@ -29564,12 +29564,12 @@
 	  src/frozen/live_hamiltonian.F90, src/frozen/root_hamiltonian.F90,
 	  src/frozen/simulation.F90, src/frozen/ssys_hamiltonian.F90,
 	  src/frozen/template.h: Frozen:
-	  
+
 	  * To lower the compilation load in some machines.
-	  
+
 	  * Splitting base_hamiltonian.F90 in:
 	  root_hamiltonian.F90 and base_hamiltonian.F90
-	  
+
 	  * Propagating changes to a lot of files.
 
 2015-04-05 02:24  xavier
@@ -29590,9 +29590,9 @@
 	  src/frozen/intrpl_inc.F90, src/frozen/root_hamiltonian.F90,
 	  src/frozen/ssys_hamiltonian.F90, src/frozen/ssys_tnadd.F90:
 	  Frozen:
-	  
+
 	  * Adds the non additional kinetic term.
-	  
+
 	  * Some supporting changes.
 
 2015-04-05 22:00  jrfsousa
@@ -29605,14 +29605,14 @@
 
 	* [r13740] src/frozen/Makefile.am,
 	  src/frozen/kfunctionals_list.F90: Frozen:
-	  
+
 	  * Adds the kinetic functionals list.
 
 2015-04-05 22:18  jrfsousa
 
 	* [r13741] src/frozen/Makefile.am, src/frozen/ssys_config.F90,
 	  src/frozen/ssys_handle.F90, src/frozen/ssys_model.F90: Frozen:
-	  
+
 	  * The final files to complete the frozen framework.
 
 2015-04-06 05:46  xavier
@@ -29634,7 +29634,7 @@
 	  src/frozen/live_hamiltonian.F90, src/frozen/live_model.F90,
 	  src/frozen/live_states.F90, src/frozen/live_system.F90,
 	  src/frozen/ssys_tnadd.F90: Frozen:
-	  
+
 	  * Code cleanup and propagation of changes.
 
 2015-04-06 16:02  xavier
@@ -29728,9 +29728,9 @@
 
 	* [r13760] src/hamiltonian/ion_interaction.F90: * Fixed the
 	  calculation of the grid size for the Ewald sum.
-	  
+
 	  * Simplified a bit the Ewald code.
-	  
+
 	  * Reverted some code-style "vandalism" introduced in [8870].
 
 2015-04-07 04:41  dstrubbe
@@ -29852,20 +29852,20 @@
 	  src/frozen/live_hamiltonian.F90, src/frozen/root_hamiltonian.F90,
 	  src/frozen/ssys_hamiltonian.F90, src/frozen/ssys_tnadd.F90:
 	  Frozen:
-	  
+
 	  * Remerging root_hamiltonian into base_hamiltonian to solve
 	  compilation problems with gcc 4.4.5
-	  
+
 	  * Commenting out recent aditions to speed up compilation with
 	  pathscale
-	  
+
 	  * Propagating changes
 
 2015-04-07 23:56  jrfsousa
 
 	* [r13775] src/frozen/base_hamiltonian.F90,
 	  src/frozen/ssys_tnadd.F90: Frozen:
-	  
+
 	  * Commenting some more working code to allow for faster
 	  compilation on pathscale.
 
@@ -29887,7 +29887,7 @@
 	* [r13778] src/frozen/base_density.F90,
 	  src/frozen/frozen_density.F90, src/frozen/intrpl_inc.F90,
 	  src/frozen/storage.F90: Frozen:
-	  
+
 	  * Code cleanup.
 
 2015-04-08 11:28  huebener
@@ -29911,22 +29911,22 @@
 	  src/frozen/intrpl_inc.F90, src/frozen/ssys_density.F90,
 	  src/frozen/ssys_external.F90, src/frozen/ssys_functional.F90:
 	  Frozen:
-	  
+
 	  * Code cleanup.
-	  
+
 	  * Propagation of changes.
 
 2015-04-08 14:57  jrfsousa
 
 	* [r13782] src/frozen/fio_density.F90: Frozen:
-	  
+
 	  * Fix wrong procedure name.
 
 2015-04-08 15:13  jrfsousa
 
 	* [r13783] src/frozen/fio_density.F90, src/frozen/fio_external.F90:
 	  Frozen:
-	  
+
 	  * Fix wrong subroutine name.
 
 2015-04-08 15:36  jrfsousa
@@ -29935,27 +29935,27 @@
 	  src/frozen/frozen_external.F90, src/frozen/live_hamiltonian.F90,
 	  src/frozen/ssys_external.F90, src/hamiltonian/epot.F90,
 	  src/system/output.F90, src/system/output_h_inc.F90: Frozen:
-	  
+
 	  * Remove base_external.
-	  
+
 	  * Propagate changes.
-	  
+
 	  System:
-	  
+
 	  output.F90 & output_h_inc.F90:
-	  
+
 	  * Changes references to base_external to ssys_external.
-	  
+
 	  Hamiltonian:
-	  
+
 	  epot.F90:
-	  
+
 	  * Changes references to base_external to ssys_external.
 
 2015-04-08 15:42  jrfsousa
 
 	* [r13785] src/frozen/fio_external.F90: Frozen:
-	  
+
 	  * Fix wrong procedure name.
 
 2015-04-08 16:01  jrfsousa
@@ -29964,11 +29964,11 @@
 	  src/frozen/fio_external.F90, src/frozen/frozen_hamiltonian.F90,
 	  src/frozen/frozen_ionic.F90, src/frozen/ssys_ionic.F90,
 	  src/frozen/tionic_term.F90: Frozen:
-	  
+
 	  * Remove base_ionic and frozen_ionic.
-	  
+
 	  * Propagate changes.
-	  
+
 
 2015-04-08 22:52  dstrubbe
 
@@ -30029,7 +30029,7 @@
 	* [r13813] src/hamiltonian/epot.F90,
 	  src/hamiltonian/ion_interaction.F90: * Defined an object for the
 	  ion-ion interaction.
-	  
+
 	  * The alpha parameter of the Ewald sum is now given by the
 	  EwaldAlpha
 	  variable.
@@ -30088,7 +30088,7 @@
 	  src/frozen/base_geom.F90, src/frozen/base_hamiltonian.F90,
 	  src/frozen/base_potential.F90, src/frozen/base_term.F90,
 	  src/frozen/iterator_code.F90: Frozen:
-	  
+
 	  * Code cleanup, add missing dependencies.
 
 2015-04-10 09:58  jjornet
@@ -30238,9 +30238,9 @@
 	  src/frozen/frozen_density.F90, src/frozen/frozen_external.F90,
 	  src/frozen/intrpl_inc.F90, src/frozen/simulation.F90,
 	  src/frozen/storage.F90: Frozen:
-	  
+
 	  * Add integration to storage.
-	  
+
 	  * Some code cleanup and propagation of changes.
 
 2015-04-20 14:53  jrfsousa
@@ -30250,7 +30250,7 @@
 	  src/frozen/base_handle.F90, src/frozen/base_model.F90,
 	  src/frozen/base_potential.F90, src/frozen/base_states.F90,
 	  src/frozen/base_system.F90, src/frozen/fio_density.F90: Frozen:
-	  
+
 	  * Code cleanup.
 
 2015-04-20 15:25  jrfsousa
@@ -30262,7 +30262,7 @@
 	  src/frozen/fio_model.F90, src/frozen/fio_simul_box.F90,
 	  src/frozen/fio_simulation.F90, src/frozen/fio_states.F90,
 	  src/frozen/fio_system.F90, src/frozen/frozen_handle.F90: Frozen:
-	  
+
 	  * Some heavy code cleanup
 
 2015-04-20 15:53  jrfsousa
@@ -30272,7 +30272,7 @@
 	  src/frozen/frozen_hamiltonian.F90, src/frozen/frozen_handle.F90,
 	  src/frozen/frozen_model.F90, src/frozen/frozen_states.F90,
 	  src/frozen/frozen_system.F90, src/frozen/ssys_handle.F90: Frozen:
-	  
+
 	  * Code cleanup.
 
 2015-04-20 16:16  micael
@@ -30297,7 +30297,7 @@
 
 	* [r13855] src/frozen/base_hamiltonian.F90,
 	  src/frozen/base_handle.F90: Frozen:
-	  
+
 	  * Revert changes to base_hamiltonian.F90 due to compilation
 	  timeout on pathscale.
 
@@ -30305,7 +30305,7 @@
 
 	* [r13856] src/frozen/fio_handle.F90, src/frozen/frozen_handle.F90:
 	  Frozen:
-	  
+
 	  * Addressing compilation timeouts on pathscale.
 
 2015-04-21 16:08  xavier
@@ -30321,14 +30321,14 @@
 
 	* [r13858] src/system/exponential.F90,
 	  src/td/propagator_etrs_inc.F90: 50% reduction in time for etrs:
-	  
+
 	  * The exponential_apply_batch function now can take a second set
 	  of
 	  states where to apply the exponential of the Hamiltonian with a
 	  different dt. Since the change of dt only modifies the taylor
 	  coefficients, the second application of the exponential is almost
 	  free.
-	  
+
 	  * This version is now used in the etrs propagator, that requires
 	  a
 	  propagation of dt/2 and dt at the same time. The Hamiltonian
@@ -30345,7 +30345,7 @@
 	* [r13860] src/frozen/Makefile.am, src/frozen/fio_model.F90,
 	  src/frozen/live_config.F90, src/frozen/live_hamiltonian.F90,
 	  src/frozen/live_handle.F90, src/frozen/ssys_handle.F90: Frozen:
-	  
+
 	  * Code cleanup.
 
 2015-04-22 10:18  micael
@@ -30371,7 +30371,7 @@
 	  src/frozen/ssys_model.F90, src/frozen/ssys_states.F90,
 	  src/frozen/ssys_system.F90, src/frozen/ssys_tnadd.F90,
 	  src/frozen/storage.F90: Frozen:
-	  
+
 	  * Code cleanup.
 
 2015-04-22 12:20  micael
@@ -30414,7 +30414,7 @@
 	  src/frozen/thash_inc.F90, src/frozen/tlist.F90,
 	  src/frozen/tlist_inc.F90, src/frozen/tsingle.F90,
 	  src/frozen/tsingle_inc.F90: Frozen:
-	  
+
 	  * Code cleanup.
 
 2015-04-23 14:53  mjv500
@@ -30434,7 +30434,7 @@
 	  testsuite/periodic_systems/12-boron_nitride.test: Changed the
 	  value of the default for EwaldAlpha, this makes the
 	  ion-ion interaction calculation much faster.
-	  
+
 	  It changes the results of the ion-ion energy for systems periodic
 	  in
 	  2D, however those values seem to be wrong in any case since they
@@ -30452,7 +30452,7 @@
 	  src/td/td.F90: Moved the vksinterp object and related routines to
 	  their own module,
 	  renaming them to potential_interpolation.
-	  
+
 	  Note: I am not sure why this is called interpolation, I think
 	  what we
 	  are using this for are extrapolations.
@@ -30520,7 +30520,7 @@
 	* [r13879] src/td/propagator_rk.F90: * Only the specific sparskit
 	  calls are avoided when sparskit is not
 	  present.
-	  
+
 	  * Compilation fixes.
 
 2015-04-27 14:18  xavier
@@ -30591,23 +30591,23 @@
 	  src/frozen/interface_xc.F90, src/frozen/intrpl.F90,
 	  src/frozen/intrpl_inc.F90, src/frozen/ssys_external.F90,
 	  src/frozen/ssys_hamiltonian.F90, src/frozen/storage.F90: Frozen:
-	  
+
 	  * Code cleanup.
 
 2015-04-30 14:50  jrfsousa
 
 	* [r13891] src/states/density.F90: States:
-	  
+
 	  density.F90
-	  
+
 	  * Simplify frozen dependencies.
 
 2015-04-30 15:18  jrfsousa
 
 	* [r13892] src/hamiltonian/hamiltonian.F90: Hamiltonian:
-	  
+
 	  Hamiltonian.F90
-	  
+
 	  * Add pointer to the Subsystem's Hamiltonian.
 
 2015-04-30 15:39  umberto
@@ -30620,18 +30620,18 @@
 
 	* [r13894] src/system/output.F90, src/system/output_states_inc.F90:
 	  System:
-	  
+
 	  output.F90
 	  output_states_inc.F90
-	  
+
 	  * Simplify frozen dependencies.
 
 2015-04-30 17:14  jrfsousa
 
 	* [r13895] src/hamiltonian/hamiltonian.F90: Hamiltonian:
-	  
+
 	  Hamiltonian.F90
-	  
+
 	  * Try to reinstate compilation on pathscale.
 
 2015-04-30 21:39  xavier
@@ -30659,41 +30659,41 @@
 2015-05-04 09:51  jrfsousa
 
 	* [r13900] src/hamiltonian/hamiltonian.F90: Hamiltonian:
-	  
+
 	  hamiltonian.F90
-	  
+
 	  * Work around pathscale slow compilation problems.
 
 2015-05-04 15:01  jrfsousa
 
 	* [r13901] src/frozen/ssys_external.F90: Frozen:
-	  
+
 	  * Alter the way the subsystem's energy is calculated.
-	  
+
 	  * Revert the removal of getter procedures.
 
 2015-05-04 15:05  jrfsousa
 
 	* [r13902] src/hamiltonian/hamiltonian.F90,
 	  src/hamiltonian/hamiltonian_inc.F90: Hamiltonian:
-	  
+
 	  hamiltonian.F90
-	  
+
 	  * Add reference to subsystem external module.
-	  
+
 	  hamiltonian_inc.F90
-	  
+
 	  * Restrict the calculation in the X(hamiltonian_external)
 	  procedure to the live part of the potential.
 
 2015-05-04 15:13  jrfsousa
 
 	* [r13903] src/hamiltonian/epot.F90: Hamiltonian:
-	  
+
 	  epot.F90
-	  
+
 	  * Remove unnecessary module reference.
-	  
+
 	  * Correct procedure call.
 
 2015-05-05 02:15  xavier
@@ -30721,35 +30721,35 @@
 2015-05-05 09:25  jrfsousa
 
 	* [r13909] src/frozen/ssys_ionic.F90: Frozen:
-	  
+
 	  * Code cleanup.
-	  
+
 	  * Add getter procedures.
 
 2015-05-05 09:46  jrfsousa
 
 	* [r13910] src/hamiltonian/ion_interaction.F90: Hamiltonian:
-	  
+
 	  ion_interaction.F90
-	  
+
 	  * Add references to subsystem's ionic term.
 
 2015-05-05 10:02  jrfsousa
 
 	* [r13911] src/system/v_ks.F90: System:
-	  
+
 	  v_ks.F90
-	  
+
 	  * Add references to subsystem.
-	  
+
 	  * Add subsystem's kinetic non aditional term calculation.
 
 2015-05-05 10:21  jrfsousa
 
 	* [r13912] src/hamiltonian/hamiltonian.F90: Hamiltonian:
-	  
+
 	  hamiltonian.F90
-	  
+
 	  * Add the subsystem's kinetic non aditional term to the
 	  hamiltonian.
 
@@ -30757,86 +30757,86 @@
 
 	* [r13913] src/system/output.F90, src/system/output_h_inc.F90:
 	  System:
-	  
+
 	  output_h_inc.F90
-	  
+
 	  * Output subsystem's kinetic non aditional term.
 
 2015-05-05 11:16  jrfsousa
 
 	* [r13914] src/system/energy_calc.F90: System:
-	  
+
 	  energy_calc.F90
-	  
+
 	  * Add subsystem's external and non additive kinetic energy terms.
 
 2015-05-05 12:31  jrfsousa
 
 	* [r13915] src/system/system.F90: System:
-	  
+
 	  system.F90
-	  
+
 	  * Add pointer to subsystem model.
 
 2015-05-05 12:56  jrfsousa
 
 	* [r13916] src/scf/lcao.F90: Scf:
-	  
+
 	  lcao.F90
-	  
+
 	  * Alter the way the way the subsystems densities are added.
 
 2015-05-05 13:19  jrfsousa
 
 	* [r13917] src/main/run.F90: Main:
-	  
+
 	  run.F90
-	  
+
 	  * Add references to configuration and the handle to the
 	  subsystems.
 
 2015-05-05 13:40  jrfsousa
 
 	* [r13918] src/hamiltonian/ion_interaction.F90: Hamiltonian:
-	  
+
 	  ion_interaction.F90
-	  
+
 	  * Add subroutine to set the pointer to the subsystem's ionic
 	  term.
-	  
+
 	  * Add the energy and forces due to the subsytems ions.
 
 2015-05-05 13:57  jrfsousa
 
 	* [r13919] src/main/run.F90: Main:
-	  
+
 	  run.F90
-	  
+
 	  * Temporary fix to testsuite problem.
 
 2015-05-05 14:20  jrfsousa
 
 	* [r13920] src/frozen/base_density.F90: Frozen:
-	  
+
 	  * Add an extra check.
 
 2015-05-05 14:21  jrfsousa
 
 	* [r13921] src/hamiltonian/epot.F90: Hamiltonian:
-	  
+
 	  epot.F90
-	  
+
 	  * Add code to handle subsystem's ionic term.
 
 2015-05-05 15:14  jrfsousa
 
 	* [r13922] src/hamiltonian/hamiltonian.F90: Hamiltonian:
-	  
+
 	  hamiltonian.F90
-	  
+
 	  * Add an optional argument to hamiltonian_init to pass the
 	  subsystem's hamiltonian.
-	  
+
 	  * Add to code to set the internal pointer to the subsystem's
 	  hamiltonian.
 
@@ -30921,9 +30921,9 @@
 2015-05-07 10:20  jrfsousa
 
 	* [r13937] src/states/states.F90: States:
-	  
+
 	  states.F90
-	  
+
 	  * Adds check to fix subsystems density deallocation.
 
 2015-05-07 14:50  micael
@@ -30935,7 +30935,7 @@
 	* [r13939] src/states/states_io.F90: Octopus now prints the density
 	  of states to the terminal each SCF
 	  iteration. These are some examples:
-	  
+
 	  ---------------------------------------------%------------------------
 	  ----%------------------------------------%-%-%----%-------------------
 	  ----%------------------------------------%-%-%----%-------------------
@@ -30947,9 +30947,9 @@
 	  %%%%%--------------%%%%--%%--%%%-%%%%%%%%%%%%%%%%%%%----------%%%%%%%-
 	  %%%%%%-------------%%%%--%%%%%%%-%%%%%%%%%%%%%%%%%%%----------%%%%%%%-
 	  ^
-	  
-	  
-	  
+
+
+
 	  -----------------------------------------------%----------------------
 	  -----------------------------------------------%----------------------
 	  ----------------------------------------------%%----------------------
@@ -30961,55 +30961,55 @@
 	  ---------------%-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%-%-%----------------
 	  --------------%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%-%%-%-%-----------
 	  ^
-	  
+
 
 2015-05-08 09:13  jrfsousa
 
 	* [r13940] src/system/system.F90: System:
-	  
+
 	  system.F90
-	  
+
 	  * Add references to subsystems and json modules.
-	  
+
 	  * Add optional arguments to system_init to pass the subsystem's
 	  handle and the subsystem's configuration.
-	  
+
 	  * Add pointers to subsystems states and system.
 
 2015-05-08 09:34  jrfsousa
 
 	* [r13941] src/main/run.F90: Main:
-	  
+
 	  run.F90
-	  
+
 	  * Add references to the necessary subsystems modules.
-	  
+
 	  * Add pointers to subsystem's model and hamiltonian.
 
 2015-05-08 09:55  jrfsousa
 
 	* [r13942] src/system/system.F90: System:
-	  
+
 	  system.F90
-	  
+
 	  * Change intents.
-	  
+
 	  * Add code to initialize and configure subsystems.
 
 2015-05-08 10:06  jrfsousa
 
 	* [r13943] src/main/run.F90: Main:
-	  
+
 	  run.F90
-	  
+
 	  * Add code to handle the subsystems.
 
 2015-05-08 10:15  jrfsousa
 
 	* [r13944] src/states/states.F90: States:
-	  
+
 	  states.F90
-	  
+
 	  * Add a few ASSERTs.
 
 2015-05-08 12:33  micael
@@ -31020,7 +31020,7 @@
 2015-05-08 14:16  jrfsousa
 
 	* [r13948] src/frozen/base_geom.F90: Frozen:
-	  
+
 	  * Add missing check.
 
 2015-05-08 21:03  dstrubbe
@@ -31032,16 +31032,16 @@
 2015-05-09 09:54  jrfsousa
 
 	* [r13950] src/system/system.F90: System:
-	  
+
 	  system.F90
-	  
+
 	  * Changing intents back to inout, pathscale does not like intent
 	  out.
 
 2015-05-10 09:44  jrfsousa
 
 	* [r13951] src/frozen/base_geom.F90: Frozen:
-	  
+
 	  * Fixing inconsistencies.
 
 2015-05-10 13:06  xavier
@@ -31404,7 +31404,7 @@
 	  testsuite/real_time/18-hhg.01-gs.inp,
 	  testsuite/real_time/18-hhg.02-td.inp: * The pseudopotential
 	  filters is now applied by default.
-	  
+
 	  * Disabled the pseudo potential filter in all tests that do not
 	  set it
 	  explicitly.
@@ -31739,7 +31739,7 @@
 	  compiler (perhaps in optimization) to be honest, since it is the
 	  loop variable 'it' that is at fault. Anyway, this reordering
 	  seems more natural to me anyway.
-	  
+
 	  {{{
 	  Using input file :
 	  ../../testsuite/real_time/12-absorption.04-spectrum.inp
@@ -32210,7 +32210,7 @@
 	  calculations. It also still works for complex scaling. (The
 	  corresponding modification to GR-Pulay seems to prevent
 	  convergence though.)
-	  
+
 	  {{{
 	  testsuite/linear_response/02-h2o_pol_lr.03_h2o_dyn_pol_cmplx.inp
 	  (from scratch)
@@ -32228,7 +32228,7 @@
 	  z -0.2 13 16 2280 2772
 	  ==============================================================
 	  SUM for > 0 62 78 7924 9512
-	  
+
 	  testsuite/periodic_systems/06-h2o_pol_lr.03_emresp.inp
 	  #label conj iters trans iters conj H apps trans H apps
 	  x 0.0 12 12 1612 1612
@@ -32243,7 +32243,7 @@
 	  y -0.2 12 14 4040 4736
 	  z -0.2 11 14 4876 6272
 	  ==============================================================
-	  
+
 	  testsuite/periodic_systems/04-silicon.03_emresp.inp
 	  #label conj iters trans iters conj H apps trans H apps
 	  x 0.0 15 15 13772 13772
@@ -32893,7 +32893,7 @@
 	  many calculation the velocity maps preserve parity in momentum
 	  space. I have now added a test to prevent similar errors in the
 	  future.
-	  
+
 
 2015-06-03 12:32  umberto
 
@@ -33780,7 +33780,7 @@
 	  undone other changes accidentally;
 	  * This is a huge commit and requires a much longer description of
 	  what you did than what was provided.
-	  
+
 	  Please try again, after consulting the first section of
 	  http://www.tddft.org/programs/octopus/wiki/index.php/Developers:Coding_standards
 	  again:
@@ -33798,7 +33798,7 @@
 	  changed or added and why.
 	  * Make sure your SAFE_ALLOCATE lines are not too long; this is at
 	  least one reason why the slaves are not compiling.
-	  
+
 	  Then it will be easiest for all of us (including you) to
 	  understand your changes and make sure they are correct. Let me
 	  know if you have questions or need help.
@@ -34364,9 +34364,9 @@
 	  The atomic density is obtained from the density spline instead of
 	  the
 	  orbitals.
-	  
+
 	  * The density splines are now filtered.
-	  
+
 	  * Corrected the calculation of the density splines for UPF
 	  pseudos.
 
@@ -34379,7 +34379,7 @@
 	  the cavity geometry from an external file is also available.
 	  * The variable 'SmearingFactor' has been renamed to
 	  'PcmSmearingFactor'.
-	  
+
 	  - 'basic/global.F90':
 	  * 'PCM_DIR' has been defined.
 
@@ -34466,7 +34466,7 @@
 	  src/species/ps.F90: * Implementation of all terms in the
 	  derivative of the Hirshfeld volumes
 	  with respect to the coordinates.
-	  
+
 	  * Removed some obsoleted code.
 
 2015-07-17 00:16  xavier
@@ -34482,7 +34482,7 @@
 	  src/hamiltonian/vdw_ts_low.c: * Changed the name of the fortran
 	  interface of the vdW code to avoid
 	  problems with compilers that do not decorate Fortran objects.
-	  
+
 	  * Added an explicit interface.
 
 2015-07-20 15:21  adelgado
@@ -34730,7 +34730,7 @@
 	  Some new pseudopotentials coming from QBox: HSCV. These come in
 	  two flavors: lda and pbe, so two sets are available, hscv_lda and
 	  hscv_pbe, that cover most of the periodic table.
-	  
+
 	  * Now a pseudopotential set file does not need to specify the
 	  atomic
 	  number, it is determined automatically from the species name.
@@ -34739,9 +34739,9 @@
 
 	* [r14455] src/species/species.F90: Some fixes in the documentation
 	  for PseudopotentialSet:
-	  
+
 	  * Updated the reference for sg15 and improved the description.
-	  
+
 	  * The hscv sets are marked as experimental.
 
 2015-07-24 00:05  xavier
@@ -34780,7 +34780,7 @@
 	  come back from pfft calls are 0-based instead of 1-based in the
 	  rest of the
 	  code.
-	  
+
 	  Now all the copied definitions in fftw.F90 and pfft.F90 are
 	  deleted
 	  and included from the include files of the libraries.
@@ -34844,11 +34844,11 @@
 	  src/common-rules.make, src/math/fft.F90, src/math/fftw.F90:
 	  Modified the autoconf macro for determining the include path
 	  and libraries for the fftw and fftw-mpi usage.
-	  
+
 	  Now you have three possibilities to give the fftw libraries to
 	  the
 	  --with-fft-lib configure option:
-	  
+
 	  1. ".../../...libfftw3.a .../libfftw3-mpi.a ..." (static linking)
 	  2. "-Lpath/to/lib -lfftw3-mpi -lfftw3 ..." (dynamic linking)
 	  3. "/prefix/path/to/lib" (give only the prefix, lib and include
@@ -34927,7 +34927,7 @@
 	* [r14480] src/math/pfft.F90: * Fixed the compilation of pfft by
 	  declaring as public all the required
 	  objects.
-	  
+
 	  * Removed initial & from continuation lines and fixed
 	  indentation.
 
@@ -34942,7 +34942,7 @@
 	  trying to link with two different versions of fftw. The mpi
 	  version of
 	  fftw must be given through --with-fftw-prefix.
-	  
+
 	  * Moved all the fft libraries together in configure.ac.
 
 2015-07-30 09:33  dannert
@@ -34950,7 +34950,7 @@
 	* [r14485] m4/fftw.m4: Run the autoconf test for the distributed
 	  FFTW
 	  only if MPI is enabled and found.
-	  
+
 	  Define CFLAGS_FFTW which are needed for the nfft checks.
 
 2015-07-30 10:29  dannert
@@ -34958,7 +34958,7 @@
 	* [r14486] src/math/fftw.F90, src/math/pfft.F90,
 	  src/math/pnfft.F90: Repaired the *_params_m modules for the FFT
 	  libraries.
-	  
+
 	  The idea of having these modules separate with public
 	  accessibility is that
 	  all symbols from the libraries can be used. This is especially
@@ -34968,7 +34968,7 @@
 	  If one restricts the access to the symbols of the include files,
 	  one has to pass all needed references explicitly,
 	  and this without knowing for example what pfft needs from fftw.
-	  
+
 	  The only thing, one have to be aware is that no more than one
 	  *_params_m module can be USEd in other modules, otherwise symbols
 	  are included twice (leading to errors).
@@ -35000,7 +35000,7 @@
 	  testsuite/functionals/08-vdw_ts.test: * The VDWCorrection is now
 	  applied self-consistently by default, this
 	  can be disabled through the variable VDWSelfConsistent.
-	  
+
 	  * Updated the corresponding test and corrected the label for some
 	  matches.
 
@@ -35209,7 +35209,7 @@
 2015-09-05 10:50  philipp
 
 	* [r14525] src/td/pes.F90, src/td/pes_rc.F90: Adding Volkov phase.
-	  
+
 	  Conflicts:
 	  src/td/pes_rc.F90
 
@@ -35227,7 +35227,7 @@
 	  src/basic/io_binary_f_inc.F90, src/states/restart.F90,
 	  src/states/restart_inc.F90, src/td/pes_rc.F90: Adding option to
 	  calculate spectrum during time propagation.
-	  
+
 	  Conflicts:
 	  src/td/pes_rc.F90
 
@@ -35250,7 +35250,7 @@
 	* [r14532] src/td/pes.F90, src/td/pes_rc.F90, src/td/td.F90: *
 	  Partly reverting r14468.
 	  * Renaming variables for clarification purposes.
-	  
+
 	  Conflicts:
 	  src/td/pes_rc.F90
 
@@ -35403,10 +35403,10 @@
 	  testsuite/finite_systems_3d/21-lobpcg.02-spinors.inp: *
 	  State-parallelization of the ground state is now declared
 	  experimental.
-	  
+
 	  * The scalapack orthogonalization is only used when scalapack is
 	  available.
-	  
+
 	  * The cholesky serial test can now run in parallel.
 
 2015-09-09 00:15  xavier
@@ -35581,43 +35581,43 @@
 	  src/frozen/interface_xc.F90, src/frozen/intrpl.F90,
 	  src/frozen/simulation.F90, src/frozen/storage.F90,
 	  src/frozen/strng.F90: Frozen:
-	  
+
 	  base_model.F90:
-	  
+
 	  * Code cleanup.
-	  
+
 	  * Reflection of changes.
-	  
+
 	  basis.F90, functional.F90, interface_xc.F9, intrpl.F90:
-	  
+
 	  * Code cleanup.
-	  
+
 	  domain.F90:
-	  
+
 	  * Major rewrite.
-	  
+
 	  simulation.F90:
-	  
+
 	  * Code simplification and cleanup.
-	  
+
 	  storage.F90:
-	  
+
 	  * Code cleanup.
-	  
+
 	  * Add multiplication by a real procedure (storage_mlt).
-	  
+
 	  strng.F90:
-	  
+
 	  * Code clenaup.
-	  
+
 	  * Add type (de)allocation procedures (strng_del, srng_new).
 
 2015-09-21 10:17  jrfsousa
 
 	* [r14580] src/frozen/Makefile.am: Frozen:
-	  
+
 	  Makefile.am:
-	  
+
 	  * Add missing dependency.
 
 2015-09-21 11:43  philipp
@@ -35650,19 +35650,19 @@
 	  src/frozen/frozen_model.F90, src/frozen/frozen_states.F90,
 	  src/frozen/frozen_system.F90, src/frozen/intrpl_inc.F90,
 	  src/frozen/template.h: Frozen:
-	  
+
 	  base_*.F90, frozen_*.F90:
-	  
+
 	  * Reflect changes.
-	  
+
 	  * Some code cleanup.
-	  
+
 	  fio_*.F90, intrpl_inc.F90:
-	  
+
 	  * Code cleanup.
-	  
+
 	  template.h:
-	  
+
 	  * Extend EXTERNAL macro.
 
 2015-09-21 12:25  philipp
@@ -35682,9 +35682,9 @@
 	  src/frozen/frozen_hamiltonian.F90, src/frozen/frozen_handle.F90,
 	  src/frozen/frozen_model.F90, src/frozen/frozen_states.F90,
 	  src/frozen/frozen_system.F90: Frozen:
-	  
+
 	  frozen_*.F90:
-	  
+
 	  * Code cleanup.
 
 2015-09-21 13:17  philipp
@@ -35698,9 +35698,9 @@
 	* [r14589] src/frozen/Makefile.am, src/frozen/live_config.F90,
 	  src/frozen/live_hamiltonian.F90, src/frozen/live_handle.F90:
 	  Frozen:
-	  
+
 	  live_*.F90:
-	  
+
 	  * Code cleanup.
 
 2015-09-21 13:35  philipp
@@ -35804,7 +35804,7 @@
 	  the requested format (true for all formats at the moment),
 	  individual
 	  files for each direction are created.
-	  
+
 	  * This new function is used to output the current.
 
 2015-09-28 21:16  xavier
@@ -35921,7 +35921,7 @@
 	  testsuite/periodic_systems/11-silicon_force.test: * The maximum
 	  radius for periodicity is calculated from the atomic
 	  density instead of the orbitals.
-	  
+
 	  * One test needs to be updated.
 
 2015-10-03 21:22  xavier
@@ -35970,4 +35970,3 @@
 
 	* [r14634] src/hamiltonian/hamiltonian_base_inc.F90: Fixed OpenCL
 	  compilation.
-

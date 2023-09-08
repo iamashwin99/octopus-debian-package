@@ -1,8 +1,145 @@
-Octopus is a scientific program aimed at the ab initio virtual experimentation on a hopefully ever-increasing range of system types. 
-Electrons are described quantum-mechanically within density-functional theory (DFT), in its time-dependent form (TDDFT) when doing simulations in time. 
-Nuclei are described classically as point particles. Electron-nucleus interaction is described within the pseudopotential approximation.
+# Octopus
 
-For optimal execution performance Octopus is parallelized using MPI and OpenMP and can scale to tens of thousands of processors. 
-It also has support for graphical processing units (GPUs) through OpenCL and CUDA.
+Octopus is a scientific program allowing to describe non-equilibrium phenomena
+in molecular complexes, low dimensional materials, and extended systems. In
+usual applications, electrons are described quantum-mechanically within
+density-functional theory (DFT), or in its time-dependent form (TDDFT) when
+doing simulations in time, using a real-space grid, while nuclei are described
+classically as point particles. Electromagnetic fields can be treated either
+classically or quantum mechanically within a generalized time-dependent density
+functional theory.
 
-Octopus is free software, released under the GPL license, so you are free to download it, use it and modify it.
+For optimal execution performance Octopus is parallelized using MPI and OpenMP
+and can scale to tens of thousands of processors.  It also has support for
+graphical processing units (GPUs) through CUDA and OpenCL.
+
+<!-- TOC -->
+
+- [Octopus](#Octopus)
+  - [How to get Octopus](#how-to-get-octopus)
+    - [Build from tarball archive](#build-from-tarball-archive)
+    - [Build from git repository](#build-from-git-repository)
+  - [Running Octopus](#running-octopus)
+  - [Contributing](#contributing)
+  - [Supported integrations](#supported-integrations)
+  - [License](#license)
+  - [How to cite Octopus](#how-to-cite-octopus)
+
+<!-- TOC -->
+
+## How to get Octopus
+
+Octopus can either be built from source or installed using some packaging
+format. Building from source can be done either from [tarball
+archives](#build-from-tarball-archive) or directly from the [git
+repository](#build-from-git-repository). For the latest releases, supported
+packaging formats that we are aware of include [Spack](https://spack.io/) and
+[MacPorts](https://ports.macports.org/port/octopus/).
+
+In the case of running Octopus in an HPC environment where performance is
+critical, we recommended using an installation of the code managed by the HPC
+administrators. In case a different version is needed than the one available, we
+recommend getting in touch with the HPC administrators.
+
+### Build from tarball archive
+
+Octopus ships versioned tarball archives that can be downloaded from the
+[official website](https://Octopus-code.org/documentation/main/releases/). These
+have been processed wiht the autotools that you can configure-build-install
+Octopus simply using:
+
+```console
+$ ./configure
+$ make
+$ make install
+```
+
+For more configuration details see [installation page](https://Octopus-code.org/documentation/main/manual/install/).
+
+### Build from git repository
+
+To build Octopus directly from the git repository, you first need to generate the build files using the autotools
+
+```console
+$ autoreconf --install
+```
+
+After that, continue with the instructions in [build from tarball archive](#build-from-tarball-archive).
+
+## Running Octopus
+
+The main interface of Octopus are the `inp` files. Such a file needs to be
+present in the work directory for Octopus to run, after which simply run
+`octopus`:
+
+```console
+$ cat inp
+CalculationMode = gs
+PeriodicDimensions = 3
+a = 10.2
+BoxShape = parallelepiped
+%LatticeParameters
+  a | a | a
+%
+%LatticeVectors
+ 0.  | 0.5 | 0.5
+ 0.5 | 0.  | 0.5
+ 0.5 | 0.5 | 0.0
+%
+%ReducedCoordinates
+ "Si" |   0.0    | 0.0     | 0.0
+ "Si" |   1/4    | 1/4     | 1/4
+%
+Spacing = 0.5
+%KPointsGrid
+ 4 | 4 | 4
+%
+$ Octopus
+```
+-[ ] TODO(Alex/Martin) Issue 715. Automatically add this input example to the test suite.
+
+## Test Suite
+
+Octopus is packaged with its own application test framework and test suite. For details on how to run the tests
+following successful installation, please consult `testsuite/README`.
+
+## Contributing
+
+This project is primarily developed on gitlab.com, at [Octopus-code/Octopus](https://gitlab.com/Octopus-code/Octopus).
+Issues and merge requests are welcome. See [Contributing.md](Contributing.md) for general guidelines for contributions
+and [Development.md](Development.md) for recommendations on how to setup your development environment.
+
+## Supported integrations
+
+- MPI and OpenMP
+- GPU computation via OpenCL and CUDA
+- [Postopus](https://gitlab.com/Octopus-code/postopus)
+
+## License
+
+Octopus is free software, released under the GPL license version 2 or higher. You are free to download it and use it.
+You can freely modify it granted you follow the license terms and respect the attributions.
+
+Octopus includes bundled code with different compatible license. Please see [`COPYING`](COPYING) for more details.
+
+## How to cite Octopus
+
+Octopus is a free program, so you have the right to use, change, distribute, and
+to publish papers with it without citing anyone (for as long as you follow the
+GPL license). However, its considered a good scientific practice to cite one or
+more paper concerning Octopus in an article that uses it. We recommend citing at
+least the latest paper describing the code:
+
+N. Tancogne-Dejean, M. J. T. Oliveira, X. Andrade, H. Appel, C. H. Borca, G. Le
+Breton, F. Buchholz, A. Castro, S. Corni, A. A. Correa, U. De Giovannini,
+A. Delgado, F. G. Eich, J. Flick, G. Gil, A. Gomez, N. Helbig, H. Hübener,
+R. Jestädt, J. Jornet-Somoza, A. H. Larsen, I. V. Lebedeva, M. Lüders,
+M. A. L. Marques, S. T. Ohlmann, S. Pipolo, M. Rampp, C. A. Rozzi,
+D. A. Strubbe, S. A. Sato, C. Schäfer, I. Theophilou, A. Welden, A. Rubio,
+_"Octopus, a computational framework for exploring light-driven phenomena and
+quantum dynamics in extended and finite systems"_, [The Journal of Chemical
+Physics](https://doi.org/10.1063/1.5142502) **152** 124119 (2020).
+
+One can find a more complete list of papers describing Octopus and some of its
+features on the [official
+website](https://octopus-code.org/documentation/main/citing_octopus/).

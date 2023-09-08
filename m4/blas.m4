@@ -26,7 +26,7 @@ case $with_blas in
   *) LIBS_BLAS="-l$with_blas" ;;
 esac
 
-dnl Backup LIBS 
+dnl Backup LIBS
 acx_blas_save_LIBS="$LIBS"
 LIBS="$LIBS_BLAS $LIBS $FLIBS"
 
@@ -50,7 +50,7 @@ fi
 
 dnl generic BLAS, in default location such as /usr/lib, as given by Ubuntu libblas-dev package
 if test $acx_blas_ok = no; then
-   AC_CHECK_LIB(blas, $sgemm, [acx_blas_ok=yes; LIBS_BLAS="-lblas"], 
+   AC_CHECK_LIB(blas, $sgemm, [acx_blas_ok=yes; LIBS_BLAS="-lblas"],
    [], [])
 fi
 
@@ -67,7 +67,7 @@ fi
 
 dnl atlas BLAS from debian
 if test $acx_blas_ok = no; then
-   AC_CHECK_LIB(atlas, $sgemm, [acx_blas_ok=yes; LIBS_BLAS="-L/usr/lib/atlas/ -lblas -latlas"], 
+   AC_CHECK_LIB(atlas, $sgemm, [acx_blas_ok=yes; LIBS_BLAS="-L/usr/lib/atlas/ -lblas -latlas"],
    [], [-L/usr/lib/atlas/ -lblas])
 fi
 
@@ -79,7 +79,7 @@ fi
 
 dnl BLAS in mkl_def
 if test $acx_blas_ok = no; then
-  AC_CHECK_LIB(mkl_def, $sgemm, [acx_blas_ok=yes; LIBS_BLAS="$LIBS_BLAS -lmkl_def -lguide -lpthread"], 
+  AC_CHECK_LIB(mkl_def, $sgemm, [acx_blas_ok=yes; LIBS_BLAS="$LIBS_BLAS -lmkl_def -lguide -lpthread"],
     [], [-lguide -lpthread])
 fi
 
@@ -98,7 +98,7 @@ dnl BLAS in Sun Performance library?
 if test $acx_blas_ok = no; then
   if test "x$GCC" != xyes; then # only works with Sun CC
     AC_CHECK_LIB(sunmath, acosp,
-     [AC_CHECK_LIB(sunperf, $sgemm, 
+     [AC_CHECK_LIB(sunperf, $sgemm,
        [LIBS_BLAS="$LIBS_BLAS -xlic_lib=sunperf -lsunmath" acx_blas_ok=yes],[],[-lsunmath])])
   fi
 fi

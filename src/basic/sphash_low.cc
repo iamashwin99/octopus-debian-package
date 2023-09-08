@@ -20,50 +20,50 @@
 
 #include <config.h>
 
-#include <unordered_map>
-#include <string>
 #include <cassert>
+#include <string>
+#include <unordered_map>
 
+typedef std::unordered_map<std::string, void *> map_type;
 
-typedef std::unordered_map<std::string, void*> map_type;
+extern "C" void sphash_map_init(map_type **map) { *map = new map_type; }
 
+extern "C" void sphash_map_end(map_type **map) { delete *map; }
 
-extern "C" void sphash_map_init(map_type **map){
-  *map = new map_type;
-}
-
-extern "C" void sphash_map_end(map_type **map){
-  delete *map;
-}
-
-extern "C" void sphash_map_insert(map_type *map, const char* key,  void* ptr){
+extern "C" void sphash_map_insert(map_type *map, const char *key, void *ptr) {
   std::string my_key(key);
-  assert(map->count(my_key)==0);
+  assert(map->count(my_key) == 0);
   (*map)[my_key] = ptr;
 }
 
-extern "C" void sphash_map_lookup(const map_type *map, const char* key, int* found, void** ptr){
+extern "C" void sphash_map_lookup(const map_type *map, const char *key,
+                                  int *found, void **ptr) {
   std::string my_key(key);
   auto it = (map)->find(my_key);
 
-  if(it == (map)->end()){
+  if (it == (map)->end()) {
     *found = 0;
   } else {
     *found = 1;
     *ptr = it->second;
-  }  
+  }
 }
 
-extern "C" void sphash_iterator_low_start(map_type::const_iterator  *iterator, map_type::const_iterator  *end, const map_type *map){
+extern "C" void sphash_iterator_low_start(map_type::const_iterator *iterator,
+                                          map_type::const_iterator *end,
+                                          const map_type *map) {
   *iterator = map->begin();
-  *end      = map->end();
+  *end = map->end();
 }
 
-extern "C" void sphash_iterator_low_has_next(map_type::const_iterator  iterator, map_type::const_iterator  end, int* result){
+extern "C" void sphash_iterator_low_has_next(map_type::const_iterator iterator,
+                                             map_type::const_iterator end,
+                                             int *result) {
   *result = (iterator != end);
 }
 
-extern "C" void sphash_iterator_low_get(map_type::const_iterator *iterator, void** ptr){
-  *ptr = (*iterator)->second; 
+extern "C" void sphash_iterator_low_get(map_type::const_iterator *iterator,
+                                        void **ptr) {
+  *ptr = (*iterator)->second;
   (*iterator)++;
 }

@@ -7,26 +7,81 @@ Enabled    : Yes
 
 
 # Cosinoidal pulse polarized in z-direction passing through medium box read from file
-Processors : 2
 ExtraFile  : 09-drude-medium-from-file.01-gold-np-r80nm.off
 Input      : 09-drude-medium-from-file.01-gold-np.inp
 
 if(available cgal); then
-  Precision: 2.75e-04
-  match ;   Tot. Maxwell energy [step 10]   ; LINEFIELD(Maxwell/td.general/maxwell_energy, 16, 3) ; 10595843960.09415
-  Precision: 2.20e-04
-  match ;   Tot. Maxwell energy [step 30]   ; LINEFIELD(Maxwell/td.general/maxwell_energy, 36, 3) ; 20222128732.577797
-
-  Precision: 1.62e-18
-  match ;   Ey  (x=  -60 nm,y=  0,z= 0) [step 30]   ; LINEFIELD(Maxwell/output_iter/td.0000030/e_field-y\.y=0\,z=0, 40, 2) ; 1.275208633183035e-10
-  Precision: 5.53e-17
-  match ;   Ez  (x=  80 nm, y=  0,z=  0) [step 30]   ; LINEFIELD(Maxwell/output_iter/td.0000030/e_field-z\.y=0\,z=0, 47, 2) ; 0.02080771059366105
-  Precision: 3.42e-16
-  match ;   Jz  (x=  -160 nm,y=  0,z= 0) [step 10]   ; LINEFIELD(NP/td.general/current_at_points.dat, 17, 5) ; 0.00683993934512856
-  Precision: 6.60e-20
-  match ;   Jy  (x=  -80 nm,y=  0,z= 0)  [step 20]   ; LINEFIELD(NP/td.general/current_at_points.dat, 27, 7) ; 4.0672119545047544e-15
-  Precision: 2.50e-18
-  match ;   Jz  (x=  -80 nm,y=  0,z= 0)  [step 20]   ; LINEFIELD(NP/td.general/current_at_points.dat, 27, 8) ; 0.0005008316917989565
+Precision: 5e-04
+match ;    Tot. Maxwell energy [step 10]    ; LINEFIELD(Maxwell/td.general/maxwell_energy, 16, 3) ; 10593412152.70078
+Precision: 5e-04
+match ;    Tot. Maxwell energy [step 30]    ; LINEFIELD(Maxwell/td.general/maxwell_energy, 36, 3) ; 20211562835.481712
+Precision: 8.93e-17
+match ;    Ey  (x=  -60 nm,y=  0,z= 0) [step 30]    ; LINEFIELD(Maxwell/output_iter/td.0000030/e_field-y\.y=0\,z=0, 40, 2) ; 1.8959445473483602e-10
+Precision: 1.68e-15
+match ;    Ez  (x=  80 nm, y=  0,z=  0) [step 30]    ; LINEFIELD(Maxwell/output_iter/td.0000030/e_field-z\.y=0\,z=0, 47, 2) ; 0.0336841807177419
+Precision: 4.77e-15
+match ;     Jz  total (x=  -120 nm,y=  0,z= 0) [step 20]   ; LINEFIELD(Maxwell/output_iter/td.0000020/total_current_mxll-z\.y=0\,z=0, 37, 2) ; 0.0009546149811595001
+Precision: 3.77e-17
+match ;     Jz  total (x=  -60 nm,y=  0,z= 0) [step 30]   ; LINEFIELD(Maxwell/output_iter/td.0000030/total_current_mxll-z\.y=0\,z=0, 40, 2) ; 0.000753132424708384
+Precision: 5.61e-17
+match ;     Jz  (x=  -160 nm,y=  0,z= 0) [step 10]     ; LINEFIELD(NP/td.general/current_at_points, 17, 5) ; 0.005613897728394531
+Precision: 1.37e-19
+match ;     Jy  (x=  -80 nm,y=  0,z= 0)  [step 20]     ; LINEFIELD(NP/td.general/current_at_points, 27, 7) ; 5.968679499882083e-15
+Precision: 6.58e-18
+match ;     Jz  (x=  -80 nm,y=  0,z= 0)  [step 20]     ; LINEFIELD(NP/td.general/current_at_points, 27, 8) ; 0.0006576588826932637
 else
-  match ; Error cgal_not_linked        ; GREPCOUNT(err, 'CGAL'); 1
+  match ; Error cgal_not_linked        ; GREPCOUNT(err, 'CGAL'); 1.0
+endif
+
+
+# Test restarting for Drude medium + Maxwell
+# the first part does 15 timesteps
+ExtraFile  : 09-drude-medium-from-file.01-gold-np-r80nm.off
+Input      : 09-drude-medium-from-file.02-gold-np-part-one.inp
+if(available cgal); then
+else
+  match ; Error cgal_not_linked        ; GREPCOUNT(err, 'CGAL'); 1.0
+endif
+
+# the second part does again 15 timesteps
+ExtraFile  : 09-drude-medium-from-file.01-gold-np-r80nm.off
+Input      : 09-drude-medium-from-file.03-gold-np-part-two.inp
+
+# the values are copied from above to make sure we get exactly the same results when restarting
+if(available cgal); then
+Precision: 5e-04
+match ;    Tot. Maxwell energy [step 10]    ; LINEFIELD(Maxwell/td.general/maxwell_energy, 16, 3) ; 10593412152.70078
+Precision: 5e-04
+match ;    Tot. Maxwell energy [step 30]    ; LINEFIELD(Maxwell/td.general/maxwell_energy, 36, 3) ; 20211562835.481712
+Precision: 8.93e-17
+match ;    Ey  (x=  -60 nm,y=  0,z= 0) [step 30]    ; LINEFIELD(Maxwell/output_iter/td.0000030/e_field-y\.y=0\,z=0, 40, 2) ; 1.8959445473483602e-10
+Precision: 1.68e-15
+match ;    Ez  (x=  80 nm, y=  0,z=  0) [step 30]    ; LINEFIELD(Maxwell/output_iter/td.0000030/e_field-z\.y=0\,z=0, 47, 2) ; 0.0336841807177419
+Precision: 4.77e-15
+match ;     Jz  total (x=  -120 nm,y=  0,z= 0) [step 20]   ; LINEFIELD(Maxwell/output_iter/td.0000020/total_current_mxll-z\.y=0\,z=0, 37, 2) ; 0.0009546149811595001
+Precision: 3.77e-17
+match ;     Jz  total (x=  -60 nm,y=  0,z= 0) [step 30]   ; LINEFIELD(Maxwell/output_iter/td.0000030/total_current_mxll-z\.y=0\,z=0, 40, 2) ; 0.000753132424708384
+Precision: 5.61e-17
+match ;     Jz  (x=  -160 nm,y=  0,z= 0) [step 10]     ; LINEFIELD(NP/td.general/current_at_points, 17, 5) ; 0.005613897728394531
+Precision: 1.37e-19
+match ;     Jy  (x=  -80 nm,y=  0,z= 0)  [step 20]     ; LINEFIELD(NP/td.general/current_at_points, 27, 7) ; 5.968679499882083e-15
+Precision: 6.58e-18
+match ;     Jz  (x=  -80 nm,y=  0,z= 0)  [step 20]     ; LINEFIELD(NP/td.general/current_at_points, 27, 8) ; 0.0006576588826932637
+else
+  match ; Error cgal_not_linked        ; GREPCOUNT(err, 'CGAL'); 1.0
+endif
+
+# test the response of nanosphere in the presence of external analytical field
+ExtraFile  : 09-drude-medium-from-file.01-gold-np-r80nm.off
+Input      : 09-drude-medium-from-file.04-gold-np-external-source.inp
+
+if(available cgal); then
+Precision: 5.61e-8
+match ;     Jz  (x=  -160 nm,y=  0,z= 0) [step 10]     ; LINEFIELD(NP/td.general/current_at_points, 17, 5) ; 0.005613897728394531
+Precision: 1.11e-8
+match ;     Jy  (x=  -80 nm,y=  0,z= 0)  [step 20]     ; LINEFIELD(NP/td.general/current_at_points, 27, 7) ; 0.0
+Precision: 6.58e-8
+match ;     Jz  (x=  -80 nm,y=  0,z= 0)  [step 20]     ; LINEFIELD(NP/td.general/current_at_points, 27, 8) ; 0.0006576588826932637
+else
+  match ; Error cgal_not_linked        ; GREPCOUNT(err, 'CGAL'); 1.0
 endif

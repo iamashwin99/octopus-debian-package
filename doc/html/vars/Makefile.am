@@ -66,4 +66,4 @@ ClassicalParticles.html: RUN_SCRIPT
 Utilities.html: RUN_SCRIPT
 
 RUN_SCRIPT:
-	$(top_srcdir)/build/var2html.pl -b $(top_builddir)
+	$(top_srcdir)/scripts/var2html.pl -b $(top_builddir)

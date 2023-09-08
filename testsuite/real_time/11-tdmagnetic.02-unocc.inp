@@ -12,14 +12,12 @@ dist = 3.0
 ExtraStates = 1
 
 %Coordinates
-"qd" | 0 | 0 | 0 
+"qd" | 0 | 0 | 0
 %
 
 BoxShape = sphere
 Radius = 9.5
 Spacing = 0.23
-
-DerivativesOrder = 4
 
 TheoryLevel = independent_particles
 
@@ -36,10 +34,6 @@ P_c = 137.036
 0 | 0 | magfield*P_c
 %
 
-%Output 
+%Output
  wfs | axis_x
 %
-
-
-
-

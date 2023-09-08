@@ -17,7 +17,7 @@
 !!
 
 subroutine X(phonons_lr_infrared)(mesh, ions, st, lr, kdotp_lr, imat, iatom, idir, infrared)
-  type(mesh_t),         intent(in)    :: mesh
+  class(mesh_t),        intent(in)    :: mesh
   type(ions_t),         intent(in)    :: ions
   type(states_elec_t),  intent(in)    :: st
   type(lr_t),           intent(in)    :: lr
@@ -61,7 +61,7 @@ subroutine X(phonons_lr_wavefunctions)(lr, namespace, space, st, mesh, kpoints, 
   type(namespace_t),  intent(in)    :: namespace
   type(space_t),      intent(in)    :: space
   type(states_elec_t),intent(inout) :: st !< not changed, just because of restart_read intent
-  type(mesh_t),       intent(in)    :: mesh
+  class(mesh_t),      intent(in)    :: mesh
   type(kpoints_t),    intent(in)    :: kpoints
   type(vibrations_t), intent(in)    :: vib
   type(restart_t),    intent(inout) :: restart_load

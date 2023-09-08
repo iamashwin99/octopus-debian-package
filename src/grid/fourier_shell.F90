@@ -50,9 +50,9 @@ module fourier_shell_oct_m
 contains
 
   FLOAT function fourier_shell_cutoff(space, cube, mesh, is_wfn, dg)
-    type(space_t),   intent(in)    :: space
+    type(space_t),   intent(in)  :: space
     type(cube_t),    intent(in)  :: cube
-    type(mesh_t),    intent(in)  :: mesh
+    class(mesh_t),   intent(in)  :: mesh
     logical,         intent(in)  :: is_wfn
     FLOAT, optional, intent(out) :: dg(:) !< (3)
 
@@ -77,7 +77,7 @@ contains
     type(namespace_t),     intent(in)    :: namespace
     type(space_t),         intent(in)    :: space
     type(cube_t),          intent(in)    :: cube
-    type(mesh_t),          intent(in)    :: mesh
+    class(mesh_t),         intent(in)    :: mesh
     FLOAT, optional,       intent(in)    :: kk(:) !< (3)
 
     integer :: ig, ix, iy, iz, ixx(1:3), imap

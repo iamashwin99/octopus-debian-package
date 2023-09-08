@@ -60,7 +60,7 @@ module propagator_cn_oct_m
     td_crank_nicolson
 
   type(namespace_t),        pointer, private :: namespace_p
-  type(mesh_t),             pointer, private :: mesh_p
+  class(mesh_t),            pointer, private :: mesh_p
   type(hamiltonian_elec_t), pointer, private :: hm_p
   type(propagator_base_t),  pointer, private :: tr_p
   type(states_elec_t),      pointer, private :: st_p
@@ -71,7 +71,7 @@ contains
 
   ! ---------------------------------------------------------
   !> Crank-Nicolson propagator
-  subroutine td_crank_nicolson(hm, namespace, space, gr, st, tr, time, dt, ionic_scale, ions_dyn, ions, ext_partners, use_sparskit)
+  subroutine td_crank_nicolson(hm, namespace, space, gr, st, tr, time, dt, ions_dyn, ions, ext_partners, use_sparskit)
     type(hamiltonian_elec_t), target, intent(inout) :: hm
     type(namespace_t),        target, intent(in)    :: namespace
     type(space_t),                    intent(in)    :: space
@@ -80,7 +80,6 @@ contains
     type(propagator_base_t),  target, intent(inout) :: tr
     FLOAT,                            intent(in)    :: time
     FLOAT,                            intent(in)    :: dt
-    FLOAT,                            intent(in)    :: ionic_scale
     type(ion_dynamics_t),             intent(inout) :: ions_dyn
     type(ions_t),                     intent(inout) :: ions
     type(partner_list_t),             intent(in)    :: ext_partners
@@ -112,11 +111,11 @@ contains
     end if
 #endif
 
-    np = gr%mesh%np
+    np = gr%np
 
     ! define pointer and variables for usage in td_zop, td_zopt routines
     namespace_p => namespace
-    mesh_p      => gr%mesh
+    mesh_p      => gr
     hm_p        => hm
     tr_p        => tr
     st_p        => st
@@ -134,17 +133,12 @@ contains
 
     !move the ions to time 'time - dt/2', and save the current status to return to it later.
     call propagation_ops_elec_move_ions(tr%propagation_ops_elec, gr, hm, st, namespace, space, ions_dyn, ions, &
-      ext_partners, time - M_HALF*dt, ionic_scale*M_HALF*dt, save_pos = .true.)
+      ext_partners, time - M_HALF*dt, M_HALF*dt, save_pos = .true.)
 
-    if (family_is_mgga_with_exc(hm%xc)) then
-      call potential_interpolation_interpolate(tr%vksold, 3, &
-        time, dt, time -dt/M_TWO, hm%vhxc, vtau = hm%vtau)
-    else
-      call potential_interpolation_interpolate(tr%vksold, 3, &
-        time, dt, time -dt/M_TWO, hm%vhxc)
-    end if
+    call potential_interpolation_interpolate(tr%vksold, 3, &
+      time, dt, time -dt/M_TWO, hm%vhxc, vtau = hm%vtau)
 
-    call propagation_ops_elec_update_hamiltonian(namespace, space, st, gr%mesh, hm, ext_partners, time - dt*M_HALF)
+    call propagation_ops_elec_update_hamiltonian(namespace, space, st, gr, hm, ext_partners, time - dt*M_HALF)
 
     call density_calc_init(dens_calc, st, gr, st%rho)
 
@@ -170,7 +164,7 @@ contains
           do ist = minst, maxst
             ! put the values in a continuous array
             do idim = 1, st%d%dim
-              call batch_get_state(st%group%psib(ib, ik), (/ist, idim/), gr%mesh%np, zpsi((idim - 1)*np+1:idim*np))
+              call batch_get_state(st%group%psib(ib, ik), (/ist, idim/), np, zpsi((idim - 1)*np+1:idim*np))
               call batch_get_state(psib_rhs, (/ist, idim/), np, rhs((idim - 1)*np+1:idim*np))
             end do
 
@@ -180,7 +174,7 @@ contains
             call zsparskit_solver_run(namespace, tr%tdsk, td_zop, td_zopt, zpsi, rhs)
 
             do idim = 1, st%d%dim
-              call batch_set_state(st%group%psib(ib, ik), (/ist, idim/), gr%mesh%np, zpsi((idim - 1)*np+1:idim*np))
+              call batch_set_state(st%group%psib(ib, ik), (/ist, idim/), gr%np, zpsi((idim - 1)*np+1:idim*np))
             end do
 
           end do
@@ -190,7 +184,7 @@ contains
           SAFE_ALLOCATE(iter_used(psib_rhs%nst))
           SAFE_ALLOCATE(residue(psib_rhs%nst))
           max_iter = 2000
-          call zbatch_qmr_dotu(namespace, gr%mesh, st, st%group%psib(ib, ik), psib_rhs, &
+          call zbatch_qmr_dotu(namespace, gr, st, st%group%psib(ib, ik), psib_rhs, &
             propagator_qmr_op_batch, max_iter, iter_used, residue, cgtol, .false.)
 
           if (any(iter_used == max_iter)) then
@@ -308,7 +302,7 @@ contains
     PUSH_SUB(propagator_qmr_op_batch)
 
     call xxb%copy_data_to(mesh_p%np, yyb)
-    call exponential_apply_batch(tr_p%te, namespace_p, mesh_p, hm_p, yyb, -dt_op/M_TWO)
+    call tr_p%te%apply_batch(namespace_p, mesh_p, hm_p, yyb, -dt_op/M_TWO)
 
     POP_SUB(propagator_qmr_op_batch)
   end subroutine propagator_qmr_op_batch
@@ -324,7 +318,7 @@ contains
   subroutine zbatch_qmr_dotu(namespace, mesh, st, xb, bb, op, max_iter, iter_used, &
     residue, threshold, use_initial_guess)
     type(namespace_t),        intent(in)    :: namespace
-    type(mesh_t),             intent(in)    :: mesh
+    class(mesh_t),            intent(in)    :: mesh
     type(states_elec_t),      intent(in)    :: st
     type(wfs_elec_t),         intent(inout) :: xb
     type(wfs_elec_t),         intent(in)    :: bb

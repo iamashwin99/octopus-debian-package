@@ -49,7 +49,7 @@ subroutine X(mesh_interpolation_evaluate_vec)(this, npoints, values, positions, 
   FLOAT,                              intent(in)    :: positions(:, :)
   R_TYPE,                             intent(out)   :: interpolated_values(:)
 
-  type(mesh_t), pointer :: mesh
+  class(mesh_t),pointer :: mesh
   integer :: nm(1:MAX_DIM), ipoint
   FLOAT :: xd(1:MAX_DIM), posrel(1:MAX_DIM)
   R_TYPE :: c00, c10, c01, c11, c0, c1
@@ -156,7 +156,7 @@ end subroutine X(mesh_interpolation_evaluate_vec)
 ! --------------------------------------------------------------
 
 subroutine X(mesh_interpolation_test)(mesh)
-  type(mesh_t),     intent(in) :: mesh
+  class(mesh_t),    intent(in) :: mesh
 
   integer, parameter :: ntest_points = 20
   integer :: ip, idir, itest

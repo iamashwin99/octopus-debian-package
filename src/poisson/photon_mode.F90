@@ -69,14 +69,14 @@ contains
   subroutine photon_mode_init(this, namespace, mesh, dim, n_electrons)
     type(photon_mode_t),  intent(out) :: this
     type(namespace_t),    intent(in)  :: namespace
-    type(mesh_t),         intent(in)  :: mesh
+    class(mesh_t),        intent(in)  :: mesh
     integer,              intent(in)  :: dim
     FLOAT,                intent(in)  :: n_electrons
 
     type(block_t)         :: blk
     integer               :: ii, ip, idir, iunit, ncols
     logical               :: file_exists
-    character(MAX_PATH_LEN) :: filename
+    character(256)        :: filename
 
     PUSH_SUB(photon_mode_init)
 
@@ -319,7 +319,7 @@ contains
 
     PUSH_SUB(photon_mode_write_info)
 
-    call messages_print_stress(msg="Photon Modes", iunit=iunit, namespace=namespace)
+    call messages_print_with_emphasis(msg="Photon Modes", iunit=iunit, namespace=namespace)
     write(iunit, '(6x,a,10x,a,3x)', advance='no') 'Omega', 'Lambda'
     write(iunit, '(1x,a,i1,a)') ('Pol.(', idir, ')', idir = 1, this%dim)
     do im = 1, this%nmodes
@@ -327,7 +327,7 @@ contains
       write(iunit, '(1x,f14.12)', advance='no') this%lambda(im)
       write(iunit, '(2X,f5.3,1X)') (this%pol(im, idir), idir = 1, this%dim)
     end do
-    call messages_print_stress(iunit=iunit, namespace=namespace)
+    call messages_print_with_emphasis(iunit=iunit, namespace=namespace)
 
     POP_SUB(photon_mode_write_info)
   end subroutine photon_mode_write_info

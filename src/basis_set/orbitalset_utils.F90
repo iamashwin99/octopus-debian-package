@@ -34,6 +34,7 @@ module orbitalset_utils_oct_m
   use orbitalset_oct_m
   use poisson_oct_m
   use profiling_oct_m
+  use space_oct_m
   use species_oct_m
   use submesh_oct_m
   use unit_oct_m
@@ -46,7 +47,9 @@ module orbitalset_utils_oct_m
     orbitalset_utils_count,         &
     dorbitalset_utils_getorbitals,  &
     zorbitalset_utils_getorbitals,  &
-    orbitalset_init_intersite
+    orbitalset_init_intersite,      &
+    dorbitalset_get_center_of_mass, &
+    zorbitalset_get_center_of_mass
 
   integer, public, parameter ::     &
     SM_POISSON_DIRECT          = 0, &
@@ -57,9 +60,8 @@ module orbitalset_utils_oct_m
 
 contains
 
-  integer function orbitalset_utils_count(ions, ia, iselect) result(norb)
-    type(ions_t),         intent(in) :: ions
-    integer,              intent(in) :: ia
+  integer function orbitalset_utils_count(species, iselect) result(norb)
+    type(species_t),      intent(in) :: species
     integer, optional,    intent(in) :: iselect
 
     integer :: iorb, ii, ll, mm
@@ -68,8 +70,8 @@ contains
     !If iselect is present, this routine return instead the number of orbital for a given
     !value of i
     norb = 0
-    do iorb = 1, species_niwfs(ions%atom(ia)%species)
-      call species_iwf_ilm(ions%atom(ia)%species, iorb, 1, ii, ll, mm)
+    do iorb = 1, species_niwfs(species)
+      call species_iwf_ilm(species, iorb, 1, ii, ll, mm)
       if (present(iselect)) then
         if (ii == iselect) norb = norb + 1
       else
@@ -78,15 +80,16 @@ contains
     end do
   end function orbitalset_utils_count
 
-  subroutine orbitalset_init_intersite(this, namespace, ind, ions, der, psolver, os, nos, maxnorbs, &
+  subroutine orbitalset_init_intersite(this, namespace, space, ind, ions, der, psolver, os, nos, maxnorbs, &
     rcut, kpt, has_phase, sm_poisson, basis_from_states)
     type(orbitalset_t),           intent(inout) :: this
     type(namespace_t),            intent(in)    :: namespace
+    type(space_t),                intent(in)    :: space
     integer,                      intent(in)    :: ind
     type(ions_t),                 intent(in)    :: ions
     type(derivatives_t),          intent(in)    :: der
     type(poisson_t),              intent(in)    :: psolver
-    type(orbitalset_t),           intent(inout) :: os(:) !> inout as this is also in orbs
+    type(orbitalset_t),           intent(inout) :: os(:) !< inout as this is also in orbs
     integer,                      intent(in)    :: nos, maxnorbs
     FLOAT,                        intent(in)    :: rcut
     type(distributed_t),          intent(in)    :: kpt
@@ -96,10 +99,10 @@ contains
 
 
     type(lattice_iterator_t) :: latt_iter
-    FLOAT :: xat(ions%space%dim), xi(ions%space%dim)
+    FLOAT :: xat(space%dim), xi(space%dim)
     FLOAT :: rr
     integer :: inn, ist, jst
-    integer :: np_sphere, ip, ios
+    integer :: ip, ios, ip2
     type(submesh_t) :: sm
     FLOAT, allocatable :: tmp(:), vv(:), nn(:)
     FLOAT, allocatable :: orb(:,:,:)
@@ -109,7 +112,7 @@ contains
 
     PUSH_SUB(orbitalset_init_intersite)
 
-    call messages_print_stress(msg="Intersite Coulomb integrals", namespace=namespace)
+    call messages_print_with_emphasis(msg="Intersite Coulomb integrals", namespace=namespace)
 
     sm_poisson_ = sm_poisson
 
@@ -126,7 +129,7 @@ contains
     do ios = 1, nos
       do inn = 1, latt_iter%n_cells
 
-        xi = os(ios)%sphere%center(1:ions%space%dim) + latt_iter%get(inn)
+        xi = os(ios)%sphere%center(1:space%dim) + latt_iter%get(inn)
         rr = norm2(xi - xat)
 
         !This atom is too far
@@ -140,8 +143,8 @@ contains
 
     !The first three values are the position of the periodic copies
     !and the zero value one is used to store the actual value of V_ij
-    SAFE_ALLOCATE(this%V_ij(1:this%nneighbors, 0:ions%space%dim+1))
-    this%V_ij(1:this%nneighbors, 0:ions%space%dim+1) = M_ZERO
+    SAFE_ALLOCATE(this%V_ij(1:this%nneighbors, 0:space%dim+1))
+    this%V_ij(1:this%nneighbors, 0:space%dim+1) = M_ZERO
     SAFE_ALLOCATE(this%map_os(1:this%nneighbors))
     this%map_os(1:this%nneighbors) = 0
     if(has_phase) then
@@ -151,7 +154,7 @@ contains
     this%nneighbors = 0
     do ios = 1, nos
       do inn = 1, latt_iter%n_cells
-        xi = os(ios)%sphere%center(1:ions%space%dim) + latt_iter%get(inn)
+        xi = os(ios)%sphere%center(1:space%dim) + latt_iter%get(inn)
         rr = norm2(xi - xat)
 
         if( rr > rcut + TOL_INTERSITE ) cycle
@@ -159,8 +162,8 @@ contains
 
         this%nneighbors = this%nneighbors +1
 
-        this%V_ij(this%nneighbors, 1:ions%space%dim) = xi(1:ions%space%dim) -os(ios)%sphere%center(1:ions%space%dim)
-        this%V_ij(this%nneighbors, ions%space%dim+1) = rr
+        this%V_ij(this%nneighbors, 1:space%dim) = xi(1:space%dim) -os(ios)%sphere%center(1:space%dim)
+        this%V_ij(this%nneighbors, space%dim+1) = rr
 
         this%map_os(this%nneighbors) = ios
       end do
@@ -174,7 +177,7 @@ contains
     this%coulomb_IIJJ = M_ZERO
 
     if(this%nneighbors == 0) then
-      call messages_print_stress(namespace=namespace)
+      call messages_print_with_emphasis(namespace=namespace)
       POP_SUB(orbitalset_init_intersite)
       return
     end if
@@ -192,11 +195,11 @@ contains
 
       if(.not. basis_from_states) then
         !Init a submesh from the union of two submeshes
-        call submesh_merge(sm, ions%space, der%mesh, this%sphere, os(ios)%sphere, &
-          shift = this%V_ij(inn, 1:ions%space%dim))
+        call submesh_merge(sm, space, der%mesh, this%sphere, os(ios)%sphere, &
+          shift = this%V_ij(inn, 1:space%dim))
 
-        write(message(1),'(a, i3, a, f6.3, a, i5, a)') 'Neighbor ', inn, ' is located at ', &
-          this%V_ij(inn, ions%space%dim+1), ' Bohr and has ', sm%np, ' grid points.'
+        write(message(1),'(a, i3, a, f6.3, a, i7, a)') 'Neighbor ', inn, ' is located at ', &
+          this%V_ij(inn, space%dim+1), ' Bohr and has ', sm%np, ' grid points.'
         call messages_info(1, namespace=namespace)
 
         SAFE_ALLOCATE(orb(1:sm%np, 1:max(this%norbs,os(ios)%norbs),1:2))
@@ -206,41 +209,57 @@ contains
             1, orb(1:sm%np, ist,1))
         end do
 
-        call submesh_shift_center(sm, ions%space, this%V_ij(inn, 1:ions%space%dim)+os(ios)%sphere%center(1:ions%space%dim))
+        call submesh_shift_center(sm, space, this%V_ij(inn, 1:space%dim)+os(ios)%sphere%center(1:space%dim))
 
         do ist = 1, os(ios)%norbs
           call datomic_orbital_get_submesh_safe(os(ios)%spec, sm, os(ios)%ii, os(ios)%ll, ist-1-os(ios)%ll, &
-            1, orb(1:sm%np, ist,2))
+            1, orb(1:sm%np, ist, 2))
         end do
 
       else
-        sm%np = 2*der%mesh%np ! The submesh is the union of two meshes
-        sm%mesh => der%mesh
-        SAFE_ALLOCATE(sm%x(1:sm%np, 1:ions%space%dim))
-        sm%x(1:der%mesh%np, 1:ions%space%dim) = der%mesh%x(1:der%mesh%np, 1:ions%space%dim)
-        do ip = der%mesh%np+1, sm%np
-          sm%x(ip, 1:ions%space%dim) = der%mesh%x(ip-der%mesh%np, 1:ions%space%dim) &
-            + this%V_ij(inn, 1:ions%space%dim)+os(ios)%sphere%center(1:ions%space%dim)
-        end do
-        SAFE_ALLOCATE(sm%center(1:ions%space%dim))
-        sm%center = xat
+        !Init a submesh from the union of two submeshes
+        call submesh_merge(sm, ions%space, der%mesh, this%sphere, os(ios)%sphere, &
+          shift = this%V_ij(inn, 1:ions%space%dim))
+
+        write(message(1),'(a, i3, a, f6.3, a, i5, a)') 'Neighbor ', inn, ' is located at ', &
+          this%V_ij(inn, ions%space%dim+1), ' Bohr and has ', sm%np, ' grid points.'
+        call messages_info(1, namespace=namespace)
 
         SAFE_ALLOCATE(orb(1:sm%np, 1:max(this%norbs,os(ios)%norbs),1:2))
         orb = M_ZERO
 
+        ! All the points of the first submesh are included in the union of the submeshes
         do ist = 1, this%norbs
           if(allocated(this%dorb)) then
-            orb(1:der%mesh%np, ist, 1) = this%dorb(:,1,ist)
+            orb(1:this%sphere%np, ist, 1) = this%dorb(:,1,ist)
           else
-            orb(1:der%mesh%np, ist, 1) = TOFLOAT(this%zorb(:,1,ist))
+            orb(1:this%sphere%np, ist, 1) = TOFLOAT(this%zorb(:,1,ist))
           end if
         end do
 
+        call submesh_shift_center(sm, ions%space, this%V_ij(inn, 1:ions%space%dim)+os(ios)%sphere%center(1:ions%space%dim))
+
+        ! TODO: This probably needs some optimization
+        ! However, this is only done at initialization time
         do ist = 1, os(ios)%norbs
           if(allocated(this%dorb)) then
-            orb(der%mesh%np+1:2*der%mesh%np, ist,2) = os(ios)%dorb(:,1,ist)
+            !$omp parallel do private(ip)
+            do ip2 = 1, sm%np
+              do ip = 1, os(ios)%sphere%np
+                if(all(abs(sm%rel_x(1:ions%space%dim, ip2)-os(ios)%sphere%rel_x(1:ions%space%dim, ip)) < CNST(1e-6))) then
+                  orb(ip2, ist, 2) = os(ios)%dorb(ip, 1, ist)
+                end if
+              end do
+            end do
           else
-            orb(der%mesh%np+1:2*der%mesh%np, ist,2) = TOFLOAT(os(ios)%zorb(:,1,ist))
+            !$omp parallel do private(ip)
+            do ip2 = 1, sm%np
+              do ip = 1, os(ios)%sphere%np
+                if(all(abs(sm%rel_x(1:ions%space%dim, ip2)-os(ios)%sphere%rel_x(1:ions%space%dim, ip)) < CNST(1e-6))) then
+                  orb(ip2, ist, 2) = TOFLOAT(os(ios)%zorb(ip, 1, ist))
+                end if
+              end do
+            end do
           end if
         end do
 
@@ -253,41 +272,35 @@ contains
       select case (sm_poisson_)
       case(SM_POISSON_DIRECT)
         !Build information needed for the direct Poisson solver on the submesh
-        call submesh_build_global(sm, ions%space)
-        call poisson_init_sm(this%poisson, namespace, ions%space, psolver, der, sm, method = POISSON_DIRECT_SUM)
+        call submesh_build_global(sm, space)
+        call poisson_init_sm(this%poisson, namespace, space, psolver, der, sm, method = POISSON_DIRECT_SUM)
       case(SM_POISSON_ISF)
-        call poisson_init_sm(this%poisson, namespace, ions%space, psolver, der, sm, method = POISSON_ISF)
+        call poisson_init_sm(this%poisson, namespace, space, psolver, der, sm, method = POISSON_ISF)
       case(SM_POISSON_PSOLVER)
-        call poisson_init_sm(this%poisson, namespace, ions%space, psolver, der, sm, method = POISSON_PSOLVER)
+        call poisson_init_sm(this%poisson, namespace, space, psolver, der, sm, method = POISSON_PSOLVER)
       case(SM_POISSON_FFT)
-        call poisson_init_sm(this%poisson, namespace, ions%space, psolver, der, sm, method = POISSON_FFT)
+        call poisson_init_sm(this%poisson, namespace, space, psolver, der, sm, method = POISSON_FFT)
       end select
-
-      np_sphere = sm%np
 
       do ist = 1, this%norbs
         !$omp parallel do
-        do ip = 1, np_sphere
-          nn(ip) = orb(ip,ist,1)*orb(ip,ist,1)
+        do ip = 1, sm%np
+          nn(ip) = orb(ip, ist, 1)*orb(ip, ist, 1)
         end do
         !$omp end parallel do
 
         !Here it is important to use a non-periodic poisson solver, e.g. the direct solver
-        call dpoisson_solve_sm(this%poisson, namespace, sm, vv(1:np_sphere), nn(1:np_sphere))
+        call dpoisson_solve_sm(this%poisson, namespace, sm, vv, nn)
 
         do jst = 1, os(ios)%norbs
 
           !$omp parallel do
-          do ip = 1, np_sphere
+          do ip = 1, sm%np
             tmp(ip) = vv(ip)*orb(ip, jst, 2)*orb(ip, jst, 2)
           end do
           !$omp end parallel do
 
-          this%coulomb_IIJJ(ist, ist, jst, jst, inn) = dsm_integrate(der%mesh, sm, tmp(1:np_sphere), reduce = .false.)
-          if (abs(this%coulomb_IIJJ(ist, ist, jst, jst, inn)) < CNST(1.0e-12)) then
-            this%coulomb_IIJJ(ist, ist, jst, jst, inn) = M_ZERO
-          end if
-
+          this%coulomb_IIJJ(ist, ist, jst, jst, inn) = dsm_integrate(der%mesh, sm, tmp, reduce = .false.)
         end do !jst
       end do !ist
 
@@ -307,7 +320,6 @@ contains
       call der%mesh%allreduce(this%coulomb_IIJJ)
     end if
 
-
     if(dist%parallel) then
       call comm_allreduce(dist%mpi_grp, this%coulomb_IIJJ)
     end if
@@ -316,12 +328,10 @@ contains
     call distributed_end(dist)
 #endif
 
-    call messages_print_stress(namespace=namespace)
+    call messages_print_with_emphasis(namespace=namespace)
 
     POP_SUB(orbitalset_init_intersite)
   end subroutine orbitalset_init_intersite
-
-
 
 #include "undef.F90"
 #include "real.F90"

@@ -31,9 +31,5 @@ ExperimentalFeatures = yes
  4 | 4 | 4
 %
 
-ParKPoints = no
-
 Wannier90Prefix = '15-bandstructure.04-wannier90'
 Wannier90Mode = w90_output
-
-

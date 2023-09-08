@@ -3,7 +3,7 @@
 # Finally restart the td calculation
 
 CalculationMode = td
-fromScratch = no
+FromScratch = no
 Radius = 7.0
 Spacing = 0.5
 %Coordinates

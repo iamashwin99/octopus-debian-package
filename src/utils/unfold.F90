@@ -39,7 +39,6 @@ program oct_unfold
   use io_oct_m
   use io_binary_oct_m
   use io_function_oct_m
-  use ions_oct_m
   use kpoints_oct_m
   use lalg_basic_oct_m
   use lattice_vectors_oct_m
@@ -98,8 +97,8 @@ program oct_unfold
   call profiling_init(global_namespace)
 
   call print_header()
-  call messages_print_stress(msg="Unfolding Band-structure", namespace=global_namespace)
-  call messages_print_stress(namespace=global_namespace)
+  call messages_print_with_emphasis(msg="Unfolding Band-structure", namespace=global_namespace)
+  call messages_print_with_emphasis(namespace=global_namespace)
 
   call messages_experimental("oct-unfold utility")
   call fft_all_init(global_namespace)
@@ -234,11 +233,11 @@ program oct_unfold
     end if
     call io_close(file_gvec)
 
-    call states_elec_allocate_wfns(sys%st, sys%gr%mesh)
+    call states_elec_allocate_wfns(sys%st, sys%gr)
 
-    call restart_init(restart, global_namespace, RESTART_UNOCC, RESTART_TYPE_LOAD, sys%mc, ierr, mesh=sys%gr%mesh, exact=.true.)
+    call restart_init(restart, global_namespace, RESTART_UNOCC, RESTART_TYPE_LOAD, sys%mc, ierr, mesh=sys%gr, exact=.true.)
     if (ierr == 0) then
-      call states_elec_load(restart, global_namespace, sys%space, sys%st, sys%gr%mesh, sys%kpoints, ierr, label = ": unfold")
+      call states_elec_load(restart, global_namespace, sys%space, sys%st, sys%gr, sys%kpoints, ierr, label = ": unfold")
     end if
     if (ierr /= 0) then
       message(1) = 'Unable to read unocc wavefunctions.'
@@ -246,8 +245,9 @@ program oct_unfold
     end if
     call restart_end(restart)
 
-    call cube_init(zcube, sys%gr%mesh%idx%ll, global_namespace, sys%space, sys%gr%mesh%spacing, &
+    call cube_init(zcube, sys%gr%idx%ll, global_namespace, sys%space, sys%gr%spacing, &
       sys%gr%coord_system, fft_type = FFT_COMPLEX, dont_optimize = .true.)
+    call cube_init_cube_map(zcube, sys%gr)
 
     call zcube_function_alloc_rs(zcube, cf)
     call cube_function_alloc_fs(zcube, cf)
@@ -332,7 +332,7 @@ contains
 
     PUSH_SUB(wfs_extract_spec_fn)
 
-    SAFE_ALLOCATE(zpsi(1:gr%mesh%np))
+    SAFE_ALLOCATE(zpsi(1:gr%np))
 
     !%Variable UnfoldEnergyStep
     !%Type float
@@ -399,7 +399,7 @@ contains
     do ik = st%d%kpt%start, st%d%kpt%end
       iq = st%d%get_kpoint_index(ik)
 
-      call fourier_shell_init(shell, global_namespace, space, zcube, gr%mesh, kk = sys%kpoints%reduced%red_point(:, iq))
+      call fourier_shell_init(shell, global_namespace, space, zcube, gr, kk = sys%kpoints%reduced%red_point(:, iq))
 
       gmin = minval(shell%red_gvec(:,:))
       gmax = maxval(shell%red_gvec(:,:))
@@ -444,7 +444,7 @@ contains
         call messages_not_implemented("Unfolding for periodic dimensions other than 2 or 3")
       end select
 
-      if (mpi_grp_is_root(gr%mesh%mpi_grp)) then
+      if (mpi_grp_is_root(gr%mpi_grp)) then
         write(filename,"(a13,i3.3,a4)") "./static/ake_",ik,".dat"
         file_ake = io_open(trim(filename), global_namespace, action='write')
         write(file_ake, '(a)') '#Energy Ak(E)'
@@ -456,13 +456,9 @@ contains
         do idim = 1, st%d%dim
           ! Getting wavefunctions
           ! for the moment we treat all functions as complex
-          call states_elec_get_state(st, gr%mesh, idim, ist, ik, zpsi)
+          call states_elec_get_state(st, gr, idim, ist, ik, zpsi)
 
-          if (gr%mesh%parallel_in_domains) then
-            call zmesh_to_cube(gr%mesh, zpsi, zcube, cf, local = .true.)
-          else
-            call zmesh_to_cube(gr%mesh, zpsi, zcube, cf)
-          end if
+          call zmesh_to_cube(gr, zpsi, zcube, cf)
 
           !Fourier transform from real-space to fourier space
           call zcube_function_rs2fs(zcube, cf)
@@ -506,7 +502,7 @@ contains
         write(file_ake, '(1es19.12,1x,1es19.12)') eigs(ie), ake(ie, ik)
       end do
 
-      if (mpi_grp_is_root(gr%mesh%mpi_grp)) call io_close(file_ake)
+      if (mpi_grp_is_root(gr%mpi_grp)) call io_close(file_ake)
 
       call fourier_shell_end(shell)
       SAFE_DEALLOCATE_A(g_select)
@@ -547,4 +543,3 @@ end program oct_unfold
 !! mode: f90
 !! coding: utf-8
 !! End:
-

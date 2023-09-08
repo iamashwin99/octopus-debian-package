@@ -13,7 +13,7 @@
 CalculationMode = unocc
 
 Dimensions = 1
-fromScratch = yes
+FromScratch = yes
 
 BoxShape = sphere
 Spacing = 0.5
@@ -30,4 +30,3 @@ TheoryLevel = independent_particles
 %
 
 ExtraStates = 9
-EigenSolverTolerance = 1e-5

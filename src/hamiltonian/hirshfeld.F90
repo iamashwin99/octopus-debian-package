@@ -32,7 +32,6 @@ module hirshfeld_oct_m
   use profiling_oct_m
   use ps_oct_m
   use species_pot_oct_m
-  use states_elec_oct_m
   use species_oct_m
   use splines_oct_m
 
@@ -50,23 +49,23 @@ module hirshfeld_oct_m
 
   type hirshfeld_t
     private
-    type(mesh_t),        pointer     :: mesh
+    class(mesh_t),       pointer     :: mesh
     type(ions_t),        pointer     :: ions
-    type(states_elec_t), pointer     :: st
     FLOAT,               allocatable :: total_density(:)  !< (mesh%np)
     FLOAT,               allocatable :: free_volume(:)    !< (natoms)
     FLOAT,               allocatable :: free_vol_r3(:,:)  !< (natoms,mesh%np)
+    integer                          :: nspin
   end type hirshfeld_t
 
   FLOAT, parameter, public :: TOL_HIRSHFELD = CNST(1e-9)
 
 contains
 
-  subroutine hirshfeld_init(this, mesh, ions, st)
+  subroutine hirshfeld_init(this, mesh, ions, nspin)
     type(hirshfeld_t),           intent(out)   :: this
-    type(mesh_t),        target, intent(in)    :: mesh
+    class(mesh_t),       target, intent(in)    :: mesh
     type(ions_t),        target, intent(in)    :: ions
-    type(states_elec_t), target, intent(in)    :: st
+    integer,                     intent(in)    :: nspin
 
     integer :: iatom, ip, isp
     FLOAT :: rr, pos(ions%space%dim), rmax
@@ -81,12 +80,12 @@ contains
 
     this%mesh => mesh
     this%ions  => ions
-    this%st   => st
+    this%nspin = nspin
 
     SAFE_ALLOCATE(this%total_density(1:mesh%np))
     SAFE_ALLOCATE(this%free_volume(1:ions%natoms))
     SAFE_ALLOCATE(this%free_vol_r3(1:ions%natoms,1:mesh%np))
-    SAFE_ALLOCATE(atom_density(1:mesh%np, 1:st%d%nspin))
+    SAFE_ALLOCATE(atom_density(1:mesh%np, 1:nspin))
     SAFE_ALLOCATE(atom_density_acc(1:mesh%np))
 
     this%total_density = CNST(0.0)
@@ -96,7 +95,7 @@ contains
       atom_density_acc(1:mesh%np) = M_ZERO
 
       rmax = CNST(0.0)
-      do isp = 1, st%d%nspin
+      do isp = 1, nspin
         rmax = max(rmax, spline_cutoff_radius(ps%density(isp), ps%projectors_sphere_threshold))
       end do
 
@@ -105,15 +104,15 @@ contains
         pos = this%ions%pos(:, iatom) + latt_iter%get(icell)
         !We get the non periodized density
         !We need to do it to have the r^3 correctly computed for periodic systems
-        call species_atom_density_np(ions%atom(iatom)%species, ions%namespace, pos, mesh, st%d%nspin, atom_density)
+        call species_atom_density_np(ions%atom(iatom)%species, ions%namespace, pos, mesh, nspin, atom_density)
 
         do ip = 1, mesh%np
-          this%total_density(ip) = this%total_density(ip) + sum(atom_density(ip, 1:st%d%nspin))
+          this%total_density(ip) = this%total_density(ip) + sum(atom_density(ip, 1:nspin))
         end do
 
         do ip = 1, mesh%np
           rr = norm2(mesh%x(ip, :) - pos)
-          atom_density_acc(ip) = atom_density_acc(ip) + sum(atom_density(ip, 1:this%st%d%nspin))*rr**3
+          atom_density_acc(ip) = atom_density_acc(ip) + sum(atom_density(ip, 1:this%nspin))*rr**3
         end do
       end do
       this%free_volume(iatom) = dmf_integrate(this%mesh, atom_density_acc(:), reduce = .false.)
@@ -145,7 +144,6 @@ contains
 
     nullify(this%mesh)
     nullify(this%ions)
-    nullify(this%st)
 
     POP_SUB(hirshfeld_end)
   end subroutine hirshfeld_end
@@ -169,16 +167,16 @@ contains
 
     ASSERT(allocated(this%total_density))
 
-    SAFE_ALLOCATE(atom_density(1:this%mesh%np, 1:this%st%d%nspin))
+    SAFE_ALLOCATE(atom_density(1:this%mesh%np, 1:this%nspin))
     SAFE_ALLOCATE(hirshfeld_density(1:this%mesh%np))
 
     call species_atom_density(this%ions%atom(iatom)%species, this%ions%namespace, this%ions%space, this%ions%latt, &
-      this%ions%pos(:, iatom), this%mesh, this%st%d%nspin, atom_density)
+      this%ions%pos(:, iatom), this%mesh, this%nspin, atom_density)
 
     do ip = 1, this%mesh%np
-      dens_ip = sum(atom_density(ip, 1:this%st%d%nspin))
+      dens_ip = sum(atom_density(ip, 1:this%nspin))
       if (abs(dens_ip) > TOL_HIRSHFELD) then
-        hirshfeld_density(ip) = sum(density(ip, 1:this%st%d%nspin))*dens_ip/this%total_density(ip)
+        hirshfeld_density(ip) = sum(density(ip, 1:this%nspin))*dens_ip/this%total_density(ip)
       else
         hirshfeld_density(ip) = CNST(0.0)
       end if
@@ -213,13 +211,13 @@ contains
 
     ASSERT(allocated(this%total_density))
 
-    SAFE_ALLOCATE(atom_density(1:this%mesh%np, this%st%d%nspin))
+    SAFE_ALLOCATE(atom_density(1:this%mesh%np, this%nspin))
     SAFE_ALLOCATE(hirshfeld_density(1:this%mesh%np))
 
 
     do ip = 1, this%mesh%np
       if (this%total_density(ip) > TOL_HIRSHFELD) then
-        hirshfeld_density(ip) = this%free_vol_r3(iatom,ip)*sum(density(ip, 1:this%st%d%nspin))/this%total_density(ip)
+        hirshfeld_density(ip) = this%free_vol_r3(iatom,ip)*sum(density(ip, 1:this%nspin))/this%total_density(ip)
       else
         hirshfeld_density(ip) = CNST(0.0)
       end if
@@ -250,7 +248,7 @@ contains
 
     call profiling_in(prof, "HIRSHFELD_DENSITY_DER")
 
-    SAFE_ALLOCATE(atom_density(1:this%mesh%np, 1:this%st%d%nspin))
+    SAFE_ALLOCATE(atom_density(1:this%mesh%np, 1:this%nspin))
 
     do ip = 1, this%mesh%np
 
@@ -296,8 +294,8 @@ contains
 
 
     SAFE_ALLOCATE(grad(1:this%mesh%np, 1:this%ions%space%dim))
-    SAFE_ALLOCATE(atom_derivative(1:this%mesh%np, 1:this%st%d%nspin))
-    SAFE_ALLOCATE(atom_density(1:this%mesh%np, 1:this%st%d%nspin))
+    SAFE_ALLOCATE(atom_derivative(1:this%mesh%np, 1:this%nspin))
+    SAFE_ALLOCATE(atom_density(1:this%mesh%np, 1:this%nspin))
 
     dposition(1:this%ions%space%dim) = M_ZERO
     grad(1:this%mesh%np, 1:this%ions%space%dim) = M_ZERO
@@ -307,7 +305,7 @@ contains
 
     rmax_i = CNST(0.0)
     rmax_j = CNST(0.0)
-    do isp = 1, this%st%d%nspin
+    do isp = 1, this%nspin
       rmax_i = max(rmax_i, spline_cutoff_radius(ps_i%density(isp), ps_i%projectors_sphere_threshold))
       rmax_j = max(rmax_j, spline_cutoff_radius(ps_j%density_der(isp), ps_j%projectors_sphere_threshold))
     end do
@@ -319,9 +317,9 @@ contains
     do jcell = 1, latt_iter_j%n_cells
 
       pos_j = this%ions%pos(:, jatom) + latt_iter_j%get(jcell)
-      atom_derivative(1:this%mesh%np, 1:this%st%d%nspin) = M_ZERO
+      atom_derivative(1:this%mesh%np, 1:this%nspin) = M_ZERO
       call species_atom_density_derivative_np(this%ions%atom(jatom)%species, this%ions%namespace, pos_j, this%mesh, &
-        this%st%d%spin_channels, atom_derivative(1:this%mesh%np, 1:this%st%d%nspin))
+        min(this%nspin, 2), atom_derivative(1:this%mesh%np, 1:this%nspin))
 
       latt_iter_i = lattice_iterator_t(this%ions%latt, (rmax_j+rmax_i)) ! jcells further away from this distance cannot respect the following 'if' condition with respect to the i atom in this icell
       do icell = 1, latt_iter_i%n_cells
@@ -332,12 +330,12 @@ contains
         if (rij - (rmax_j+rmax_i) < TOL_SPACING) then
 
 
-          atom_density(1:this%mesh%np, 1:this%st%d%nspin) = M_ZERO
+          atom_density(1:this%mesh%np, 1:this%nspin) = M_ZERO
 
           !We get the non periodized density
           !We need to do it to have the r^3 correctly computed for periodic systems
-          call species_atom_density_np(this%ions%atom(iatom)%species, this%ions%namespace, pos_i, this%mesh, this%st%d%nspin, &
-            atom_density(1:this%mesh%np, 1:this%st%d%nspin))
+          call species_atom_density_np(this%ions%atom(iatom)%species, this%ions%namespace, pos_i, this%mesh, this%nspin, &
+            atom_density(1:this%mesh%np, 1:this%nspin))
 
           do ip = 1, this%mesh%np
             if (this%total_density(ip)< TOL_HIRSHFELD) cycle
@@ -353,12 +351,12 @@ contains
             rri = sqrt(rri)
             rrj = sqrt(rrj)
 
-            tdensity = sum(density(ip, 1:this%st%d%nspin))
-            atom_dens = sum(atom_density(ip, 1:this%st%d%nspin))
+            tdensity = sum(density(ip, 1:this%nspin))
+            atom_dens = sum(atom_density(ip, 1:this%nspin))
 
             tmp = rri**3*atom_dens*tdensity/this%total_density(ip)**2
 
-            atom_der = sum(atom_derivative(ip, 1:this%st%d%nspin))
+            atom_der = sum(atom_derivative(ip, 1:this%nspin))
 
             if (rrj > TOL_HIRSHFELD) then
               do idir = 1, this%ions%space%dim

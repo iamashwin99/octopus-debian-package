@@ -26,6 +26,7 @@ module invert_ks_oct_m
   use global_oct_m
   use hamiltonian_elec_oct_m
   use output_oct_m
+  use output_modelmb_oct_m
   use io_oct_m
   use mesh_function_oct_m
   use messages_oct_m
@@ -88,7 +89,7 @@ contains
     call xc_ks_inversion_write_info(sys%ks%ks_inversion, namespace=sys%namespace)
 
     !abbreviations
-    np      = sys%gr%mesh%np
+    np      = sys%gr%np
     nspin   = sys%st%d%nspin
 
     ! read target density
@@ -117,8 +118,8 @@ contains
       sys%hm%vhxc(1:np, ii) = sys%hm%vhartree(1:np)
     end do
 
-    call hamiltonian_elec_update(sys%hm, sys%gr%mesh, sys%namespace, sys%space, sys%ext_partners)
-    call eigensolver_run(sys%ks%ks_inversion%eigensolver, sys%namespace, sys%gr, sys%ks%ks_inversion%aux_st, sys%hm, 1)
+    call sys%hm%update(sys%gr, sys%namespace, sys%space, sys%ext_partners)
+    call sys%ks%ks_inversion%eigensolver%run(sys%namespace, sys%gr, sys%ks%ks_inversion%aux_st, sys%hm, 1)
     call density_calc(sys%ks%ks_inversion%aux_st, sys%gr, sys%ks%ks_inversion%aux_st%rho)
 
     write(message(1),'(a)') "Calculating KS potential"
@@ -141,9 +142,9 @@ contains
 
     ! output quality of KS inversion
 
-    call hamiltonian_elec_update(sys%hm, sys%gr%mesh, sys%namespace, sys%space, sys%ext_partners)
+    call sys%hm%update(sys%gr, sys%namespace, sys%space, sys%ext_partners)
 
-    call eigensolver_run(sys%ks%ks_inversion%eigensolver, sys%namespace, sys%gr, sys%ks%ks_inversion%aux_st, sys%hm, 1)
+    call sys%ks%ks_inversion%eigensolver%run(sys%namespace, sys%gr, sys%ks%ks_inversion%aux_st, sys%hm, 1)
 
     call density_calc(sys%ks%ks_inversion%aux_st, sys%gr, sys%ks%ks_inversion%aux_st%rho)
 
@@ -162,11 +163,13 @@ contains
     ! output for all cases
     call output_all(sys%outp, sys%namespace, sys%space, STATIC_DIR, sys%gr, sys%ions, -1, &
       sys%ks%ks_inversion%aux_st, sys%hm, sys%ks)
+    call output_modelmb(sys%outp, sys%namespace, sys%space, STATIC_DIR, sys%gr, sys%ions, -1, &
+      sys%ks%ks_inversion%aux_st)
 
     sys%ks%ks_inversion%aux_st%dom_st_kpt_mpi_grp = sys%st%dom_st_kpt_mpi_grp
     ! save files in restart format
-    call restart_init(restart, sys%namespace, RESTART_GS, RESTART_TYPE_DUMP, sys%mc, err, mesh = sys%gr%mesh)
-    call states_elec_dump(restart, sys%space, sys%ks%ks_inversion%aux_st, sys%gr%mesh, sys%kpoints, err, 0)
+    call restart_init(restart, sys%namespace, RESTART_GS, RESTART_TYPE_DUMP, sys%mc, err, mesh = sys%gr)
+    call states_elec_dump(restart, sys%space, sys%ks%ks_inversion%aux_st, sys%gr, sys%kpoints, err, 0)
     if (err /= 0) then
       message(1) = "Unable to write states wavefunctions."
       call messages_warning(1, namespace=sys%namespace)
@@ -231,16 +234,16 @@ contains
 
       do ii = 1, nspin
         call dmf_interpolate_points(sys%space%dim, npoints, xx, ff(:,ii), &
-          np, sys%gr%mesh%x, target_rho(:, ii))
+          np, sys%gr%x, target_rho(:, ii))
       end do
 
       ! we now renormalize the density (necessary if we have a charged system)
       rr = M_ZERO
       do ii = 1, sys%st%d%spin_channels
-        rr = rr + dmf_integrate(sys%gr%mesh, target_rho(:, ii), reduce = .false.)
+        rr = rr + dmf_integrate(sys%gr, target_rho(:, ii), reduce = .false.)
       end do
-      if (sys%gr%mesh%parallel_in_domains) then
-        call sys%gr%mesh%allreduce(rr)
+      if (sys%gr%parallel_in_domains) then
+        call sys%gr%allreduce(rr)
       end if
       rr = sys%st%qtot/rr
       target_rho(:,:) = rr*target_rho(:,:)

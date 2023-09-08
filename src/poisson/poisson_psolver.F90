@@ -31,7 +31,6 @@ module poisson_psolver_oct_m
   use mesh_function_oct_m
 #endif
   use messages_oct_m
-  use mpi_oct_m
   use namespace_oct_m
   use parser_oct_m
   use profiling_oct_m
@@ -453,11 +452,7 @@ contains
     if (present(sm)) then
       call dsubmesh_to_cube(sm, rho, cube, cf)
     else
-      if (mesh%parallel_in_domains) then
-        call dmesh_to_cube(mesh, rho, cube, cf, local=.true.)
-      else
-        call dmesh_to_cube(mesh, rho, cube, cf)
-      end if
+      call dmesh_to_cube(mesh, rho, cube, cf)
     end if
 
     SAFE_ALLOCATE(pot_ion(1:cube%rs_n(1),1:cube%rs_n(2),1:cube%rs_n(3)))
@@ -495,11 +490,7 @@ contains
     if (present(sm)) then
       call dcube_to_submesh(cube, cf, sm, pot)
     else
-      if (mesh%parallel_in_domains) then
-        call dcube_to_mesh(cube, cf, mesh, pot, local=.true.)
-      else
-        call dcube_to_mesh(cube, cf, mesh, pot)
-      end if
+      call dcube_to_mesh(cube, cf, mesh, pot)
     end if
 
     call dcube_function_free_RS(cube, cf)
@@ -543,9 +534,9 @@ contains
     integer :: i3s
 
     !> use_gradient:  .true. if functional is using the gradient.
-    logical :: use_gradient = .false.
+    logical :: use_gradient
     !> use_wb_corr:  .true. if functional is using WB corrections.
-    logical :: use_wb_corr = .false.
+    logical :: use_wb_corr
 #endif
 
     PUSH_SUB(poisson_psolver_get_dims)
@@ -553,12 +544,16 @@ contains
     !! Get the dimensions of the cube
 
 #ifdef HAVE_PSOLVER
+    use_gradient = .false.
+    use_wb_corr = .false.
     call PS_dim4allocation(this%geocode, this%datacode, cube%mpi_grp%rank, cube%mpi_grp%size, &
       cube%rs_n_global(1), cube%rs_n_global(2), cube%rs_n_global(3), &
       use_gradient, use_wb_corr, &
       0, n3d, n3p, n3pi, i3xcsh, i3s)
     this%localnscatterarr(:) = (/ n3d, n3p, n3pi, i3xcsh, i3s /)
 #elif HAVE_LIBISF
+    use_gradient = .false.
+    use_wb_corr = .false.
     call PS_dim4allocation(this%geocode, this%datacode, cube%mpi_grp%rank, cube%mpi_grp%size, &
       cube%rs_n_global(1), cube%rs_n_global(2), cube%rs_n_global(3), &
       use_gradient, use_wb_corr, &

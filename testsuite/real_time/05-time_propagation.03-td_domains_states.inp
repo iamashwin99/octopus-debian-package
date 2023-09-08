@@ -30,9 +30,9 @@ ParStates = 2
 TDEnergyUpdateIter = 5
 
 ExperimentalFeatures = yes
-%TDOutput 
+%TDOutput
  td_occup
-% 
+%
 TDOutputComputeInterval = 10
 
 FilterPotentials = filter_none

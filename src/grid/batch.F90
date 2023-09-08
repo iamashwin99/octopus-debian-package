@@ -18,6 +18,7 @@
 
 #include "global.h"
 
+!> \ingroup Fortran_Module
 module batch_oct_m
   use accel_oct_m
   use allocate_hardware_aware_oct_m
@@ -41,6 +42,8 @@ module batch_oct_m
     dbatch_init,                    &
     zbatch_init
 
+  !> \ingroup Fortran_Class
+  !! @brief Class defining batches of mesh functions
   type batch_t
     private
     integer,                        public :: nst
@@ -54,7 +57,7 @@ module batch_oct_m
     logical                                :: is_allocated
     logical                                :: own_memory !< does the batch own the memory or is it foreign memory?
     !> We also need a linear array with the states in order to calculate derivatives, etc.
-    integer,                        public :: nst_linear
+    integer,                        public :: nst_linear !< nst_linear = nst*std%dim
 
     integer                                :: status_of
     integer                                :: status_host
@@ -74,8 +77,8 @@ module batch_oct_m
     FLOAT, pointer, contiguous,     public :: dff_pack(:, :)
     CMPLX, pointer, contiguous,     public :: zff_pack(:, :)
 
-    integer,                        public :: pack_size(1:2)
-    integer,                        public :: pack_size_real(1:2)
+    integer(i8),                    public :: pack_size(1:2)
+    integer(i8),                    public :: pack_size_real(1:2) !< pack_size_real = pack_size; if batch type is complex, then pack_size_real(1) = 2*pack_size(1)
 
     type(accel_mem_t),              public :: ff_device
 
@@ -175,10 +178,10 @@ contains
 
     if (this%special_memory) then
       if (associated(this%dff)) then
-        call deallocate_hardware_aware(c_loc(this%dff(1,1,1)))
+        call deallocate_hardware_aware(c_loc(this%dff(1,1,1)), int(this%np, i8)*this%dim*this%nst*8)
       end if
       if (associated(this%zff)) then
-        call deallocate_hardware_aware(c_loc(this%zff(1,1,1)))
+        call deallocate_hardware_aware(c_loc(this%zff(1,1,1)), int(this%np, i8)*this%dim*this%nst*16)
       end if
     else
       SAFE_DEALLOCATE_P(this%dff)
@@ -200,10 +203,10 @@ contains
 
     if (this%special_memory) then
       if (associated(this%dff_pack)) then
-        call deallocate_hardware_aware(c_loc(this%dff_pack(1,1)))
+        call deallocate_hardware_aware(c_loc(this%dff_pack(1,1)), int(this%pack_size(1), i8)*this%pack_size(2)*8)
       end if
       if (associated(this%zff_pack)) then
-        call deallocate_hardware_aware(c_loc(this%zff_pack(1,1)))
+        call deallocate_hardware_aware(c_loc(this%zff_pack(1,1)), int(this%pack_size(1), i8)*this%pack_size(2)*16)
       end if
     else
       SAFE_DEALLOCATE_P(this%dff_pack)
@@ -262,7 +265,8 @@ contains
 
     PUSH_SUB(batch_allocate_packed_device)
 
-    call accel_create_buffer(this%ff_device, ACCEL_MEM_READ_WRITE, this%type(), product(this%pack_size))
+    call accel_create_buffer(this%ff_device, ACCEL_MEM_READ_WRITE, this%type(), &
+      product(this%pack_size))
 
     POP_SUB(batch_allocate_packed_device)
   end subroutine batch_allocate_packed_device
@@ -436,7 +440,7 @@ contains
 
   ! ----------------------------------------------------
 
-  integer function batch_pack_total_size(this) result(size)
+  integer(i8) function batch_pack_total_size(this) result(size)
     class(batch_t),      intent(inout) :: this
 
     size = this%np
@@ -621,14 +625,15 @@ contains
   subroutine batch_write_unpacked_to_device(this)
     class(batch_t),      intent(inout)  :: this
 
-    integer :: ist, ist2, unroll
+    integer :: ist, ist2
+    integer(i8) :: unroll
     type(accel_mem_t) :: tmp
     type(profile_t), save :: prof, prof_pack
     type(accel_kernel_t), pointer :: kernel
 
     PUSH_SUB(batch_write_unpacked_to_device)
 
-    call profiling_in(prof, "BATCH_WRITE_UNPACKED_ACCEL")
+    call profiling_in(prof, "BATCH_WRT_UNPACK_ACCEL")
     if (this%nst_linear == 1) then
       ! we can copy directly
       if (this%type() == TYPE_FLOAT) then
@@ -652,23 +657,23 @@ contains
 
       call accel_create_buffer(tmp, ACCEL_MEM_READ_ONLY, this%type(), unroll*this%pack_size(2))
 
-      do ist = 1, this%nst_linear, unroll
+      do ist = 1, this%nst_linear, int(unroll, i4)
 
         ! copy a number 'unroll' of states to the buffer
-        do ist2 = ist, min(ist + unroll - 1, this%nst_linear)
+        do ist2 = ist, min(ist + int(unroll, i4) - 1, this%nst_linear)
 
           if (this%type() == TYPE_FLOAT) then
-            call accel_write_buffer(tmp, ubound(this%dff_linear, dim=1), this%dff_linear(:, ist2), &
+            call accel_write_buffer(tmp, ubound(this%dff_linear, dim=1, kind=i8), this%dff_linear(:, ist2), &
               offset = (ist2 - ist)*this%pack_size(2))
           else
-            call accel_write_buffer(tmp, ubound(this%zff_linear, dim=1), this%zff_linear(:, ist2), &
+            call accel_write_buffer(tmp, ubound(this%zff_linear, dim=1, kind=i8), this%zff_linear(:, ist2), &
               offset = (ist2 - ist)*this%pack_size(2))
           end if
         end do
 
         ! now call an opencl kernel to rearrange the data
-        call accel_set_kernel_arg(kernel, 0, this%pack_size(1))
-        call accel_set_kernel_arg(kernel, 1, this%pack_size(2))
+        call accel_set_kernel_arg(kernel, 0, int(this%pack_size(1), i4))
+        call accel_set_kernel_arg(kernel, 1, int(this%pack_size(2), i4))
         call accel_set_kernel_arg(kernel, 2, ist - 1)
         call accel_set_kernel_arg(kernel, 3, tmp)
         call accel_set_kernel_arg(kernel, 4, this%ff_device)
@@ -700,7 +705,8 @@ contains
   subroutine batch_read_device_to_unpacked(this)
     class(batch_t),      intent(inout) :: this
 
-    integer :: ist, ist2, unroll
+    integer :: ist, ist2
+    integer(i8) :: unroll
     type(accel_mem_t) :: tmp
     type(accel_kernel_t), pointer :: kernel
     type(profile_t), save :: prof, prof_unpack
@@ -728,9 +734,9 @@ contains
         kernel => zunpack
       end if
 
-      do ist = 1, this%nst_linear, unroll
-        call accel_set_kernel_arg(kernel, 0, this%pack_size(1))
-        call accel_set_kernel_arg(kernel, 1, this%pack_size(2))
+      do ist = 1, this%nst_linear, int(unroll, i4)
+        call accel_set_kernel_arg(kernel, 0, int(this%pack_size(1), i4))
+        call accel_set_kernel_arg(kernel, 1, int(this%pack_size(2), i4))
         call accel_set_kernel_arg(kernel, 2, ist - 1)
         call accel_set_kernel_arg(kernel, 3, this%ff_device)
         call accel_set_kernel_arg(kernel, 4, tmp)
@@ -748,13 +754,13 @@ contains
         call profiling_out(prof_unpack)
 
         ! copy a number 'unroll' of states from the buffer
-        do ist2 = ist, min(ist + unroll - 1, this%nst_linear)
+        do ist2 = ist, min(ist + int(unroll, i4) - 1, this%nst_linear)
 
           if (this%type() == TYPE_FLOAT) then
-            call accel_read_buffer(tmp, ubound(this%dff_linear, dim=1), this%dff_linear(:, ist2), &
+            call accel_read_buffer(tmp, ubound(this%dff_linear, dim=1, kind=i8), this%dff_linear(:, ist2), &
               offset = (ist2 - ist)*this%pack_size(2))
           else
-            call accel_read_buffer(tmp, ubound(this%zff_linear, dim=1), this%zff_linear(:, ist2), &
+            call accel_read_buffer(tmp, ubound(this%zff_linear, dim=1, kind=i8), this%zff_linear(:, ist2), &
               offset = (ist2 - ist)*this%pack_size(2))
           end if
         end do
@@ -916,9 +922,9 @@ contains
     integer,           intent(in)    :: np
     class(batch_t),    intent(inout) :: dest
 
-    integer :: ist, dim2, dim3
+    integer(i8) :: localsize, dim2, dim3
     type(profile_t), save :: prof
-    integer :: localsize
+    integer :: ist, ip
 
     PUSH_SUB(batch_copy_data_to)
     call profiling_in(prof, "BATCH_COPY_DATA_TO")
@@ -929,24 +935,47 @@ contains
     case (BATCH_DEVICE_PACKED)
       call accel_set_kernel_arg(kernel_copy, 0, np)
       call accel_set_kernel_arg(kernel_copy, 1, this%ff_device)
-      call accel_set_kernel_arg(kernel_copy, 2, log2(this%pack_size_real(1)))
+      call accel_set_kernel_arg(kernel_copy, 2, log2(int(this%pack_size_real(1), i4)))
       call accel_set_kernel_arg(kernel_copy, 3, dest%ff_device)
-      call accel_set_kernel_arg(kernel_copy, 4, log2(dest%pack_size_real(1)))
+      call accel_set_kernel_arg(kernel_copy, 4, log2(int(dest%pack_size_real(1), i4)))
 
       localsize = accel_kernel_workgroup_size(kernel_copy)/dest%pack_size_real(1)
 
       dim3 = np/(accel_max_size_per_dim(2)*localsize) + 1
-      dim2 = min(accel_max_size_per_dim(2)*localsize, pad(np, localsize))
+      dim2 = min(accel_max_size_per_dim(2)*localsize, pad(int(np, i8), localsize))
 
-      call accel_kernel_run(kernel_copy, (/dest%pack_size_real(1), dim2, dim3/), (/dest%pack_size_real(1), localsize, 1/))
+      call accel_kernel_run(kernel_copy, (/dest%pack_size_real(1), dim2, dim3/), (/dest%pack_size_real(1), localsize, 1_i8/))
 
       call accel_finish()
 
     case (BATCH_PACKED)
-      if (dest%type() == TYPE_FLOAT) then
-        call blas_copy(np*this%pack_size(1), this%dff_pack(1, 1), 1, dest%dff_pack(1, 1), 1)
+      if (np*this%pack_size(1) > huge(0_i4)) then
+        ! BLAS cannot handle 8-byte integers, so we need a special version here
+        do ip = 1, np
+          if (dest%type() == TYPE_FLOAT) then
+            call blas_copy(int(this%pack_size(1), i4), this%dff_pack(1, ip), 1, dest%dff_pack(1, ip), 1)
+          else
+            call blas_copy(int(this%pack_size(1), i4), this%zff_pack(1, ip), 1, dest%zff_pack(1, ip), 1)
+          end if
+        end do
       else
-        call blas_copy(np*this%pack_size(1), this%zff_pack(1, 1), 1, dest%zff_pack(1, 1), 1)
+        if (dest%type() == TYPE_FLOAT) then
+          !$omp parallel do private(ist)
+          do ip = 1, np
+            !$omp simd
+            do ist = 1, int(this%pack_size(1), i4)
+              dest%dff_pack(ist, ip) = this%dff_pack(ist, ip)
+            end do
+          end do
+        else
+          !$omp parallel do private(ist)
+          do ip = 1, np
+            !$omp simd
+            do ist = 1, int(this%pack_size(1), i4)
+              dest%zff_pack(ist, ip) = this%zff_pack(ist, ip)
+            end do
+          end do
+        end if
       end if
 
     case (BATCH_NOT_PACKED)

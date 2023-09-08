@@ -1,0 +1,79 @@
+# -*- coding: utf-8 mode: shell-script -*-
+
+Test       : Maxwell-TDDFT dynamics at different coupling levels
+Program    : octopus
+TestGroups : long-run, maxwell
+Enabled    : Yes
+
+#This test checks the propagation of electromagnetic fields given by the TDDFT currents of kicked benzene
+
+# ground state
+ExtraFile  : 12-tddft-currents-to-maxwell.00-benzene.xyz
+Input      : 12-tddft-currents-to-maxwell.01-benzene-gs.inp
+Precision  : 4e-08
+match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
+Precision: 1e-04
+match ;     Initial energy     ; GREPFIELD(static/info, 'Total       =', 3) ; -37.44576068
+
+# tddft-maxwell dynamics, dipole in length gauge
+Input      : 12-tddft-currents-to-maxwell.02-benzene-mxll-td-length-gauge.inp
+Precision  : 1e-4
+match ;  Benzene Energy [step  0]  ; LINEFIELD(benzene/td.general/energy, -21, 3) ;  -3.7445782357444671e+01
+match ;  Benzene Energy [step 20]  ; LINEFIELD(benzene/td.general/energy, -1, 3) ;   -3.7445652135990152e+01
+
+Precision  : 1e-10
+match ; Benzene Multipoles [step  0] ; LINEFIELD(benzene/td.general/multipoles, -21, 4) ; 0.0
+Precision: 3e-07
+match ; Benzene Multipoles [step 20]  ; LINEFIELD(benzene/td.general/multipoles, -1, 4) ; -2.0944973326279627e-02
+
+Precision: 1e-20
+match ;  Tot. Maxwell energy [step 0]  ; LINEFIELD(maxwell/td.general/maxwell_energy, 6, 3) ; 0.0
+Precision: 5e-11
+match ;   Tot. Maxwell energy [step 300]  ; LINEFIELD(maxwell/td.general/maxwell_energy, 306, 3) ; 1.3706857850966338e-06
+
+Precision: 1e-7
+match ;   Ex  (x=  0.76,y=  0,z=0) [step 400]  ; LINEFIELD(maxwell/output_iter/td.0000400/e_field-x\.y=0\,z=0, 19, 2) ;  7.64807008515904E-005
+Precision: 1e-10
+match ;   By  (x=  0,y=  0,z=3.02) [step 400]  ; LINEFIELD(maxwell/output_iter/td.0000400/b_field-y\.x=0\,y=0, 20, 2) ; -1.22255158483771E-007
+
+# tddft-maxwell dynamics, dipole in velocity gauge
+Input      : 12-tddft-currents-to-maxwell.03-benzene-mxll-td-veloc-gauge.inp
+Precision  : 1e-4
+match ;  Benzene Energy [step  0]  ; LINEFIELD(benzene/td.general/energy, -21, 3) ; -3.7445782357444671e+01
+match ;  Benzene Energy [step 20]  ; LINEFIELD(benzene/td.general/energy, -1, 3) ;  -3.7445652171164909e+01
+
+Precision  : 1e-10
+match ; Benzene Multipoles [step  0] ; LINEFIELD(benzene/td.general/multipoles, -21, 4) ;  0.0
+Precision: 1e-07
+match ; Benzene Multipoles [step 20]  ; LINEFIELD(benzene/td.general/multipoles, -1, 4) ; -2.0944267837316340e-02
+
+Precision: 1e-20
+match ;  Tot. Maxwell energy [step 0]  ; LINEFIELD(maxwell/td.general/maxwell_energy, 6, 3) ; 0.0
+Precision: 5e-11
+match ;   Tot. Maxwell energy [step 300]  ; LINEFIELD(maxwell/td.general/maxwell_energy, 306, 3) ; 1.3706203861489036e-06
+
+Precision: 5e-7
+match ;   Ex  (x=  0.76,y=  0,z=0) [step 400]  ; LINEFIELD(maxwell/output_iter/td.0000400/e_field-x\.y=0\,z=0, 19, 2) ; 7.64800967811956E-005
+Precision: 1e-10
+match ;   By  (x=  0,y=  0,z=3.02) [step 400]  ; LINEFIELD(maxwell/output_iter/td.0000400/b_field-y\.x=0\,y=0, 20, 2) ; -1.22256977647073E-007
+
+# tddft-maxwell dynamics, full minimal coupling
+Input      : 12-tddft-currents-to-maxwell.04-benzene-mxll-td-full-min-coup.inp
+Precision  : 1e-4
+match ;  Benzene Energy [step  0]  ; LINEFIELD(benzene/td.general/energy, -21, 3) ; -3.7445782357444671e+01
+match ;  Benzene Energy [step 20]  ; LINEFIELD(benzene/td.general/energy, -1, 3) ; -3.7445652171009471e+01
+
+Precision  : 1e-10
+match ; Benzene Multipoles [step  0] ; LINEFIELD(benzene/td.general/multipoles, -21, 4) ; 0.0
+Precision: 1e-07
+match ; Benzene Multipoles [step 20]  ; LINEFIELD(benzene/td.general/multipoles, -1, 4) ; -2.0944277994392888e-02
+
+Precision: 1e-20
+match ;  Tot. Maxwell energy [step 0]  ; LINEFIELD(maxwell/td.general/maxwell_energy, 6, 3) ; 0.0
+Precision: 5e-11
+match ;   Tot. Maxwell energy [step 300]  ; LINEFIELD(maxwell/td.general/maxwell_energy, 306, 3) ; 1.3706180169021239e-06
+
+Precision: 5e-7
+match ;   Ex  (x=  0.76,y=  0,z=0) [step 400]   ; LINEFIELD(maxwell/output_iter/td.0000400/e_field-x\.y=0\,z=0, 19, 2) ; 7.64800249038153E-005
+Precision: 2e-10
+match ;   By  (x=  0,y=  0,z=3.02) [step 400]   ; LINEFIELD(maxwell/output_iter/td.0000400/b_field-y\.x=0\,y=0, 20, 2) ; -1.22256420227257E-007

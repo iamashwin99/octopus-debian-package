@@ -20,7 +20,3 @@ OperateComplex = fortran
 DisableAccel = yes
 
 TestRepetitions = 1
-
-
-
-

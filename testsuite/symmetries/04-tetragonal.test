@@ -2124,4 +2124,3 @@ match ; kpt 11 ; GREP(static/info, "     -0.2500      0.2500      0.5000", 51 );
 match ; kpt 12 ; GREP(static/info, "     -0.2500      0.5000      0.2500", 51 ); 0.12500
 match ; kpt 13 ; GREP(static/info, "     -0.2500     -0.2500      0.2500", 51 ); 0.03125
 match ; kpt 14 ; GREP(static/info, "      0.5000      0.5000      0.5000", 51 ); 0.01563
-

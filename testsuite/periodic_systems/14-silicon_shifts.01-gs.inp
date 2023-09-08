@@ -20,8 +20,8 @@ Spacing =a/14
 %
 
 %ReducedCoordinates
-  "Si" |   0.0       | 0.0       | 0.0 
-  "Si" |   1/4       | 1/4       | 1/4 
+  "Si" |   0.0       | 0.0       | 0.0
+  "Si" |   1/4       | 1/4       | 1/4
 %
 
 %KPointsGrid
@@ -35,15 +35,20 @@ Spacing =a/14
  1 | 0 | 0
 %
 %KPointsPath
- 2 
- 0.5 | 0.0 | 0.0 
- 0.0 | 0.0 | 0.0 
+ 2
+ 0.5 | 0.0 | 0.0
+ 0.0 | 0.0 | 0.0
 %
 
 
 KPointsUseSymmetries = yes
 
-ExtraStates = 1
+
+Eigensolver = chebyshev_filter
+ChebyshevFilterLanczosOrder = 4
+ChebyshevFilterDegree = 8
+ExtraStates = 5
+
 ConvRelDens = 1e-7
 
 %Output
@@ -54,4 +59,3 @@ ConvRelDens = 1e-7
 FilterPotentials = filter_none
 
 MixField = density
-

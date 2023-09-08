@@ -150,10 +150,10 @@ contains
     call controlfunction_write(OCT_DIR//'initial_laser_inp', par, sys%namespace)
     call controlfunction_prepare_initial(par)
     call controlfunction_to_h(par, sys%ext_partners)
-    call messages_print_stress(msg="TD ext. fields after processing", namespace=sys%namespace)
-    lasers => list_get_lasers(sys%ext_partners)    
+    call messages_print_with_emphasis(msg="TD ext. fields after processing", namespace=sys%namespace)
+    lasers => list_get_lasers(sys%ext_partners)
     if(associated(lasers)) call laser_write_info(lasers%lasers, namespace=sys%namespace)
-    call messages_print_stress(namespace=sys%namespace)
+    call messages_print_with_emphasis(namespace=sys%namespace)
     call controlfunction_write(OCT_DIR//'initial_laser', par, sys%namespace)
 
 
@@ -284,8 +284,8 @@ contains
 
       call opt_control_state_null(psi)
       call opt_control_state_copy(psi, initial_st)
-      call oct_prop_init(prop_chi, sys%namespace, "chi", sys%gr%mesh, sys%mc)
-      call oct_prop_init(prop_psi, sys%namespace, "psi", sys%gr%mesh, sys%mc)
+      call oct_prop_init(prop_chi, sys%namespace, "chi", sys%gr, sys%mc)
+      call oct_prop_init(prop_psi, sys%namespace, "psi", sys%gr, sys%mc)
 
       call controlfunction_copy(par_new, par)
       ctr_loop: do
@@ -310,8 +310,8 @@ contains
       type(opt_control_state_t) :: psi
       PUSH_SUB(opt_control_run_legacy.scheme_wg05)
 
-      call oct_prop_init(prop_chi, sys%namespace, "chi", sys%gr%mesh, sys%mc)
-      call oct_prop_init(prop_psi, sys%namespace, "psi", sys%gr%mesh, sys%mc)
+      call oct_prop_init(prop_chi, sys%namespace, "chi", sys%gr, sys%mc)
+      call oct_prop_init(prop_psi, sys%namespace, "psi", sys%gr, sys%mc)
 
       if (oct%mode_fixed_fluence) then
         call controlfunction_set_alpha(par, sqrt(controlfunction_fluence(par) / controlfunction_targetfluence()))
@@ -344,8 +344,8 @@ contains
 
       call opt_control_state_null(qcpsi)
       call opt_control_state_copy(qcpsi, initial_st)
-      call oct_prop_init(prop_chi, sys%namespace, "chi", sys%gr%mesh, sys%mc)
-      call oct_prop_init(prop_psi, sys%namespace, "psi", sys%gr%mesh, sys%mc)
+      call oct_prop_init(prop_chi, sys%namespace, "chi", sys%gr, sys%mc)
+      call oct_prop_init(prop_psi, sys%namespace, "psi", sys%gr, sys%mc)
 
       call controlfunction_copy(par_prev, par)
       call propagate_forward(sys, td, par, oct_target, qcpsi, prop_psi)
@@ -689,8 +689,8 @@ contains
 
     PUSH_SUB(f_striter)
 
-    call oct_prop_init(prop_chi, sys%namespace, "chi", sys%gr%mesh, sys%mc)
-    call oct_prop_init(prop_psi, sys%namespace, "psi", sys%gr%mesh, sys%mc)
+    call oct_prop_init(prop_chi, sys%namespace, "chi", sys%gr, sys%mc)
+    call oct_prop_init(prop_psi, sys%namespace, "psi", sys%gr, sys%mc)
 
     call controlfunction_to_realtime(par)
 

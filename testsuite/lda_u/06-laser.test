@@ -14,8 +14,8 @@ Processors: 1
 # nuclei are not in their minimum configuration). Note that there is only
 # one electron, since it makes use of pseudopotentials.
 #
-# Then, it propagates its  evolution under the influence of an electric 
-# field in the dipole approximation, first in the length gauge, and then 
+# Then, it propagates its  evolution under the influence of an electric
+# field in the dipole approximation, first in the length gauge, and then
 # in the velocity gauge.
 #
 # The test compares the z component of the dipole moment after 0.2 atomic
@@ -32,18 +32,12 @@ match ;   n(t=0.2) ; LINEFIELD(td.general/multipoles, -1, 2) ; 2.000000000000e-0
 match ; <Z>(t=0.2) ; LINEFIELD(td.general/multipoles, -1, 6) ; -1.203447684392e-04
 match ; Jx(t=0.2)  ; LINEFIELD(td.general/total_current, -1, 3) ; -5.653383329584e-19
 match ; Jy(t=0.2)  ; LINEFIELD(td.general/total_current, -1, 4) ; 8.131724445486e-20
-match ; Jz(t=0.2)  ; LINEFIELD(td.general/total_current, -1, 5) ; 1.802805017320e-03
+match ; Jz(t=0.2)  ; LINEFIELD(td.general/total_current, -1, 5) ; 1.802805017320000e-03
 
 
 Input: 06-laser.03-velocity_gauge.inp
-if(available cuda); then
-  match ; Error match ; GREPCOUNT(err, 'Calculation will not be continued.') ; 1
-else
-  match ;   n(t=0.2) ; LINEFIELD(td.general/multipoles, -1, 2) ; 2.000000000000e-01
-  match ; <Z>(t=0.2) ; LINEFIELD(td.general/multipoles, -1, 6) ; -1.201194129599e-04
-  match ; Jx(t=0.2)  ; LINEFIELD(td.general/total_current, -1, 3) ; -8.524557702220e-19
-  match ; Jy(t=0.2)  ; LINEFIELD(td.general/total_current, -1, 4) ; -3.043330980236e-19
-  match ; Jz(t=0.2)  ; LINEFIELD(td.general/total_current, -1, 5) ; 1.713783170189e-03
-endif
-
-
+match ;   n(t=0.2) ; LINEFIELD(td.general/multipoles, -1, 2) ; 2.000000000000e-01
+match ; <Z>(t=0.2) ; LINEFIELD(td.general/multipoles, -1, 6) ; -1.201194129599e-04
+match ; Jx(t=0.2)  ; LINEFIELD(td.general/total_current, -1, 3) ; -8.524557702220e-19
+match ; Jy(t=0.2)  ; LINEFIELD(td.general/total_current, -1, 4) ; -3.043330980236e-19
+match ; Jz(t=0.2)  ; LINEFIELD(td.general/total_current, -1, 5) ; 1.713783170189000e-03

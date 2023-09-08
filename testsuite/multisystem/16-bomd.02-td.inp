@@ -1,0 +1,40 @@
+CalculationMode = td
+ExperimentalFeatures = yes
+FromScratch = yes
+
+bond_length = 2.4
+
+%Systems
+ 'test_electrons' | electronic
+%
+
+%Coordinates
+ "C" |  -bond_length/2 |  0.0 |  0.0
+ "C" |   bond_length/2 |  0.0 |  0.0
+%
+
+%Velocities
+ "C" |  0.001 | 0.0 | 0.0
+ "C" | -0.001 | 0.0 | 0.0
+%
+
+Spacing = 0.6
+
+Radius = 6
+
+TDSystemPropagator = prop_bomd
+
+TDTimeStep = 10.0
+
+TDPropagationTime = 40.0
+
+ScaLAPACKCompatible = yes
+
+ParDomains = no
+
+MixField = density
+
+TDMultipoleLmax = 0
+
+
+PoissonSolver = isf

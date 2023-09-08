@@ -11,7 +11,7 @@ FromScratch = yes
 
 BoxShape = parallelepiped
 acell = 10
-%Lsize 
+%Lsize
  acell | acell
 %
 spacing = 0.2

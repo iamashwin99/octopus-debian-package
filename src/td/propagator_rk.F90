@@ -32,6 +32,7 @@ module propagator_rk_oct_m
   use interaction_partner_oct_m
   use ion_dynamics_oct_m
   use ions_oct_m
+  use lalg_basic_oct_m
   use lda_u_oct_m
   use mesh_oct_m
   use mesh_function_oct_m
@@ -41,7 +42,8 @@ module propagator_rk_oct_m
   use oct_exchange_oct_m
   use opt_control_state_oct_m
   use parser_oct_m
-  use pert_oct_m
+  use perturbation_ionic_oct_m
+  use poisson_oct_m
   use potential_interpolation_oct_m
   use profiling_oct_m
   use propagator_base_oct_m
@@ -62,7 +64,7 @@ module propagator_rk_oct_m
     td_runge_kutta2,           &
     td_runge_kutta4
 
-  type(mesh_t),             pointer,     private :: mesh_p
+  class(mesh_t),            pointer,     private :: mesh_p
   type(hamiltonian_elec_t), pointer,     private :: hm_p
   type(states_elec_t),      pointer,     private :: st_p
   type(propagator_base_t),  pointer,     private :: tr_p
@@ -120,8 +122,8 @@ contains
     st2 = st%st_end
     kp1 = st%d%kpt%start
     kp2 = st%d%kpt%end
-    np_part = gr%mesh%np_part
-    np = gr%mesh%np
+    np_part = gr%np_part
+    np = gr%np
     nspin = hm%d%nspin
 
     SAFE_ALLOCATE(zphi(1:np_part, 1:st%d%dim, st1:st2, kp1:kp2))
@@ -153,12 +155,12 @@ contains
 
     call states_elec_copy(hst, st)
     call states_elec_copy(stphi, st)
-    call states_elec_get_state(st, gr%mesh, zphi)
+    call states_elec_get_state(st, gr, zphi)
 
     if (propagate_chi) then
       call states_elec_copy(hchi, chi)
       call states_elec_copy(stchi, chi)
-      call states_elec_get_state(chi, gr%mesh, zchi)
+      call states_elec_get_state(chi, gr, zchi)
     end if
 
     if (ion_dynamics_ions_move(ions_dyn)) then
@@ -182,9 +184,9 @@ contains
     !
 
     !
-    call states_elec_set_state(stphi, gr%mesh, zphi)
+    call states_elec_set_state(stphi, gr, zphi)
     if (propagate_chi) then
-      call states_elec_set_state(stchi, gr%mesh, zchi)
+      call states_elec_set_state(stchi, gr, zchi)
     end if
     if (ion_dynamics_ions_move(ions_dyn)) then
       pos = pos0
@@ -204,16 +206,16 @@ contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! Stage 2.
 
-    call states_elec_set_state(stphi, gr%mesh, zphi)
+    call states_elec_set_state(stphi, gr, zphi)
     if (propagate_chi) then
-      call states_elec_set_state(stchi, gr%mesh, zchi)
+      call states_elec_set_state(stchi, gr, zchi)
     end if
 
     do ik = stphi%d%kpt%start, stphi%d%kpt%end
       do ib = stphi%group%block_start, stphi%group%block_end
-        call batch_axpy(gr%mesh%np, -M_HALF*M_zI*dt, hst%group%psib(ib, ik), stphi%group%psib(ib, ik))
+        call batch_axpy(gr%np, -M_HALF*M_zI*dt, hst%group%psib(ib, ik), stphi%group%psib(ib, ik))
         if (propagate_chi) then
-          call batch_axpy(gr%mesh%np, -M_HALF*M_zI*dt, hchi%group%psib(ib, ik), stchi%group%psib(ib, ik))
+          call batch_axpy(gr%np, -M_HALF*M_zI*dt, hchi%group%psib(ib, ik), stchi%group%psib(ib, ik))
         end if
       end do
     end do
@@ -235,16 +237,16 @@ contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! Stage 3.
 
-    call states_elec_set_state(stphi, gr%mesh, zphi)
+    call states_elec_set_state(stphi, gr, zphi)
     if (propagate_chi) then
-      call states_elec_set_state(stchi, gr%mesh, zchi)
+      call states_elec_set_state(stchi, gr, zchi)
     end if
 
     do ik = stphi%d%kpt%start, stphi%d%kpt%end
       do ib = stphi%group%block_start, stphi%group%block_end
-        call batch_axpy(gr%mesh%np, -M_HALF*M_zI*dt, hst%group%psib(ib, ik), stphi%group%psib(ib, ik))
+        call batch_axpy(gr%np, -M_HALF*M_zI*dt, hst%group%psib(ib, ik), stphi%group%psib(ib, ik))
         if (propagate_chi) then
-          call batch_axpy(gr%mesh%np, -M_HALF*M_zI*dt, hchi%group%psib(ib, ik), stchi%group%psib(ib, ik))
+          call batch_axpy(gr%np, -M_HALF*M_zI*dt, hchi%group%psib(ib, ik), stchi%group%psib(ib, ik))
         end if
       end do
     end do
@@ -267,16 +269,16 @@ contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! Stage 4.
 
-    call states_elec_set_state(stphi, gr%mesh, zphi)
+    call states_elec_set_state(stphi, gr, zphi)
     if (propagate_chi) then
-      call states_elec_set_state(stchi, gr%mesh, zchi)
+      call states_elec_set_state(stchi, gr, zchi)
     end if
 
     do ik = stphi%d%kpt%start, stphi%d%kpt%end
       do ib = stphi%group%block_start, stphi%group%block_end
-        call batch_axpy(gr%mesh%np, -M_zI*dt, hst%group%psib(ib, ik), stphi%group%psib(ib, ik))
+        call batch_axpy(gr%np, -M_zI*dt, hst%group%psib(ib, ik), stphi%group%psib(ib, ik))
         if (propagate_chi) then
-          call batch_axpy(gr%mesh%np, -M_zI*dt, hchi%group%psib(ib, ik), stchi%group%psib(ib, ik))
+          call batch_axpy(gr%np, -M_zI*dt, hchi%group%psib(ib, ik), stchi%group%psib(ib, ik))
         end if
       end do
     end do
@@ -367,10 +369,10 @@ contains
           calc_current = list_has_gauge_field(ext_partners), &
           time = tau, calc_energy = .false., calc_eigenval = .false.)
       else
-        call hamiltonian_elec_update(hm, gr%mesh, namespace, space, ext_partners, time = tau)
+        call hm%update(gr, namespace, space, ext_partners, time = tau)
       end if
-      call lda_u_update_occ_matrices(hm%lda_u, namespace, gr%mesh, st, hm%hm_base, hm%energy)
-      call zhamiltonian_elec_apply_all(hm, namespace, gr%mesh, stphi, hst)
+      call lda_u_update_occ_matrices(hm%lda_u, namespace, gr, st, hm%hm_base, hm%energy)
+      call zhamiltonian_elec_apply_all(hm, namespace, gr, stphi, hst)
     end subroutine f_psi
 
     subroutine f_ions(tau)
@@ -393,13 +395,13 @@ contains
     subroutine f_chi(tau)
       FLOAT, intent(in) :: tau
 
-      if (hm%theory_level /= INDEPENDENT_PARTICLES) call oct_exchange_set(hm%oct_exchange, stphi, gr%mesh)
+      if (hm%theory_level /= INDEPENDENT_PARTICLES) call oct_exchange_set(hm%oct_exchange, stphi, gr)
       call prepare_inh()
       call hamiltonian_elec_adjoint(hm)
 
-      call propagation_ops_elec_update_hamiltonian(namespace, space, st, gr%mesh, hm, ext_partners, tau)
+      call propagation_ops_elec_update_hamiltonian(namespace, space, st, gr, hm, ext_partners, tau)
 
-      call zhamiltonian_elec_apply_all(hm, namespace, gr%mesh, stchi, hchi)
+      call zhamiltonian_elec_apply_all(hm, namespace, gr, stchi, hchi)
       call hamiltonian_elec_not_adjoint(hm)
 
 
@@ -423,35 +425,35 @@ contains
     subroutine prepare_inh()
       integer :: idir
       CMPLX, allocatable :: psi(:, :), inhpsi(:, :)
-      type(pert_t) :: pert
+      type(perturbation_ionic_t), pointer :: pert
 
       if (ion_dynamics_ions_move(ions_dyn)) then
         call states_elec_copy(inh, st)
 
-        SAFE_ALLOCATE(psi(1:gr%mesh%np_part, 1:st%d%dim))
-        SAFE_ALLOCATE(inhpsi(1:gr%mesh%np_part, 1:st%d%dim))
-        SAFE_ALLOCATE(dvpsi(1:gr%mesh%np_part, 1:st%d%dim, 1:space%dim))
+        SAFE_ALLOCATE(psi(1:gr%np_part, 1:st%d%dim))
+        SAFE_ALLOCATE(inhpsi(1:gr%np_part, 1:st%d%dim))
+        SAFE_ALLOCATE(dvpsi(1:gr%np_part, 1:st%d%dim, 1:space%dim))
 
         do ik = 1, st%d%nik
           do ist = 1, st%nst
 
             inhpsi = M_z0
-            call states_elec_get_state(stphi, gr%mesh, ist, ik, psi)
+            call states_elec_get_state(stphi, gr, ist, ik, psi)
 
             do iatom = 1, ions%natoms
               do idir = 1, space%dim
-                call pert_init(pert, namespace, PERTURBATION_IONIC, ions)
-                call pert_setup_atom(pert, iatom)
-                call pert_setup_dir(pert, idir)
-                call zpert_apply(pert, namespace, space, gr, hm, ik, psi(:, :), dvpsi(:, :, idir))
+                pert => perturbation_ionic_t(namespace, ions)
+                call pert%setup_atom(iatom)
+                call pert%setup_dir(idir)
+                call pert%zapply(namespace, space, gr, hm, ik, psi(:, :), dvpsi(:, :, idir))
                 dvpsi(:, :, idir) = - dvpsi(:, :, idir)
-                inhpsi(1:gr%mesh%np, 1:stphi%d%dim) = inhpsi(1:gr%mesh%np, 1:stphi%d%dim) &
-                  + st%occ(ist, ik)*post(idir, iatom)*dvpsi(1:gr%mesh%np, 1:stphi%d%dim, idir)
-                call pert_end(pert)
+                inhpsi(1:gr%np, 1:stphi%d%dim) = inhpsi(1:gr%np, 1:stphi%d%dim) &
+                  + st%occ(ist, ik)*post(idir, iatom)*dvpsi(1:gr%np, 1:stphi%d%dim, idir)
+                SAFE_DEALLOCATE_P(pert)
               end do
             end do
 
-            call states_elec_set_state(inh, gr%mesh, ist, ik, inhpsi)
+            call states_elec_set_state(inh, gr, ist, ik, inhpsi)
 
           end do
         end do
@@ -471,9 +473,9 @@ contains
 
       do ik = stphi%d%kpt%start, stphi%d%kpt%end
         do ib = stphi%group%block_start, stphi%group%block_end
-          call batch_axpy(gr%mesh%np, -M_zI*dt*epsilon, hst%group%psib(ib, ik), st%group%psib(ib, ik))
+          call batch_axpy(gr%np, -M_zI*dt*epsilon, hst%group%psib(ib, ik), st%group%psib(ib, ik))
           if (propagate_chi) then
-            call batch_axpy(gr%mesh%np, -M_zI*dt*epsilon, hchi%group%psib(ib, ik), chi%group%psib(ib, ik))
+            call batch_axpy(gr%np, -M_zI*dt*epsilon, hchi%group%psib(ib, ik), chi%group%psib(ib, ik))
           end if
         end do
       end do
@@ -520,8 +522,8 @@ contains
     st2 = st%st_end
     kp1 = st%d%kpt%start
     kp2 = st%d%kpt%end
-    np_part = gr%mesh%np_part
-    np = gr%mesh%np
+    np_part = gr%np_part
+    np = gr%np
     nspin = hm%d%nspin
     move_ions_op = ion_dynamics_ions_move(ions_dyn)
 
@@ -535,7 +537,7 @@ contains
     if (sp_parallel) call mpi_grp_copy(sp_grp, st%st_kpt_mpi_grp)
 
     ! define pointer and variables for usage in td_rk2op, td_rk2opt routines
-    mesh_p    => gr%mesh
+    mesh_p    => gr
     hm_p      => hm
     tr_p      => tr
     st_p      => st
@@ -548,7 +550,7 @@ contains
 
     SAFE_ALLOCATE(k2(1:np_part, 1:st%d%dim, st1:st2, kp1:kp2))
     SAFE_ALLOCATE(oldk2(1:np_part, 1:st%d%dim, st1:st2, kp1:kp2))
-    SAFE_ALLOCATE(zphi(1:gr%mesh%np_part, st%d%dim, st1:st2, kp1:kp2))
+    SAFE_ALLOCATE(zphi(1:gr%np_part, st%d%dim, st1:st2, kp1:kp2))
     SAFE_ALLOCATE(rhs1(1:np_part, 1:st%d%dim, st1:st2, kp1:kp2))
     SAFE_ALLOCATE(rhs(1:tr%tdsk_size))
     SAFE_ALLOCATE(zpsi(1:tr%tdsk_size))
@@ -558,15 +560,15 @@ contains
     ! First, we get the state that we want to propagate. For the moment being, only one state.
     do ik = kp1, kp2
       do ist = st1, st2
-        call states_elec_get_state(st, gr%mesh, ist, ik, zphi(:, :, ist, ik))
+        call states_elec_get_state(st, gr, ist, ik, zphi(:, :, ist, ik))
       end do
     end do
 
     if (oct_exchange_enabled(hm%oct_exchange)) then
-      call oct_exchange_prepare(hm%oct_exchange, gr%mesh, zphi, hm%xc, hm%psolver, namespace)
+      call oct_exchange_prepare(hm%oct_exchange, gr, zphi, hm%xc, hm%psolver, namespace)
     end if
 
-    call propagation_ops_elec_update_hamiltonian(namespace, space, st, gr%mesh, hm, ext_partners, time - dt)
+    call propagation_ops_elec_update_hamiltonian(namespace, space, st, gr, hm, ext_partners, time - dt)
 
     rhs1 = M_z0
     do ik = kp1, kp2
@@ -577,7 +579,7 @@ contains
     do ik = kp1, kp2
       do ist = st1, st2
         if (oct_exchange_enabled(hm%oct_exchange)) then
-          call oct_exchange_operator(hm%oct_exchange, namespace, gr%mesh, rhs1(:, :, ist, ik), ist, ik)
+          call oct_exchange_operator(hm%oct_exchange, namespace, gr, rhs1(:, :, ist, ik), ist, ik)
         end if
       end do
     end do
@@ -585,12 +587,12 @@ contains
     rhs1 = zphi - M_zI * M_HALF * dt * rhs1
 
     if (hamiltonian_elec_inh_term(hm)) then
-      SAFE_ALLOCATE(inhpsi(1:gr%mesh%np))
+      SAFE_ALLOCATE(inhpsi(1:gr%np))
       do ik = kp1, kp2
         do ist = st1, st2
           do idim = 1, st%d%dim
-            call states_elec_get_state(hm%inh_st, gr%mesh, idim, ist, ik, inhpsi)
-            do ip = 1, gr%mesh%np
+            call states_elec_get_state(hm%inh_st, gr, idim, ist, ik, inhpsi)
+            do ip = 1, gr%np
               rhs1(ip, idim, ist, ik) = rhs1(ip, idim, ist, ik) + dt * inhpsi(ip)
             end do
           end do
@@ -609,7 +611,7 @@ contains
       if (.not. oct_exchange_enabled(hm_p%oct_exchange)) then
         do ik = kp1, kp2
           do ist = st1, st2
-            call states_elec_set_state(st, gr%mesh, ist, ik, k2(:, :, ist, ik))
+            call states_elec_set_state(st, gr, ist, ik, k2(:, :, ist, ik))
           end do
         end do
         call density_calc(st, gr, st%rho)
@@ -624,11 +626,11 @@ contains
         vpsl1_op = hm%ep%vpsl
       end if
 
-      call propagation_ops_elec_update_hamiltonian(namespace, space, st, gr%mesh, hm, ext_partners, time)
+      call propagation_ops_elec_update_hamiltonian(namespace, space, st, gr, hm, ext_partners, time)
 
       if (.not. oct_exchange_enabled(hm_p%oct_exchange)) then
         if (i == 1) then
-          call potential_interpolation_get(tr%vksold, gr%mesh%np, st%d%nspin, 0, vhxc1_op)
+          call potential_interpolation_get(tr%vksold, gr%np, st%d%nspin, 0, vhxc1_op)
           i = i + 1
         else
           vhxc1_op = hm%vhxc
@@ -681,7 +683,7 @@ contains
       do ik = kp1, kp2
         do ist = st1, st2
           do idim = 1, st%d%dim
-            dres = dres + (zmf_nrm2(gr%mesh, k2(:, idim, ist, ik) - oldk2(:, idim, ist, ik), reduce = .false.))**2
+            dres = dres + (zmf_nrm2(gr, k2(:, idim, ist, ik) - oldk2(:, idim, ist, ik), reduce = .false.))**2
           end do
         end do
       end do
@@ -694,7 +696,7 @@ contains
     zphi = k2
     do ik = kp1, kp2
       do ist = st1, st2
-        call states_elec_set_state(st, gr%mesh, ist, ik, zphi(:, :, ist, ik))
+        call states_elec_set_state(st, gr, ist, ik, zphi(:, :, ist, ik))
       end do
     end do
 
@@ -728,7 +730,7 @@ contains
     type(ions_t),                     intent(inout) :: ions
     type(partner_list_t),     target, intent(in)    :: ext_partners
 
-    integer :: np_part, np, idim, ip, ist, ik, j, kp1, kp2, st1, st2, nspin
+    integer :: idim, ip, ist, ik, j, kp1, kp2, st1, st2, nspin
     FLOAT :: dres
     CMPLX, allocatable :: inhpsi(:)
     CMPLX, allocatable :: zpsi(:), rhs(:)
@@ -755,12 +757,10 @@ contains
     st2 = st%st_end
     kp1 = st%d%kpt%start
     kp2 = st%d%kpt%end
-    np_part = gr%mesh%np_part
-    np = gr%mesh%np
     nspin = hm%d%nspin
     move_ions_op = ion_dynamics_ions_move(ions_dyn)
 
-    sp_np = np
+    sp_np = gr%np
     sp_dim = st%d%dim
     sp_st1 = st1
     sp_st2 = st2
@@ -770,7 +770,7 @@ contains
     if (sp_parallel) call mpi_grp_copy(sp_grp, st%st_kpt_mpi_grp)
 
     ! define pointer and variables for usage in td_rk4op, td_rk4opt routines
-    mesh_p    => gr%mesh
+    mesh_p    => gr
     hm_p      => hm
     tr_p      => tr
     st_p      => st
@@ -781,26 +781,26 @@ contains
     t_op  = time - dt/M_TWO
     dim_op = st%d%dim
 
-    SAFE_ALLOCATE(vhxc1_op(1:np, 1:nspin))
-    SAFE_ALLOCATE(vhxc2_op(1:np, 1:nspin))
-    SAFE_ALLOCATE(vpsl1_op(1:np))
-    SAFE_ALLOCATE(vpsl2_op(1:np))
-    SAFE_ALLOCATE(k1(1:np_part, 1:st%d%dim, st1:st2, kp1:kp2))
-    SAFE_ALLOCATE(k2(1:np_part, 1:st%d%dim, st1:st2, kp1:kp2))
-    SAFE_ALLOCATE(oldk1(1:np_part, 1:st%d%dim, st1:st2, kp1:kp2))
-    SAFE_ALLOCATE(oldk2(1:np_part, 1:st%d%dim, st1:st2, kp1:kp2))
-    SAFE_ALLOCATE(yn1(1:np_part, 1:st%d%dim, st1:st2, kp1:kp2))
-    SAFE_ALLOCATE(yn2(1:np_part, 1:st%d%dim, st1:st2, kp1:kp2))
-    SAFE_ALLOCATE(rhs1(1:np_part, 1:st%d%dim, st1:st2, kp1:kp2))
-    SAFE_ALLOCATE(rhs2(1:np_part, 1:st%d%dim, st1:st2, kp1:kp2))
+    SAFE_ALLOCATE(vhxc1_op(1:gr%np, 1:nspin))
+    SAFE_ALLOCATE(vhxc2_op(1:gr%np, 1:nspin))
+    SAFE_ALLOCATE(vpsl1_op(1:gr%np))
+    SAFE_ALLOCATE(vpsl2_op(1:gr%np))
+    SAFE_ALLOCATE(k1(1:gr%np_part, 1:st%d%dim, st1:st2, kp1:kp2))
+    SAFE_ALLOCATE(k2(1:gr%np_part, 1:st%d%dim, st1:st2, kp1:kp2))
+    SAFE_ALLOCATE(oldk1(1:gr%np_part, 1:st%d%dim, st1:st2, kp1:kp2))
+    SAFE_ALLOCATE(oldk2(1:gr%np_part, 1:st%d%dim, st1:st2, kp1:kp2))
+    SAFE_ALLOCATE(yn1(1:gr%np_part, 1:st%d%dim, st1:st2, kp1:kp2))
+    SAFE_ALLOCATE(yn2(1:gr%np_part, 1:st%d%dim, st1:st2, kp1:kp2))
+    SAFE_ALLOCATE(rhs1(1:gr%np_part, 1:st%d%dim, st1:st2, kp1:kp2))
+    SAFE_ALLOCATE(rhs2(1:gr%np_part, 1:st%d%dim, st1:st2, kp1:kp2))
     SAFE_ALLOCATE(rhs(1:tr%tdsk_size))
     SAFE_ALLOCATE(zpsi(1:tr%tdsk_size))
-    SAFE_ALLOCATE(zphi(1:gr%mesh%np_part, st%d%dim, st1:st2, kp1:kp2))
+    SAFE_ALLOCATE(zphi(1:gr%np_part, st%d%dim, st1:st2, kp1:kp2))
 
     ! First, we get the state that we want to propagate. For the moment being, only one state.
     do ik = kp1, kp2
       do ist = st1, st2
-        call states_elec_get_state(st, gr%mesh, ist, ik, zphi(:, :, ist, ik))
+        call states_elec_get_state(st, gr, ist, ik, zphi(:, :, ist, ik))
       end do
     end do
     k1 = M_z0
@@ -817,7 +817,7 @@ contains
       ! Set the Hamiltonian at time-dt + c(1) * dt
       do ik = kp1, kp2
         do ist = st1, st2
-          call states_elec_set_state(st, gr%mesh, ist, ik, yn1(:, :, ist, ik))
+          call states_elec_set_state(st, gr, ist, ik, yn1(:, :, ist, ik))
         end do
       end do
       call density_calc(st, gr, st%rho)
@@ -831,7 +831,7 @@ contains
         vpsl1_op = hm%ep%vpsl
       end if
 
-      call propagation_ops_elec_update_hamiltonian(namespace, space, st, gr%mesh, hm, ext_partners, time - dt + c(1)*dt)
+      call propagation_ops_elec_update_hamiltonian(namespace, space, st, gr, hm, ext_partners, time - dt + c(1)*dt)
 
       vhxc1_op = hm%vhxc
       t_op  = time - dt + c(1) * dt
@@ -840,10 +840,10 @@ contains
         do ist = st1, st2
           call zhamiltonian_elec_apply_single(hm_p, namespace, mesh_p, zphi(:, :, ist, ik), rhs1(:, :, ist, ik), ist, ik)
           if (hamiltonian_elec_inh_term(hm)) then
-            SAFE_ALLOCATE(inhpsi(1:gr%mesh%np))
+            SAFE_ALLOCATE(inhpsi(1:gr%np))
             do idim = 1, st%d%dim
-              call states_elec_get_state(hm%inh_st, gr%mesh, idim, ist, ik, inhpsi)
-              do ip = 1, gr%mesh%np
+              call states_elec_get_state(hm%inh_st, gr, idim, ist, ik, inhpsi)
+              do ip = 1, gr%np
                 rhs1(ip, idim, ist, ik) = rhs1(ip, idim, ist, ik) + M_zI * inhpsi(ip)
               end do
             end do
@@ -859,7 +859,7 @@ contains
       ! Set the Hamiltonian at time-dt + c(2) * dt
       do ik = kp1, kp2
         do ist = st1, st2
-          call states_elec_set_state(st, gr%mesh, ist, ik, yn2(:, :, ist, ik))
+          call states_elec_set_state(st, gr, ist, ik, yn2(:, :, ist, ik))
         end do
       end do
       call density_calc(st, gr, st%rho)
@@ -873,7 +873,7 @@ contains
         vpsl2_op = hm%ep%vpsl
       end if
 
-      call propagation_ops_elec_update_hamiltonian(namespace, space, st, gr%mesh, hm, ext_partners, time - dt + c(2)*dt)
+      call propagation_ops_elec_update_hamiltonian(namespace, space, st, gr, hm, ext_partners, time - dt + c(2)*dt)
 
       vhxc2_op = hm%vhxc
       t_op  = time - dt + c(2) * dt
@@ -882,10 +882,10 @@ contains
         do ist = st1, st2
           call zhamiltonian_elec_apply_single(hm_p, namespace, mesh_p, zphi(:, :, ist, ik), rhs2(:, :, ist, ik), ist, ik)
           if (hamiltonian_elec_inh_term(hm)) then
-            SAFE_ALLOCATE(inhpsi(1:gr%mesh%np))
+            SAFE_ALLOCATE(inhpsi(1:gr%np))
             do idim = 1, st%d%dim
-              call states_elec_get_state(hm%inh_st, gr%mesh, idim, ist, ik, inhpsi)
-              do ip = 1, gr%mesh%np
+              call states_elec_get_state(hm%inh_st, gr, idim, ist, ik, inhpsi)
+              do ip = 1, gr%np
                 rhs2(ip, idim, ist, ik) = rhs2(ip, idim, ist, ik) + M_zI * inhpsi(ip)
               end do
             end do
@@ -902,16 +902,16 @@ contains
       do ik = kp1, kp2
         do ist = st1, st2
           do idim = 1, st%d%dim
-            rhs(j:j+np-1) = rhs1(1:np, idim, ist, ik)
-            j = j + np
+            call lalg_copy(gr%np, rhs1(1:gr%np, idim, ist, ik), rhs(j:j+gr%np-1))
+            j = j + gr%np
           end do
         end do
       end do
       do ik = kp1, kp2
         do ist = st1, st2
           do idim = 1, st%d%dim
-            rhs(j:j+np-1) = rhs2(1:np, idim, ist, ik)
-            j = j + np
+            call lalg_copy(gr%np, rhs2(1:gr%np, idim, ist, ik), rhs(j:j+gr%np-1))
+            j = j + gr%np
           end do
         end do
       end do
@@ -921,16 +921,16 @@ contains
       do ik = kp1, kp2
         do ist = st1, st2
           do idim = 1, st%d%dim
-            zpsi(j:j+np-1) = k1(1:np, idim, ist, ik)
-            j = j + np
+            call lalg_copy(gr%np, k1(1:gr%np, idim, ist, ik), zpsi(j:j+gr%np-1))
+            j = j + gr%np
           end do
         end do
       end do
       do ik = kp1, kp2
         do ist = st1, st2
           do idim = 1, st%d%dim
-            zpsi(j:j+np-1) = k2(1:np, idim, ist, ik)
-            j = j + np
+            call lalg_copy(gr%np, k2(1:gr%np, idim, ist, ik), zpsi(j:j+gr%np-1))
+            j = j + gr%np
           end do
         end do
       end do
@@ -944,16 +944,16 @@ contains
       do ik = kp1, kp2
         do ist = st1, st2
           do idim = 1, st%d%dim
-            k1(1:np, idim, ist, ik) = zpsi(j:j+np-1)
-            j = j + np
+            call lalg_copy(gr%np, zpsi(j:j+gr%np-1), k1(1:gr%np, idim, ist, ik))
+            j = j + gr%np
           end do
         end do
       end do
       do ik = kp1, kp2
         do ist = st1, st2
           do idim = 1, st%d%dim
-            k2(1:np, idim, ist, ik) = zpsi(j:j+np-1)
-            j = j + np
+            call lalg_copy(gr%np, zpsi(j:j+gr%np-1), k2(1:gr%np, idim, ist, ik))
+            j = j + gr%np
           end do
         end do
       end do
@@ -962,8 +962,8 @@ contains
       do ik = kp1, kp2
         do ist = st1, st2
           do idim = 1, st%d%dim
-            dres = dres + (zmf_nrm2(gr%mesh, k1(:, idim, ist, ik) - oldk1(:, idim, ist, ik)))**2
-            dres = dres + (zmf_nrm2(gr%mesh, k2(:, idim, ist, ik) - oldk2(:, idim, ist, ik)))**2
+            dres = dres + (zmf_nrm2(gr, k1(:, idim, ist, ik) - oldk1(:, idim, ist, ik)))**2
+            dres = dres + (zmf_nrm2(gr, k2(:, idim, ist, ik) - oldk2(:, idim, ist, ik)))**2
           end do
         end do
       end do
@@ -977,7 +977,7 @@ contains
     zphi = zphi + b(1) * k1 + b(2) * k2
     do ik = kp1, kp2
       do ist = st1, st2
-        call states_elec_set_state(st, gr%mesh, ist, ik, zphi(:, :, ist, ik))
+        call states_elec_set_state(st, gr, ist, ik, zphi(:, :, ist, ik))
       end do
     end do
 

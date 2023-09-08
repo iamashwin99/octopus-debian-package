@@ -18,6 +18,7 @@
 #include "global.h"
 
 module propagator_mxll_oct_m
+  use accel_oct_m
   use batch_ops_oct_m
   use batch_oct_m
   use comm_oct_m
@@ -35,6 +36,7 @@ module propagator_mxll_oct_m
   use global_oct_m
   use hamiltonian_elec_oct_m
   use hamiltonian_mxll_oct_m
+  use helmholtz_decomposition_m
   use index_oct_m
   use io_oct_m
   use io_function_oct_m
@@ -45,6 +47,7 @@ module propagator_mxll_oct_m
   use maxwell_boundary_op_oct_m
   use maxwell_function_oct_m
   use mesh_oct_m
+  use mesh_batch_oct_m
   use mesh_cube_parallel_map_oct_m
   use mesh_function_oct_m
   use messages_oct_m
@@ -53,6 +56,7 @@ module propagator_mxll_oct_m
   use output_oct_m
   use parser_oct_m
   use par_vec_oct_m
+  use plane_wave_oct_m
   use profiling_oct_m
   use poisson_oct_m
   use space_oct_m
@@ -71,9 +75,16 @@ module propagator_mxll_oct_m
     mxll_propagation_step,                   &
     transform_rs_densities,                  &
     energy_mxll_calc,                        &
+    energy_mxll_calc_batch,                  &
     spatial_constant_calculation,            &
     set_medium_rs_state,                     &
-    plane_waves_in_box_calculation
+    plane_waves_in_box_calculation,          &
+    plane_waves_boundaries_calculation,      &
+    mirror_pmc_boundaries_calculation,       &
+    mirror_pec_boundaries_calculation,       &
+    mask_absorbing_boundaries,               &
+    constant_boundaries_calculation,         &
+    mxll_apply_boundaries
 
   ! The following routines are currently unused, but will be used in the near future.
   ! In order not to generate warnings about them, we declared them as public
@@ -119,13 +130,14 @@ contains
     integer :: default_propagator, nlines, ncols, icol
     type(block_t) :: blk
     character(len=256) :: string
-    logical :: plane_waves_set = .false.
+    logical :: plane_waves_set
     type(profile_t), save :: prof
 
     PUSH_SUB(propagator_mxll_init)
 
     call profiling_in(prof,"PROPAGATOR_MXLL_INIT")
 
+    plane_waves_set = .false.
     hm%bc%bc_type(:) = MXLL_BC_ZERO ! default boundary condition is zero
 
     !%Variable MaxwellBoundaryConditions
@@ -137,7 +149,7 @@ contains
     !% Example:
     !%
     !% <tt>%MaxwellBoundaryConditions
-    !% <br>&nbsp;&nbsp;   zero | mirror_pec | consant
+    !% <br>&nbsp;&nbsp;   zero | mirror_pec | constant
     !% <br>%</tt>
     !%
     !%
@@ -158,7 +170,7 @@ contains
     !%End
     if (parse_block(namespace, 'MaxwellBoundaryConditions', blk) == 0) then
 
-      call messages_print_stress(msg='Maxwell boundary conditions:', namespace=namespace)
+      call messages_print_with_emphasis(msg='Maxwell boundary conditions:', namespace=namespace)
 
       ! find out how many lines (i.e. states) the block has
       nlines = parse_block_n(blk)
@@ -173,7 +185,7 @@ contains
         call parse_block_integer(blk, 0, icol-1, hm%bc%bc_type(icol))
       end do
       call parse_block_end(blk)
-      call messages_print_stress(namespace=namespace)
+      call messages_print_with_emphasis(namespace=namespace)
     end if
 
     do icol = 1, 3
@@ -234,7 +246,7 @@ contains
     !%Default no
     !%Section Time-Dependent::Propagation
     !%Description
-    !% Whether to perform  aproximations to the ETRS propagator.
+    !% Whether to perform  approximations to the ETRS propagator.
     !%Option no 0
     !% No approximations.
     !%Option const_steps 1
@@ -249,10 +261,10 @@ contains
     !%Section Time-Dependent::Propagation
     !%Description
     !% The Maxwell Operator e.g. the curl operation can be obtained by
-    !% two different methods, the finid-difference or the fast fourier
+    !% two different methods, the finite-difference or the fast fourier
     !% transform.
     !%Option op_fd 1
-    !% Maxwell operator calculated by finite differnce method
+    !% Maxwell operator calculated by finite difference method
     !%Option op_fft 2
     !% Maxwell operator calculated by fast fourier transform
     !%End
@@ -286,7 +298,7 @@ contains
     !%End
     call parse_variable(namespace, 'MaxwellPlaneWavesInBox', .false., tr%plane_waves_in_box)
 
-    call derivatives_boundary_mask(hm%bc, gr%mesh, hm)
+    call derivatives_boundary_mask(hm%bc, gr, hm)
 
     !tr%te%exp = .true.
     call exponential_init(tr%te, namespace) ! initialize Maxwell propagator
@@ -297,16 +309,16 @@ contains
   end subroutine propagator_mxll_init
 
   ! ---------------------------------------------------------
-  subroutine mxll_propagation_step(hm, namespace, gr, space, st, tr, rs_state, ff_rs_inhom_t1, ff_rs_inhom_t2, time, dt)
+  subroutine mxll_propagation_step(hm, namespace, gr, space, st, tr, rs_stateb, ff_rs_inhom_t1, ff_rs_inhom_t2, time, dt)
     type(hamiltonian_mxll_t),   intent(inout) :: hm
     type(namespace_t),          intent(in)    :: namespace
     type(grid_t),               intent(inout) :: gr
     type(space_t),              intent(in)    :: space
     type(states_mxll_t),        intent(inout) :: st
     type(propagator_mxll_t),    intent(inout) :: tr
-    CMPLX,                      intent(inout) :: rs_state(:,:)
-    CMPLX,                      intent(in)    :: ff_rs_inhom_t1(:,:) !> Inhomogeneous term at t
-    CMPLX,                      intent(in)    :: ff_rs_inhom_t2(:,:) !> Inhomogeneous term at t+dt
+    type(batch_t),              intent(inout) :: rs_stateb
+    CMPLX,                      intent(in)    :: ff_rs_inhom_t1(:,:) !< Inhomogeneous term at t
+    CMPLX,                      intent(in)    :: ff_rs_inhom_t2(:,:) !< Inhomogeneous term at t+dt
     FLOAT,                      intent(in)    :: time
     FLOAT,                      intent(in)    :: dt
 
@@ -314,22 +326,27 @@ contains
     FLOAT              :: inter_dt, inter_time
 
 
-    logical            :: pml_check = .false.
+    logical            :: pml_check
     type(profile_t), save :: prof
     type(batch_t) :: ff_rs_stateb, ff_rs_state_pmlb
     type(batch_t) :: ff_rs_inhom_1b, ff_rs_inhom_2b, ff_rs_inhom_meanb
+    CMPLX, allocatable :: rs_state(:, :)
 
     PUSH_SUB(mxll_propagation_step)
 
     call profiling_in(prof, 'MXLL_PROPAGATOR_STEP')
+    pml_check = .false.
 
     if (hm%ma_mx_coupling_apply) then
       message(1) = "Maxwell-matter coupling not implemented yet"
       call messages_fatal(1, namespace=namespace)
     end if
+    SAFE_ALLOCATE(rs_state(gr%np, st%dim))
 
     if (tr%plane_waves_in_box) then
-      call plane_waves_in_box_calculation(hm%bc, time+dt, space, gr%mesh, st, rs_state)
+      call mxll_get_batch(rs_stateb, rs_state, gr%np, st%dim)
+      call plane_waves_in_box_calculation(hm%bc, time+dt, space, gr, st, rs_state)
+      call mxll_set_batch(rs_stateb, rs_state, gr%np, st%dim)
       POP_SUB(mxll_propagation_step)
       return
     end if
@@ -349,8 +366,8 @@ contains
     inter_steps   = 1
     inter_dt      = M_ONE / inter_steps * dt
 
-    call zbatch_init(ff_rs_stateb, 1, 1, hm%dim, gr%mesh%np_part)
-    if (st%pack_states) call ff_rs_stateb%do_pack()
+    call zbatch_init(ff_rs_stateb, 1, 1, hm%dim, gr%np_part)
+    if (st%pack_states) call ff_rs_stateb%do_pack(copy=.false.)
 
     if (pml_check) then
       call ff_rs_stateb%copy_to(ff_rs_state_pmlb)
@@ -364,32 +381,32 @@ contains
       call ff_rs_stateb%copy_to(ff_rs_inhom_meanb)
 
       do istate = 1, hm%dim
-        call batch_set_state(ff_rs_inhom_meanb, istate, gr%mesh%np, ff_rs_inhom_t1(:, istate))
-        call batch_set_state(ff_rs_inhom_2b, istate, gr%mesh%np, ff_rs_inhom_t2(:, istate))
+        call batch_set_state(ff_rs_inhom_meanb, istate, gr%np, ff_rs_inhom_t1(:, istate))
+        call batch_set_state(ff_rs_inhom_2b, istate, gr%np, ff_rs_inhom_t2(:, istate))
       end do
-      call batch_axpy(gr%mesh%np, M_ONE, ff_rs_inhom_2b, ff_rs_inhom_meanb)
-      call batch_scal(gr%mesh%np, M_HALF, ff_rs_inhom_meanb)
+      call batch_axpy(gr%np, M_ONE, ff_rs_inhom_2b, ff_rs_inhom_meanb)
+      call batch_scal(gr%np, M_HALF, ff_rs_inhom_meanb)
 
       ! inhomogeneity propagation
-      call ff_rs_inhom_meanb%copy_data_to(gr%mesh%np, ff_rs_inhom_1b)
-      call ff_rs_inhom_meanb%copy_data_to(gr%mesh%np, ff_rs_inhom_2b)
+      call ff_rs_inhom_meanb%copy_data_to(gr%np, ff_rs_inhom_1b)
+      call ff_rs_inhom_meanb%copy_data_to(gr%np, ff_rs_inhom_2b)
 
       call hamiltonian_mxll_update(hm, time=time)
       hm%cpml_hamiltonian = .false.
-      call exponential_apply_batch(tr%te, namespace, gr%mesh, hm, ff_rs_inhom_2b, inter_dt)
+      call tr%te%apply_batch(namespace, gr, hm, ff_rs_inhom_2b, inter_dt)
 
       ! add term U(time+dt,time)J(time)
-      call batch_axpy(gr%mesh%np, M_ONE, ff_rs_inhom_2b, ff_rs_inhom_1b)
-      call ff_rs_inhom_meanb%copy_data_to(gr%mesh%np, ff_rs_inhom_2b)
+      call batch_axpy(gr%np, M_ONE, ff_rs_inhom_2b, ff_rs_inhom_1b)
+      call ff_rs_inhom_meanb%copy_data_to(gr%np, ff_rs_inhom_2b)
       call hamiltonian_mxll_update(hm, time=time)
-      call exponential_apply_batch(tr%te, namespace, gr%mesh, hm, ff_rs_inhom_2b, inter_dt*M_HALF)
+      call tr%te%apply_batch(namespace, gr, hm, ff_rs_inhom_2b, inter_dt*M_HALF)
       ! add term U(time+dt/2,time)J(time)
-      call batch_axpy(gr%mesh%np, M_ONE, ff_rs_inhom_2b, ff_rs_inhom_1b)
-      call ff_rs_inhom_meanb%copy_data_to(gr%mesh%np, ff_rs_inhom_2b)
+      call batch_axpy(gr%np, M_ONE, ff_rs_inhom_2b, ff_rs_inhom_1b)
+      call ff_rs_inhom_meanb%copy_data_to(gr%np, ff_rs_inhom_2b)
       call hamiltonian_mxll_update(hm, time=time)
-      call exponential_apply_batch(tr%te, namespace, gr%mesh, hm, ff_rs_inhom_2b, -inter_dt*M_HALF)
+      call tr%te%apply_batch(namespace, gr, hm, ff_rs_inhom_2b, -inter_dt*M_HALF)
       ! add term U(time,time+dt/2)J(time)
-      call batch_axpy(gr%mesh%np, M_ONE, ff_rs_inhom_2b, ff_rs_inhom_1b)
+      call batch_axpy(gr%np, M_ONE, ff_rs_inhom_2b, ff_rs_inhom_1b)
       call ff_rs_inhom_2b%end()
       call ff_rs_inhom_meanb%end()
     end if
@@ -400,7 +417,7 @@ contains
       inter_time = time + inter_dt * (ii-1)
 
       ! transformation of RS state into 3x3 or 4x4 representation
-      call transform_rs_state_batch(hm, gr, st, rs_state, ff_rs_stateb, RS_TRANS_FORWARD)
+      call transform_rs_state_batch(hm, gr, st, rs_stateb, ff_rs_stateb, RS_TRANS_FORWARD)
 
       ! RS state propagation
       call hamiltonian_mxll_update(hm, time=inter_time)
@@ -409,7 +426,7 @@ contains
       end if
 
       hm%cpml_hamiltonian = pml_check
-      call exponential_apply_batch(tr%te, namespace, gr%mesh, hm, ff_rs_stateb, dt)
+      call tr%te%apply_batch(namespace, gr, hm, ff_rs_stateb, dt)
       hm%cpml_hamiltonian = .false.
 
       if (pml_check) then
@@ -425,41 +442,41 @@ contains
 
           ! Interpolation of the external current
           do istate = 1, hm%dim
-            call batch_set_state(ff_rs_inhom_meanb, istate, gr%mesh%np, ff_rs_inhom_t2(:, istate))
-            call batch_set_state(ff_rs_inhom_1b, istate, gr%mesh%np, ff_rs_inhom_t1(:, istate))
+            call batch_set_state(ff_rs_inhom_meanb, istate, gr%np, ff_rs_inhom_t2(:, istate))
+            call batch_set_state(ff_rs_inhom_1b, istate, gr%np, ff_rs_inhom_t1(:, istate))
           end do
           ! store t1 - t2 for the interpolation in mean
-          call batch_axpy(gr%mesh%np, -M_ONE, ff_rs_inhom_1b, ff_rs_inhom_meanb)
-          call ff_rs_inhom_1b%copy_data_to(gr%mesh%np, ff_rs_inhom_2b)
-          call batch_axpy(gr%mesh%np, ii / TOFLOAT(inter_steps), ff_rs_inhom_meanb, ff_rs_inhom_2b)
-          call batch_axpy(gr%mesh%np, (ii-1) / TOFLOAT(inter_steps), ff_rs_inhom_meanb, ff_rs_inhom_1b)
+          call batch_axpy(gr%np, -M_ONE, ff_rs_inhom_1b, ff_rs_inhom_meanb)
+          call ff_rs_inhom_1b%copy_data_to(gr%np, ff_rs_inhom_2b)
+          call batch_axpy(gr%np, ii / TOFLOAT(inter_steps), ff_rs_inhom_meanb, ff_rs_inhom_2b)
+          call batch_axpy(gr%np, (ii-1) / TOFLOAT(inter_steps), ff_rs_inhom_meanb, ff_rs_inhom_1b)
 
           hm%cpml_hamiltonian = .false.
-          call exponential_apply_batch(tr%te, namespace, gr%mesh, hm, ff_rs_inhom_1b, inter_dt)
+          call tr%te%apply_batch(namespace, gr, hm, ff_rs_inhom_1b, inter_dt)
           ! add terms U(time+dt,time)J(time) and J(time+dt)
-          call batch_axpy(gr%mesh%np, -M_FOURTH * inter_dt, ff_rs_inhom_1b, ff_rs_stateb)
-          call batch_axpy(gr%mesh%np, -M_FOURTH * inter_dt, ff_rs_inhom_2b, ff_rs_stateb)
+          call batch_axpy(gr%np, -M_FOURTH * inter_dt, ff_rs_inhom_1b, ff_rs_stateb)
+          call batch_axpy(gr%np, -M_FOURTH * inter_dt, ff_rs_inhom_2b, ff_rs_stateb)
 
           do istate = 1, hm%dim
-            call batch_set_state(ff_rs_inhom_1b, istate, gr%mesh%np, ff_rs_inhom_t1(:, istate))
-            call batch_set_state(ff_rs_inhom_2b, istate, gr%mesh%np, ff_rs_inhom_t2(:, istate))
+            call batch_set_state(ff_rs_inhom_1b, istate, gr%np, ff_rs_inhom_t1(:, istate))
+            call batch_set_state(ff_rs_inhom_2b, istate, gr%np, ff_rs_inhom_t2(:, istate))
           end do
-          call batch_axpy(gr%mesh%np, M_ONE, ff_rs_inhom_2b, ff_rs_inhom_1b)
-          call batch_scal(gr%mesh%np, M_HALF, ff_rs_inhom_1b)
-          call ff_rs_inhom_1b%copy_data_to(gr%mesh%np, ff_rs_inhom_2b)
+          call batch_axpy(gr%np, M_ONE, ff_rs_inhom_2b, ff_rs_inhom_1b)
+          call batch_scal(gr%np, M_HALF, ff_rs_inhom_1b)
+          call ff_rs_inhom_1b%copy_data_to(gr%np, ff_rs_inhom_2b)
 
-          call exponential_apply_batch(tr%te, namespace, gr%mesh, hm, ff_rs_inhom_1b, inter_dt/M_TWO)
-          call exponential_apply_batch(tr%te, namespace, gr%mesh, hm, ff_rs_inhom_2b, -inter_dt/M_TWO)
+          call tr%te%apply_batch(namespace, gr, hm, ff_rs_inhom_1b, inter_dt/M_TWO)
+          call tr%te%apply_batch(namespace, gr, hm, ff_rs_inhom_2b, -inter_dt/M_TWO)
 
           ! add terms U(time+dt/2,time)J(time) and U(time,time+dt/2)J(time+dt)
-          call batch_axpy(gr%mesh%np, -M_FOURTH * inter_dt, ff_rs_inhom_1b, ff_rs_stateb)
-          call batch_axpy(gr%mesh%np, -M_FOURTH * inter_dt, ff_rs_inhom_2b, ff_rs_stateb)
+          call batch_axpy(gr%np, -M_FOURTH * inter_dt, ff_rs_inhom_1b, ff_rs_stateb)
+          call batch_axpy(gr%np, -M_FOURTH * inter_dt, ff_rs_inhom_2b, ff_rs_stateb)
 
           call ff_rs_inhom_1b%end()
           call ff_rs_inhom_2b%end()
           call ff_rs_inhom_meanb%end()
         else if (tr%tr_etrs_approx == MXWLL_ETRS_CONST) then
-          call batch_axpy(gr%mesh%np, -M_FOURTH * inter_dt, ff_rs_inhom_1b, ff_rs_stateb)
+          call batch_axpy(gr%np, -M_FOURTH * inter_dt, ff_rs_inhom_1b, ff_rs_stateb)
         end if
       end if
 
@@ -468,29 +485,45 @@ contains
         call cpml_conv_function_update(hm, gr, ff_rs_state_pmlb)
       end if
 
-      ! back tranformation of RS state representation
-      call transform_rs_state_batch(hm, gr, st, rs_state, ff_rs_stateb, RS_TRANS_BACKWARD)
+      ! back transformation of RS state representation
+      call transform_rs_state_batch(hm, gr, st, rs_stateb, ff_rs_stateb, RS_TRANS_BACKWARD)
 
       if (tr%bc_constant) then
+        call mxll_get_batch(rs_stateb, rs_state, gr%np, st%dim)
         ! Propagation dt with H(inter_time+inter_dt) for constant boundaries
         if (st%rs_state_const_external) then
           call spatial_constant_calculation(tr%bc_constant, st, gr, hm, inter_time, inter_dt, M_ZERO, rs_state)
         end if
         call constant_boundaries_calculation(tr%bc_constant, hm%bc, hm, st, rs_state)
+        call mxll_set_batch(rs_stateb, rs_state, gr%np, st%dim)
       end if
 
       ! Propagation dt with H(inter_time+inter_dt) for PEC mirror boundaries
-      call mirror_pec_boundaries_calculation(hm%bc, st, rs_state)
+      if (any(hm%bc%bc_type == MXLL_BC_MIRROR_PEC)) then
+        call mxll_get_batch(rs_stateb, rs_state, gr%np, st%dim)
+        call mirror_pec_boundaries_calculation(hm%bc, st, rs_state)
+        call mxll_set_batch(rs_stateb, rs_state, gr%np, st%dim)
+      end if
 
       ! Propagation dt with H(inter_time+inter_dt) for PMC mirror boundaries
-      call mirror_pmc_boundaries_calculation(hm%bc, st, rs_state)
+      if (any(hm%bc%bc_type == MXLL_BC_MIRROR_PMC)) then
+        call mxll_get_batch(rs_stateb, rs_state, gr%np, st%dim)
+        call mirror_pmc_boundaries_calculation(hm%bc, st, rs_state)
+        call mxll_set_batch(rs_stateb, rs_state, gr%np, st%dim)
+      end if
 
       ! Apply mask absorbing boundaries
-      call mask_absorbing_boundaries(namespace, gr, hm, st, tr, inter_time, inter_dt, M_ZERO, rs_state)
+      if (any(hm%bc%bc_ab_type == OPTION__MAXWELLABSORBINGBOUNDARIES__MASK)) then
+        call mxll_get_batch(rs_stateb, rs_state, gr%np, st%dim)
+        call mask_absorbing_boundaries(namespace, gr, hm, st, tr, inter_time, inter_dt, M_ZERO, rs_state)
+        call mxll_set_batch(rs_stateb, rs_state, gr%np, st%dim)
+      end if
 
       if (tr%bc_plane_waves) then
         ! Propagation dt with H(inter_time+inter_dt) for plane waves boundaries
-        call plane_waves_boundaries_calculation(hm, st, gr%mesh, inter_time+inter_dt, M_ZERO, rs_state)
+        call mxll_get_batch(rs_stateb, rs_state, gr%np, st%dim)
+        call plane_waves_boundaries_calculation(hm, st, gr, inter_time+inter_dt, M_ZERO, rs_state)
+        call mxll_set_batch(rs_stateb, rs_state, gr%np, st%dim)
       end if
 
     end do
@@ -504,6 +537,8 @@ contains
     if (pml_check) then
       call ff_rs_state_pmlb%end()
     end if
+
+    SAFE_DEALLOCATE_A(rs_state)
 
     call profiling_out(prof)
 
@@ -527,10 +562,11 @@ contains
 
     if (hm%calc_medium_box) then
       do il = 1, size(hm%medium_boxes)
-        do ip_in = 1, hm%medium_boxes(il)%points_number
-          ip = hm%medium_boxes(il)%points_map(ip_in)
-          st%ep(ip) = hm%medium_boxes(il)%ep(ip_in)
-          st%mu(ip) = hm%medium_boxes(il)%mu(ip_in)
+        ASSERT(.not. hm%medium_boxes(il)%has_mapping)
+        do ip = 1, hm%medium_boxes(il)%points_number
+          if (hm%medium_boxes(il)%c(ip) == M_ZERO) cycle
+          st%ep(ip) = hm%medium_boxes(il)%ep(ip)
+          st%mu(ip) = hm%medium_boxes(il)%mu(ip)
         end do
       end do
     end if
@@ -551,14 +587,15 @@ contains
   end subroutine set_medium_rs_state
 
   ! ---------------------------------------------------------
-  subroutine transform_rs_state_batch(hm, gr, st, rs_state, ff_rs_stateb, sign)
+  subroutine transform_rs_state_batch(hm, gr, st, rs_stateb, ff_rs_stateb, sign)
     type(hamiltonian_mxll_t), intent(in)         :: hm
     type(grid_t),             intent(in)         :: gr
     type(states_mxll_t),      intent(in)         :: st
-    CMPLX,                    intent(inout)      :: rs_state(:,:)
+    type(batch_t),            intent(inout)      :: rs_stateb
     type(batch_t),            intent(inout)      :: ff_rs_stateb
     integer,                  intent(in)         :: sign
 
+    CMPLX, allocatable :: rs_state(:,:)
     CMPLX, allocatable :: rs_state_tmp(:,:)
     type(profile_t), save :: prof
     integer :: ii, np
@@ -569,10 +606,12 @@ contains
 
     ASSERT(sign == RS_TRANS_FORWARD .or. sign == RS_TRANS_BACKWARD)
 
-    np = gr%mesh%np
+    np = gr%np
+    SAFE_ALLOCATE(rs_state(1:gr%np, 1:st%dim))
 
     if (hm%operator == FARADAY_AMPERE_MEDIUM) then
       if (sign == RS_TRANS_FORWARD) then
+        call mxll_get_batch(rs_stateb, rs_state, gr%np, st%dim)
         ! 3 to 6
         do ii = 1, 3
           call batch_set_state(ff_rs_stateb, ii, np, rs_state(:, ii))
@@ -580,17 +619,19 @@ contains
         end do
       else
         ! 6 to 3
-        SAFE_ALLOCATE(rs_state_tmp(1:gr%mesh%np, 1:st%dim))
+        SAFE_ALLOCATE(rs_state_tmp(1:gr%np, 1:st%dim))
         do ii = 1, 3
           call batch_get_state(ff_rs_stateb, ii, np, rs_state(:, ii))
           call batch_get_state(ff_rs_stateb, ii+3, np, rs_state_tmp(:, ii))
           rs_state(1:np, ii) = M_HALF * (rs_state(1:np, ii) + conjg(rs_state_tmp(1:np, ii)))
         end do
+        call mxll_set_batch(rs_stateb, rs_state, gr%np, st%dim)
         SAFE_DEALLOCATE_A(rs_state_tmp)
       end if
 
     else if (hm%operator == FARADAY_AMPERE_GAUSS) then
       if (sign == RS_TRANS_FORWARD) then
+        call mxll_get_batch(rs_stateb, rs_state, gr%np, st%dim)
         ! 3 to 4
         call batch_set_state(ff_rs_stateb, 1, np, -rs_state(1:np, 1)+rs_state(1:np, 2))
         call batch_set_state(ff_rs_stateb, 2, np, rs_state(1:np, 3))
@@ -598,7 +639,7 @@ contains
         call batch_set_state(ff_rs_stateb, 4, np, rs_state(1:np, 1)+rs_state(1:np, 2))
       else
         ! 4 to 3
-        SAFE_ALLOCATE(rs_state_tmp(1:gr%mesh%np, 1:2))
+        SAFE_ALLOCATE(rs_state_tmp(1:gr%np, 1:2))
         call batch_get_state(ff_rs_stateb, 1, np, rs_state_tmp(:, 1))
         call batch_get_state(ff_rs_stateb, 4, np, rs_state_tmp(:, 2))
         rs_state(1:np, 1) = M_HALF * (-rs_state_tmp(1:np, 1) + rs_state_tmp(1:np, 2))
@@ -606,22 +647,17 @@ contains
         call batch_get_state(ff_rs_stateb, 2, np, rs_state_tmp(:, 1))
         call batch_get_state(ff_rs_stateb, 3, np, rs_state_tmp(:, 2))
         rs_state(1:np, 3) = M_HALF * (rs_state_tmp(1:np, 1) + rs_state_tmp(1:np, 2))
+        call mxll_set_batch(rs_stateb, rs_state, gr%np, st%dim)
         SAFE_DEALLOCATE_A(rs_state_tmp)
       end if
-
     else
       if (sign == RS_TRANS_FORWARD) then
-        ! 3 to 3
-        do ii = 1, 3
-          call batch_set_state(ff_rs_stateb, ii, np, rs_state(:, ii))
-        end do
+        call rs_stateb%copy_data_to(gr%np, ff_rs_stateb)
       else
-        ! 3 to 3
-        do ii = 1, 3
-          call batch_get_state(ff_rs_stateb, ii, np, rs_state(:, ii))
-        end do
+        call ff_rs_stateb%copy_data_to(gr%np, rs_stateb)
       end if
     end if
+    SAFE_DEALLOCATE_A(rs_state)
 
     call profiling_out(prof)
 
@@ -632,7 +668,7 @@ contains
   ! ---------------------------------------------------------
   subroutine transform_rs_densities(hm, mesh, rs_charge_density, rs_current_density, ff_density, sign)
     type(hamiltonian_mxll_t), intent(in)    :: hm
-    type(mesh_t),             intent(in)    :: mesh
+    class(mesh_t),            intent(in)    :: mesh
     CMPLX,                    intent(inout) :: rs_charge_density(:)
     CMPLX,                    intent(inout) :: rs_current_density(:,:)
     CMPLX,                    intent(inout) :: ff_density(:,:)
@@ -681,7 +717,7 @@ contains
 
   !----------------------------------------------------------
   subroutine transform_rs_densities_to_6x6_rs_densities_forward(mesh, rs_charge_density, rs_current_density, rs_density_6x6)
-    type(mesh_t),             intent(in)    :: mesh
+    class(mesh_t),            intent(in)    :: mesh
     CMPLX,                    intent(in)    :: rs_charge_density(:)
     CMPLX,                    intent(in)    :: rs_current_density(:,:)
     CMPLX,                    intent(inout) :: rs_density_6x6(:,:)
@@ -701,7 +737,7 @@ contains
 
   !----------------------------------------------------------
   subroutine transform_rs_densities_to_6x6_rs_densities_backward(mesh, rs_density_6x6, rs_charge_density, rs_current_density)
-    type(mesh_t),             intent(in)    :: mesh
+    class(mesh_t),            intent(in)    :: mesh
     CMPLX,                    intent(in)    :: rs_density_6x6(:,:)
     CMPLX,                    intent(inout) :: rs_charge_density(:)
     CMPLX,                    intent(inout) :: rs_current_density(:,:)
@@ -721,7 +757,7 @@ contains
 
   !----------------------------------------------------------
   subroutine transform_rs_densities_to_4x4_rs_densities_forward(mesh, rs_charge_density, rs_current_density, rs_density_4x4)
-    type(mesh_t),             intent(in)    :: mesh
+    class(mesh_t),            intent(in)    :: mesh
     CMPLX,                    intent(in)    :: rs_charge_density(:)
     CMPLX,                    intent(in)    :: rs_current_density(:,:)
     CMPLX,                    intent(inout) :: rs_density_4x4(:,:)
@@ -736,7 +772,7 @@ contains
 
   !----------------------------------------------------------
   subroutine transform_rs_densities_to_4x4_rs_densities_backward(mesh, rs_density_4x4, rs_charge_density, rs_current_density)
-    type(mesh_t),             intent(in)    :: mesh
+    class(mesh_t),            intent(in)    :: mesh
     CMPLX,                    intent(in)    :: rs_density_4x4(:,:)
     CMPLX,                    intent(inout) :: rs_charge_density(:)
     CMPLX,                    intent(inout) :: rs_current_density(:,:)
@@ -761,8 +797,8 @@ contains
 
     CMPLX, allocatable :: tmp_pot_mx_gr(:,:), tmp_grad_mx_gr(:,:)
 
-    SAFE_ALLOCATE(tmp_pot_mx_gr(1:gr_mxll%mesh%np_part,1))
-    SAFE_ALLOCATE(tmp_grad_mx_gr(1:gr_mxll%mesh%np,1:gr_mxll%box%dim))
+    SAFE_ALLOCATE(tmp_pot_mx_gr(1:gr_mxll%np_part,1))
+    SAFE_ALLOCATE(tmp_grad_mx_gr(1:gr_mxll%np,1:gr_mxll%box%dim))
     ! this subroutine needs the matter part
 
     PUSH_SUB(calculate_matter_longitudinal_field)
@@ -773,9 +809,9 @@ contains
     tmp_grad_mx_gr = - tmp_grad_mx_gr
 
     rs_state_matter = M_z0
-    call build_rs_state(real(tmp_grad_mx_gr(1:gr_mxll%mesh%np,:)), aimag(tmp_grad_mx_gr(1:gr_mxll%mesh%np,:)), st_mxll%rs_sign, &
-      rs_state_matter(1:gr_mxll%mesh%np,:), gr_mxll%mesh, st_mxll%ep(1:gr_mxll%mesh%np), st_mxll%mu(1:gr_mxll%mesh%np), &
-      gr_mxll%mesh%np)
+    call build_rs_state(real(tmp_grad_mx_gr(1:gr_mxll%np,:)), aimag(tmp_grad_mx_gr(1:gr_mxll%np,:)), st_mxll%rs_sign, &
+      rs_state_matter(1:gr_mxll%np,:), gr_mxll, st_mxll%ep(1:gr_mxll%np), st_mxll%mu(1:gr_mxll%np), &
+      gr_mxll%np)
 
     SAFE_DEALLOCATE_A(tmp_pot_mx_gr)
     SAFE_DEALLOCATE_A(tmp_grad_mx_gr)
@@ -785,47 +821,54 @@ contains
 
   !----------------------------------------------------------
   subroutine get_vector_pot_and_transverse_field(namespace, trans_calc_method, gr_mxll, hm_mxll, st_mxll, tr_mxll, hm, st, &
-    poisson_solver, time, field, transverse_field, vector_potential)
-    type(namespace_t),          intent(in)    :: namespace
-    integer,                    intent(in)    :: trans_calc_method
-    type(grid_t),               intent(in)    :: gr_mxll
-    type(hamiltonian_mxll_t),   intent(in)    :: hm_mxll
-    type(states_mxll_t),        intent(in)    :: st_mxll
-    type(propagator_mxll_t),    intent(in)    :: tr_mxll
-    type(hamiltonian_elec_t),   intent(in)    :: hm
-    type(states_elec_t),        intent(in)    :: st
-    type(poisson_t),            intent(in)    :: poisson_solver
-    FLOAT,                      intent(in)    :: time
-    CMPLX,                      intent(inout) :: field(:,:)
-    CMPLX,                      intent(inout) :: transverse_field(:,:)
-    FLOAT,                      intent(inout) :: vector_potential(:,:)
+    poisson_solver, helmholtz, time, field, transverse_field, vector_potential)
+    type(namespace_t),               intent(in)    :: namespace
+    integer,                         intent(in)    :: trans_calc_method
+    type(grid_t),                    intent(in)    :: gr_mxll
+    type(hamiltonian_mxll_t),        intent(in)    :: hm_mxll
+    type(states_mxll_t),             intent(in)    :: st_mxll
+    type(propagator_mxll_t),         intent(in)    :: tr_mxll
+    type(hamiltonian_elec_t),        intent(in)    :: hm
+    type(states_elec_t),             intent(in)    :: st
+    type(poisson_t),                 intent(in)    :: poisson_solver
+    type(helmholtz_decomposition_t), intent(inout)    :: helmholtz
+    FLOAT,                           intent(in)    :: time
+    CMPLX,                           intent(inout) :: field(:,:)
+    CMPLX,                           intent(inout) :: transverse_field(:,:)
+    FLOAT,                           intent(inout) :: vector_potential(:,:)
 
     integer            :: np
+    CMPLX, allocatable :: rs_state_plane_waves(:, :)
 
     PUSH_SUB(get_vector_pot_and_transverse_field)
 
     transverse_field = M_z0
     vector_potential = M_ZERO
 
-    np = gr_mxll%mesh%np
+    np = gr_mxll%np
 
     if (hm_mxll%ma_mx_coupling) then
 
       ! check what other transverse field methods are needed
 
       ! trans_calc_method == OPTION__MAXWELLTRANSFIELDCALCULATIONMETHOD__TRANS_FIELD_POISSON
+      if (tr_mxll%bc_plane_waves .and. hm_mxll%plane_waves_apply) then
+        SAFE_ALLOCATE(rs_state_plane_waves(1:gr_mxll%np, 1:st_mxll%dim))
+        call mxll_get_batch(st_mxll%rs_state_plane_wavesb, rs_state_plane_waves, gr_mxll%np, st_mxll%dim)
+      end if
 
       ! plane waves subtraction
       if (tr_mxll%bc_plane_waves .and. hm_mxll%plane_waves_apply) then
-        transverse_field(1:np,:) = field(1:np,:) - st_mxll%rs_state_plane_waves(1:np,:)
+        transverse_field(1:np,:) = field(1:np,:) - rs_state_plane_waves(1:np,:)
       else
         transverse_field(1:np,:) = field(1:np,:)
       end if
       ! apply helmholtz decomposition for transverse field
-      call maxwell_helmholtz_decomposition_trans_field(namespace, poisson_solver, gr_mxll, hm_mxll, hm, st_mxll, transverse_field)
+      call helmholtz%get_trans_field(namespace, transverse_field, total_field=field)
       ! plane waves addition
       if (tr_mxll%bc_plane_waves .and. hm_mxll%plane_waves_apply) then
-        transverse_field(1:np,:) = transverse_field(1:np,:) + st_mxll%rs_state_plane_waves(1:np,:)
+        transverse_field(1:np,:) = transverse_field(1:np,:) + rs_state_plane_waves(1:np,:)
+        SAFE_DEALLOCATE_A(rs_state_plane_waves)
       end if
 
     else
@@ -851,11 +894,11 @@ contains
     integer :: idim
     FLOAT, allocatable :: dtmp(:,:)
 
-    SAFE_ALLOCATE(dtmp(1:gr%mesh%np_part,1:3))
+    SAFE_ALLOCATE(dtmp(1:gr%np_part,1:3))
 
     dtmp = M_ZERO
 
-    call get_magnetic_field_state(field, gr%mesh, st%rs_sign, vector_potential, st%mu, gr%mesh%np_part)
+    call get_magnetic_field_state(field, gr, st%rs_sign, vector_potential, st%mu, gr%np_part)
     dtmp = vector_potential
     call dderivatives_curl(gr%der, dtmp, vector_potential, set_bc = .false.)
     do idim=1, st%dim
@@ -870,7 +913,7 @@ contains
   ! ---------------------------------------------------------
   subroutine derivatives_boundary_mask(bc, mesh, hm)
     type(bc_mxll_t),  intent(inout)      :: bc
-    type(mesh_t),        intent(in)      :: mesh
+    class(mesh_t),       intent(in)      :: mesh
     type(hamiltonian_mxll_t), intent(in) :: hm
 
     integer :: ip, ip_in, point_info, idim, dim
@@ -983,7 +1026,7 @@ contains
 
     e_energy_dens(:) = M_ZERO
     b_energy_dens(:) = M_ZERO
-    do ip = 1, gr%mesh%np
+    do ip = 1, gr%np
       do idim = 1, st%dim
         e_energy_dens(ip) = e_energy_dens(ip) + real(rs_field(ip,idim))**2
         b_energy_dens(ip) = b_energy_dens(ip) + aimag(rs_field(ip,idim))**2
@@ -993,7 +1036,7 @@ contains
 
     if (present(rs_field_plane_waves) .and. present(energy_dens_plane_waves) .and. plane_waves_check) then
       energy_dens_plane_waves(:) = M_ZERO
-      do ip = 1, gr%mesh%np
+      do ip = 1, gr%np
         do idim = 1, st%dim
           energy_dens_plane_waves(ip) = energy_dens_plane_waves(ip) &
             + real(conjg(rs_field_plane_waves(ip,idim)) * rs_field_plane_waves(ip,idim))
@@ -1023,21 +1066,98 @@ contains
 
     call energy_density_calc(gr, st, rs_field, energy_mxll%energy_density, energy_mxll%e_energy_density, &
       energy_mxll%b_energy_density, hm%plane_waves, rs_field_plane_waves, energy_mxll%energy_density_plane_waves)
-    energy_mxll%energy    = dmf_integrate(gr%mesh, energy_mxll%energy_density, mask=st%inner_points_mask)
-    energy_mxll%e_energy  = dmf_integrate(gr%mesh, energy_mxll%e_energy_density, mask=st%inner_points_mask)
-    energy_mxll%b_energy  = dmf_integrate(gr%mesh, energy_mxll%b_energy_density, mask=st%inner_points_mask)
+    energy_mxll%energy    = dmf_integrate(gr, energy_mxll%energy_density, mask=st%inner_points_mask)
+    energy_mxll%e_energy  = dmf_integrate(gr, energy_mxll%e_energy_density, mask=st%inner_points_mask)
+    energy_mxll%b_energy  = dmf_integrate(gr, energy_mxll%b_energy_density, mask=st%inner_points_mask)
     if (present(rs_field_plane_waves) .and. hm%plane_waves) then
-      energy_mxll%energy_plane_waves = dmf_integrate(gr%mesh, energy_mxll%energy_density_plane_waves, mask=st%inner_points_mask)
+      energy_mxll%energy_plane_waves = dmf_integrate(gr, energy_mxll%energy_density_plane_waves, mask=st%inner_points_mask)
     else
       energy_mxll%energy_plane_waves = M_ZERO
     end if
 
-    energy_mxll%boundaries = dmf_integrate(gr%mesh, energy_mxll%energy_density, mask=st%boundary_points_mask)
+    energy_mxll%boundaries = dmf_integrate(gr, energy_mxll%energy_density, mask=st%boundary_points_mask)
 
     call profiling_out(prof)
 
     POP_SUB(energy_mxll_calc)
   end subroutine energy_mxll_calc
+
+  !----------------------------------------------------------
+  subroutine energy_mxll_calc_batch(gr, st, hm, energy_mxll, rs_fieldb, rs_field_plane_wavesb)
+    type(grid_t),             intent(in)    :: gr
+    type(states_mxll_t),      intent(in)    :: st
+    type(hamiltonian_mxll_t), intent(in)    :: hm
+    type(energy_mxll_t),      intent(inout) :: energy_mxll
+    type(batch_t),            intent(in)    :: rs_fieldb
+    type(batch_t),            intent(in)    :: rs_field_plane_wavesb
+
+    type(profile_t), save :: prof
+    type(batch_t) :: e_fieldb, b_fieldb, e_field_innerb, b_field_innerb, rs_field_plane_waves_innerb
+    FLOAT :: tmp(1:st%dim)
+    CMPLX :: ztmp(1:st%dim)
+
+    PUSH_SUB(energy_mxll_calc_batch)
+
+    call profiling_in(prof, 'ENERGY_MXLL_CALC_BATCH')
+
+    call dbatch_init(e_fieldb, 1, 1, st%dim, gr%np)
+    if (st%pack_states) then
+      call e_fieldb%do_pack(copy=.false.)
+    end if
+    call e_fieldb%copy_to(b_fieldb)
+    call e_fieldb%copy_to(e_field_innerb)
+    call e_fieldb%copy_to(b_field_innerb)
+
+    call batch_split_complex(gr%np, rs_fieldb, e_fieldb, b_fieldb)
+
+    ! subtract energy of inner points
+    call batch_set_zero(e_field_innerb)
+    call batch_set_zero(b_field_innerb)
+    if (accel_is_enabled()) then
+      call batch_copy_with_map(st%inner_points_number, st%buff_inner_points_map, e_fieldb, e_field_innerb)
+      call batch_copy_with_map(st%inner_points_number, st%buff_inner_points_map, b_fieldb, b_field_innerb)
+    else
+      call batch_copy_with_map(st%inner_points_number, st%inner_points_map, e_fieldb, e_field_innerb)
+      call batch_copy_with_map(st%inner_points_number, st%inner_points_map, b_fieldb, b_field_innerb)
+    end if
+    call dmesh_batch_dotp_vector(gr, e_field_innerb, e_field_innerb, tmp)
+    energy_mxll%e_energy = sum(tmp)
+    call dmesh_batch_dotp_vector(gr, b_field_innerb, b_field_innerb, tmp)
+    energy_mxll%b_energy = sum(tmp)
+    energy_mxll%energy = energy_mxll%e_energy + energy_mxll%b_energy
+
+    call dmesh_batch_dotp_vector(gr, e_fieldb, e_fieldb, tmp)
+    energy_mxll%boundaries = sum(tmp)
+    call dmesh_batch_dotp_vector(gr, b_fieldb, b_fieldb, tmp)
+    energy_mxll%boundaries = energy_mxll%boundaries + sum(tmp)
+    energy_mxll%boundaries = energy_mxll%boundaries - energy_mxll%energy
+
+    if (hm%plane_waves) then
+      call rs_field_plane_wavesb%copy_to(rs_field_plane_waves_innerb)
+      call batch_set_zero(rs_field_plane_waves_innerb)
+      if (accel_is_enabled()) then
+        call batch_copy_with_map(st%inner_points_number, st%buff_inner_points_map, &
+          rs_field_plane_wavesb, rs_field_plane_waves_innerb)
+      else
+        call batch_copy_with_map(st%inner_points_number, st%inner_points_map, &
+          rs_field_plane_wavesb, rs_field_plane_waves_innerb)
+      end if
+      call zmesh_batch_dotp_vector(gr, rs_field_plane_waves_innerb, rs_field_plane_waves_innerb, ztmp)
+      energy_mxll%energy_plane_waves = sum(TOFLOAT(tmp))
+      call rs_field_plane_waves_innerb%end()
+    else
+      energy_mxll%energy_plane_waves = M_ZERO
+    end if
+
+    call e_fieldb%end()
+    call b_fieldb%end()
+    call e_field_innerb%end()
+    call b_field_innerb%end()
+
+    call profiling_out(prof)
+
+    POP_SUB(energy_mxll_calc_batch)
+  end subroutine energy_mxll_calc_batch
 
   ! ---------------------------------------------------------
   subroutine mask_absorbing_boundaries(namespace, gr, hm, st, tr, time, dt, time_delay, rs_state)
@@ -1052,12 +1172,13 @@ contains
     CMPLX,                      intent(inout) :: rs_state(:,:)
 
     integer            :: ip, ip_in, idim
-    logical            :: mask_check = .false.
+    logical            :: mask_check
     type(profile_t), save :: prof
 
     PUSH_SUB(mask_absorbing_boundaries)
 
     call profiling_in(prof, 'MASK_ABSORBING_BOUNDARIES')
+    mask_check = .false.
 
     do idim = 1, 3
       if (hm%bc%bc_ab_type(idim) == OPTION__MAXWELLABSORBINGBOUNDARIES__MASK) then
@@ -1068,6 +1189,7 @@ contains
     if (mask_check) then
       if (tr%bc_plane_waves .and. hm%plane_waves_apply) then
         call plane_waves_propagation(hm, tr, namespace, st, gr, time, dt, time_delay)
+        call mxll_get_batch(st%rs_state_plane_wavesb, st%rs_state_plane_waves, gr%np, st%dim)
         rs_state = rs_state - st%rs_state_plane_waves
         call maxwell_mask(hm, rs_state)
         rs_state = rs_state + st%rs_state_plane_waves
@@ -1130,6 +1252,7 @@ contains
 
     integer            :: ii
     CMPLX, allocatable :: rs_state_constant(:,:)
+    type(batch_t) :: rs_state_constantb
     type(profile_t), save :: prof
 
     PUSH_SUB(pml_propagation_stage_1_batch)
@@ -1137,27 +1260,31 @@ contains
     call profiling_in(prof, 'PML_PROP_STAGE_1_BATCH')
 
     if (tr%bc_plane_waves .and. hm%plane_waves_apply) then
-      call transform_rs_state_batch(hm, gr, st, st%rs_state_plane_waves, &
+      call transform_rs_state_batch(hm, gr, st, st%rs_state_plane_wavesb, &
         ff_rs_state_pmlb, RS_TRANS_FORWARD)
-      call batch_xpay(gr%mesh%np, ff_rs_stateb, -M_ONE, ff_rs_state_pmlb)
+      call batch_xpay(gr%np, ff_rs_stateb, -M_ONE, ff_rs_state_pmlb)
     else if (tr%bc_constant .and. hm%spatial_constant_apply) then
       ! this could be optimized: right now we broadcast the constant value
       !  to the full mesh to be able to use the batch functions easily.
       ! in principle, we would need to do the transform only for one point
       !  and then subtract that value from all points of the state
-      SAFE_ALLOCATE(rs_state_constant(1:gr%mesh%np,1:3))
+      SAFE_ALLOCATE(rs_state_constant(1:gr%np,1:3))
       do ii = 1, 3
-        rs_state_constant(1:gr%mesh%np, ii) = st%rs_state_const(ii)
+        rs_state_constant(1:gr%np, ii) = st%rs_state_const(ii)
       end do
+      call ff_rs_stateb%copy_to(rs_state_constantb)
+      call mxll_set_batch(rs_state_constantb, rs_state_constant, gr%np, 3)
 
-      call transform_rs_state_batch(hm, gr, st, rs_state_constant, &
+      call transform_rs_state_batch(hm, gr, st, rs_state_constantb, &
         ff_rs_state_pmlb, RS_TRANS_FORWARD)
-      call batch_xpay(gr%mesh%np, ff_rs_stateb, -M_ONE, ff_rs_state_pmlb)
+      call batch_xpay(gr%np, ff_rs_stateb, -M_ONE, ff_rs_state_pmlb)
+
+      call rs_state_constantb%end()
 
       SAFE_DEALLOCATE_A(rs_state_constant)
     else
       ! this copy should not be needed
-      call ff_rs_stateb%copy_data_to(gr%mesh%np, ff_rs_state_pmlb)
+      call ff_rs_stateb%copy_data_to(gr%np, ff_rs_state_pmlb)
     end if
 
     call profiling_out(prof)
@@ -1178,10 +1305,10 @@ contains
     type(batch_t),              intent(inout) :: ff_rs_state_pmlb
     type(batch_t),              intent(inout) :: ff_rs_stateb
 
-    integer            :: ip, ip_in, ii, ff_dim
+    integer            :: ii, ff_dim
     CMPLX, allocatable :: rs_state_constant(:,:), ff_rs_state_constant(:,:)
     type(profile_t), save :: prof
-    type(batch_t) :: ff_rs_state_plane_wavesb, ff_rs_constantb
+    type(batch_t) :: ff_rs_state_plane_wavesb, ff_rs_constantb, rs_state_constantb
 
     PUSH_SUB(pml_propagation_stage_2_batch)
 
@@ -1189,67 +1316,52 @@ contains
 
     if (tr%bc_plane_waves .and. hm%plane_waves_apply) then
       hm%cpml_hamiltonian = .true.
-      call exponential_apply_batch(tr%te, namespace, gr%mesh, hm, ff_rs_state_pmlb, dt)
+      call tr%te%apply_batch(namespace, gr, hm, ff_rs_state_pmlb, dt)
       hm%cpml_hamiltonian = .false.
       call plane_waves_propagation(hm, tr, namespace, st, gr, time, dt, time_delay)
 
       call ff_rs_stateb%copy_to(ff_rs_state_plane_wavesb)
-      call transform_rs_state_batch(hm, gr, st, st%rs_state_plane_waves, ff_rs_state_plane_wavesb, RS_TRANS_FORWARD)
+      call transform_rs_state_batch(hm, gr, st, st%rs_state_plane_wavesb, ff_rs_state_plane_wavesb, RS_TRANS_FORWARD)
 
-      select case (ff_rs_stateb%status())
-      case (BATCH_NOT_PACKED)
-        do ii = 1, ff_rs_stateb%nst_linear
-          do ip_in = 1, hm%bc%plane_wave%points_number
-            ip = hm%bc%plane_wave%points_map(ip_in)
-            ff_rs_stateb%zff_linear(ip, ii) = ff_rs_state_pmlb%zff_linear(ip, ii) + &
-              ff_rs_state_plane_wavesb%zff_linear(ip, ii)
-          end do
-        end do
-      case (BATCH_PACKED)
-        do ip_in = 1, hm%bc%plane_wave%points_number
-          ip = hm%bc%plane_wave%points_map(ip_in)
-          do ii = 1, ff_rs_stateb%nst_linear
-            ff_rs_stateb%zff_pack(ii, ip) = ff_rs_state_pmlb%zff_pack(ii, ip) + &
-              ff_rs_state_plane_wavesb%zff_pack(ii, ip)
-          end do
-        end do
-      end select
+      if (ff_rs_stateb%status() == BATCH_DEVICE_PACKED) then
+        ! use the map of points stored on the GPU in this case
+        call batch_add_with_map(hm%bc%plane_wave%points_number, hm%bc%plane_wave%buff_map, &
+          ff_rs_state_pmlb, ff_rs_state_plane_wavesb, ff_rs_stateb)
+      else
+        call batch_add_with_map(hm%bc%plane_wave%points_number, hm%bc%plane_wave%points_map, &
+          ff_rs_state_pmlb, ff_rs_state_plane_wavesb, ff_rs_stateb)
+      end if
+
       call ff_rs_state_plane_wavesb%end()
 
     else if (tr%bc_constant .and. hm%spatial_constant_apply) then
       hm%cpml_hamiltonian = .true.
-      call exponential_apply_batch(tr%te, namespace, gr%mesh, hm, ff_rs_state_pmlb, dt)
+      call tr%te%apply_batch(namespace, gr, hm, ff_rs_state_pmlb, dt)
       hm%cpml_hamiltonian = .false.
 
       call ff_rs_stateb%copy_to(ff_rs_constantb)
       ff_dim = ff_rs_stateb%nst_linear
-      SAFE_ALLOCATE(rs_state_constant(1:gr%mesh%np, 1:st%dim))
+      SAFE_ALLOCATE(rs_state_constant(1:gr%np, 1:st%dim))
       ! copy the value to the full mesh to be able to use batches
       ! this is in principle unneeded, but otherwise we could not use batches...
       do ii = 1, st%dim
-        rs_state_constant(1:gr%mesh%np, ii) = st%rs_state_const(ii)
+        rs_state_constant(1:gr%np, ii) = st%rs_state_const(ii)
       end do
+      call ff_rs_stateb%copy_to(rs_state_constantb)
+      call mxll_set_batch(rs_state_constantb, rs_state_constant, gr%np, st%dim)
 
-      call transform_rs_state_batch(hm, gr, st, rs_state_constant, ff_rs_constantb, RS_TRANS_FORWARD)
-      select case (ff_rs_stateb%status())
-      case (BATCH_NOT_PACKED)
-        do ii = 1, ff_rs_stateb%nst_linear
-          do ip_in = 1, hm%bc%constant_points_number
-            ip = hm%bc%constant_points_map(ip_in)
-            ff_rs_stateb%zff_linear(ip, ii) = ff_rs_state_pmlb%zff_linear(ip, ii) + &
-              ff_rs_constantb%zff_linear(ip, ii)
-          end do
-        end do
-      case (BATCH_PACKED)
-        do ip_in = 1, hm%bc%constant_points_number
-          ip = hm%bc%constant_points_map(ip_in)
-          do ii = 1, ff_rs_stateb%nst_linear
-            ff_rs_stateb%zff_pack(ii, ip) = ff_rs_state_pmlb%zff_pack(ii, ip) + &
-              ff_rs_constantb%zff_pack(ii, ip)
-          end do
-        end do
-      end select
+      call transform_rs_state_batch(hm, gr, st, rs_state_constantb, ff_rs_constantb, RS_TRANS_FORWARD)
+      if (ff_rs_stateb%status() == BATCH_DEVICE_PACKED) then
+        ! use the map of points stored on the GPU in this case
+        call batch_add_with_map(hm%bc%constant_points_number, hm%bc%buff_constant_points_map, &
+          ff_rs_state_pmlb, ff_rs_constantb, ff_rs_stateb)
+      else
+        call batch_add_with_map(hm%bc%constant_points_number, hm%bc%constant_points_map, &
+          ff_rs_state_pmlb, ff_rs_constantb, ff_rs_stateb)
+      end if
+
       call ff_rs_constantb%end()
+      call rs_state_constantb%end()
 
       SAFE_DEALLOCATE_A(rs_state_constant)
       SAFE_DEALLOCATE_A(ff_rs_state_constant)
@@ -1278,9 +1390,9 @@ contains
       call cpml_conv_function_update_via_riemann_silberstein(hm, gr, ff_rs_state_pmlb)
     else if (hm%medium_calculation == OPTION__MAXWELLMEDIUMCALCULATION__EM) then
       ff_dim = hm%dim
-      SAFE_ALLOCATE(ff_rs_state_pml(1:gr%mesh%np_part, 1:ff_dim))
+      SAFE_ALLOCATE(ff_rs_state_pml(1:gr%np_part, 1:ff_dim))
       do istate = 1, hm%dim
-        call batch_get_state(ff_rs_state_pmlb, istate, gr%mesh%np_part, ff_rs_state_pml(:, istate))
+        call batch_get_state(ff_rs_state_pmlb, istate, gr%np_part, ff_rs_state_pml(:, istate))
       end do
       call cpml_conv_function_update_via_e_b_fields(hm, gr, ff_rs_state_pml)
       SAFE_DEALLOCATE_A(ff_rs_state_pml)
@@ -1299,20 +1411,21 @@ contains
 
     integer :: ip, ip_in, np_part, rs_sign
     CMPLX :: pml_a, pml_b, pml_g, grad
-    FLOAT :: g_real, g_imag
     type(profile_t), save :: prof
     integer :: pml_dir, field_dir, ifield, idir
     integer, parameter :: field_dirs(3, 2) = reshape([2, 3, 1, 3, 1, 2], [3, 2])
     logical :: with_medium
     type(batch_t), allocatable :: gradb(:)
+    type(accel_kernel_t), save :: ker_pml
+    integer :: wgsize
 
     PUSH_SUB(cpml_conv_function_update_via_riemann_silberstein)
 
-    call profiling_in(prof, 'CPML_CONV_FUN_UPDATE_VIA_RS')
+    call profiling_in(prof, 'CPML_CONV_UPDATE_VIA_RS')
 
     ASSERT(hm%dim == 3 .or. hm%dim == 6)
 
-    np_part = gr%mesh%np_part
+    np_part = gr%np_part
     rs_sign = hm%rs_sign
 
     SAFE_ALLOCATE(gradb(1:gr%der%dim))
@@ -1334,15 +1447,11 @@ contains
             field_dir = field_dirs(pml_dir, ifield)
             grad = gradb(pml_dir)%zff_linear(ip, field_dir)
             pml_g = hm%bc%pml%conv_plus(ip_in, pml_dir, field_dir)
-            g_real = TOFLOAT(pml_a) * TOFLOAT(grad) + TOFLOAT(pml_b) * TOFLOAT(pml_g)
-            g_imag = aimag(pml_a) * aimag(grad) + aimag(pml_b) * aimag(pml_g)
-            hm%bc%pml%conv_plus(ip_in, pml_dir, field_dir) = TOCMPLX(g_real, g_imag)
+            hm%bc%pml%conv_plus(ip_in, pml_dir, field_dir) = pml_a * grad + pml_b * pml_g
             if (with_medium) then
               grad = gradb(pml_dir)%zff_linear(ip, field_dir+3)
               pml_g = hm%bc%pml%conv_minus(ip_in, pml_dir, field_dir)
-              g_real = TOFLOAT(pml_a) * TOFLOAT(grad) + TOFLOAT(pml_b) * TOFLOAT(pml_g)
-              g_imag = aimag(pml_a) * aimag(grad) + aimag(pml_b) * aimag(pml_g)
-              hm%bc%pml%conv_minus(ip_in, pml_dir, field_dir) = TOCMPLX(g_real, g_imag)
+              hm%bc%pml%conv_minus(ip_in, pml_dir, field_dir) = pml_a * grad + pml_b * pml_g
             end if
           end do
         end do
@@ -1355,20 +1464,34 @@ contains
             field_dir = field_dirs(pml_dir, ifield)
             grad = gradb(pml_dir)%zff_pack(field_dir, ip)
             pml_g = hm%bc%pml%conv_plus(ip_in, pml_dir, field_dir)
-            g_real = TOFLOAT(pml_a) * TOFLOAT(grad) + TOFLOAT(pml_b) * TOFLOAT(pml_g)
-            g_imag = aimag(pml_a) * aimag(grad) + aimag(pml_b) * aimag(pml_g)
-            hm%bc%pml%conv_plus(ip_in, pml_dir, field_dir) = TOCMPLX(g_real, g_imag)
+            hm%bc%pml%conv_plus(ip_in, pml_dir, field_dir) = pml_a * grad + pml_b * pml_g
             if (with_medium) then
               grad = gradb(pml_dir)%zff_pack(field_dir+3, ip)
               pml_g = hm%bc%pml%conv_minus(ip_in, pml_dir, field_dir)
-              g_real = TOFLOAT(pml_a) * TOFLOAT(grad) + TOFLOAT(pml_b) * TOFLOAT(pml_g)
-              g_imag = aimag(pml_a) * aimag(grad) + aimag(pml_b) * aimag(pml_g)
-              hm%bc%pml%conv_minus(ip_in, pml_dir, field_dir) = TOCMPLX(g_real, g_imag)
+              hm%bc%pml%conv_minus(ip_in, pml_dir, field_dir) = pml_a * grad + pml_b * pml_g
             end if
           end do
         end do
       case (BATCH_DEVICE_PACKED)
-        call messages_not_implemented("PML on GPU")
+        call accel_kernel_start_call(ker_pml, 'pml.cl', 'pml_update_conv')
+
+        if (with_medium) then
+          call accel_set_kernel_arg(ker_pml, 0, 1_i4)
+        else
+          call accel_set_kernel_arg(ker_pml, 0, 0_i4)
+        end if
+        call accel_set_kernel_arg(ker_pml, 1, hm%bc%pml%points_number)
+        call accel_set_kernel_arg(ker_pml, 2, pml_dir-1)
+        call accel_set_kernel_arg(ker_pml, 3, hm%bc%pml%buff_map)
+        call accel_set_kernel_arg(ker_pml, 4, gradb(pml_dir)%ff_device)
+        call accel_set_kernel_arg(ker_pml, 5, log2(int(gradb(pml_dir)%pack_size(1), i4)))
+        call accel_set_kernel_arg(ker_pml, 6, hm%bc%pml%buff_a)
+        call accel_set_kernel_arg(ker_pml, 7, hm%bc%pml%buff_b)
+        call accel_set_kernel_arg(ker_pml, 8, hm%bc%pml%buff_conv_plus)
+        call accel_set_kernel_arg(ker_pml, 9, hm%bc%pml%buff_conv_minus)
+
+        wgsize = accel_max_workgroup_size()
+        call accel_kernel_run(ker_pml, (/ accel_padded_size(hm%bc%pml%points_number) /), (/ wgsize /))
       end select
     end do
 
@@ -1376,6 +1499,10 @@ contains
       call gradb(idir)%end()
     end do
     SAFE_DEALLOCATE_A(gradb)
+
+    if (accel_is_enabled()) then
+      call accel_finish()
+    end if
 
     call profiling_out(prof)
 
@@ -1397,14 +1524,14 @@ contains
 
     call profiling_in(prof, 'CPML_CONV_FUNC_UPD_VIA_E_B')
 
-    np_part = gr%mesh%np_part
+    np_part = gr%np_part
     SAFE_ALLOCATE(tmp_e(1:np_part,1:3))
     SAFE_ALLOCATE(tmp_partial_e(1:np_part))
     SAFE_ALLOCATE(tmp_b(1:np_part,1:3))
     SAFE_ALLOCATE(tmp_partial_b(1:np_part))
 
-    call get_electric_field_state(ff_rs_state_pml, gr%mesh, tmp_e)
-    call get_magnetic_field_state(ff_rs_state_pml, gr%mesh, hm%rs_sign, tmp_b)
+    call get_electric_field_state(ff_rs_state_pml, gr, tmp_e)
+    call get_magnetic_field_state(ff_rs_state_pml, gr, hm%rs_sign, tmp_b)
 
     ! calculation g(1,2)
     call dderivatives_partial(gr%der, tmp_e(:,2), tmp_partial_e(:), 1, set_bc = .false.)
@@ -1615,7 +1742,7 @@ contains
         do ic = 1, icn
           tf_old = tdf(st%rs_state_const_td_function(ic), time-delay-dt)
           tf_new = tdf(st%rs_state_const_td_function(ic), time-delay)
-          do ip = 1, gr%mesh%np
+          do ip = 1, gr%np
             if (set_initial_state_ .or. (.not. hm%spatial_constant_propagate)) then
               rs_state(ip,:) = st%rs_state_const_amp(:,ic) * tf_new
             else
@@ -1716,7 +1843,7 @@ contains
   subroutine plane_waves_boundaries_calculation(hm, st, mesh, time, time_delay, rs_state)
     type(hamiltonian_mxll_t), intent(in)    :: hm
     type(states_mxll_t),      intent(in)    :: st
-    type(mesh_t),             intent(in)    :: mesh
+    class(mesh_t),            intent(in)    :: mesh
     FLOAT,                    intent(in)    :: time
     FLOAT,                    intent(in)    :: time_delay
     CMPLX,                    intent(inout) :: rs_state(:,:)
@@ -1785,17 +1912,20 @@ contains
     call profiling_in(prof, 'PLANE_WAVES_PROPAGATION')
 
     ff_dim = hm%dim
-    call zbatch_init(ff_rs_stateb, 1, 1, hm%dim, gr%mesh%np_part)
+    call zbatch_init(ff_rs_stateb, 1, 1, hm%dim, gr%np_part)
+    if (st%pack_states) call ff_rs_stateb%do_pack(copy=.false.)
 
-    call transform_rs_state_batch(hm, gr, st, st%rs_state_plane_waves, ff_rs_stateb, RS_TRANS_FORWARD)
+    call transform_rs_state_batch(hm, gr, st, st%rs_state_plane_wavesb, ff_rs_stateb, RS_TRANS_FORWARD)
 
     ! Time evolution of RS plane waves state without any coupling with H(inter_time)
     call hamiltonian_mxll_update(hm, time=time)
     hm%cpml_hamiltonian = .false.
-    call exponential_apply_batch(tr%te, namespace, gr%mesh, hm, ff_rs_stateb, dt)
+    call tr%te%apply_batch(namespace, gr, hm, ff_rs_stateb, dt)
 
-    call transform_rs_state_batch(hm, gr, st, st%rs_state_plane_waves, ff_rs_stateb, RS_TRANS_BACKWARD)
-    call plane_waves_boundaries_calculation(hm, st, gr%mesh, time+dt, time_delay, st%rs_state_plane_waves)
+    call transform_rs_state_batch(hm, gr, st, st%rs_state_plane_wavesb, ff_rs_stateb, RS_TRANS_BACKWARD)
+    call mxll_get_batch(st%rs_state_plane_wavesb, st%rs_state_plane_waves, gr%np, st%dim)
+    call plane_waves_boundaries_calculation(hm, st, gr, time+dt, time_delay, st%rs_state_plane_waves)
+    call mxll_set_batch(st%rs_state_plane_wavesb, st%rs_state_plane_waves, gr%np, st%dim)
     call ff_rs_stateb%end()
 
     call profiling_out(prof)
@@ -1804,52 +1934,90 @@ contains
 
   ! ---------------------------------------------------------
   subroutine plane_waves_in_box_calculation(bc, time, space, mesh, st, rs_state)
-    type(bc_mxll_t),           intent(in)    :: bc
+    type(bc_mxll_t),           intent(inout) :: bc
     FLOAT,                     intent(in)    :: time
     type(space_t),             intent(in)    :: space
-    type(mesh_t),              intent(in)    :: mesh
+    class(mesh_t),             intent(in)    :: mesh
     type(states_mxll_t),       intent(in)    :: st
     CMPLX,                     intent(inout) :: rs_state(:,:)
 
-    integer              :: ip, wn, idim
-    FLOAT                :: x_prop(space%dim), rr, vv(space%dim), k_vector(space%dim), k_vector_abs, nn
-    FLOAT                :: e_field(space%dim), b_field(space%dim), dummy(space%dim)
-    CMPLX                :: rs_state_add(st%dim), e0(space%dim)
+    FLOAT                :: e_field_total(mesh%np,st%dim), b_field_total(mesh%np,st%dim)
+    CMPLX                :: rs_state_add(mesh%np,st%dim)
     type(profile_t), save :: prof
 
     PUSH_SUB(plane_waves_in_box_calculation)
 
     call profiling_in(prof, 'PLANE_WAVES_IN_BOX_CALCULATION')
 
-    do wn = 1, bc%plane_wave%number
-      vv(:) = bc%plane_wave%v_vector(1:space%dim, wn)
-      k_vector(:) = bc%plane_wave%k_vector(1:space%dim, wn)
-      k_vector_abs = norm2(k_vector(1:space%dim))
-      e0(:) = bc%plane_wave%e_field(1:space%dim, wn)
-      do ip = 1, mesh%np
-        if (wn == 1) rs_state(ip,:) = M_Z0
-        nn = sqrt(st%ep(ip)/P_ep*st%mu(ip)/P_mu)
-        x_prop = mesh%x(ip,:) - vv * time
-        rr = norm2(x_prop(1:space%dim))
-        select case (bc%plane_wave%modus(wn))
-        case (OPTION__MAXWELLINCIDENTWAVES__PLANE_WAVE_PARSER)
-          do idim = 1, space%dim
-            call parse_expression(e_field(idim), dummy(idim), space%dim, x_prop, rr, M_ZERO, &
-              bc%plane_wave%e_field_string(idim,wn))
-            e_field(idim) = units_to_atomic(units_inp%energy/units_inp%length, e_field(idim))
-          end do
-        case (OPTION__MAXWELLINCIDENTWAVES__PLANE_WAVE_MX_FUNCTION)
-          e_field(:) = TOFLOAT(e0(1:space%dim) * mxf(bc%plane_wave%mx_function(wn), x_prop(1:space%dim)))
-        end select
-        b_field(1:3) = M_ONE/(P_c * k_vector_abs) * dcross_product(k_vector, e_field)
-        call build_rs_vector(e_field, b_field, st%rs_sign, rs_state_add, st%ep(ip), st%mu(ip))
-        rs_state(ip,:) = rs_state(ip,:) + rs_state_add(:)
-      end do
-    end do
+    call plane_waves_eval(bc%plane_wave, time, mesh, e_field_total, b_field_total = b_field_total)
+
+    call build_rs_state(e_field_total,  b_field_total, st%rs_sign, &
+      rs_state_add(1:mesh%np,:), mesh, st%ep, st%mu)
+    rs_state(1:mesh%np,:) = rs_state(1:mesh%np,:) + rs_state_add(1:mesh%np,:)
 
     call profiling_out(prof)
 
     POP_SUB(plane_waves_in_box_calculation)
   end subroutine plane_waves_in_box_calculation
+
+  ! ---------------------------------------------------------
+  subroutine mxll_apply_boundaries(tr, st, hm, gr, namespace, time, dt, rs_stateb)
+    type(propagator_mxll_t), intent(inout) :: tr
+    type(states_mxll_t),     intent(inout) :: st
+    type(hamiltonian_mxll_t),intent(inout) :: hm
+    type(grid_t),            intent(in)    :: gr
+    type(namespace_t),       intent(in)    :: namespace
+    FLOAT,                   intent(in)    :: time
+    FLOAT,                   intent(in)    :: dt
+    type(batch_t),           intent(inout) :: rs_stateb
+
+    CMPLX, allocatable :: rs_state(:, :)
+
+    PUSH_SUB(mxll_apply_boundaries)
+
+    SAFE_ALLOCATE(rs_state(gr%np, st%dim))
+
+    if (tr%bc_constant) then
+      call mxll_get_batch(rs_stateb, rs_state, gr%np, st%dim)
+      ! Propagation dt with H(inter_time+inter_dt) for constant boundaries
+      if (st%rs_state_const_external) then
+        call spatial_constant_calculation(tr%bc_constant, st, gr, hm, time, dt, M_ZERO, rs_state)
+      end if
+      call constant_boundaries_calculation(tr%bc_constant, hm%bc, hm, st, rs_state)
+      call mxll_set_batch(rs_stateb, rs_state, gr%np, st%dim)
+    end if
+
+    ! PEC mirror boundaries
+    if (any(hm%bc%bc_type == MXLL_BC_MIRROR_PEC)) then
+      call mxll_get_batch(rs_stateb, rs_state, gr%np, st%dim)
+      call mirror_pec_boundaries_calculation(hm%bc, st, rs_state)
+      call mxll_set_batch(rs_stateb, rs_state, gr%np, st%dim)
+    end if
+
+    ! PMC mirror boundaries
+    if (any(hm%bc%bc_type == MXLL_BC_MIRROR_PMC)) then
+      call mxll_get_batch(rs_stateb, rs_state, gr%np, st%dim)
+      call mirror_pmc_boundaries_calculation(hm%bc, st, rs_state)
+      call mxll_set_batch(rs_stateb, rs_state, gr%np, st%dim)
+    end if
+
+    if (any(hm%bc%bc_ab_type == OPTION__MAXWELLABSORBINGBOUNDARIES__MASK)) then
+      call mxll_get_batch(rs_stateb, rs_state, gr%np, st%dim)
+      ! Apply mask absorbing boundaries
+      call mask_absorbing_boundaries(namespace, gr, hm, st, tr, time, dt, M_ZERO, rs_state)
+      call mxll_set_batch(rs_stateb, rs_state, gr%np, st%dim)
+    end if
+
+    if (tr%bc_plane_waves) then
+      call mxll_get_batch(rs_stateb, rs_state, gr%np, st%dim)
+      ! calculate plane waves boundaries at t
+      call plane_waves_boundaries_calculation(hm, st, gr, time, M_ZERO, rs_state)
+      call mxll_set_batch(rs_stateb, rs_state, gr%np, st%dim)
+    end if
+
+    SAFE_DEALLOCATE_A(rs_state)
+
+    POP_SUB(mxll_apply_boundaries)
+  end subroutine mxll_apply_boundaries
 
 end module propagator_mxll_oct_m

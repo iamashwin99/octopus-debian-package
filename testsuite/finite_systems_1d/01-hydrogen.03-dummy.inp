@@ -3,7 +3,7 @@
 CalculationMode = dummy
 
 Dimensions = 1
-fromScratch = yes
+FromScratch = yes
 
 BoxShape = sphere
 Spacing = 0.5

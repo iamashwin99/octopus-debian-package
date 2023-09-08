@@ -1,0 +1,141 @@
+# ----- Calculation mode and parallelization ----------------------------------
+
+CalculationMode   = td
+RestartWrite = yes
+ExperimentalFeatures = yes
+FromScratch = yes
+DebugTrapSignals = no
+
+Dimensions = 3
+
+# ----- Maxwell variables -----------------------------------------------------
+
+Maxwell.ParDomains = auto
+Maxwell.ParStates  = no
+
+HamiltonianOperator = faraday_ampere
+
+Maxwell.TDSystemPropagator = prop_expmid
+
+%MaxwellBoundaryConditions
+ constant | constant | constant
+%
+
+%MaxwellAbsorbingBoundaries
+ mask | mask | mask
+%
+
+MaxwellABWidth = 4
+
+# ----- Maxwell box variables -------------------------------------------------
+
+lsize_mx = 24.0
+dx_mx    = 0.5
+
+Maxwell.BoxShape   = parallelepiped
+
+%Maxwell.Lsize
+ lsize_mx | lsize_mx | lsize_mx
+%
+
+%Maxwell.Spacing
+ dx_mx | dx_mx | dx_mx
+%
+
+
+# ----- Output variables ------------------------------------------------------
+
+OutputFormat = plane_z
+
+# ----- Maxwell output variables ----------------------------------------------
+
+%MaxwellOutput
+ electric_field
+ magnetic_field
+ maxwell_energy_density
+%
+
+MaxwellOutputInterval = 5
+MaxwellTDOutput       = maxwell_energy
+
+%MaxwellFieldsCoordinate
+  0.00 | 0.00 | 0.00
+%
+
+
+# ----- Time step variables ---------------------------------------------------
+dt = 0.0001
+TDTimeStep = dt
+TDPropagationTime = 5*dt
+
+
+# ----- Spatially constant magnetic field -------------------------------------
+
+Ez           = 0.00000000
+Bz           = -0.10000000
+
+%UserDefinedConstantSpatialMaxwellField
+0 | 0 | Ez | 0 | 0 | Bz | "time_function"
+%
+
+PropagateSpatialMaxwellField = yes
+
+%TDFunctions
+"time_function" | tdf_cw | 1.0
+%
+
+# ----- Charged particle ------------------------------------------------------
+
+width = 2.0
+
+%Systems
+   'Maxwell' | maxwell
+   'cp1' | charged_particle
+   'cp2' | charged_particle
+   'cp3' | charged_particle
+   'cp4' | charged_particle
+%
+cp1.ParticleMass = 1
+cp1.ParticleCharge = 1
+cp1.TDSystemPropagator = verlet
+cp1.RegularizationFunction = cos2
+cp1.RegularizationFunctionWidth = width
+%cp1.ParticleInitialPosition
+2.00001 | 0.00001 | 1e-10
+%
+%cp1.ParticleInitialVelocity
+0.00000 | 1.00000 | 0
+%
+cp2.ParticleMass = 1
+cp2.ParticleCharge = 1
+cp2.TDSystemPropagator = verlet
+cp2.RegularizationFunction = cos2
+cp2.RegularizationFunctionWidth = width
+%cp2.ParticleInitialPosition
+0.00001 | 2.00001 | 1e-10
+%
+%cp2.ParticleInitialVelocity
+-1.00000 | 0.00000 | 0
+%
+cp3.ParticleMass = 1
+cp3.ParticleCharge = 1
+cp3.TDSystemPropagator = verlet
+cp3.RegularizationFunction = cos2
+cp3.RegularizationFunctionWidth = width
+%cp3.ParticleInitialPosition
+-1.99999 | 0.00001 | 1e-10
+%
+%cp3.ParticleInitialVelocity
+-0.00000 | -1.00000 | 0
+%
+cp4.ParticleMass = 1
+cp4.ParticleCharge = 1
+cp4.TDSystemPropagator = verlet
+cp4.RegularizationFunction = cos2
+cp4.RegularizationFunctionWidth = width
+%cp4.ParticleInitialPosition
+0.00001 | -1.99999 | 1e-10
+%
+%cp4.ParticleInitialVelocity
+1.00000 | -0.00000 | 0
+%

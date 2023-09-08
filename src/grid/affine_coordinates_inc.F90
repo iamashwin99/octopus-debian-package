@@ -17,7 +17,7 @@
 !!
 
 ! -----------------------------------------------------------------------------
-subroutine X(affine_coordinates_vector_from_cartesian)(this, xx, vv, src)
+pure subroutine X(affine_coordinates_vector_from_cartesian)(this, xx, vv, src)
   class(affine_coordinates_t), intent(in)    :: this
   FLOAT,                       intent(in)    :: xx(:)
   R_TYPE,                      intent(inout) :: vv(:)
@@ -35,7 +35,7 @@ subroutine X(affine_coordinates_vector_from_cartesian)(this, xx, vv, src)
 end subroutine X(affine_coordinates_vector_from_cartesian)
 
 ! -----------------------------------------------------------------------------
-subroutine X(affine_coordinates_covector_to_cartesian)(this, xx, cv, src)
+pure subroutine X(affine_coordinates_covector_to_cartesian)(this, xx, cv, src)
   class(affine_coordinates_t), intent(in)    :: this
   FLOAT,                       intent(in)    :: xx(:)
   R_TYPE,                      intent(inout) :: cv(:)

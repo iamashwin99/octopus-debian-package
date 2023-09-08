@@ -23,12 +23,10 @@ SmearingFunction = fermi_dirac
  10.0 | 0.0 | 0.0
 %
 
-%Output 
+%Output
  current | axis_z
 %
 
-ConvRelDens = 1e-6
-EigensolverTolerance = 1e-7
 ConvEigenError = yes
 MaximumIter = 400
 

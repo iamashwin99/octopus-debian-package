@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML-full"></script>
 <style>
-   BODY {background-color: white; 
+   BODY {background-color: white;
          font-size: 10pt; font-family: verdana,helvetica;}
    A  {text-decoration: none;color: blue}
 </style>
@@ -265,6 +265,58 @@
 </p><hr width='30%' align='left'/>
 
 
+<p><b><a name='ChebyshevFilterBoundMixing'></a>ChebyshevFilterBoundMixing</b>
+<br/><i>Section</i>: SCF::Eigensolver
+<br/><i>Type</i>: float
+<br/><i>Default</i>: 0.5
+<br/><br> In the first application of the filter, for the first SCF step, the initial lower bound estimate
+ is defined as a linear combination of the smallest and largest eigenvalues of the Hamiltonian.
+ The bound mixing determines the proportion of linear mixing, beta:
+ $b_{lower} = beta min{\lambda} + (\beta - 1) max{\lambda}$
+ of the smallest and largest eigenvalues.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='ChebyshevFilterDegree'></a>ChebyshevFilterDegree</b>
+<br/><i>Section</i>: SCF::Eigensolver
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: 10
+<br/><br> Used by the Chebyshev filter only.
+ The degree of the Chebyshev polynomial used to dampen the interval of eigenstates
+ one is not interested in.
+ The larger the polynomial, the fewer SCF steps should be required to reach convergence,
+ however this directly defines the number of matrix-vector products performed on the Hamiltonian
+ per SCF step.
+ A value in the range 8 <= ChebyshevFilterDegree <= 20 is reasonable.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='ChebyshevFilterLanczosOrder'></a>ChebyshevFilterLanczosOrder</b>
+<br/><i>Section</i>: SCF::Eigensolver
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: 5
+<br/><br> Used by the Chebyshev filter only.
+ The number of Lanczos iterations used to construct the tridiagonal matrix,
+ from which the upper bound of H is estimated.
+ A value in the range 4 <= ChebyshevFilterLanczosOrder <= 10 is reasonable.
+ Values greater than 10 will raise an assertion.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='ChebyshevFilterNIter'></a>ChebyshevFilterNIter</b>
+<br/><i>Section</i>: SCF::Eigensolver
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: 5
+<br/><br> The max number of iterations in the first SCF step of the Chebyshev solver. In practice this
+ does not need to exceed 10, as the eigenstates will vary alot between the first and second
+ SCF steps.
+
+</p><hr width='30%' align='left'/>
+
+
 <p><b><a name='Eigensolver'></a>Eigensolver</b>
 <br/><i>Section</i>: SCF::Eigensolver
 <br/><i>Type</i>: integer
@@ -288,6 +340,12 @@
 </li>
 <li><b>plan</b>:  Preconditioned Lanczos scheme. Ref: Y. Saad, A. Stathopoulos, J. Chelikowsky, K. Wu and S. Ogut,
  "Solution of Large Eigenvalue Problems in Electronic Structure Calculations", <i>BIT</i> <b>36</b>, 1 (1996).
+</li>
+<li><b>chebyshev_filter</b>:  A Chebyshev-filtered subspace iteration method, which avoids most of the explicit computation of
+ eigenvectors and results in a significant speedup over iterative diagonalization methods.
+ This method may be viewed as an approach to solve the original nonlinear Kohn-Sham equation by a
+ nonlinear subspace iteration technique, without emphasizing the intermediate linearized Kohn-Sham
+ eigenvalue problems. For further details, see [Zhou et. al.](http://dx.doi.org/10.1016/j.jcp.2014.06.056)
 </li>
 <li><b>cg</b>:  Conjugate-gradients algorithm.
 </li>
@@ -322,7 +380,9 @@
  except for <tt>rmdiis</tt>, which performs only 5 iterations.
  Increasing this value for <tt>rmdiis</tt> increases the convergence speed,
  at the cost of an increased memory footprint.
- In the case of imaginary time propatation, this variable is not used.
+<br><br>
+ In the case of imaginary time propatation, this variable controls the number of iterations
+ for which the Hxc potential is frozen. Default is 1 for the imaginary time evolution.
 
 </p><hr width='30%' align='left'/>
 
@@ -335,14 +395,6 @@
  some steepest-descent minimizations to improve
  convergence. This variable determines the number of those
  minimizations.
-
-</p><hr width='30%' align='left'/>
-
-
-<p><b><a name='EigensolverSkipKpoints'></a>EigensolverSkipKpoints</b>
-<br/><i>Section</i>: SCF::Eigensolver
-<br/><i>Type</i>: logical
-<br/><br> Only solve Hamiltonian for k-points with zero weight
 
 </p><hr width='30%' align='left'/>
 
@@ -638,6 +690,16 @@
 <br/><i>Default</i>: 20.0 a.u.
 <br/><br> The LCAO procedure will ignore orbitals that have an
  extent greater that this value.
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='LCAOSaveMemory'></a>LCAOSaveMemory</b>
+<br/><i>Section</i>: SCF::LCAO
+<br/><i>Type</i>: logical
+<br/><i>Default</i>: false
+<br/><br> If set to true, the LCAO will allocate extra memory needed in single precision instead of
+ double precision.
 
 </p><hr width='30%' align='left'/>
 

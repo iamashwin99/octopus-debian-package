@@ -1,6 +1,6 @@
 CalculationMode = kdotp
 ExperimentalFeatures = yes
-fromScratch = yes
+FromScratch = yes
 RestartFixedOccupations = no
 
 %Coordinates
@@ -27,4 +27,3 @@ KdotPCalcSecondOrder = yes
 FilterPotentials = filter_none
 
 MixField = density
-

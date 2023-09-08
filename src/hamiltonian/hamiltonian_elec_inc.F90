@@ -20,7 +20,7 @@
 subroutine X(hamiltonian_elec_apply) (hm, namespace, mesh, psib, hpsib, terms, set_bc)
   class(hamiltonian_elec_t),   intent(in)    :: hm
   type(namespace_t),           intent(in)    :: namespace
-  type(mesh_t),                intent(in)    :: mesh
+  class(mesh_t),               intent(in)    :: mesh
   class(batch_t),      target, intent(inout) :: psib
   class(batch_t),      target, intent(inout) :: hpsib
   integer,           optional, intent(in)    :: terms
@@ -49,7 +49,7 @@ end subroutine X(hamiltonian_elec_apply)
 subroutine X(hamiltonian_elec_magnus_apply) (hm, namespace, mesh, psib, hpsib, vmagnus)
   class(hamiltonian_elec_t),   intent(in)    :: hm
   type(namespace_t),           intent(in)    :: namespace
-  type(mesh_t),                intent(in)    :: mesh
+  class(mesh_t),               intent(in)    :: mesh
   class(batch_t),              intent(inout) :: psib
   class(batch_t),              intent(inout) :: hpsib
   FLOAT,                       intent(in)    :: vmagnus(:, :, :)
@@ -77,7 +77,7 @@ end subroutine X(hamiltonian_elec_magnus_apply)
 subroutine X(hamiltonian_elec_apply_batch) (hm, namespace, mesh, psib, hpsib, terms, set_bc)
   type(hamiltonian_elec_t),    intent(in)    :: hm
   type(namespace_t),           intent(in)    :: namespace
-  type(mesh_t),                intent(in)    :: mesh
+  class(mesh_t),               intent(in)    :: mesh
   type(wfs_elec_t),    target, intent(inout) :: psib
   type(wfs_elec_t),    target, intent(inout) :: hpsib
   integer,           optional, intent(in)    :: terms
@@ -120,7 +120,8 @@ subroutine X(hamiltonian_elec_apply_batch) (hm, namespace, mesh, psib, hpsib, te
       ! apply phase correction while setting boundary -> memory needs to be
       ! accessed only once
       ASSERT(psib%has_phase)
-      call boundaries_set(hm%der%boundaries, mesh, psib, phase_correction = hm%hm_base%phase_corr(:, psib%ik))
+      call boundaries_set(hm%der%boundaries, mesh, psib, phase_correction = hm%hm_base%phase_corr(:, psib%ik), &
+        buff_phase_corr = hm%hm_base%buff_phase_corr, offset=int((psib%ik-hm%d%kpt%start)*(mesh%np_part-mesh%np)))
     else
       call boundaries_set(hm%der%boundaries, mesh, psib)
     end if
@@ -157,7 +158,8 @@ subroutine X(hamiltonian_elec_apply_batch) (hm, namespace, mesh, psib, hpsib, te
 
   if (hm%ep%non_local .and. bitand(TERM_NON_LOCAL_POTENTIAL, terms_) /= 0) then
     if (hm%hm_base%apply_projector_matrices) then
-      call X(hamiltonian_elec_base_nlocal_start)(hm%hm_base, mesh, hm%d, hm%der%boundaries, epsib, projection)
+      call X(hamiltonian_elec_base_nlocal_start)(hm%hm_base, mesh, hm%d, hm%der%boundaries%spiral, &
+        epsib, projection)
     end if
   end if
 
@@ -179,7 +181,8 @@ subroutine X(hamiltonian_elec_apply_batch) (hm, namespace, mesh, psib, hpsib, te
   ! and the non-local one
   if (hm%ep%non_local .and. bitand(TERM_NON_LOCAL_POTENTIAL, terms_) /= 0) then
     if (hm%hm_base%apply_projector_matrices) then
-      call X(hamiltonian_elec_base_nlocal_finish)(hm%hm_base, mesh, hm%der%boundaries, hm%d, projection, hpsib)
+      call X(hamiltonian_elec_base_nlocal_finish)(hm%hm_base, mesh, hm%der%boundaries%spiral, &
+        hm%d, projection, hpsib)
     else
       call X(project_psi_batch)(mesh, hm%der%boundaries, hm%ep%proj, hm%ep%natoms, hm%d%dim, epsib, hpsib)
     end if
@@ -261,7 +264,7 @@ end subroutine X(hamiltonian_elec_apply_batch)
 
 subroutine X(hamiltonian_elec_external)(this, mesh, psib, vpsib)
   type(hamiltonian_elec_t),    intent(in)    :: this
-  type(mesh_t),                intent(in)    :: mesh
+  class(mesh_t),               intent(in)    :: mesh
   type(wfs_elec_t),            intent(in)    :: psib
   type(wfs_elec_t),            intent(inout) :: vpsib
 
@@ -311,7 +314,7 @@ end subroutine X(hamiltonian_elec_external)
 subroutine X(hamiltonian_elec_apply_single) (hm, namespace, mesh, psi, hpsi, ist, ik, terms, set_bc, set_phase)
   type(hamiltonian_elec_t), intent(in)    :: hm
   type(namespace_t),        intent(in)    :: namespace
-  type(mesh_t),             intent(in)    :: mesh
+  class(mesh_t),            intent(in)    :: mesh
   integer,                  intent(in)    :: ist       !< the index of the state
   integer,                  intent(in)    :: ik        !< the index of the k-point
   R_TYPE, contiguous, target, intent(inout) :: psi(:,:)  !< (gr%mesh%np_part, hm%d%dim)
@@ -345,7 +348,7 @@ end subroutine X(hamiltonian_elec_apply_single)
 subroutine X(hamiltonian_elec_magnus_apply_batch) (hm, namespace, mesh, psib, hpsib, vmagnus)
   type(hamiltonian_elec_t), intent(in)    :: hm
   type(namespace_t),        intent(in)    :: namespace
-  type(mesh_t),             intent(in)    :: mesh
+  class(mesh_t),            intent(in)    :: mesh
   type(wfs_elec_t),         intent(inout) :: psib
   type(wfs_elec_t),         intent(inout) :: hpsib
   FLOAT,                    intent(in)    :: vmagnus(:, :, :)
@@ -396,7 +399,7 @@ end subroutine X(hamiltonian_elec_magnus_apply_batch)
 ! ---------------------------------------------------------
 subroutine X(h_mgga_terms) (hm, mesh, psib, hpsib, ghost_update)
   type(hamiltonian_elec_t), intent(in)    :: hm
-  type(mesh_t),             intent(in)    :: mesh
+  class(mesh_t),            intent(in)    :: mesh
   type(wfs_elec_t),         intent(inout) :: psib
   type(wfs_elec_t),         intent(inout) :: hpsib
   logical,                  intent(in)    :: ghost_update
@@ -441,7 +444,8 @@ subroutine X(h_mgga_terms) (hm, mesh, psib, hpsib, ghost_update)
     call X(hamiltonian_elec_base_local_sub)(hm%vtau, mesh, hm%d, ispin, gradb(idir), vgradb(idir), &
       potential_accel = hm%hm_base%vtau_accel)
     if(psib%has_phase) then
-      call boundaries_set(hm%der%boundaries, mesh, vgradb(idir), phase_correction = hm%hm_base%phase_corr(:, psib%ik))
+      call boundaries_set(hm%der%boundaries, mesh, vgradb(idir), phase_correction = hm%hm_base%phase_corr(:, psib%ik), &
+        buff_phase_corr=hm%hm_base%buff_phase_corr, offset=int((hpsib%ik-hm%d%kpt%start)*(mesh%np_part-mesh%np)))
     else
       call boundaries_set(hm%der%boundaries, mesh, vgradb(idir))
     end if
@@ -469,7 +473,7 @@ end subroutine X(h_mgga_terms)
 
 ! ---------------------------------------------------------
 subroutine X(vmask) (mesh, hm, st)
-  type(mesh_t),        intent(in)    :: mesh
+  class(mesh_t),       intent(in)    :: mesh
   type(hamiltonian_elec_t), intent(in)    :: hm
   type(states_elec_t), intent(inout) :: st
 
@@ -501,7 +505,7 @@ end subroutine X(vmask)
 ! ---------------------------------------------------------
 subroutine X(hamiltonian_elec_diagonal) (hm, mesh, diag, ik)
   type(hamiltonian_elec_t), intent(in)    :: hm
-  type(mesh_t),             intent(in)    :: mesh
+  class(mesh_t),            intent(in)    :: mesh
   R_TYPE,              intent(out)   :: diag(:,:) !< hpsi(gr%mesh%np, hm%d%dim)
   integer,             intent(in)    :: ik
 

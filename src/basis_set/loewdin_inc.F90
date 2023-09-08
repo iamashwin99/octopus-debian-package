@@ -23,7 +23,7 @@ subroutine X(loewdin_orthogonalize)(basis, kpt, namespace)
 
   R_TYPE, allocatable :: overlap(:,:), overlap2(:,:)
   FLOAT,  allocatable :: eigenval(:)
-  integer :: ik, is
+  integer :: ik, is, np
   integer :: ind, ind2, ios, ios2, iorb, iorb2, ns, idim
   type(orbitalset_t), pointer :: os, os2
   type(profile_t), save :: prof
@@ -61,7 +61,7 @@ subroutine X(loewdin_orthogonalize)(basis, kpt, namespace)
     do ios = 1, basis%norbsets
       os => basis%orbsets(ios)
       if (.not. allocated(os%phase)) then
-        if (os%submesh) then
+        if (os%use_submesh) then
           SAFE_ALLOCATE(os%eorb_mesh(1:os%sphere%np, 1:os%norbs, 1:os%ndim, 1:1))
         else
           SAFE_ALLOCATE(os%eorb_mesh(1:os%sphere%mesh%np, 1:os%norbs, 1:os%ndim, 1:1))
@@ -94,7 +94,8 @@ subroutine X(loewdin_orthogonalize)(basis, kpt, namespace)
             ASSERT(.false.)
 #endif
           else
-            if (.not. os%submesh) then
+            if (.not. os%use_submesh) then
+              !$omp parallel do
               do is = 1, os2%sphere%mesh%np
                 os%eorb_mesh(is, iorb, idim, ik) &
                   = os%eorb_mesh(is, iorb, idim, ik) &
@@ -125,6 +126,34 @@ subroutine X(loewdin_orthogonalize)(basis, kpt, namespace)
         SAFE_DEALLOCATE_A(os%eorb_mesh)
       end if
     end do
+
+    ! If we use GPUs, we need to transfer the orbitals on the device
+    if (accel_is_enabled() .and. os%ndim == 1) then
+      do ios = 1, basis%norbsets
+        os => basis%orbsets(ios)
+        np = os%sphere%np
+        if(.not. os%use_submesh) np = os%sphere%mesh%np
+
+        if (.not. allocated(os%phase)) then
+          do iorb = 1, os%norbs
+            call accel_write_buffer(os%X(buff_orb), np, os%X(orb)(:, 1, iorb), offset = (iorb - 1)*os%ldorbs)
+          end do
+        else
+          if(os%use_submesh) then
+            do iorb = 1, os%norbs
+              call accel_write_buffer(os%buff_eorb(ik), np, &
+                os%eorb_submesh(:, 1, iorb, ik), offset = (iorb - 1)*os%ldorbs)
+            end do
+          else
+            do iorb = 1, os%norbs
+              call accel_write_buffer(os%buff_eorb(ik), np, &
+                os%eorb_mesh(:, iorb, 1, ik), offset = (iorb - 1)*os%ldorbs)
+            end do
+          end if
+        end if
+      end do
+    end if
+
 
     ! For debugging, we want to control what is the overlap matrix after
     ! orthogonalization
@@ -172,7 +201,7 @@ subroutine X(loewdin_overlap)(basis, overlap, ik)
       iorb2 = basis%global2os(2, ind2)
       os2 => basis%orbsets(ios2)
 
-      if (allocated(os%phase) .and. .not. os%submesh) then
+      if (allocated(os%phase) .and. .not. os%use_submesh) then
 #ifdef R_TCOMPLEX
         overlap(ind,ind2) = M_Z0
         do idim = 1, os%ndim
@@ -181,7 +210,7 @@ subroutine X(loewdin_overlap)(basis, overlap, ik)
         end do
 #endif
       else
-        if (os%submesh) then
+        if (os%use_submesh) then
           call messages_not_implemented("Lowdin orthogonalization with submeshes")
         else
           overlap(ind,ind2) = M_Z0

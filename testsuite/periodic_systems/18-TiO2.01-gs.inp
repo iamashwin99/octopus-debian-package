@@ -2,7 +2,6 @@ CalculationMode = gs
 PeriodicDimensions = 3
 BoxShape = parallelepiped
 ExperimentalFeatures = yes
-ParKpoints = 1
 
 PseudopotentialSet = pseudodojo_pbe
 
@@ -50,8 +49,6 @@ ParKPoints = no
 %
 %OutputMatrixElements
   two_body
-%  
+%
 OutputMEStart = 24
 OutputMEEnd = 25
-
-StatesPack = yes

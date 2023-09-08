@@ -35,6 +35,7 @@ module propagation_ops_elec_oct_m
   use ions_oct_m
   use lasers_oct_m
   use lda_u_oct_m
+  use mesh_function_oct_m
   use mesh_oct_m
   use messages_oct_m
   use namespace_oct_m
@@ -78,7 +79,7 @@ contains
     type(namespace_t),        intent(in)    :: namespace
     type(space_t),            intent(in)    :: space
     type(states_elec_t),      intent(inout) :: st
-    type(mesh_t),             intent(in)    :: mesh
+    class(mesh_t),            intent(in)    :: mesh
     type(hamiltonian_elec_t), intent(inout) :: hm
     type(partner_list_t),     intent(in)    :: ext_partners
     FLOAT,                    intent(in)    :: time
@@ -89,7 +90,8 @@ contains
 
     call profiling_in(prof, 'ELEC_UPDATE_H')
 
-    call hamiltonian_elec_update(hm, mesh, namespace, space, ext_partners, time = time)
+    call calculate_mxll_dipole_field(hm, mesh, st)
+    call hm%update(mesh, namespace, space, ext_partners, time = time)
     call lda_u_update_occ_matrices(hm%lda_u, namespace, mesh, st, hm%hm_base, hm%energy)
 
     call profiling_out(prof)
@@ -100,7 +102,7 @@ contains
 
   ! ---------------------------------------------------------
   subroutine propagation_ops_elec_move_ions(wo, gr, hm, st, namespace, space, ions_dyn, ions, &
-    ext_partners, time, ion_time, save_pos, move_ions)
+    ext_partners, time, dt, save_pos)
     class(propagation_ops_elec_t), intent(inout) :: wo
     type(grid_t),                  intent(in)    :: gr
     type(hamiltonian_elec_t),      intent(inout) :: hm
@@ -111,21 +113,23 @@ contains
     type(ions_t),                  intent(inout) :: ions
     type(partner_list_t),          intent(in)    :: ext_partners
     FLOAT,                         intent(in)    :: time
-    FLOAT,                         intent(in)    :: ion_time
+    FLOAT,                         intent(in)    :: dt
     logical, optional,             intent(in)    :: save_pos
-    logical, optional,             intent(in)    :: move_ions
 
     type(profile_t), save :: prof
+    FLOAT :: dt_ions
 
     PUSH_SUB(propagation_ops_elec_move_ions)
 
     call profiling_in(prof, 'ELEC_MOVE_IONS')
 
-    if (ion_dynamics_ions_move(ions_dyn) .and. optional_default(move_ions, .true.)) then
+
+    if (ion_dynamics_ions_move(ions_dyn)) then
+      dt_ions = dt * ions_dyn%ionic_scale
       if (optional_default(save_pos, .false.)) then
         call ion_dynamics_save_state(ions_dyn, ions, wo%ions_state)
       end if
-      call ion_dynamics_propagate(ions_dyn, ions, time, ion_time, namespace)
+      call ion_dynamics_propagate(ions_dyn, ions, time, dt_ions, namespace)
       call hamiltonian_elec_epot_generate(hm, namespace, space, gr, ions, ext_partners, st, time = time)
     end if
 
@@ -135,11 +139,10 @@ contains
   end subroutine propagation_ops_elec_move_ions
 
   ! ---------------------------------------------------------
-  subroutine propagation_ops_elec_restore_ions(wo, ions_dyn, ions, move_ions)
+  subroutine propagation_ops_elec_restore_ions(wo, ions_dyn, ions)
     class(propagation_ops_elec_t),    intent(inout) :: wo
     type(ion_dynamics_t),    intent(inout) :: ions_dyn
     type(ions_t),            intent(inout) :: ions
-    logical, optional,       intent(in)    :: move_ions
 
     type(profile_t), save :: prof
 
@@ -147,7 +150,7 @@ contains
 
     call profiling_in(prof, 'ELEC_RESTORE_IONS')
 
-    if (ion_dynamics_ions_move(ions_dyn) .and. optional_default(move_ions, .true.)) then
+    if (ion_dynamics_ions_move(ions_dyn)) then
       call ion_dynamics_restore_state(ions_dyn, ions, wo%ions_state)
     end if
 
@@ -175,7 +178,7 @@ contains
         call gauge_field_get_vec_pot(gfield, wo%vecpot)
         call gauge_field_get_vec_pot_vel(gfield, wo%vecpot_vel)
       end if
-      call gauge_field_do_td(gfield, OP_VERLET_COMPUTE_ACC, dt, time)
+      call gauge_field_do_algorithmic_operation(gfield, OP_VERLET_COMPUTE_ACC, dt, time)
     end if
 
     call profiling_out(prof)
@@ -189,7 +192,7 @@ contains
     type(namespace_t),             intent(in)    :: namespace
     type(space_t),                 intent(in)    :: space
     type(hamiltonian_elec_t),      intent(inout) :: hm
-    type(mesh_t),                  intent(in)    :: mesh
+    class(mesh_t),                 intent(in)    :: mesh
     type(partner_list_t),          intent(in)    :: ext_partners
 
     type(profile_t), save :: prof
@@ -203,7 +206,7 @@ contains
     if (associated(gfield)) then
       call gauge_field_set_vec_pot(gfield, wo%vecpot)
       call gauge_field_set_vec_pot_vel(gfield, wo%vecpot_vel)
-      call hamiltonian_elec_update(hm, mesh, namespace, space, ext_partners)
+      call hm%update(mesh, namespace, space, ext_partners)
     end if
 
     call profiling_out(prof)
@@ -216,7 +219,7 @@ contains
     type(exponential_t),      intent(inout) :: te
     type(namespace_t),        intent(in)    :: namespace
     type(states_elec_t),      intent(inout) :: st
-    type(mesh_t),             intent(in)    :: mesh
+    class(mesh_t),            intent(in)    :: mesh
     type(hamiltonian_elec_t), intent(inout) :: hm
     FLOAT,                    intent(in)    :: dt
 
@@ -235,10 +238,10 @@ contains
 
         call hamiltonian_elec_base_set_phase_corr(hm%hm_base, mesh, st%group%psib(ib, ik))
         if (hamiltonian_elec_inh_term(hm)) then
-          call exponential_apply_batch(te, namespace, mesh, hm, st%group%psib(ib, ik), dt, &
+          call te%apply_batch(namespace, mesh, hm, st%group%psib(ib, ik), dt, &
             inh_psib = hm%inh_st%group%psib(ib, ik))
         else
-          call exponential_apply_batch(te, namespace, mesh, hm, st%group%psib(ib, ik), dt)
+          call te%apply_batch(namespace, mesh, hm, st%group%psib(ib, ik), dt)
         end if
         call hamiltonian_elec_base_unset_phase_corr(hm%hm_base, mesh, st%group%psib(ib, ik))
 
@@ -282,21 +285,21 @@ contains
         if (ib + 1 <= st%group%block_end) call propagation_ops_do_pack(st, hm, ib+1, ik)
         call accel_set_stream(ib)
 
-        call hamiltonian_elec_base_set_phase_corr(hm%hm_base, gr%mesh, st%group%psib(ib, ik))
+        call hamiltonian_elec_base_set_phase_corr(hm%hm_base, gr, st%group%psib(ib, ik))
         if (present(dt2)) then
           call st%group%psib(ib, ik)%copy_to(zpsib_dt)
           if (st%group%psib(ib, ik)%is_packed()) call zpsib_dt%do_pack(copy = .false.)
 
           !propagate the state to dt/2 and dt, simultaneously, with H(time - dt)
           if (hamiltonian_elec_inh_term(hm)) then
-            call exponential_apply_batch(te, namespace, gr%mesh, hm, st%group%psib(ib, ik), dt, psib2 = zpsib_dt, &
+            call te%apply_batch(namespace, gr, hm, st%group%psib(ib, ik), dt, psib2 = zpsib_dt, &
               deltat2 = dt2, inh_psib = hm%inh_st%group%psib(ib, ik))
           else
-            call exponential_apply_batch(te, namespace, gr%mesh, hm, st%group%psib(ib, ik), dt, psib2 = zpsib_dt, &
+            call te%apply_batch(namespace, gr, hm, st%group%psib(ib, ik), dt, psib2 = zpsib_dt, &
               deltat2 = dt2)
           end if
-          call hamiltonian_elec_base_unset_phase_corr(hm%hm_base, gr%mesh, st%group%psib(ib, ik))
-          call hamiltonian_elec_base_unset_phase_corr(hm%hm_base, gr%mesh, zpsib_dt)
+          call hamiltonian_elec_base_unset_phase_corr(hm%hm_base, gr, st%group%psib(ib, ik))
+          call hamiltonian_elec_base_unset_phase_corr(hm%hm_base, gr, zpsib_dt)
 
           !use the dt propagation to calculate the density
           call density_calc_accumulate(dens_calc, zpsib_dt)
@@ -305,12 +308,12 @@ contains
         else
           !propagate the state to dt with H(time - dt)
           if (hamiltonian_elec_inh_term(hm)) then
-            call exponential_apply_batch(te, namespace, gr%mesh, hm, st%group%psib(ib, ik), dt, vmagnus=vmagnus, &
+            call te%apply_batch(namespace, gr, hm, st%group%psib(ib, ik), dt, vmagnus=vmagnus, &
               inh_psib = hm%inh_st%group%psib(ib, ik))
           else
-            call exponential_apply_batch(te, namespace, gr%mesh, hm, st%group%psib(ib, ik), dt, vmagnus=vmagnus)
+            call te%apply_batch(namespace, gr, hm, st%group%psib(ib, ik), dt, vmagnus=vmagnus)
           end if
-          call hamiltonian_elec_base_unset_phase_corr(hm%hm_base, gr%mesh, st%group%psib(ib, ik))
+          call hamiltonian_elec_base_unset_phase_corr(hm%hm_base, gr, st%group%psib(ib, ik))
 
           !use the dt propagation to calculate the density
           call density_calc_accumulate(dens_calc, st%group%psib(ib, ik))
@@ -337,7 +340,7 @@ contains
     integer,                  intent(in)    :: ik
 
     PUSH_SUB(propagation_ops_do_pack)
-    if (hamiltonian_elec_apply_packed(hm)) then
+    if (hm%apply_packed()) then
       call accel_set_stream(ib)
       call st%group%psib(ib, ik)%do_pack(async=.true.)
       if (hamiltonian_elec_inh_term(hm)) call hm%inh_st%group%psib(ib, ik)%do_pack(async=.true.)
@@ -353,7 +356,7 @@ contains
     integer,                  intent(in)    :: ik
 
     PUSH_SUB(propagation_ops_do_unpack)
-    if (hamiltonian_elec_apply_packed(hm)) then
+    if (hm%apply_packed()) then
       call accel_set_stream(ib)
       call st%group%psib(ib, ik)%do_unpack(async=.true.)
       if (hamiltonian_elec_inh_term(hm)) call hm%inh_st%group%psib(ib, ik)%do_unpack(async=.true.)
@@ -369,7 +372,7 @@ contains
     integer,                  intent(in)    :: ik
 
     PUSH_SUB(propagation_ops_finish_unpack)
-    if (hamiltonian_elec_apply_packed(hm)) then
+    if (hm%apply_packed()) then
       call accel_set_stream(ib)
       call st%group%psib(ib, ik)%finish_unpack()
       if (hamiltonian_elec_inh_term(hm)) call hm%inh_st%group%psib(ib, ik)%finish_unpack()
@@ -379,21 +382,54 @@ contains
 
   ! ---------------------------------------------------------
   subroutine propagation_ops_elec_interpolate_get(mesh, hm, interp)
-    type(mesh_t),                    intent(in)    :: mesh
+    class(mesh_t),                   intent(in)    :: mesh
     type(hamiltonian_elec_t),        intent(inout) :: hm
     type(potential_interpolation_t), intent(inout) :: interp
 
     PUSH_SUB(propagation_ops_elec_interpolate_get)
 
-    if (family_is_mgga_with_exc(hm%xc)) then
-      call potential_interpolation_get(interp, mesh%np, hm%d%nspin, 0, hm%vhxc, vtau = hm%vtau)
-    else
-      call potential_interpolation_get(interp, mesh%np, hm%d%nspin, 0, hm%vhxc)
-    end if
+    call potential_interpolation_get(interp, mesh%np, hm%d%nspin, 0, hm%vhxc, vtau = hm%vtau)
 
     POP_SUB(propagation_ops_elec_interpolate_get)
 
   end subroutine propagation_ops_elec_interpolate_get
+
+  ! ---------------------------------------------------------
+  subroutine calculate_mxll_dipole_field(hm, mesh, st)
+    type(hamiltonian_elec_t),        intent(inout) :: hm
+    class(mesh_t),                   intent(in)    :: mesh
+    type(states_elec_t),             intent(in)    :: st
+
+    FLOAT, allocatable :: density(:,:), total_density(:), mask_density(:)
+    FLOAT :: integral_mask
+    FLOAT, parameter :: density_threshold = CNST(1.0e-8)
+    integer :: idir
+
+    if (hm%mxll_coupling_mode == LENGTH_GAUGE_DIPOLE .or. &
+      hm%mxll_coupling_mode == VELOCITY_GAUGE_DIPOLE) then
+
+      if (hm%mxll_dipole_field == DIPOLE_AVERAGE) then
+        SAFE_ALLOCATE(density(1:mesh%np,1:st%d%nspin))
+        SAFE_ALLOCATE(total_density(1:mesh%np))
+        SAFE_ALLOCATE(mask_density(size(total_density)))
+        call states_elec_total_density(st, mesh, density)
+        total_density = sum(density, dim=2)
+        mask_density = merge(M_ONE, M_ZERO, total_density > density_threshold)
+        integral_mask = dmf_integrate(mesh, mask_density)
+        do idir = 1, mesh%box%dim
+          ! field_mxll_dip will be E field or A field, depending on the mxll_coupling_mode
+          hm%field_mxll_dip(idir) = dmf_integrate(mesh, mask_density*hm%field_mxll(:,idir))/integral_mask
+        end do
+        SAFE_DEALLOCATE_A(total_density)
+        SAFE_DEALLOCATE_A(density)
+        SAFE_DEALLOCATE_A(mask_density)
+
+      elseif (hm%mxll_dipole_field == DIPOLE_AT_COM) then
+        hm%field_mxll_dip(:) = hm%field_mxll(hm%center_of_mass_ip,:)
+      end if
+    end if
+
+  end subroutine calculate_mxll_dipole_field
 
 end module propagation_ops_elec_oct_m
 

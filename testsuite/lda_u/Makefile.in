@@ -201,6 +201,7 @@ CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
 CFLAGS_CLBLAS = @CFLAGS_CLBLAS@
+CFLAGS_CLBLAST = @CFLAGS_CLBLAST@
 CFLAGS_CLFFT = @CFLAGS_CLFFT@
 CFLAGS_CUDA = @CFLAGS_CUDA@
 CFLAGS_FFTW = @CFLAGS_FFTW@
@@ -278,6 +279,7 @@ LIBS_BERKELEYGW = @LIBS_BERKELEYGW@
 LIBS_BLACS = @LIBS_BLACS@
 LIBS_BLAS = @LIBS_BLAS@
 LIBS_CLBLAS = @LIBS_CLBLAS@
+LIBS_CLBLAST = @LIBS_CLBLAST@
 LIBS_CLFFT = @LIBS_CLFFT@
 LIBS_CUDA = @LIBS_CUDA@
 LIBS_DFTBPLUS = @LIBS_DFTBPLUS@
@@ -432,9 +434,7 @@ dist_share_DATA = \
 	    09-basis_from_states.fhi             \
 	    09-basis_from_states.test            \
 	    10-intersite.01-Na2.inp              \
-            10-intersite.02-graphite.inp         \
-            10-intersite.03-Na2_spinors.inp      \
-            10-intersite.04-Na2_td.inp           \
+            10-intersite.02-silicon.inp          \
             10-intersite.test                    \
             11-full_delta.01-gs.inp              \
             11-full_delta.test                   \

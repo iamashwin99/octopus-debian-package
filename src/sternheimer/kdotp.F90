@@ -25,7 +25,6 @@ module kdotp_oct_m
   use output_oct_m
   use hamiltonian_elec_oct_m
   use io_oct_m
-  use ions_oct_m
   use kdotp_calc_oct_m
   use kpoints_oct_m
   use lalg_adv_oct_m
@@ -37,7 +36,9 @@ module kdotp_oct_m
   use multisystem_basic_oct_m
   use namespace_oct_m
   use parser_oct_m
-  use pert_oct_m
+  use perturbation_oct_m
+  use perturbation_kdotp_oct_m
+  use perturbation_none_oct_m
   use profiling_oct_m
   use restart_oct_m
   use smear_oct_m
@@ -62,8 +63,8 @@ module kdotp_oct_m
 
   type kdotp_t
     private
-    type(pert_t) :: perturbation
-    type(pert_t) :: perturbation2
+    class(perturbation_t), pointer :: pert => null()
+    class(perturbation_t), pointer :: pert2 => null()
 
     FLOAT, allocatable :: eff_mass_inv(:,:,:,:)  !< inverse effective-mass tensor
     !! (idir1, idir2, ist, ik)
@@ -116,7 +117,7 @@ contains
     FLOAT                :: errornorm
     type(restart_t)      :: restart_load, restart_dump
 
-    type(pert_t)            :: pert2  ! for the second direction in second-order kdotp
+    class(perturbation_t), pointer :: pert2  ! for the second direction in second-order kdotp
 
     PUSH_SUB(kdotp_lr_run_legacy)
 
@@ -148,23 +149,23 @@ contains
       call messages_fatal(1, namespace=sys%namespace)
     end if
 
-    call pert_init(kdotp_vars%perturbation, sys%namespace, PERTURBATION_KDOTP, sys%ions)
+    kdotp_vars%pert => perturbation_kdotp_t(sys%namespace, sys%ions)
     SAFE_ALLOCATE(kdotp_vars%lr(1, 1:pdim))
 
     call parse_input()
 
     if (calc_2nd_order) then
-      call pert_init(kdotp_vars%perturbation2, sys%namespace, PERTURBATION_NONE, sys%ions)
-      call pert_init(pert2, sys%namespace, PERTURBATION_KDOTP, sys%ions)
-      call pert_setup_dir(kdotp_vars%perturbation2, 1) ! direction is irrelevant
+      kdotp_vars%pert2 => perturbation_none_t(sys%namespace)
+      pert2 => perturbation_kdotp_t(sys%namespace, sys%ions)
+      call kdotp_vars%pert2%setup_dir(1) ! direction is irrelevant
       SAFE_ALLOCATE(kdotp_vars%lr2(1, 1:pdim, 1:pdim))
     end if
 
     !Read ground-state wavefunctions
     complex_response = (kdotp_vars%eta /= M_ZERO) .or. states_are_complex(sys%st)
-    call restart_init(restart_load, sys%namespace, RESTART_GS, RESTART_TYPE_LOAD, sys%mc, ierr, mesh=sys%gr%mesh, exact=.true.)
+    call restart_init(restart_load, sys%namespace, RESTART_GS, RESTART_TYPE_LOAD, sys%mc, ierr, mesh=sys%gr, exact=.true.)
     if (ierr == 0) then
-      call states_elec_look_and_load(restart_load, sys%namespace, sys%space, sys%st, sys%gr%mesh, sys%kpoints, &
+      call states_elec_look_and_load(restart_load, sys%namespace, sys%space, sys%st, sys%gr, sys%kpoints, &
         is_complex = complex_response)
       call restart_end(restart_load)
     else
@@ -179,9 +180,9 @@ contains
     ! Start restart. Note: we are going to use the same directory to read and write.
     ! Therefore, restart_dump must be initialized first to make sure the directory
     ! exists when we initialize restart_load.
-    call restart_init(restart_dump, sys%namespace, RESTART_KDOTP, RESTART_TYPE_DUMP, sys%mc, ierr, mesh=sys%gr%mesh)
+    call restart_init(restart_dump, sys%namespace, RESTART_KDOTP, RESTART_TYPE_DUMP, sys%mc, ierr, mesh=sys%gr)
     ! no problem if this fails
-    call restart_init(restart_load, sys%namespace, RESTART_KDOTP, RESTART_TYPE_LOAD, sys%mc, ierr, mesh=sys%gr%mesh)
+    call restart_init(restart_load, sys%namespace, RESTART_KDOTP, RESTART_TYPE_LOAD, sys%mc, ierr, mesh=sys%gr)
 
     ! setup Hamiltonian
     message(1) = 'Info: Setting up Hamiltonian for linear response.'
@@ -201,7 +202,7 @@ contains
     SAFE_ALLOCATE(kdotp_vars%velocity(1:pdim, 1:sys%st%nst, 1:sys%st%d%nik))
     kdotp_vars%velocity(:,:,:) = M_ZERO
     if (states_are_complex(sys%st)) then
-      call zcalc_band_velocity(sys%namespace, sys%space, sys%gr, sys%st, sys%hm, kdotp_vars%perturbation, &
+      call zcalc_band_velocity(sys%namespace, sys%space, sys%gr, sys%st, sys%hm, kdotp_vars%pert, &
         kdotp_vars%velocity(:,:,:))
     end if
 
@@ -223,12 +224,12 @@ contains
 
     do idir = 1, pdim
       call lr_init(kdotp_vars%lr(1, idir))
-      call lr_allocate(kdotp_vars%lr(1, idir), sys%st, sys%gr%mesh)
+      call lr_allocate(kdotp_vars%lr(1, idir), sys%st, sys%gr)
 
       if (calc_2nd_order) then
         do idir2 = idir, pdim
           call lr_init(kdotp_vars%lr2(1, idir, idir2))
-          call lr_allocate(kdotp_vars%lr2(1, idir, idir2), sys%st, sys%gr%mesh)
+          call lr_allocate(kdotp_vars%lr2(1, idir, idir2), sys%st, sys%gr)
         end do
       end if
 
@@ -236,7 +237,7 @@ contains
       if (.not. fromScratch) then
         str_tmp = kdotp_wfs_tag(idir)
         call restart_open_dir(restart_load, wfs_tag_sigma(sys%namespace, str_tmp, 1), ierr)
-        if (ierr == 0) call states_elec_load(restart_load, sys%namespace, sys%space, sys%st, sys%gr%mesh, sys%kpoints, &
+        if (ierr == 0) call states_elec_load(restart_load, sys%namespace, sys%space, sys%st, sys%gr, sys%kpoints, &
           ierr, lr=kdotp_vars%lr(1, idir))
         call restart_close_dir(restart_load)
 
@@ -250,7 +251,7 @@ contains
             str_tmp = kdotp_wfs_tag(idir, idir2)
             call restart_open_dir(restart_load, wfs_tag_sigma(sys%namespace, str_tmp, 1), ierr)
             if (ierr == 0) then
-              call states_elec_load(restart_load, sys%namespace, sys%space, sys%st, sys%gr%mesh, sys%kpoints, &
+              call states_elec_load(restart_load, sys%namespace, sys%space, sys%st, sys%gr, sys%kpoints, &
                 ierr, lr=kdotp_vars%lr2(1, idir, idir2))
             end if
             call restart_close_dir(restart_load)
@@ -274,22 +275,22 @@ contains
       write(message(1), '(3a)') 'Info: Calculating response for the ', index2axis(idir), &
         '-direction.'
       call messages_info(1, namespace=sys%namespace)
-      call pert_setup_dir(kdotp_vars%perturbation, idir)
+      call kdotp_vars%pert%setup_dir(idir)
 
       if (states_are_real(sys%st)) then
-        call dsternheimer_solve(sh, sys%namespace, sys%space, sys%gr, sys%kpoints, sys%st, sys%hm, sys%ks%xc, sys%mc, &
-          kdotp_vars%lr(1:1, idir), 1, M_ZERO, kdotp_vars%perturbation, restart_dump, "", kdotp_wfs_tag(idir), &
+        call dsternheimer_solve(sh, sys%namespace, sys%space, sys%gr, sys%kpoints, sys%st, sys%hm, sys%mc, &
+          kdotp_vars%lr(1:1, idir), 1, M_ZERO, kdotp_vars%pert, restart_dump, "", kdotp_wfs_tag(idir), &
           have_restart_rho = .false.)
         if (kdotp_vars%occ_solution_method == 1) then
-          call dkdotp_add_occ(sys%namespace, sys%space, sys%gr, sys%st, sys%hm, kdotp_vars%perturbation, &
+          call dkdotp_add_occ(sys%namespace, sys%space, sys%gr, sys%st, sys%hm, kdotp_vars%pert, &
             kdotp_vars%lr(1, idir), kdotp_vars%degen_thres)
         end if
       else
-        call zsternheimer_solve(sh, sys%namespace, sys%space, sys%gr, sys%kpoints, sys%st, sys%hm, sys%ks%xc, sys%mc, &
-          kdotp_vars%lr(1:1, idir), 1, M_zI * kdotp_vars%eta, kdotp_vars%perturbation, restart_dump, "", &
+        call zsternheimer_solve(sh, sys%namespace, sys%space, sys%gr, sys%kpoints, sys%st, sys%hm, sys%mc, &
+          kdotp_vars%lr(1:1, idir), 1, M_zI * kdotp_vars%eta, kdotp_vars%pert, restart_dump, "", &
           kdotp_wfs_tag(idir), have_restart_rho = .false.)
         if (kdotp_vars%occ_solution_method == 1) then
-          call zkdotp_add_occ(sys%namespace, sys%space, sys%gr, sys%st, sys%hm, kdotp_vars%perturbation, &
+          call zkdotp_add_occ(sys%namespace, sys%space, sys%gr, sys%st, sys%hm, kdotp_vars%pert, &
             kdotp_vars%lr(1, idir), kdotp_vars%degen_thres)
         end if
       end if
@@ -298,18 +299,18 @@ contains
 
       errornorm = M_ZERO
       if (states_are_real(sys%st)) then
-        call doutput_lr(sys%outp, sys%namespace, sys%space, KDOTP_DIR, sys%st, sys%gr%mesh, kdotp_vars%lr(1, idir), idir, 1, &
+        call doutput_lr(sys%outp, sys%namespace, sys%space, KDOTP_DIR, sys%st, sys%gr, kdotp_vars%lr(1, idir), idir, 1, &
           sys%ions, units_out%force)
 
         do ispin = 1, sys%st%d%nspin
-          errornorm = hypot(errornorm, dmf_nrm2(sys%gr%mesh, kdotp_vars%lr(1, idir)%ddl_rho(:, ispin)))
+          errornorm = hypot(errornorm, dmf_nrm2(sys%gr, kdotp_vars%lr(1, idir)%ddl_rho(:, ispin)))
         end do
       else
-        call zoutput_lr(sys%outp, sys%namespace, sys%space, KDOTP_DIR, sys%st, sys%gr%mesh, kdotp_vars%lr(1, idir), idir, 1, &
+        call zoutput_lr(sys%outp, sys%namespace, sys%space, KDOTP_DIR, sys%st, sys%gr, kdotp_vars%lr(1, idir), idir, 1, &
           sys%ions, units_out%force)
 
         do ispin = 1, sys%st%d%nspin
-          errornorm = hypot(errornorm, zmf_nrm2(sys%gr%mesh, kdotp_vars%lr(1, idir)%zdl_rho(:, ispin)))
+          errornorm = hypot(errornorm, zmf_nrm2(sys%gr, kdotp_vars%lr(1, idir)%zdl_rho(:, ispin)))
         end do
       end if
 
@@ -323,19 +324,19 @@ contains
             '-direction.'
           call messages_info(1, namespace=sys%namespace)
 
-          call pert_setup_dir(pert2, idir2)
+          call pert2%setup_dir(idir2)
 
           if (states_are_real(sys%st)) then
             call dsternheimer_solve_order2(sh, sh, sh2, sys%namespace, sys%space, sys%gr, sys%kpoints, sys%st, sys%hm, &
-              sys%ks%xc, sys%mc, kdotp_vars%lr(1:1, idir), kdotp_vars%lr(1:1, idir2), &
-              1, M_ZERO, M_ZERO, kdotp_vars%perturbation, pert2, &
-              kdotp_vars%lr2(1:1, idir, idir2), kdotp_vars%perturbation2, restart_dump, "", kdotp_wfs_tag(idir, idir2), &
+              sys%mc, kdotp_vars%lr(1:1, idir), kdotp_vars%lr(1:1, idir2), &
+              1, M_ZERO, M_ZERO, kdotp_vars%pert, pert2, &
+              kdotp_vars%lr2(1:1, idir, idir2), kdotp_vars%pert2, restart_dump, "", kdotp_wfs_tag(idir, idir2), &
               have_restart_rho = .false., have_exact_freq = .true.)
           else
             call zsternheimer_solve_order2(sh, sh, sh2, sys%namespace, sys%space, sys%gr, sys%kpoints, sys%st, sys%hm, &
-              sys%ks%xc, sys%mc, kdotp_vars%lr(1:1, idir), kdotp_vars%lr(1:1, idir2), &
-              1, M_zI * kdotp_vars%eta, M_zI * kdotp_vars%eta, kdotp_vars%perturbation, pert2, &
-              kdotp_vars%lr2(1:1, idir, idir2), kdotp_vars%perturbation2, restart_dump, "", kdotp_wfs_tag(idir, idir2), &
+              sys%mc, kdotp_vars%lr(1:1, idir), kdotp_vars%lr(1:1, idir2), &
+              1, M_zI * kdotp_vars%eta, M_zI * kdotp_vars%eta, kdotp_vars%pert, pert2, &
+              kdotp_vars%lr2(1:1, idir, idir2), kdotp_vars%pert2, restart_dump, "", kdotp_wfs_tag(idir, idir2), &
               have_restart_rho = .false., have_exact_freq = .true.)
           end if
 
@@ -356,10 +357,10 @@ contains
 
       if (states_are_real(sys%st)) then
         call dcalc_eff_mass_inv(sys%namespace, sys%space, sys%gr, sys%st, sys%hm, kdotp_vars%lr, &
-          kdotp_vars%perturbation, kdotp_vars%eff_mass_inv, kdotp_vars%degen_thres)
+          kdotp_vars%pert, kdotp_vars%eff_mass_inv, kdotp_vars%degen_thres)
       else
         call zcalc_eff_mass_inv(sys%namespace, sys%space, sys%gr, sys%st, sys%hm, kdotp_vars%lr, &
-          kdotp_vars%perturbation, kdotp_vars%eff_mass_inv, kdotp_vars%degen_thres)
+          kdotp_vars%pert, kdotp_vars%eff_mass_inv, kdotp_vars%degen_thres)
       end if
 
       call kdotp_write_degeneracies(sys%st, kdotp_vars%degen_thres, sys%namespace)
@@ -382,13 +383,13 @@ contains
     call restart_end(restart_load)
     call restart_end(restart_dump)
     call sternheimer_end(sh)
-    call pert_end(kdotp_vars%perturbation)
+    deallocate(kdotp_vars%pert)
     SAFE_DEALLOCATE_A(kdotp_vars%lr)
 
     if (calc_2nd_order) then
       call sternheimer_end(sh2)
-      call pert_end(pert2)
-      call pert_end(kdotp_vars%perturbation2)
+      SAFE_DEALLOCATE_P(pert2)
+      deallocate(kdotp_vars%pert2)
       SAFE_DEALLOCATE_A(kdotp_vars%lr2)
     end if
 
@@ -482,9 +483,9 @@ contains
 
       PUSH_SUB(kdotp_lr_run_legacy.info)
 
-      call pert_info(kdotp_vars%perturbation)
+      call kdotp_vars%pert%info()
 
-      call messages_print_stress(msg='k.p perturbation theory', namespace=sys%namespace)
+      call messages_print_with_emphasis(msg='k.p perturbation theory', namespace=sys%namespace)
 
       if (kdotp_vars%occ_solution_method == 0) then
         message(1) = 'Occupied solution method: Sternheimer equation.'
@@ -494,7 +495,7 @@ contains
 
       call messages_info(1, namespace=sys%namespace)
 
-      call messages_print_stress(namespace=sys%namespace)
+      call messages_print_with_emphasis(namespace=sys%namespace)
 
       POP_SUB(kdotp_lr_run_legacy.info)
 
@@ -617,7 +618,7 @@ contains
 
     PUSH_SUB(kdotp_write_degeneracies)
 
-    call messages_print_stress(msg='Degenerate subspaces', namespace=namespace)
+    call messages_print_with_emphasis(msg='Degenerate subspaces', namespace=namespace)
 
     do ik = 1, st%d%nik
       ispin = st%d%get_spin_index(ik)

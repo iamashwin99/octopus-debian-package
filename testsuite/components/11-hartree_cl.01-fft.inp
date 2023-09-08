@@ -1,7 +1,7 @@
 CalculationMode = test
 
 %Coordinates
-"Na" | 0.0 | 0.0 |  0.0	
+"Na" | 0.0 | 0.0 |  0.0
 %
 
 BoxShape = sphere
@@ -12,7 +12,3 @@ PoissonSolver = fft
 FFTLibrary = accel
 
 TestRepetitions = 2
-
-
-
-

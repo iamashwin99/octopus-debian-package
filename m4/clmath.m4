@@ -47,11 +47,11 @@ if test ! -z "$with_clfft_prefix"; then
     LIBS="$LIBS_CLFFT $CL_LIBS $acx_clfft_save_LIBS"
     AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <clFFT.h>]],[[
     cl_uint cl_major, cl_minor, cl_patch;
-    clfftGetVersion(&cl_major, &cl_minor, &cl_patch);]])], [acx_clfft_ok=yes], [])    
+    clfftGetVersion(&cl_major, &cl_minor, &cl_patch);]])], [acx_clfft_ok=yes], [])
   fi
 
 fi
-  
+
 AC_MSG_RESULT([$acx_clfft_ok ($CFLAGS_CLFFT $LIBS_CLFFT)])
 
 dnl Finally, execute ACTION-IF-FOUND/ACTION-IF-NOT-FOUND:
@@ -117,18 +117,16 @@ if test ! -z "$with_clblas_prefix"; then
     LIBS="$LIBS_CLBLAS $CL_LIBS $acx_clblas_save_LIBS"
     AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <clBLAS.h>]],[[
     cl_uint cl_major, cl_minor, cl_patch;
-    clblasGetVersion(&cl_major, &cl_minor, &cl_patch);]])], [acx_clblas_ok=yes], [])    
+    clblasGetVersion(&cl_major, &cl_minor, &cl_patch);]])], [acx_clblas_ok=yes], [])
   fi
 
 fi
-  
+
 AC_MSG_RESULT([$acx_clblas_ok ($CFLAGS_CLBLAS $LIBS_CLBLAS)])
 
 dnl Finally, execute ACTION-IF-FOUND/ACTION-IF-NOT-FOUND:
 if test x"$acx_clblas_ok" = xyes; then
   AC_DEFINE(HAVE_CLBLAS, 1, [Defined if you have the CLBLAS library.])
-else
-  AC_MSG_ERROR([Could not find the required clblas library.])
 fi
 
 AC_SUBST([CFLAGS_CLBLAS])
@@ -137,3 +135,70 @@ CFLAGS="$acx_clblas_save_CFLAGS"
 LIBS="$acx_clblas_save_LIBS"
 ])dnl ACX_CLBLAS
 
+
+################################################################
+# Check if clBlast is available
+# ----------------------------------
+AC_DEFUN([ACX_CLBLAST], [
+acx_clblast_ok=no
+
+dnl Backup LIBS and CFLAGS
+acx_clblast_save_LIBS="$LIBS"
+acx_clblast_save_CFLAGS="$CFLAGS"
+
+dnl Check if the library was given in the command line
+AC_ARG_WITH(clblast-prefix, [AS_HELP_STRING([--with-clblast-prefix=DIR], [Directory where clBlast is installed.])])
+
+# Set CFLAGS_CLBLAST only if not set from environment
+if test x"$CFLAGS_CLBLAST" = x; then
+  case $with_clblast_prefix in
+    "") CFLAGS_CLBLAST="-I/usr/include" ;;
+    *)  CFLAGS_CLBLAST="-I$with_clblast_prefix/include" ;;
+  esac
+fi
+
+AC_ARG_WITH(clblast-include, [AS_HELP_STRING([--with-clblast-include=DIR], [Directory where clBlast headers are installed.])])
+case $with_clblast_include in
+  "") ;;
+  *)  CFLAGS_CLBLAST="-I$with_clblast_include" ;;
+esac
+
+AC_MSG_CHECKING([for clblast])
+
+CFLAGS="$CFLAGS_CLBLAST $CL_CFLAGS $acx_clblast_save_CFLAGS"
+
+if test ! -z "$LIBS_CLBLAST"; then
+  LIBS="$LIBS_CLBLAST $acx_clblast_save_LIBS"
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <clblast_c.h>]],[[
+  CLBlastStatusCode status;]])], [acx_clblast_ok=yes], [])
+fi
+
+if test ! -z "$with_clblast_prefix"; then
+  if test x"$acx_clblast_ok" = xno; then
+    LIBS_CLBLAST="-L$with_clblast_prefix/lib64/ -lclblast"
+    LIBS="$LIBS_CLBLAST $CL_LIBS $acx_clblast_save_LIBS"
+    AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <clblast_c.h>]],[[
+    CLBlastStatusCode status;]])], [acx_clblast_ok=yes], [])
+  fi
+
+  if test x"$acx_clblast_ok" = xno; then
+    LIBS_CLBLAST="-L$with_clblast_prefix/lib/ -lclblast"
+    LIBS="$LIBS_CLBLAST $CL_LIBS $acx_clblast_save_LIBS"
+    AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <clblast_c.h>]],[[
+    CLBlastStatusCode status;]])], [acx_clblast_ok=yes], [])
+  fi
+
+fi
+  
+AC_MSG_RESULT([$acx_clblast_ok ($CFLAGS_CLBLAST $LIBS_CLBLAST)])
+
+dnl Finally, execute ACTION-IF-FOUND/ACTION-IF-NOT-FOUND:
+if test x"$acx_clblast_ok" = xyes; then
+  AC_DEFINE(HAVE_CLBLAST, 1, [Defined if you have the CLBLAST library.])
+fi
+
+AC_SUBST([CFLAGS_CLBLAST])
+AC_SUBST([LIBS_CLBLAST])
+CFLAGS="$acx_clblast_save_CFLAGS"
+LIBS="$acx_clblast_save_LIBS"
+])dnl ACX_CLBLAST

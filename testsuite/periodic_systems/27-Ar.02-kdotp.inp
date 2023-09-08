@@ -1,0 +1,25 @@
+CalculationMode = kdotp
+PeriodicDimensions = 3
+BoxShape = parallelepiped
+FromScratch=yes
+
+a = 5.64*angstrom
+
+%LatticeParameters
+ a | a | a
+ 90 | 90 | 90
+%
+Spacing = 0.7
+
+%ReducedCoordinates
+ "Ar" | 0 | 0 | 0
+%
+PseudopotentialSet = hgh_lda
+
+%KPointsGrid
+ 2 | 2 | 2
+%
+
+ExtraStates = 2
+ExperimentalFeatures = yes
+KdotPCalcSecondOrder = yes

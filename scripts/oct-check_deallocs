@@ -37,7 +37,7 @@ while($_=<>){
 
 print " $alloc_count allocations, $dealloc_count deallocations\n";
 
-print "\n Allocs not deallocated\n"; 
+print "\n Allocs not deallocated\n";
 foreach $key (keys %alloc) {
     if($alloc{$key} > $dealloc{$key}){
 	print "Variable '$key' allocated ", $alloc{$key},
@@ -45,7 +45,7 @@ foreach $key (keys %alloc) {
     }
 }
 
-print "\n Deallocs not allocated\n"; 
+print "\n Deallocs not allocated\n";
 foreach $key (keys %dealloc) {
     if($alloc{$key} < $dealloc{$key}){
 	print "Variable '$key' allocated ", $alloc{$key},

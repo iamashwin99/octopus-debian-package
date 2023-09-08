@@ -19,6 +19,7 @@
 #include "global.h"
 
 module propagator_data_classical_particles_oct_m
+  use algorithm_oct_m
   use debug_oct_m
   use global_oct_m
   use io_oct_m
@@ -26,7 +27,7 @@ module propagator_data_classical_particles_oct_m
   use namespace_oct_m
   use profiling_oct_m
   use propagator_beeman_oct_m
-  use propagator_exp_mid_oct_m
+  use propagator_exp_mid_2step_oct_m
   use propagator_oct_m
   use propagator_verlet_oct_m
 
@@ -61,7 +62,7 @@ contains
   subroutine propagator_data_restart_write(this, namespace, prop)
     class(propagator_data_t), intent(inout) :: this
     type(namespace_t),        intent(in)    :: namespace
-    class(propagator_t),      intent(in)    :: prop
+    class(algorithm_t),       intent(in)    :: prop
 
     integer                                 :: restart_file_unit
 
@@ -82,7 +83,7 @@ contains
         write(restart_file_unit,*) this%save_vel(:,:)
         write(restart_file_unit,*) this%save_pos(:,:)
       end if
-    type is (propagator_exp_mid_t)
+    type is (propagator_exp_mid_2step_t)
       write(restart_file_unit,*) this%prev_vel(:,:,:)
       write(restart_file_unit,*) this%prev_pos(:,:,:)
       write(restart_file_unit,*) this%save_vel(:,:)
@@ -98,7 +99,7 @@ contains
   logical function propagator_data_restart_read(this, namespace, prop)
     class(propagator_data_t), intent(inout) :: this
     type(namespace_t),        intent(in)    :: namespace
-    class(propagator_t),      intent(in)    :: prop
+    class(algorithm_t),       intent(in)    :: prop
 
     integer                                 :: restart_file_unit
 
@@ -121,7 +122,7 @@ contains
           read(restart_file_unit,*) this%save_vel(:,:)
           read(restart_file_unit,*) this%save_pos(:,:)
         end if
-      type is (propagator_exp_mid_t)
+      type is (propagator_exp_mid_2step_t)
         read(restart_file_unit,*) this%prev_vel(:,:,:)
         read(restart_file_unit,*) this%prev_pos(:,:,:)
         read(restart_file_unit,*) this%save_vel(:,:)
@@ -141,7 +142,7 @@ contains
   ! ---------------------------------------------------------
   subroutine propagator_data_initialize(this, prop, dim, np)
     class(propagator_data_t), intent(inout) :: this
-    class(propagator_t),      intent(in)    :: prop
+    class(algorithm_t),       intent(in)    :: prop
     integer,                  intent(in)    :: dim
     integer,                  intent(in)    :: np
 
@@ -160,7 +161,7 @@ contains
         end if
         SAFE_ALLOCATE(this%acc(1:dim, 1:np))
         SAFE_ALLOCATE(this%prev_acc(1:dim, 1:np, 1:2))
-      type is (propagator_exp_mid_t)
+      type is (propagator_exp_mid_2step_t)
         SAFE_ALLOCATE(this%save_pos(1:dim, 1:np))
         SAFE_ALLOCATE(this%save_vel(1:dim, 1:np))
         SAFE_ALLOCATE(this%hamiltonian_elements(1:dim, 1:np))

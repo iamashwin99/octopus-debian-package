@@ -94,7 +94,8 @@ module derivatives_oct_m
     zderivatives_batch_curl,            &
     dderivatives_partial,               &
     zderivatives_partial,               &
-    derivatives_get_lapl
+    derivatives_get_lapl,               &
+    derivatives_get_inner_boundary_mask
 
 
   integer, parameter ::     &
@@ -417,7 +418,7 @@ contains
     type(derivatives_t),    intent(inout) :: der
     type(namespace_t),      intent(in)    :: namespace
     type(space_t),          intent(in)    :: space
-    type(mesh_t),   target, intent(in)    :: mesh
+    class(mesh_t),  target, intent(in)    :: mesh
     FLOAT, optional,        intent(in)    :: qvector(:)
 
     integer, allocatable :: polynomials(:,:)
@@ -736,6 +737,18 @@ contains
       call nl_operator_output_weights(op(i))
     end do
 
+    ! In case of constant weights, we store the weights of the Laplacian on the GPU, as this
+    ! saves many unecessary transfers
+    do i = 1, nderiv
+      if (accel_is_enabled() .and. op(i)%const_w) then
+        call accel_create_buffer(op(i)%buff_weights, ACCEL_MEM_READ_ONLY, TYPE_FLOAT, op(i)%stencil%size)
+        call accel_write_buffer(op(i)%buff_weights, op(i)%stencil%size, op(i)%w(:, 1))
+        call accel_create_buffer(op(i)%buff_half_weights, ACCEL_MEM_READ_ONLY, TYPE_FLOAT, op(i)%stencil%size)
+        call accel_write_buffer(op(i)%buff_half_weights, op(i)%stencil%size, -M_HALF*op(i)%w(:, 1))
+      end if
+    end do
+
+
     SAFE_DEALLOCATE_A(mat)
     SAFE_DEALLOCATE_A(sol)
     SAFE_DEALLOCATE_A(powers)
@@ -813,6 +826,39 @@ contains
     POP_SUB(derivatives_get_lapl)
   end subroutine derivatives_get_lapl
 
+  ! ---------------------------------------------------------
+  !> This function tells whether a point in the grid is contained in a layer of the width of the stencil between the last row of
+  !! points in the grid. E.g. if stencil = 2, then:
+  !! 1 1 1 1 1 1 1
+  !! 1 1 1 1 1 1 1
+  !! 1 1 0 0 0 1 1
+  !! 1 1 0 0 0 1 1
+  !! 1 1 0 0 0 1 1
+  !! 1 1 1 1 1 1 1
+  !! 1 1 1 1 1 1 1
+  !! So the innermost points of the grid will not be masked, while the one between the innermost and the boundary will be masked
+  function derivatives_get_inner_boundary_mask(this) result(mask)
+    type(derivatives_t), intent(in)  :: this
+
+    logical :: mask(1:this%mesh%np) !< mask that tells which points are
+    integer :: ip, is, index
+
+    mask = .false.
+    ! Loop through all points in the grid
+    do ip = 1, this%mesh%np
+      ! For each of them, loop through all points in the stencil
+      do is = 1, this%lapl%stencil%size
+        ! Get the index of the point obtained as: grid_point + displament_due_to_stencil
+        index = nl_operator_get_index(this%lapl, is, ip)
+        ! Check whether the displaced point if outsude the grid. Is so, it belongs to the mask
+        if (index > this%mesh%np + this%mesh%pv%np_ghost) then
+          mask(ip) = .true.
+          exit
+        end if
+      end do
+    end do
+
+  end function derivatives_get_inner_boundary_mask
 
 #include "undef.F90"
 #include "real.F90"

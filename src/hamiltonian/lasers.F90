@@ -100,7 +100,6 @@ module lasers_oct_m
     type(laser_t), allocatable, public :: lasers(:)            !< the different laser pulses
   contains
     procedure :: update_exposed_quantities => lasers_update_exposed_quantities
-    procedure :: update_exposed_quantity => lasers_update_exposed_quantity
     procedure :: init_interaction_as_partner => lasers_init_interaction_as_partner
     procedure :: copy_quantities_to_interaction => lasers_copy_quantities_to_interaction
     final :: lasers_finalize
@@ -116,7 +115,7 @@ contains
   function lasers_init(namespace, mesh, space, latt) result(this)
     class(lasers_t),            pointer :: this
     type(namespace_t),       intent(in) :: namespace
-    type(mesh_t),            intent(in) :: mesh
+    class(mesh_t),           intent(in) :: mesh
     type(space_t),           intent(in) :: space
     type(lattice_vectors_t), intent(in) :: latt
 
@@ -473,25 +472,6 @@ contains
   end function lasers_update_exposed_quantities
 
   ! ---------------------------------------------------------
-  subroutine lasers_update_exposed_quantity(partner, iq)
-    class(lasers_t),      intent(inout) :: partner
-    integer,                          intent(in)    :: iq
-
-    PUSH_SUB(lasers_update_exposed_quantities)
-
-    ! We are not allowed to update protected quantities!
-    ASSERT(.not. partner%quantities(iq)%protected)
-
-    select case (iq)
-    case default
-      message(1) = "Incompatible quantity."
-      call messages_fatal(1, namespace=partner%namespace)
-    end select
-
-    POP_SUB(lasers_update_exposed_quantities)
-  end subroutine lasers_update_exposed_quantity
-
-  ! ---------------------------------------------------------
   subroutine lasers_init_interaction_as_partner(partner, interaction)
     class(lasers_t),      intent(in)    :: partner
     class(interaction_t), intent(inout) :: interaction
@@ -842,7 +822,7 @@ contains
   ! ---------------------------------------------------------
   subroutine laser_potential(laser, mesh, pot, time)
     type(laser_t),     intent(in)    :: laser
-    type(mesh_t),      intent(in)    :: mesh
+    class(mesh_t),     intent(in)    :: mesh
     FLOAT,             intent(inout) :: pot(:)
     FLOAT, optional,   intent(in)    :: time
 

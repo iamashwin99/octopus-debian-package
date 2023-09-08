@@ -3,19 +3,19 @@ ExperimentalFeatures = yes
 FromScratch = yes
 
 #The first part of the test runs on the CPU
-#This seems to lead to numerical problem to 
+#This seems to lead to numerical problem to
 #run this one on GPU later
 DisableAccel = yes
 
 dist = 3.0
 
 %Species
- "Na" | species_pseudo | set | standard | hubbard_l | 0 
+ "Na" | species_pseudo | set | standard | hubbard_l | 0
 %
 
 %Coordinates
-'Na'  | 0 | 0 | -dist 
-'Na'  | 0 | 0 |  dist 
+'Na'  | 0 | 0 | -dist
+'Na'  | 0 | 0 |  dist
 %
 
 Radius = 7
@@ -39,4 +39,3 @@ TDMaxSteps = 50
 %
 
 DFTUPoissonSolver = dft_u_poisson_direct
-

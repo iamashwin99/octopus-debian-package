@@ -51,7 +51,7 @@ module messages_oct_m
     messages_input_error,       &
     push_sub,                   &
     pop_sub,                    &
-    messages_print_stress,      &
+    messages_print_with_emphasis,      &
     messages_print_var_info,    &
     messages_print_var_option,  &
     messages_print_var_value,   &
@@ -266,7 +266,7 @@ contains
           call sihash_insert(namespace_unit, namespace%get(), iunit)
         else
           write(message(1),*) "Cannot get unit for namespace ", namespace%get()
-          call messages_fatal(1)   
+          call messages_fatal(1)
         end if
       endif
 
@@ -385,7 +385,7 @@ contains
     ! error messsage anyways and die. Otherwise, no message might be written.
     if (.not. should_write) call loct_nanosleep(SLEEPYTIME_NONWRITERS, 0)
 
-    call messages_print_stress(msg="FATAL ERROR", iunit=stderr)
+    call messages_print_with_emphasis(msg="FATAL ERROR", iunit=stderr)
     write(msg, '(a)') '*** Fatal Error (description follows)'
     call flush_msg(msg, stderr)
 
@@ -425,7 +425,7 @@ contains
     end if
 
     if (should_write) then
-      call messages_print_stress(iunit=stderr)
+      call messages_print_with_emphasis(iunit=stderr)
     end if
 
     ! switch file indicator to state aborted
@@ -550,7 +550,7 @@ contains
     if (present(no_lines)) no_lines_ = no_lines
 
     if (present(stress)) then
-      call messages_print_stress(iunit=iunit_)
+      call messages_print_with_emphasis(iunit=iunit_)
     end if
 
     do il = 1, no_lines_
@@ -560,7 +560,7 @@ contains
       end if
     end do
     if (present(stress)) then
-      call messages_print_stress(iunit=iunit_)
+      call messages_print_with_emphasis(iunit=iunit_)
     end if
 
 #ifdef HAVE_FLUSH
@@ -827,7 +827,7 @@ contains
   end subroutine messages_print_var_option_4
 
   ! ---------------------------------------------------------
-  subroutine messages_print_stress(msg, iunit, namespace)
+  subroutine messages_print_with_emphasis(msg, iunit, namespace)
     character(len=*),  optional, intent(in) :: msg
     integer,           optional, intent(in) :: iunit
     type(namespace_t), optional, intent(in) :: namespace
@@ -896,7 +896,7 @@ contains
 #ifdef HAVE_FLUSH
     call flush(iunit_)
 #endif
-  end subroutine messages_print_stress
+  end subroutine messages_print_with_emphasis
 
   ! ---------------------------------------------------------
   subroutine flush_msg(str, iunit, adv)

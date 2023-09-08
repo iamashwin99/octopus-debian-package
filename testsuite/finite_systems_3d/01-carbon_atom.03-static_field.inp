@@ -1,5 +1,5 @@
 CalculationMode = gs
-fromScratch = yes
+FromScratch = yes
 UnitsOutput = ev_angstrom
 
 %Coordinates
@@ -34,7 +34,7 @@ ConvRelDens = 4e-6
 FilterPotentials = filter_none
 
 %StaticElectricField
-  0.1 * eV/angstrom | 0 | 0 
+  0.1 * eV/angstrom | 0 | 0
 %
 
 MixField = density

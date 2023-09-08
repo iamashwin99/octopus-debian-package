@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML-full"></script>
 <style>
-   BODY {background-color: white; 
+   BODY {background-color: white;
          font-size: 10pt; font-family: verdana,helvetica;}
    A  {text-decoration: none;color: blue}
 </style>
@@ -223,7 +223,7 @@
 <br/><i>Section</i>: Time-Dependent
 <br/><i>Type</i>: logical
 <br/><i>Default</i>: no
-<br/><br> The occupation matrices than enters in the LDA+U potential
+<br/><br> The occupation matrices than enters in the DFT+U potential
  are not evolved during the time evolution.
 
 </p><hr width='30%' align='left'/>
@@ -269,7 +269,7 @@
 <br/><i>Section</i>: Time-Dependent
 <br/><i>Type</i>: logical
 <br/><i>Default</i>: no
-<br/><br> The effective U of LDA+U is not evolved during the time evolution.
+<br/><br> The effective U of DFT+U is not evolved during the time evolution.
 
 </p><hr width='30%' align='left'/>
 
@@ -1197,7 +1197,7 @@
  Example:
 <br><br>
  <tt>%MaxwellBoundaryConditions
- <br>&nbsp;&nbsp;   zero | mirror_pec | consant
+ <br>&nbsp;&nbsp;   zero | mirror_pec | constant
  <br>%</tt>
 <br><br>
 <br><br>
@@ -1226,7 +1226,7 @@
 <br/><i>Section</i>: Time-Dependent::Propagation
 <br/><i>Type</i>: integer
 <br/><i>Default</i>: no
-<br/><br> Whether to perform  aproximations to the ETRS propagator.
+<br/><br> Whether to perform  approximations to the ETRS propagator.
 
 <br/><i>Options</i>:
 <ul>
@@ -1243,12 +1243,12 @@
 <br/><i>Type</i>: integer
 <br/><i>Default</i>: op_fd
 <br/><br> The Maxwell Operator e.g. the curl operation can be obtained by
- two different methods, the finid-difference or the fast fourier
+ two different methods, the finite-difference or the fast fourier
  transform.
 
 <br/><i>Options</i>:
 <ul>
-<li><b>op_fd</b>:  Maxwell operator calculated by finite differnce method
+<li><b>op_fd</b>:  Maxwell operator calculated by finite difference method
 </li>
 <li><b>op_fft</b>:  Maxwell operator calculated by fast fourier transform
 </li>
@@ -1642,15 +1642,25 @@
 <ul>
 <li><b>static</b>:  (Experimental) Do not propagate the system in time.
 </li>
+<li><b>prop_bomd</b>:  (Experimental) Born-Oppenheimer MD propagator for the matter system.
+</li>
 <li><b>verlet</b>:  (Experimental) Verlet propagator.
 </li>
 <li><b>beeman</b>:  (Experimental) Beeman propagator without predictor-corrector.
 </li>
 <li><b>beeman_scf</b>:  (Experimental) Beeman propagator with predictor-corrector scheme.
 </li>
-<li><b>exp_mid</b>:  (Experimental) Exponential midpoint propagator without predictor-corrector.
+<li><b>exp_mid_2step</b>:  (Experimental) Exponential midpoint propagator without predictor-corrector.
 </li>
-<li><b>exp_mid_scf</b>:  (Experimental) Exponential midpoint propagator with predictor-corrector scheme.
+<li><b>exp_mid_2step_scf</b>:  (Experimental) Exponential midpoint propagator with predictor-corrector scheme.
+</li>
+<li><b>prop_aetrs</b>:  (Experimental) Approximate ETRS propagator
+</li>
+<li><b>prop_rk4</b>:  (Experimental) RK4 propagator
+</li>
+<li><b>prop_expmid</b>:  (Experimental) Exponential midpoint propagator with extrapolation.
+</li>
+<li><b>prop_leapfrog</b>:  (Experimental) Leap frog algorithm
 </li>
 </ul>
 </p><hr width='30%' align='left'/>
@@ -1968,6 +1978,9 @@
  cost of the simulation, so only use the ones that you need. In
  most cases the default value is enough, as it is adapted to the
  details of the TD run.
+ WARNING: the calculation of the longitudinal or transverse E and B fields
+ can be very expensive, so please consider using the MaxwellOutput block
+ to calculate and output these quantities at certain timesteps.
 
 <br/><i>Options</i>:
 <ul>
@@ -1981,22 +1994,25 @@
 <li><b>e_field_surface_z</b>:  Output of the E field sliced along the plane z=0 for each field component
 </li>
 <li><b>maxwell_energy</b>:  Output of the electromagnetic field energy into the folder <tt>td.general/maxwell</tt>.
+ WARNING: the transverse and longitudinal energies will be correct only if you request
+ the longitudinal and transverse E or B fields as output. Otherwise they will be set to
+ zero.
 </li>
 <li><b>maxwell_transverse_b_field</b>:  Output of the transverse magnetic field at the points
- specified in the MaxwellFieldsCoordinate block
+ specified in the MaxwellFieldsCoordinate block  (can slow down the run)
 </li>
 <li><b>maxwell_transverse_e_field</b>:  Output of the transverse electric field at the points
- specified in the MaxwellFieldsCoordinate block
+ specified in the MaxwellFieldsCoordinate block  (can slow down the run)
 </li>
 <li><b>b_field_surface_x</b>:  Output of the B field sliced along the plane x=0 for each field component
 </li>
 <li><b>maxwell_longitudinal_b_field</b>:  Output of the longitudinal magnetic field at the points
- specified in the MaxwellFieldsCoordinate block
+ specified in the MaxwellFieldsCoordinate block  (can slow down the run)
 </li>
 <li><b>e_field_surface_x</b>:  Output of the E field sliced along the plane x=0 for each field component
 </li>
 <li><b>maxwell_longitudinal_e_field</b>:  Output of the longitudinal electric field at the points
- specified in the MaxwellFieldsCoordinate block
+ specified in the MaxwellFieldsCoordinate block  (can slow down the run)
 </li>
 <li><b>b_field_surface_y</b>:  Output of the B field sliced along the plane y=0 for each field component
 </li>
@@ -2226,7 +2242,7 @@
 <br/><i>Type</i>: flag
 <br/><i>Default</i>: none
 <br/><br> Defines what should be output during the time-dependent
- simulation, related to LDA+U.
+ simulation, related to DFT+U.
 <br><br>
  Note: the output files generated by this option are updated
  every <tt>RestartWriteInterval</tt> steps.

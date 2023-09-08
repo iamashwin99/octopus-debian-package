@@ -123,6 +123,9 @@ dist_share_DATA =                      \
 	21-scissor.test             \
 	21-scissor.01-gs.inp        \
 	21-scissor.02-td.inp        \
-	21-scissor.03-spectrum.inp
+	21-scissor.03-spectrum.inp  \
+    22-td_move_ions_periodic.test \
+    22-td_move_ions_periodic.01-gs.inp \
+    22-td_move_ions_periodic.02-td.inp
 
 CLEANFILES = *~ *.bak

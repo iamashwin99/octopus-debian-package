@@ -20,6 +20,7 @@ Enabled    : Yes
 # interaction. The total energy reproduces the -77.3eV quoted in the paper.
 Input: 03-helium_atom.01-ground_state.inp
 match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
+Precision: 1.5e-07
 match ; Total energy ; GREPFIELD(static/info, 'Total       =', 3) ; -2.84045149
 
 # This second example reproduces the ground-state calculation present in
@@ -27,4 +28,5 @@ match ; Total energy ; GREPFIELD(static/info, 'Total       =', 3) ; -2.84045149
 # The total energy reproduces the -2.238Ha quoted in the paper.
 Input: 03-helium_atom.02-ground_state.inp
 match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
+Precision: 1.5e-07
 match ; Total energy ; GREPFIELD(static/info, 'Total       =', 3) ; -2.23825108

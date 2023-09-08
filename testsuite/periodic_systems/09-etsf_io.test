@@ -3,7 +3,7 @@
 Test       : ETSF_IO
 Program    : octopus
 TestGroups : long-run, periodic_systems
-Enabled    : Yes
+Enabled    : no-GPU
 
 Input      : 09-etsf_io.01-gs.inp
 
@@ -11,31 +11,50 @@ match ; SCF convergence ; GREPCOUNT(static/info, 'SCF converged') ; 1
 
 match ; Total k-points   ; GREPFIELD(static/info, 'Total number of k-points', 6) ; 2
 
-match ; Total energy       ; GREPFIELD(static/info, 'Total       =', 3) ; -31.42700114
-match ; Ion-ion energy     ; GREPFIELD(static/info, 'Ion-ion     =', 3) ; -31.43120280
-match ; Eigenvalues sum    ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -0.47845966
-match ; Hartree energy     ; GREPFIELD(static/info, 'Hartree     =', 3) ; 2.48288919
-match ; Exchange energy    ; GREPFIELD(static/info, 'Exchange    =', 3) ; -8.24466526
-match ; Correlation energy ; GREPFIELD(static/info, 'Correlation =', 3) ; -1.50771570
-match ; Kinetic energy     ; GREPFIELD(static/info, 'Kinetic     =', 3) ; 13.22649026
-match ; External energy    ; GREPFIELD(static/info, 'External    =', 3) ; -5.95279501
-
-match ; k-point 1 (x) ; GREPFIELD(static/info, '#k =       1', 7) ; 0.000000
-match ; k-point 1 (y) ; GREPFIELD(static/info, '#k =       1', 8) ; 0.000000
-match ; k-point 1 (z) ; GREPFIELD(static/info, '#k =       1', 9) ; 0.000000
-match ; Eigenvalue  1 ; GREPFIELD(static/info, '#k =       1', 3, 1) ; -0.280475
-match ; Eigenvalue  8 ; GREPFIELD(static/info, '#k =       1', 3, 8) ; 0.052868
-match ; Eigenvalue 16 ; GREPFIELD(static/info, '#k =       1', 3, 16) ; 0.160610
-match ; Eigenvalue 18 ; GREPFIELD(static/info, '#k =       1', 3, 18) ; 0.165239
-
-match ; k-point 2 (x) ; GREPFIELD(static/info, '#k =       2', 7) ; 0.500000
-match ; k-point 2 (y) ; GREPFIELD(static/info, '#k =       2', 8) ; 0.500000
-match ; k-point 2 (z) ; GREPFIELD(static/info, '#k =       2', 9) ; 0.500000
-match ; Eigenvalue  1 ; GREPFIELD(static/info, '#k =       2', 3, 1) ; -0.191935
-match ; Eigenvalue  8 ; GREPFIELD(static/info, '#k =       2', 3, 8) ; -0.098940
-match ; Eigenvalue 16 ; GREPFIELD(static/info, '#k =       2', 3, 16) ; 0.115142
-match ; Eigenvalue 18 ; GREPFIELD(static/info, '#k =       2', 3, 18) ; 0.217481
-
+Precision: 1.57e-07
+match ;  Total energy        ; GREPFIELD(static/info, 'Total       =', 3) ; -31.42551302
+Precision: 1.57e-06
+match ;  Ion-ion energy      ; GREPFIELD(static/info, 'Ion-ion     =', 3) ; -31.4312028
+Precision: 2.39e-07
+match ;  Eigenvalues sum     ; GREPFIELD(static/info, 'Eigenvalues =', 3) ; -0.47708004
+Precision: 1.24e-07
+match ;  Hartree energy      ; GREPFIELD(static/info, 'Hartree     =', 3) ; 2.48276262
+Precision: 4.12e-07
+match ;  Exchange energy     ; GREPFIELD(static/info, 'Exchange    =', 3) ; -8.24460064
+Precision: 7.54e-08
+match ;  Correlation energy  ; GREPFIELD(static/info, 'Correlation =', 3) ; -1.50771141
+Precision: 6.61e-08
+match ;  Kinetic energy      ; GREPFIELD(static/info, 'Kinetic     =', 3) ; 13.226477850000002
+Precision: 2.98e-07
+match ;  External energy     ; GREPFIELD(static/info, 'External    =', 3) ; -5.95123862
+Precision: 1.00e-04
+match ;  k-point 1 (x)  ; GREPFIELD(static/info, '#k =       1', 7) ; 0.0
+Precision: 1.00e-04
+match ;  k-point 1 (y)  ; GREPFIELD(static/info, '#k =       1', 8) ; 0.0
+Precision: 1.00e-04
+match ;  k-point 1 (z)  ; GREPFIELD(static/info, '#k =       1', 9) ; 0.0
+Precision: 1.40e-05
+match ;  Eigenvalue  1  ; GREPFIELD(static/info, '#k =       1', 3, 1) ; -0.280438
+Precision: 2.65e-05
+match ;  Eigenvalue  8  ; GREPFIELD(static/info, '#k =       1', 3, 8) ; 0.05291200000000001
+Precision: 8.03e-05
+match ;  Eigenvalue 16  ; GREPFIELD(static/info, '#k =       1', 3, 16) ; 0.16066
+Precision: 8.26e-06
+match ;  Eigenvalue 18  ; GREPFIELD(static/info, '#k =       1', 3, 18) ; 0.165269
+Precision: 2.50e+00
+match ;  k-point 2 (x)  ; GREPFIELD(static/info, '#k =       2', 7) ; 0.5
+Precision: 2.50e+00
+match ;  k-point 2 (y)  ; GREPFIELD(static/info, '#k =       2', 8) ; 0.5
+Precision: 2.50e+00
+match ;  k-point 2 (z)  ; GREPFIELD(static/info, '#k =       2', 9) ; 0.5
+Precision: 9.59e-06
+match ;  Eigenvalue  1  ; GREPFIELD(static/info, '#k =       2', 3, 1) ; -0.191894
+Precision: 4.95e-05
+match ;  Eigenvalue  8  ; GREPFIELD(static/info, '#k =       2', 3, 8) ; -0.098903
+Precision: 5.76e-06
+match ;  Eigenvalue 16  ; GREPFIELD(static/info, '#k =       2', 3, 16) ; 0.115189
+Precision: 1.09e-05
+match ;  Eigenvalue 18  ; GREPFIELD(static/info, '#k =       2', 3, 18) ; 0.217506
 # ETSF_IO files are binary, so we cannot easily test the contents, but
 # at least we can check that this run finished without crashing,
 # and test the size. However, these sizes are correct only for ETSF_IO 1.0.3/1.0.4;
@@ -44,18 +63,24 @@ match ; Eigenvalue 18 ; GREPFIELD(static/info, '#k =       2', 3, 18) ; 0.217481
 # the current version of octopus, and must be updated when that changes.
 
 if (available netcdf); then
-    if (available etsf_io); then
-        match ; density-etsf.nc  ; SIZE(static/density-etsf.nc)  ;   25776
-        match ; geometry-etsf.nc ; SIZE(static/geometry-etsf.nc) ;    3708
-        match ; wfs-etsf.nc      ; SIZE(static/wfs-etsf.nc)      ; 1585316
-        match ; wfs-pw-etsf.nc   ; SIZE(static/wfs-pw-etsf.nc)   ;  836064
-    
-        match ; density.ncdf     ; SIZE(static/density.ncdf)        ;   22248
-        match ; netcdf wfn 3     ; SIZE(static/wf-k001-st0003.ncdf) ;   44320
-        match ; netcdf wfn 4     ; SIZE(static/wf-k001-st0004.ncdf) ;   44320
-    else
-        match; Error missing ETSF_IO ; GREPCOUNT(err, 'Octopus was compiled without ETSF_IO support') ; 1
-    endif
+  if (available etsf_io); then
+    Precision: 1.29e+01
+    match ;  density-etsf.nc   ; SIZE(static/density-etsf.nc) ; 25784.0
+    Precision: 1.00e-01
+    match ;  geometry-etsf.nc  ; SIZE(static/geometry-etsf.nc) ; 3708.0
+    Precision: 7.93e-02
+    match ;  wfs-etsf.nc       ; SIZE(static/wfs-etsf.nc) ; 1585316.0
+    Precision: 4.18e-09
+    match ;  wfs-pw-etsf.nc    ; SIZE(static/wfs-pw-etsf.nc) ; 836064.0
+    Precision: 1.11e+01
+    match ;  density.ncdf      ; SIZE(static/density.ncdf) ; 22248.0
+    Precision: 2.22e+02
+    match ;  netcdf wfn 3      ; SIZE(static/wf-k001-st0003.ncdf) ; 44320.0
+    Precision: 2.22e+02
+    match ;  netcdf wfn 4      ; SIZE(static/wf-k001-st0004.ncdf) ; 44320.0
+  else
+      match; Error missing ETSF_IO ; GREPCOUNT(err, 'Octopus was compiled without ETSF_IO support') ; 1
+  endif
 else
-    match; Error missing NETCDF ; GREPCOUNT(err, 'Octopus was compiled without NetCDF support') ; 1
+  match; Error missing NETCDF ; GREPCOUNT(err, 'Octopus was compiled without NetCDF support') ; 1
 endif

@@ -7,7 +7,7 @@ Enabled    : Yes
 
 Input: 25-subspace.01-jellium.inp
 Precision: 2.00e-15
-match ;  Norm state  1 ; GREPFIELD(out, 'Norm state  1', 4) ; 0.000348371
-match ;  Norm state  2 ; GREPFIELD(out, 'Norm state  2', 4) ; 0.0019162
-match ;  Norm state  3 ; GREPFIELD(out, 'Norm state  3', 4) ; 0.00995103
-match ;  Norm state  4 ; GREPFIELD(out, 'Norm state  4', 4) ; 1.99997
+match ;  Norm state   1 ; GREPFIELD(out, 'Norm state   1', 4) ; 0.000348371
+match ;  Norm state   2 ; GREPFIELD(out, 'Norm state   2', 4) ; 0.0019162
+match ;  Norm state   3 ; GREPFIELD(out, 'Norm state   3', 4) ; 0.00995103
+match ;  Norm state   4 ; GREPFIELD(out, 'Norm state   4', 4) ; 1.99997

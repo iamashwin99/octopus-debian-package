@@ -55,10 +55,10 @@ module atomic_oct_m
     character(len=3)  :: symbol = ""
     integer           :: type = 0  !< 0 for the most normal valence configuration, 1 for semicore.
     integer           :: p = 0     !< number of orbitals.
-    integer           :: n(12) = 0 !< n quantum number
-    integer           :: l(12) = 0 !< l quantum number
-    FLOAT             :: occ(12,2) = M_ZERO !< occupations of each level
-    FLOAT             :: j(12) = M_ZERO     !< j quantum number
+    integer           :: n(15) = 0 !< n quantum number
+    integer           :: l(15) = 0 !< l quantum number
+    FLOAT             :: occ(15,2) = M_ZERO !< occupations of each level
+    FLOAT             :: j(15) = M_ZERO     !< j quantum number
   end type valconf_t
 
 
@@ -891,6 +891,7 @@ contains
 
     ! n should be larger than 1
     n = max(n, 2)
+    knk = max(knk, 1)
     call numin(e,h,s,y,n,nndin,yn,gin,gsgin,xin,knk)
 
 
@@ -1113,6 +1114,7 @@ contains
 !                                                                             !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+    ASSERT(knk > 0)
 
     do i = n - 2, knk, -1
       x = x + t * g

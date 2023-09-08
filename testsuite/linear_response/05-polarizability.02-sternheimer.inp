@@ -1,6 +1,6 @@
 CalculationMode = em_resp
 UnitsOutput = eV_Angstrom
-fromScratch = yes
+FromScratch = yes
 RestartFixedOccupations = no
 
 SmearingFunction = methfessel_paxton
@@ -15,9 +15,9 @@ ExtraStates = 3
 Spacing = 0.56692
 Radius = 13.2280
 
-%Output 
+%Output
  pol_density | xcrysden
-% 
+%
 
 
 Debug = trace

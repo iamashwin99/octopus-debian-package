@@ -13,8 +13,8 @@ Spacing = 0.35*angstrom
 %
 
 %Coordinates
-  "Xe" | -1.5*angstrom | 0 | 0 
-  "Xe" |  1.5*angstrom | 0 | 0 
+  "Xe" | -1.5*angstrom | 0 | 0
+  "Xe" |  1.5*angstrom | 0 | 0
 %
 
 ExcessCharge = 1
@@ -24,7 +24,7 @@ RelativisticCorrection = spin_orbit
 
 GuessMagnetDensity = user_defined
 %AtomsMagnetDirection
- 0.0 | 0.0 | 1.0 
+ 0.0 | 0.0 | 1.0
  0.0 | 0.0 | 1.0
 %
 
@@ -35,3 +35,4 @@ FilterPotentials = filter_none
 
 MixField = density
 
+PoissonSolver = fft

@@ -54,6 +54,8 @@ module states_elec_dim_oct_m
     SPIN_DOWN = 1,              &
     SPIN_UP   = 2
 
+  ! TODO(Alex) Issue #672. Remove points and weights from states_elec_dim_t
+  ! Document other data
   type states_elec_dim_t
     ! Components are public by default
     integer :: dim                  !< Dimension of the state (one, or two for spinors)

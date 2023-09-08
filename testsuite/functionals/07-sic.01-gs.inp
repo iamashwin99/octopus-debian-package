@@ -18,11 +18,12 @@ XAlpha = 2/3
 SICCorrection = sic_pz
 OEPLevel = oep_kli
 
-EigenSolver = cg_new
-
-Mixing = 0.1
-ConvRelDens = 5e-6
-EigensolverTolerance = 1e-7
+Mixing = 0.2
+ExperimentalFeatures = yes
+ConvRelDens = 5e-7
+EigensolverMaxIter = 50
+EigensolverTolerance = 1e-8
+CGEnergyChangeThreshold = 1e-2
 MaximumIter = 300
 
 MeshPartitionPackage = metis

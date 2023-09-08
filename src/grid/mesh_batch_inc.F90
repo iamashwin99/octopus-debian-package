@@ -18,7 +18,7 @@
 !!
 
 subroutine X(mesh_batch_dotp_matrix)(mesh, aa, bb, dot, reduce)
-  type(mesh_t),      intent(in)    :: mesh
+  class(mesh_t),     intent(in)    :: mesh
   class(batch_t),    intent(in)    :: aa
   class(batch_t),    intent(in)    :: bb
   R_TYPE,            intent(inout) :: dot(:, :)
@@ -114,8 +114,8 @@ subroutine X(mesh_batch_dotp_matrix)(mesh, aa, bb, dot, reduce)
       conj = .true.
       call profiling_in(profgemm, TOSTRING(X(DOTP_BATCH_GEMM)))
 
-      ldaa = aa%pack_size(1)
-      ldbb = bb%pack_size(1)
+      ldaa = int(aa%pack_size(1), i4)
+      ldbb = int(bb%pack_size(1), i4)
       call blas_gemm(transa = 'n', transb = 'c', m = aa%nst, n = bb%nst, k = mesh%np, &
         alpha = R_TOTYPE(mesh%volume_element), &
         a = aa%X(ff_pack)(1, 1), lda = ldaa, &
@@ -147,7 +147,7 @@ subroutine X(mesh_batch_dotp_matrix)(mesh, aa, bb, dot, reduce)
 
       call profiling_in(prof_gemmcl, TOSTRING(X(DOTP_BATCH_CL_GEMM)))
 
-      call X(accel_gemm)(transA = CUBLAS_OP_N, transB = CUBLAS_OP_C, &
+      call X(accel_gemm)(transA = ACCEL_BLAS_N, transB = ACCEL_BLAS_C, &
         M = int(aa%nst, 8), N = int(bb%nst, 8), K = int(mesh%np, 8), alpha = R_TOTYPE(M_ONE), &
         A = aa%ff_device, offA = 0_8, lda = int(aa%pack_size(1), 8), &
         B = bb%ff_device, offB = 0_8, ldb = int(bb%pack_size(1), 8), beta = R_TOTYPE(M_ZERO), &
@@ -262,7 +262,7 @@ end subroutine X(mesh_batch_dotp_matrix)
 !-----------------------------------------------------------------
 
 subroutine X(mesh_batch_dotp_self)(mesh, aa, dot, reduce)
-  type(mesh_t),      intent(in)    :: mesh
+  class(mesh_t),     intent(in)    :: mesh
   class(batch_t),    intent(in)    :: aa
   R_TYPE,            intent(inout) :: dot(:, :)
   logical, optional, intent(in)    :: reduce
@@ -377,20 +377,24 @@ end subroutine X(mesh_batch_dotp_self)
 ! --------------------------------------------------------------------------
 
 subroutine X(mesh_batch_dotp_vector)(mesh, aa, bb, dot, reduce, cproduct)
-  type(mesh_t),      intent(in)    :: mesh
+  class(mesh_t),     intent(in)    :: mesh
   class(batch_t),    intent(in)    :: aa
   class(batch_t),    intent(in)    :: bb
   R_TYPE,            intent(inout) :: dot(:)
   logical, optional, intent(in)    :: reduce
   logical, optional, intent(in)    :: cproduct
 
-  integer :: ist, indb, idim, ip, status
+  integer :: ist, indb, idim, ip, wgsize, status
   logical :: cproduct_
   type(profile_t), save :: prof, profcomm
-  R_TYPE, allocatable :: tmp(:), cltmp(:, :)
+  R_TYPE, allocatable :: tmp(:), cltmp(:)
   type(accel_mem_t)  :: dot_buffer
+  type(accel_kernel_t), save  :: kernel_batch_dotpv
 
   PUSH_SUB(X(mesh_batch_dotp_vector))
+
+  ASSERT(not_in_openmp())
+
   call profiling_in(prof, TOSTRING(X(DOTPV_BATCH)))
 
   cproduct_ = optional_default(cproduct, .false.)
@@ -412,7 +416,6 @@ subroutine X(mesh_batch_dotp_vector)(mesh, aa, bb, dot, reduce, cproduct)
     end do
 
   case (BATCH_PACKED)
-
     SAFE_ALLOCATE(tmp(1:aa%nst_linear))
 
     tmp = M_ZERO
@@ -467,40 +470,70 @@ subroutine X(mesh_batch_dotp_vector)(mesh, aa, bb, dot, reduce, cproduct)
 
   case (BATCH_DEVICE_PACKED)
 
-    call accel_create_buffer(dot_buffer, ACCEL_MEM_WRITE_ONLY, R_TYPE_VAL, aa%pack_size(1))
+    ASSERT(.not. mesh%use_curvilinear)
+    if(cproduct_) then
 
-    do ist = 1, aa%nst_linear
-      call accel_set_stream(ist)
-      if(.not. cproduct_) then
-        call X(accel_dot)(n = int(mesh%np, 8), &
-          x = aa%ff_device, offx = int(ist - 1, 8), incx = int(aa%pack_size(1), 8), &
-          y = bb%ff_device, offy = int(ist - 1, 8), incy = int(bb%pack_size(1), 8), &
-          res = dot_buffer, offres = int(ist - 1, 8))
-      else
+      call accel_create_buffer(dot_buffer, ACCEL_MEM_WRITE_ONLY, R_TYPE_VAL, aa%pack_size(1))
+
+      do ist = 1, aa%nst_linear
+        call accel_set_stream(ist)
         call X(accel_dotu)(n = int(mesh%np, 8), &
           x = aa%ff_device, offx = int(ist - 1, 8), incx = int(aa%pack_size(1), 8), &
           y = bb%ff_device, offy = int(ist - 1, 8), incy = int(bb%pack_size(1), 8), &
           res = dot_buffer, offres = int(ist - 1, 8))
-      end if
-    end do
-    call accel_synchronize_all_streams()
-    call accel_set_stream(1)
-
-    SAFE_ALLOCATE(cltmp(1:aa%pack_size(1), 1))
-
-    call accel_read_buffer(dot_buffer, aa%pack_size(1), cltmp)
-
-    call accel_release_buffer(dot_buffer)
-
-
-    do ist = 1, aa%nst
-      dot(ist) = M_ZERO
-      do idim = 1, aa%dim
-        indb = aa%ist_idim_to_linear((/ist, idim/))
-        dot(ist) = dot(ist) + mesh%volume_element*cltmp(indb, 1)
       end do
-    end do
+      call accel_synchronize_all_streams()
+      call accel_set_stream(1)
 
+      SAFE_ALLOCATE(cltmp(1:aa%pack_size(1)))
+
+      call accel_read_buffer(dot_buffer, aa%pack_size(1), cltmp)
+      call accel_release_buffer(dot_buffer)
+
+      do ist = 1, aa%nst
+        dot(ist) = M_ZERO
+        do idim = 1, aa%dim
+          indb = aa%ist_idim_to_linear((/ist, idim/))
+          dot(ist) = dot(ist) + mesh%volume_element*cltmp(indb)
+        end do
+      end do
+      SAFE_DEALLOCATE_A(cltmp)
+
+    else
+      call accel_kernel_start_call(kernel_batch_dotpv, 'mesh_batch_single.cl', TOSTRING(X(batch_dotpv)), &
+        flags = accel%debug_flag)
+
+      call accel_create_buffer(dot_buffer, ACCEL_MEM_READ_WRITE, R_TYPE_VAL, aa%nst)
+      call accel_set_buffer_to_zero(dot_buffer, R_TYPE_VAL, aa%nst)
+
+      ASSERT(accel_buffer_is_allocated(aa%ff_device))
+      ASSERT(accel_buffer_is_allocated(bb%ff_device))
+
+      call accel_set_kernel_arg(kernel_batch_dotpv, 0, mesh%np)
+      call accel_set_kernel_arg(kernel_batch_dotpv, 1, aa%nst_linear)
+      call accel_set_kernel_arg(kernel_batch_dotpv, 2, aa%dim)
+      call accel_set_kernel_arg(kernel_batch_dotpv, 3, mesh%volume_element)
+      call accel_set_kernel_arg(kernel_batch_dotpv, 4, aa%ff_device)
+      call accel_set_kernel_arg(kernel_batch_dotpv, 5, log2(int(aa%pack_size(1), i4)))
+      call accel_set_kernel_arg(kernel_batch_dotpv, 6, bb%ff_device)
+      call accel_set_kernel_arg(kernel_batch_dotpv, 7, log2(int(bb%pack_size(1), i4)))
+      call accel_set_kernel_arg(kernel_batch_dotpv, 8, dot_buffer)
+
+      ! Setting the size of the shared region
+      wgsize = accel_kernel_workgroup_size(kernel_batch_dotpv)/int(aa%pack_size(1), i4)
+      call accel_set_kernel_arg(kernel_batch_dotpv, 9, R_TYPE_VAL, wgsize*int(aa%pack_size(1), i4))
+
+      call accel_kernel_run(kernel_batch_dotpv,             &
+        (/pad(mesh%np, wgsize), int(aa%pack_size(1), i4)/), &
+        (/wgsize, int(aa%pack_size(1), i4)/))
+
+      ! dot is not guarantied to be contiguous, so we read first in cltmp and later copy it
+      SAFE_ALLOCATE(cltmp(1:aa%nst))
+      call accel_read_buffer(dot_buffer, aa%nst, cltmp)
+      dot(1:aa%nst) = cltmp
+      call accel_release_buffer(dot_buffer)
+
+    end if
   end select
 
   if (mesh%parallel_in_domains .and. optional_default(reduce, .true.)) then
@@ -518,7 +551,7 @@ end subroutine X(mesh_batch_dotp_vector)
 ! --------------------------------------------------------------------------
 
 subroutine X(mesh_batch_mf_dotp)(mesh, aa, psi, dot, reduce, nst)
-  type(mesh_t),      intent(in)    :: mesh
+  class(mesh_t),     intent(in)    :: mesh
   class(batch_t),    intent(in)    :: aa
   R_TYPE,            intent(in)    :: psi(:,:)
   R_TYPE,            intent(inout) :: dot(:)
@@ -537,6 +570,9 @@ subroutine X(mesh_batch_mf_dotp)(mesh, aa, psi, dot, reduce, nst)
   integer :: global_sizes(3)
 
   PUSH_SUB(X(mesh_batch_mf_dotp))
+
+  ASSERT(not_in_openmp())
+
   call profiling_in(prof, TOSTRING(X(DOTPV_MF_BATCH)))
 
   ASSERT(aa%dim == ubound(psi,dim=2))
@@ -556,7 +592,6 @@ subroutine X(mesh_batch_mf_dotp)(mesh, aa, psi, dot, reduce, nst)
     end do
 
   case (BATCH_PACKED)
-
     SAFE_ALLOCATE(phi(1:mesh%np, aa%dim))
 
     if (aa%dim == 1) then
@@ -639,13 +674,12 @@ subroutine X(mesh_batch_mf_dotp)(mesh, aa, psi, dot, reduce, nst)
     call accel_set_kernel_arg(X(kernel_batch_dotp), 1, nst_)
     call accel_set_kernel_arg(X(kernel_batch_dotp), 2, aa%dim)
     call accel_set_kernel_arg(X(kernel_batch_dotp), 3, aa%ff_device)
-    call accel_set_kernel_arg(X(kernel_batch_dotp), 4, log2(aa%pack_size(1)))
+    call accel_set_kernel_arg(X(kernel_batch_dotp), 4, int(log2(aa%pack_size(1)), i4))
     call accel_set_kernel_arg(X(kernel_batch_dotp), 5, psi_buffer)
     call accel_set_kernel_arg(X(kernel_batch_dotp), 6, log2(np_padded))
     call accel_set_kernel_arg(X(kernel_batch_dotp), 7, dot_buffer)
 
     call accel_kernel_run(X(kernel_batch_dotp), global_sizes, local_sizes)
-    call accel_finish()
 
     call accel_read_buffer(dot_buffer, nst_, dot)
 
@@ -673,7 +707,7 @@ end subroutine X(mesh_batch_mf_dotp)
 
 !--------------------------------------------------------------------------------------
 subroutine X(mesh_batch_codensity)(mesh, aa, psi, rho)
-  type(mesh_t),      intent(in)    :: mesh    !< The mesh descriptor.
+  class(mesh_t),     intent(in)    :: mesh    !< The mesh descriptor.
   class(batch_t),    intent(in)    :: aa      !< A batch which contains the mesh functions
   R_TYPE,            intent(in)    :: psi(:,:)!< A mesh function
   R_TYPE,            intent(out)   :: rho(:,:)!< An array containing the result of the co-density
@@ -682,6 +716,9 @@ subroutine X(mesh_batch_codensity)(mesh, aa, psi, rho)
   type(profile_t), save :: prof
 
   PUSH_SUB(X(mesh_batch_codensity))
+
+  ASSERT(not_in_openmp())
+
   call profiling_in(prof, "CODENSITIES")
 
   ASSERT((aa%status()) /= BATCH_DEVICE_PACKED)
@@ -732,7 +769,7 @@ end subroutine X(mesh_batch_codensity)
 !! map. Two possible maps can be given. Only one map argument must be present.
 
 subroutine X(mesh_batch_exchange_points)(mesh, aa, forward_map, backward_map)
-  type(mesh_t),          intent(in)    :: mesh            !< The mesh descriptor.
+  class(mesh_t),         intent(in)    :: mesh            !< The mesh descriptor.
   class(batch_t),        intent(inout) :: aa              !< A batch which contains the mesh functions whose points will be exchanged.
   integer(i8), optional, intent(in)    :: forward_map(:)  !< A map which gives the destination of the value each point.
   logical, optional,     intent(in)    :: backward_map    !< A map which gives the source of the value of each point.
@@ -931,13 +968,13 @@ end subroutine X(mesh_batch_exchange_points)
 ! -----------------------------------------------------
 !> This function should not be called directly, but through mesh_batch_nrm2.
 subroutine X(priv_mesh_batch_nrm2)(mesh, aa, nrm2)
-  type(mesh_t),            intent(in)    :: mesh
+  class(mesh_t),           intent(in)    :: mesh
   class(batch_t),          intent(in)    :: aa
   FLOAT,                   intent(out)   :: nrm2(:)
 
   integer :: ist, idim, indb, ip, sp, np, num_threads, ithread
   FLOAT :: a0
-  FLOAT, allocatable :: scal(:,:), ssq(:,:)
+  FLOAT, allocatable :: scal(:,:), ssq(:,:), local_scal(:), local_ssq(:)
   type(accel_mem_t)  :: nrm2_buffer
   type(profile_t), save :: prof
 
@@ -968,12 +1005,21 @@ subroutine X(priv_mesh_batch_nrm2)(mesh, aa, nrm2)
     scal = M_ZERO
     ssq  = M_ONE
 
+    ! We need to work on local quantities in the loops to avoid false sharing
+    ! The values are copies to global scal/ssq arrays only once
+    SAFE_ALLOCATE(local_scal(1:aa%nst_linear))
+    SAFE_ALLOCATE(local_ssq(1:aa%nst_linear))
+
+
     ! divide the range from 1:mesh%np across the OpenMP threads and sum independently
     ! the reduction is done outside the parallel region
-    !$omp parallel private(ithread, sp, np, a0, ip, ist) shared(ssq, scal, num_threads)
+    !$omp parallel private(ithread, sp, np, a0, ip, ist, local_ssq, local_scal) firstprivate(num_threads)
     call multicomm_divide_range_omp(mesh%np, sp, np)
     ithread = 1
 !$  ithread = omp_get_thread_num() + 1
+
+    local_scal = M_ZERO
+    local_ssq  = M_ONE
 
     ! The algorithm for the squared sum is the same as used, e.g., in openblas.
     ! The idea is that one wants to avoid an overflow caused by squaring a big
@@ -988,62 +1034,70 @@ subroutine X(priv_mesh_batch_nrm2)(mesh, aa, nrm2)
           a0 = abs(R_REAL(aa%X(ff_pack)(ist, ip)))
           ! only add a0 if it is non-zero
           if (a0 > M_EPSILON) then
-            if (scal(ist, ithread) < a0) then
-              ssq(ist, ithread) = M_ONE + ssq(ist, ithread)*(scal(ist, ithread)/a0)**2
-              scal(ist, ithread) = a0
+            if (local_scal(ist) < a0) then
+              local_ssq(ist) = M_ONE + local_ssq(ist)*(local_scal(ist)/a0)**2
+              local_scal(ist) = a0
             else
-              ssq(ist, ithread) = ssq(ist, ithread) + (a0/scal(ist, ithread))**2
+              local_ssq(ist) = local_ssq(ist) + (a0/local_scal(ist))**2
             end if
           end if
 #ifdef R_TCOMPLEX
-          ! then add imaginary part for complex numbers
+          ! then we add imaginary part
           a0 = abs(R_AIMAG(aa%X(ff_pack)(ist, ip)))
           ! only add a0 if it is non-zero
           if (a0 > M_EPSILON) then
-            if (scal(ist, ithread) < a0) then
-              ssq(ist, ithread) = M_ONE + ssq(ist, ithread)*(scal(ist, ithread)/a0)**2
-              scal(ist, ithread) = a0
+            if (local_scal(ist) < a0) then
+              local_ssq(ist) = M_ONE + local_ssq(ist)*(local_scal(ist)/a0)**2
+              local_scal(ist) = a0
             else
-              ssq(ist, ithread) = ssq(ist, ithread) + (a0/scal(ist, ithread))**2
+              local_ssq(ist) = local_ssq(ist) + (a0/local_scal(ist))**2
             end if
           end if
 #endif
         end do
       end do
+
+      ssq(:,ithread) = local_ssq(:)
+      scal(:,ithread) = local_scal(:)
 
     else
 
       do ip = sp, sp + np - 1
         do ist = 1, aa%nst_linear
-          ! first add real part
-          a0 = abs(R_REAL(aa%X(ff_pack)(ist, ip)))
+          a0 = abs(aa%X(ff_pack)(ist, ip))
           ! only add a0 if it is non-zero
           if (a0 > M_EPSILON) then
-            if (scal(ist, ithread) < a0) then
-              ssq(ist, ithread) =  mesh%vol_pp(ip) + ssq(ist, ithread)*(scal(ist, ithread)/a0)**2
-              scal(ist, ithread) = a0
+            if (local_scal(ist) < a0) then
+              local_ssq(ist) =  mesh%vol_pp(ip) + local_ssq(ist)*(local_scal(ist)/a0)**2
+              local_scal(ist) = a0
             else
-              ssq(ist, ithread) = ssq(ist, ithread) + mesh%vol_pp(ip)*(a0/scal(ist, ithread))**2
+              local_ssq(ist) = local_ssq(ist) + mesh%vol_pp(ip)*(a0/local_scal(ist))**2
             end if
           end if
 #ifdef R_TCOMPLEX
-          ! then add imaginary part for complex numbers
+          ! then we add imaginary part
           a0 = abs(R_AIMAG(aa%X(ff_pack)(ist, ip)))
           ! only add a0 if it is non-zero
           if (a0 > M_EPSILON) then
-            if (scal(ist, ithread) < a0) then
-              ssq(ist, ithread) =  mesh%vol_pp(ip) + ssq(ist, ithread)*(scal(ist, ithread)/a0)**2
-              scal(ist, ithread) = a0
+            if (local_scal(ist) < a0) then
+              local_ssq(ist) =  mesh%vol_pp(ip) + local_ssq(ist)*(local_scal(ist)/a0)**2
+              local_scal(ist) = a0
             else
-              ssq(ist, ithread) = ssq(ist, ithread) + mesh%vol_pp(ip)*(a0/scal(ist, ithread))**2
+              local_ssq(ist) = local_ssq(ist) + mesh%vol_pp(ip)*(a0/local_scal(ist))**2
             end if
           end if
 #endif
         end do
       end do
 
+      ssq(:,ithread) = local_ssq(:)
+      scal(:,ithread) = local_scal(:)
+
     end if
     !$omp end parallel
+
+    SAFE_DEALLOCATE_A(local_scal)
+    SAFE_DEALLOCATE_A(local_ssq)
 
     ! now do the reduction: sum the components of the different threads without overflow
     do ithread = 2, num_threads
@@ -1113,7 +1167,7 @@ end subroutine X(priv_mesh_batch_nrm2)
 !! It also permits doing only the orthogonalization (no normalization).
 subroutine X(mesh_batch_orthogonalization)(mesh, nst, psib, phib,  &
   normalize, overlap, norm, gs_scheme)
-  type(mesh_t),      intent(in)    :: mesh
+  class(mesh_t),     intent(in)    :: mesh
   integer,           intent(in)    :: nst
   class(batch_t),    intent(in)    :: psib(:)   !< psi(nst)
   class(batch_t),    intent(inout) :: phib
@@ -1166,7 +1220,7 @@ subroutine X(mesh_batch_orthogonalization)(mesh, nst, psib, phib,  &
     end do
 
     if (mesh%parallel_in_domains) then
-      call profiling_in(reduce_prof, TOSTRING(X(BATCH_GRAM_SCHMIDT_REDUCE)))
+      call profiling_in(reduce_prof, TOSTRING(X(BATCH_GS_REDUCE)))
       call mesh%allreduce(ss, dim = (/phib%nst, nst/))
       call profiling_out(reduce_prof)
     end if
@@ -1222,7 +1276,7 @@ end subroutine X(mesh_batch_orthogonalization)
 ! ---------------------------------------------------------
 !> Normalize a batch
 subroutine X(mesh_batch_normalize)(mesh, psib, norm)
-  type(mesh_t),      intent(in)    :: mesh
+  class(mesh_t),     intent(in)    :: mesh
   class(batch_t),    intent(inout) :: psib
   FLOAT, optional,   intent(out)   :: norm(:)
 

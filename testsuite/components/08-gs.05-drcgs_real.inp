@@ -15,7 +15,3 @@ ExtraStates = 8
 StatesOrthogonalization = drcgs
 
 TestType = real
-
-
-
-

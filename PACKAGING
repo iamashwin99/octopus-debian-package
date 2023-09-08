@@ -6,7 +6,7 @@ Dependencies:
   FFTW >= 3
   GSL >= 1.9
   LAPACK
-  libxc >= 3.0
+  libxc >= 5.0
   perl
   bpdn (internal)
   ISF (internal)
@@ -34,11 +34,12 @@ Dependencies:
   ScaLAPACK/BLACS (optional)
   Parmetis (optional)
   Sparskit (optional)
-  
+
 Website:
   https://octopus-code.org/
 
 New releases:
+  2023/06/28 Version 13.0
   2023/02/14 Version 12.2
   2022/10/14 Version 12.1
   2022/09/19 Version 12.0

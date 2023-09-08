@@ -4,7 +4,6 @@
 # calculations work.
 # It is the calculation of one atom of Carbon, within the LSDA
 # calculation.
-
 CalculationMode = gs
 FromScratch = yes
 UnitsOutput = ev_angstrom
@@ -19,8 +18,8 @@ PseudopotentialSet = none
 "C" | species_pseudo | file | "04-carbon_dojo_psml.pseudo.psml"
 %
 
-spacing = 0.19*angstrom
-radius = 5.0*angstrom
+Spacing = 0.19*angstrom
+Radius = 5.0*angstrom
 
 SpinComponents = polarized
 
@@ -34,4 +33,4 @@ ExtraStates = 2
 ConvRelDens = 4e-6
 
 ExperimentalFeatures = yes
-
+PoissonSolver = isf

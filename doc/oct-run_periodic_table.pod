@@ -12,14 +12,14 @@ oct-run_periodic_table - run octopus for atoms
 
 =head1 DESCRIPTION
 
-This script is one of the B<octopus> utilities. 
+This script is one of the B<octopus> utilities.
 
 Simple script to run octopus for all atoms in the periodic table for
 which pseudopotentials are available.
 
 =over
 
-=item B<-h> 
+=item B<-h>
 
 Show this message.
 
@@ -84,5 +84,3 @@ This  is free software; see the source for copying conditions.  There is NO warr
 =head1 SEE ALSO
 
 The largest source of documentation is the octopus website: S<http://octopus-code.org>.
-
-

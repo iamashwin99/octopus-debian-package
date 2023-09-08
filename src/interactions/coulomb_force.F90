@@ -85,8 +85,6 @@ contains
     SAFE_ALLOCATE(this%partner_quantities(1:this%n_partner_quantities))
     this%partner_quantities(1) = POSITION
     this%partner_quantities(2) = CHARGE
-    this%partner%quantities(POSITION)%required = .true.
-    this%partner%quantities(CHARGE)%required = .true.
     this%intra_interaction = intra_interaction
 
     POP_SUB(coulomb_force_constructor)
@@ -107,8 +105,6 @@ contains
     this%system_np = system_np
     SAFE_ALLOCATE(this%force(1:dim, 1:system_np))
 
-    system_quantities(POSITION)%required = .true.
-    system_quantities(CHARGE)%required = .true.
     this%system_charge => system_charge
     this%system_pos => system_pos
 

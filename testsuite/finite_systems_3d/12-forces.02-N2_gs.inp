@@ -6,8 +6,8 @@ CalculationMode = gs
 
 bond_length = 2.0744
 %Coordinates
-"N" |  -bond_length/2 |  0.0 |  0.0 
-"N" |   bond_length/2 |  0.0 |  0.0 
+"N" |  -bond_length/2 |  0.0 |  0.0
+"N" |   bond_length/2 |  0.0 |  0.0
 %
 
 BoxShape = sphere

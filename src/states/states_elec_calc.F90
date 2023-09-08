@@ -86,10 +86,6 @@ module states_elec_calc_oct_m
     zstates_elec_calc_overlap,           &
     dstates_elec_calc_projections,       &
     zstates_elec_calc_projections,       &
-    dstates_elec_me_one_body,            &
-    zstates_elec_me_one_body,            &
-    dstates_elec_me_two_body,            &
-    zstates_elec_me_two_body,            &
     dstates_elec_rrqr_decomposition,     &
     zstates_elec_rrqr_decomposition
 
@@ -104,7 +100,7 @@ contains
   subroutine states_elec_orthogonalize(st, namespace, mesh)
     type(states_elec_t),  intent(inout) :: st
     type(namespace_t),    intent(in)    :: namespace
-    type(mesh_t),         intent(in)    :: mesh
+    class(mesh_t),        intent(in)    :: mesh
 
     integer :: ik
 

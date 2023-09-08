@@ -4,7 +4,6 @@
 # E. Rasanen et al., Phys. Rev. B 67, 235307 (2003).
 
 # This input file is just the particle in a box in 2D calculation.
-
 CalculationMode = gs
 FromScratch = yes
 Dimensions = 2

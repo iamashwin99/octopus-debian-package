@@ -75,7 +75,7 @@ match ; name ; COMMAND(..); reference-value
   . SIZE(filename)
       Returns the size of the specified file via 'ls -lt'. Useful for binary files whose contents cannot easily be checked.
   . LINEFIELD(filename, line, field)
-      Returns the specified field of the specified line number from the file. Negative number means from the end of the file. Use GREPFIELD instead if possible.      
+      Returns the specified field of the specified line number from the file. Negative number means from the end of the file. Use GREPFIELD instead if possible.
   . LINE(filename, line, column)
       Returns the specified column of the specified line number from the file. Negative number means from the end of the file. Use GREP instead if possible. Deprecated.
   . SHELL(shell-command)
@@ -96,7 +96,7 @@ if(available OPTION1); then
   MATCH1
 elseif(available OPTION2); then
   MATCH2
-else 
+else
   MATCH3
 endif
 
@@ -111,7 +111,7 @@ but rather sets an internal flag, which can be cleared by a correct error match.
 
 
 
-Obsolete and removed features: 
+Obsolete and removed features:
 
 Options:
   Specify that this test can only be run if the code was compiled with certain options, e.g. scalapack, netcdf, etc. The code is run with "-c" argument to query for options.

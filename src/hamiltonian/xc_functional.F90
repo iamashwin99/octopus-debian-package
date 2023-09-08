@@ -45,7 +45,7 @@ module xc_functional_oct_m
   !> This adds to the constants defined in libxc. But since in that module
   !! the OEP functionals are not included, it is better to put it here.
   integer, public, parameter ::   &
-    XC_KS_INVERSION = 801,        &  !< inversion of Kohn-Sham potential
+    XC_KS_INVERSION = 904,        &  !< inversion of Kohn-Sham potential
     XC_OEP_X = 901,               &  !< Exact exchange
     XC_OEP_X_SLATER = 902,        &  !< Slater approximation to the exact exchange
     XC_OEP_X_FBE    = 903,        &  !< Exchange approximation based on the force balance equation
@@ -55,7 +55,7 @@ module xc_functional_oct_m
     XC_VDW_C_VDWDFCX = 920,       &  !< vdw-df-cx correlation from libvdwxc
     XC_HYB_GGA_XC_MVORB_HSE06 = 921, &  !< Density-based mixing parameter of HSE06
     XC_HYB_GGA_XC_MVORB_PBEH = 922,  &  !< Density-based mixing parameter of PBE0
-    XC_RDMFT_XC_M = 601              !< RDMFT Mueller functional
+    XC_RDMFT_XC_M = 905              !< RDMFT Mueller functional
 
   !> declaring 'family' constants for 'functionals' not handled by libxc
   !! careful not to use a value defined in libxc for another family!
@@ -63,6 +63,7 @@ module xc_functional_oct_m
     XC_FAMILY_KS_INVERSION = 1024, &
     XC_FAMILY_RDMFT = 2048, &
     XC_FAMILY_LIBVDWXC = 4096
+
 
   type xc_functional_t
     ! Components are public by default
@@ -241,6 +242,7 @@ contains
       call xc_f03_func_set_ext_params(functl%conf, parameters(1))
 
       ! FIXME: doesn`t this apply to other 1D functionals?
+      ! TODO: When the support of libxc4 is removed, this should be changed to XC_LDA_X_1D_SOFT
     case (XC_LDA_X_1D, XC_LDA_C_1D_CSC)
       !%Variable Interaction1D
       !%Type integer

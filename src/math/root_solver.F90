@@ -100,7 +100,7 @@ contains
 
     !%Variable RootSolverMaxIter
     !%Type integer
-    !%Default 100
+    !%Default 500
     !%Section Math::RootSolver
     !%Description
     !% In case of an iterative root solver, this variable determines the maximum number
@@ -110,7 +110,7 @@ contains
 
     !%Variable RootSolverRelTolerance
     !%Type float
-    !%Default 1e-8
+    !%Default 1e-10
     !%Section Math::RootSolver
     !%Description
     !% Relative tolerance for the root-finding process.
@@ -119,7 +119,7 @@ contains
 
     !%Variable RootSolverAbsTolerance
     !%Type float
-    !%Default 1e-8
+    !%Default 1e-10
     !%Section Math::RootSolver
     !%Description
     !% Relative tolerance for the root-finding process.
@@ -175,8 +175,10 @@ contains
     end interface
 
     integer :: iter
-    FLOAT   :: err
+    FLOAT   :: err, prev_err
     FLOAT, allocatable :: f(:), jf(:, :), delta(:, :), rhs(:, :)
+
+    FLOAT :: mm, prev_m
 
     ! no push_sub, called too often
 
@@ -188,11 +190,13 @@ contains
     root = startval
     call func(root, f, jf)
     err = sum(f(1:rs%dim)**2)
+    mm = M_ONE
 
     success = .true.
     iter = 0
     do while(err > rs%abs_tolerance)
-      rhs(1:rs%dim, 1) = -f(1:rs%dim)
+      rhs(1:rs%dim, 1) = -mm * f(1:rs%dim)
+
       call lalg_linsyssolve(rs%dim, 1, jf, rhs, delta)
       root(1:rs%dim) = root(1:rs%dim) + delta(1:rs%dim, 1)
       iter = iter + 1
@@ -201,7 +205,29 @@ contains
         exit
       end if
       call func(root, f, jf)
+      prev_err = err
       err = sum(f(1:rs%dim)**2)
+
+      ! Let us assume we have a linear convergence due to a multiplicity m of the solution,
+      ! Then  we have |err_i+1| = (m-1)/m |err_i|
+      ! Or (m-1)/m = |err_i+1|/|err_i| = A, where A is the asymptotic error constant
+      ! for i sufficiently large.
+      !
+      ! Then we can estimate m from the first two iterations and use it to accelerate the convergence
+      !
+      ! See https://web.archive.org/web/20190524083302/http://mathfaculty.fullerton.edu/mathews/n2003/NewtonAccelerateMod.html
+      ! as well as
+      ! https://en.wikipedia.org/wiki/Newton%27s_method#Slow_convergence_for_roots_of_multiplicity_greater_than_1
+      ! for some more details
+      if (iter == 1) then
+        prev_m = floor(M_ONE / (M_ONE - err/prev_err))
+      end if
+      if (iter == 2) then
+        ! If we get the same multiplicity, we use it for the next iterations
+        if(abs(mm - prev_m) > CNST(0.5)) mm = M_ONE
+        ! If the multiplicity is going to infinity, we do not want to use this value
+        if( mm > CNST(10.) ) mm = M_ONE
+      end if
     end do
 
     SAFE_DEALLOCATE_A(f)

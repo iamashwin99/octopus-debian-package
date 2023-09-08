@@ -38,7 +38,7 @@ subroutine target_init_userdefined(gr, namespace, tg, td)
   tg%move_ions = ion_dynamics_ions_move(td%ions_dyn)
   tg%dt = td%dt
 
-  SAFE_ALLOCATE(zpsi(gr%mesh%np, 1:tg%st%d%dim))
+  SAFE_ALLOCATE(zpsi(gr%np, 1:tg%st%d%dim))
 
   !%Variable OCTTargetUserdefined
   !%Type block
@@ -75,8 +75,8 @@ subroutine target_init_userdefined(gr, namespace, tg, td)
             ! convert to C string
             call conv_to_C_string(tg%st%user_def_states(id, ist, ik))
 
-            do ip = 1, gr%mesh%np
-              xx = gr%mesh%x(ip, :)
+            do ip = 1, gr%np
+              xx = gr%x(ip, :)
               rr = norm2(xx)
 
               ! parse user-defined expressions
@@ -87,9 +87,9 @@ subroutine target_init_userdefined(gr, namespace, tg, td)
             end do
 
             ! normalize orbital
-            call zmf_normalize(gr%mesh, tg%st%d%dim, zpsi)
+            call zmf_normalize(gr, tg%st%d%dim, zpsi)
 
-            call states_elec_set_state(tg%st, gr%mesh, ist, ik, zpsi)
+            call states_elec_set_state(tg%st, gr, ist, ik, zpsi)
 
           end do
         end do
@@ -148,17 +148,17 @@ FLOAT function target_j1_userdefined(tg, gr, psi) result(j1)
 
   PUSH_SUB(target_j1_userdefined)
 
-  SAFE_ALLOCATE(zpsi(1:gr%mesh%np, 1:tg%st%d%dim))
-  SAFE_ALLOCATE(zst(1:gr%mesh%np, 1:tg%st%d%dim))
+  SAFE_ALLOCATE(zpsi(1:gr%np, 1:tg%st%d%dim))
+  SAFE_ALLOCATE(zst(1:gr%np, 1:tg%st%d%dim))
 
   j1 = M_ZERO
   do ik = 1, psi%d%nik
     do ist = psi%st_start, psi%st_end
 
-      call states_elec_get_state(psi, gr%mesh, ist, ik, zpsi)
-      call states_elec_get_state(tg%st, gr%mesh, ist, ik, zst)
+      call states_elec_get_state(psi, gr, ist, ik, zpsi)
+      call states_elec_get_state(tg%st, gr, ist, ik, zst)
 
-      j1 = j1 + psi%occ(ist, ik)*abs(zmf_dotp(gr%mesh, psi%d%dim, zpsi, zst))**2
+      j1 = j1 + psi%occ(ist, ik)*abs(zmf_dotp(gr, psi%d%dim, zpsi, zst))**2
     end do
   end do
 
@@ -183,20 +183,20 @@ subroutine target_chi_userdefined(tg, gr, psi_in, chi_out)
 
   PUSH_SUB(target_chi_userdefined)
 
-  SAFE_ALLOCATE(zpsi(1:gr%mesh%np, 1:tg%st%d%dim))
-  SAFE_ALLOCATE(zst(1:gr%mesh%np, 1:tg%st%d%dim))
-  SAFE_ALLOCATE(zchi(1:gr%mesh%np, 1:tg%st%d%dim))
+  SAFE_ALLOCATE(zpsi(1:gr%np, 1:tg%st%d%dim))
+  SAFE_ALLOCATE(zst(1:gr%np, 1:tg%st%d%dim))
+  SAFE_ALLOCATE(zchi(1:gr%np, 1:tg%st%d%dim))
 
   do ik = 1, psi_in%d%nik
     do ist = psi_in%st_start, psi_in%st_end
 
-      call states_elec_get_state(psi_in, gr%mesh, ist, ik, zpsi)
-      call states_elec_get_state(tg%st, gr%mesh, ist, ik, zst)
+      call states_elec_get_state(psi_in, gr, ist, ik, zpsi)
+      call states_elec_get_state(tg%st, gr, ist, ik, zst)
 
-      olap = zmf_dotp(gr%mesh, zst(:, 1), zpsi(:, 1))
-      zchi(1:gr%mesh%np, 1:tg%st%d%dim) = olap*zst(1:gr%mesh%np, 1:tg%st%d%dim)
+      olap = zmf_dotp(gr, zst(:, 1), zpsi(:, 1))
+      zchi(1:gr%np, 1:tg%st%d%dim) = olap*zst(1:gr%np, 1:tg%st%d%dim)
 
-      call states_elec_set_state(chi_out, gr%mesh, ist, ik, zchi)
+      call states_elec_set_state(chi_out, gr, ist, ik, zchi)
 
     end do
   end do

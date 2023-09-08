@@ -30,7 +30,7 @@ DressedOrbitals = yes
 %
 
 %Coordinates
- "dressedhelium" | 0 | 0 
+ "dressedhelium" | 0 | 0
 %
 
 Extrastates = 5

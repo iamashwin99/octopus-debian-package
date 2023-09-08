@@ -19,6 +19,7 @@
 #include "global.h"
 
 module orbitalset_oct_m
+  use accel_oct_m
   use batch_oct_m
   use batch_ops_oct_m
   use blas_oct_m
@@ -29,6 +30,7 @@ module orbitalset_oct_m
   use hardware_oct_m
   use kpoints_oct_m
   use lalg_basic_oct_m
+  use math_oct_m
   use mesh_oct_m
   use mesh_function_oct_m
   use messages_oct_m
@@ -36,6 +38,7 @@ module orbitalset_oct_m
   use profiling_oct_m
   use species_oct_m
   use submesh_oct_m
+  use types_oct_m
   use wfs_elec_oct_m
 
   implicit none
@@ -52,10 +55,12 @@ module orbitalset_oct_m
     zorbitalset_get_coefficients,   &
     dorbitalset_get_coeff_batch,    &
     zorbitalset_get_coeff_batch,    &
+    dorbitalset_get_coeff_batch_accel, &
+    zorbitalset_get_coeff_batch_accel, &
+    dorbitalset_get_position_matrix_elem, &
+    zorbitalset_get_position_matrix_elem, &
     dorbitalset_add_to_batch,       &
     zorbitalset_add_to_batch,       &
-    dorbitalset_add_to_psi,         &
-    zorbitalset_add_to_psi,         &
     orbitalset_set_jln
 
   type orbitalset_t
@@ -65,16 +70,16 @@ module orbitalset_oct_m
     integer             :: norbs
     integer             :: ndim
     integer             :: iatom
-    type(submesh_t)     :: sphere             !> The submesh of the orbital
-    CMPLX, allocatable  :: phase(:,:)         !> Correction to the global phase
-    !                                         !> if the sphere cross the border of the box
-    FLOAT               :: Ueff               !> The effective U of the simplified rotational invariant form
+    type(submesh_t)     :: sphere             !< The submesh of the orbital
+    CMPLX, allocatable  :: phase(:,:)         !< Correction to the global phase
+    !                                         !< if the sphere cross the border of the box
+    FLOAT               :: Ueff               !< The effective U of the simplified rotational invariant form
     FLOAT               :: Ubar, Jbar
-    FLOAT               :: alpha              !> A potential used to constrained occupations, as defined in PRB 71, 035105 (2005)
-    integer             :: nneighbors         !> Number of neighbouring atoms on which the intersite
-    !                                         !> interaction is considered
-    FLOAT, allocatable  :: V_ij(:,:)          !> The list of intersite interaction parameters
-    FLOAT, allocatable  :: coulomb_IIJJ(:,:,:,:,:) !> Coulomb integrales with neighboring atoms
+    FLOAT               :: alpha              !< A potential used to constrained occupations, as defined in PRB 71, 035105 (2005)
+    integer             :: nneighbors         !< Number of neighbouring atoms on which the intersite
+    !                                         !< interaction is considered
+    FLOAT, allocatable  :: V_ij(:,:)          !< The list of intersite interaction parameters
+    FLOAT, allocatable  :: coulomb_IIJJ(:,:,:,:,:) !< Coulomb integrales with neighboring atoms
     integer, allocatable:: map_os(:)
     CMPLX, allocatable  :: phase_shift(:,:)
 
@@ -82,14 +87,17 @@ module orbitalset_oct_m
     type(species_t), pointer :: spec
     integer             :: spec_index
 
-    FLOAT, allocatable  :: dorb(:,:,:) !> The orbital, if real, on the submesh
-    CMPLX, allocatable  :: zorb(:,:,:) !> The orbital, if complex, on the submesh
-    CMPLX, allocatable  :: eorb_submesh(:,:,:,:) !> Orbitals with its phase factor, on the submesh (for isolated system with TD phase)
-    CMPLX, allocatable  :: eorb_mesh(:,:,:,:) !> Orbitals with its phase factor, on the mesh (for periodic systems GS and TD)
+    FLOAT, allocatable  :: dorb(:,:,:) !< The orbital, if real, on the submesh
+    CMPLX, allocatable  :: zorb(:,:,:) !< The orbital, if complex, on the submesh
+    CMPLX, allocatable  :: eorb_submesh(:,:,:,:) !< Orbitals with its phase factor, on the submesh (for isolated system with TD phase)
+    CMPLX, allocatable  :: eorb_mesh(:,:,:,:) !< Orbitals with its phase factor, on the mesh (for periodic systems GS and TD)
+    integer             :: ldorbs
+    type(accel_mem_t)   :: dbuff_orb, zbuff_orb !< The accel buffers containing the orbitals
+    type(accel_mem_t), allocatable   :: buff_eorb (:)
 
-    logical             :: submesh            !> Do we use or not submeshes for the orbitals
+    logical             :: use_submesh        !< Do we use or not submeshes for the orbitals
 
-    type(poisson_t)     :: poisson            !> For computing the Coulomb integrals
+    type(poisson_t)     :: poisson            !< For computing the Coulomb integrals
   end type orbitalset_t
 
 contains
@@ -122,6 +130,8 @@ contains
   subroutine orbitalset_end(this)
     type(orbitalset_t), intent(inout) :: this
 
+    integer :: ik
+
     PUSH_SUB(orbitalset_end)
 
     SAFE_DEALLOCATE_A(this%phase)
@@ -136,6 +146,17 @@ contains
     SAFE_DEALLOCATE_A(this%coulomb_IIJJ)
     SAFE_DEALLOCATE_A(this%map_os)
     SAFE_DEALLOCATE_A(this%phase_shift)
+
+    if(accel_is_enabled()) then
+      call accel_release_buffer(this%dbuff_orb)
+      call accel_release_buffer(this%zbuff_orb)
+      if(allocated(this%buff_eorb)) then
+        do ik = lbound(this%buff_eorb, dim=1), ubound(this%buff_eorb, dim=1)
+          call accel_release_buffer(this%buff_eorb(ik))
+        end do
+        SAFE_DEALLOCATE_A(this%buff_eorb)
+      end if
+    end if
 
     POP_SUB(orbitalset_end)
   end subroutine orbitalset_end
@@ -168,6 +189,7 @@ contains
 
     integer :: ns, iq, is, ikpoint, im, idim, kpt_end
     FLOAT   :: kr, kpoint(1:dim), dx(1:dim)
+    integer :: iorb
 
     PUSH_SUB(orbitalset_update_phase)
 
@@ -192,20 +214,21 @@ contains
       do is = 1, ns
         ! this is only the correction to the global phase, that can
         ! appear if the sphere crossed the boundary of the cell.
-        dx(1:dim) = os%sphere%x(is, 1:dim) - os%sphere%mesh%x(os%sphere%map(is), 1:dim) + os%sphere%center(1:dim)
+        dx(1:dim) = os%sphere%rel_x(1:dim, is) - os%sphere%mesh%x(os%sphere%map(is), 1:dim) + os%sphere%center(1:dim)
         kr = sum(kpoint(1:dim)*dx(1:dim))
         if (present(vec_pot)) then
           if (allocated(vec_pot)) kr = kr + sum(vec_pot(1:dim)*dx(1:dim))
         end if
 
         if (present(vec_pot_var)) then
-          if (allocated(vec_pot_var)) kr = kr + sum(vec_pot_var(1:dim, os%sphere%map(is))*os%sphere%x(is, 1:dim))
+          if (allocated(vec_pot_var)) kr = kr + sum(vec_pot_var(1:dim, os%sphere%map(is)) &
+            *(os%sphere%rel_x(1:dim, is)+os%sphere%center))
         end if
 
         os%phase(is, iq) = exp(M_zI*kr)
       end do
 
-      if (.not. os%submesh) then
+      if (.not. os%use_submesh) then
         !We now compute the so-called Bloch sum of the localized orbitals
         os%eorb_mesh(:,:,:,iq) = M_Z0
         do idim = 1, os%ndim
@@ -224,6 +247,19 @@ contains
             end do
           end do
         end do
+      end if
+
+      if(accel_is_enabled() .and. os%ndim == 1) then
+        if(os%use_submesh) then
+          do iorb = 1, os%norbs
+            call accel_write_buffer(os%buff_eorb(iq), ns, os%eorb_submesh(:, 1, iorb, iq), offset = (iorb - 1)*os%ldorbs)
+          end do
+        else
+          do iorb = 1, os%norbs
+            call accel_write_buffer(os%buff_eorb(iq), os%sphere%mesh%np, &
+              os%eorb_mesh(:, iorb, 1, iq), offset = (iorb - 1)*os%ldorbs)
+          end do
+        end if
       end if
     end do
 

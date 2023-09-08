@@ -1,0 +1,11 @@
+# -*- coding: utf-8 mode: shell-script -*-
+
+Test       : test GPU runs for empty domains
+Program    : octopus
+TestGroups : short-run, finite_systems_3d
+Enabled    : Yes
+
+Input: 41-gpu-bug.01-C.inp
+Processors: 2
+Precision: 1.00e-2
+match ; Total Energy ; GREPFIELD(static/info, 'Total   ', 3) ; -4.140

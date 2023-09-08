@@ -34,11 +34,11 @@ module subspace_oct_m
   use global_oct_m
   use hamiltonian_elec_oct_m
   use hardware_oct_m
+  use lalg_basic_oct_m
   use lalg_adv_oct_m
   use mesh_oct_m
   use mesh_batch_oct_m
   use messages_oct_m
-  use mpi_oct_m
   use namespace_oct_m
   use parser_oct_m
   use pblas_oct_m
@@ -62,6 +62,7 @@ module subspace_oct_m
     dsubspace_diag,       &
     zsubspace_diag
 
+  !> Subspace diagonalisation method/routine
   type subspace_t
     private
     integer :: method
@@ -71,6 +72,7 @@ module subspace_oct_m
 
 contains
 
+  ! TODO(ALEX) Issue #674. Make subspace_init and subspace_diag type-bound procedures of subspace_t
   subroutine subspace_init(this, namespace, st)
     type(subspace_t),    intent(out) :: this
     type(namespace_t),   intent(in)  :: namespace
@@ -116,7 +118,7 @@ contains
     ! some checks for ingenious users
     if (this%method == OPTION__SUBSPACEDIAGONALIZATION__SCALAPACK) then
 #ifndef HAVE_MPI
-      message(1) = 'The scalapack subspace diagonalization can only be used in parallel.'
+      message(1) = 'The scalapack subspace diagonalization can only be used with MPI parallelization.'
       call messages_fatal(1, only_root_writes = .true., namespace=namespace)
 #else
 #ifndef HAVE_SCALAPACK

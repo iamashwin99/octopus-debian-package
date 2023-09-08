@@ -115,9 +115,9 @@ module minimizer_oct_m
       real(r8), intent(in)    :: step
       real(r8), intent(in)    :: toldr
       integer, intent(in)    :: maxiter
-      !> No intents here is unfortunately required because the same dummy function will be passed
-      !! also to newuoa routines in opt_control, and there the interface has no intents.
-      !! UPDATE: The newuoa interfaces are gone, so probably this can be fixed.
+      ! No intents here is unfortunately required because the same dummy function will be passed
+      ! also to newuoa routines in opt_control, and there the interface has no intents.
+      ! UPDATE: The newuoa interfaces are gone, so probably this can be fixed.
       interface
         subroutine f(n, x, val)
           use kind_oct_m
@@ -149,9 +149,9 @@ contains
     real(r8), intent(in)    :: step
     real(r8), intent(in)    :: toldr
     integer, intent(in)    :: maxiter
-    !> No intents here is unfortunately required because the same dummy function will be passed
-    !! also to newuoa routines in opt_control, and there the interface has no intents.
-    !! UPDATE: The newoua interface is gone, and therefore probably this can be fixed.
+    ! No intents here is unfortunately required because the same dummy function will be passed
+    ! also to newuoa routines in opt_control, and there the interface has no intents.
+    ! UPDATE: The newoua interface is gone, and therefore probably this can be fixed.
     interface
       subroutine f(n, x, val)
         use kind_oct_m
@@ -287,7 +287,7 @@ contains
 
     type(c_ptr) :: opt
     integer :: ires
-    ! The following values are taken from the 'nlopt.f' file installed by NLopt.
+    ! The following values are taken from the ''nlopt.f'' file installed by NLopt.
     integer, parameter :: NLOPT_LD_LBFGS  = 11
     integer, parameter :: NLOPT_LN_BOBYQA = 34
 
@@ -307,7 +307,7 @@ contains
 
     call nlo_set_min_objective(ires, opt, f, C_NULL_PTR)
     ! This would set an inequality constraint (TODO)
-    !call nlo_add_inequality_constraint(ires, opt, myconstraint, d1, CNST(1.0e-8))
+    ! call nlo_add_inequality_constraint(ires, opt, myconstraint, d1, CNST(1.0e-8))
 
     call nlo_set_xtol_abs1(ires, opt, toldr)
     call nlo_set_initial_step1(ires, opt, step)

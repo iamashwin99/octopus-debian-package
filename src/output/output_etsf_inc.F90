@@ -17,7 +17,6 @@
 !!
 
 ! ---------------------------------------------------------
-
 !> To create an etsf file one has to do the following:
 !!
 !! - Calculate the dimensions and the flags with the _dims functions
@@ -58,10 +57,12 @@ subroutine output_etsf(outp, namespace, space, dir, st, gr, kpoints, ions, iter)
 #endif
 
   !Create a cube
-  call cube_init(dcube, gr%mesh%idx%ll, namespace, space, gr%mesh%spacing, &
+  call cube_init(dcube, gr%idx%ll, namespace, space, gr%spacing, &
     gr%coord_system, fft_type=FFT_REAL, dont_optimize = .true.)
-  call cube_init(zcube, gr%mesh%idx%ll, namespace, space, gr%mesh%spacing, &
+  call cube_init_cube_map(dcube, gr)
+  call cube_init(zcube, gr%idx%ll, namespace, space, gr%spacing, &
     gr%coord_system, fft_type=FFT_COMPLEX, dont_optimize = .true.)
+  call cube_init_cube_map(zcube, gr)
 
 #ifdef HAVE_ETSF_IO
 
@@ -96,7 +97,7 @@ subroutine output_etsf(outp, namespace, space, dir, st, gr, kpoints, ions, iter)
     call output_etsf_file_init(dir//"/density-etsf.nc", "Density file", density_dims, &
       density_flags, ncid, namespace)
 
-    call output_etsf_density_write(st, gr%mesh, dcube, cf, ncid, namespace)
+    call output_etsf_density_write(st, gr, dcube, cf, ncid, namespace)
 
     if (mpi_grp_is_root(mpi_world)) then
       call output_etsf_geometry_write(ions, gr%symm, ncid, namespace, gr%box)
@@ -134,7 +135,7 @@ subroutine output_etsf(outp, namespace, space, dir, st, gr, kpoints, ions, iter)
       call output_etsf_geometry_write(ions, gr%symm, ncid, namespace, gr%box)
       call output_etsf_kpoints_write(kpoints, space%dim, ncid, namespace)
     end if
-    call output_etsf_wfs_rsp_write(st, gr%mesh, dcube, cf, ncid, namespace)
+    call output_etsf_wfs_rsp_write(st, gr, dcube, cf, ncid, namespace)
 
     if (mpi_grp_is_root(mpi_world)) then
       call etsf_io_low_close(ncid, lstat, error_data = error_data)
@@ -157,7 +158,7 @@ subroutine output_etsf(outp, namespace, space, dir, st, gr, kpoints, ions, iter)
 
     call zcube_function_alloc_rs(zcube, cf)
     call cube_function_alloc_fs(zcube, cf)
-    call fourier_shell_init(shell, namespace, space, zcube, gr%mesh)
+    call fourier_shell_init(shell, namespace, space, zcube, gr)
 
     call output_etsf_geometry_dims(ions, gr%symm, pw_dims, pw_flags)
     call output_etsf_kpoints_dims(kpoints, pw_dims, pw_flags)
@@ -172,9 +173,9 @@ subroutine output_etsf(outp, namespace, space, dir, st, gr, kpoints, ions, iter)
       call output_etsf_electrons_write(st, ncid, namespace)
       call output_etsf_geometry_write(ions, gr%symm, ncid, namespace, gr%box)
       call output_etsf_kpoints_write(kpoints, space%dim, ncid, namespace)
-      call output_etsf_basisdata_write(gr%mesh, shell, ncid, namespace)
+      call output_etsf_basisdata_write(gr, shell, ncid, namespace)
     end if
-    call output_etsf_wfs_pw_write(st, gr%mesh, zcube, cf, shell, ncid, namespace)
+    call output_etsf_wfs_pw_write(st, gr, zcube, cf, shell, ncid, namespace)
 
     if (mpi_grp_is_root(mpi_world)) then
       call etsf_io_low_close(ncid, lstat, error_data = error_data)
@@ -496,7 +497,7 @@ end subroutine output_etsf_density_dims
 
 subroutine output_etsf_density_write(st, mesh, cube, cf, ncid, namespace)
   type(states_elec_t),   intent(in)    :: st
-  type(mesh_t),          intent(in)    :: mesh
+  class(mesh_t),         intent(in)    :: mesh
   type(cube_t),          intent(inout) :: cube
   type(cube_function_t), intent(inout) :: cf
   integer,               intent(in)    :: ncid
@@ -516,7 +517,7 @@ subroutine output_etsf_density_write(st, mesh, cube, cf, ncid, namespace)
 
   if (st%d%ispin /= SPINORS) then
     do ispin = 1, st%d%nspin
-      call dmesh_to_cube(mesh, st%rho(:, ispin), cube, cf, local = .true.)
+      call dmesh_to_cube(mesh, st%rho(:, ispin), cube, cf)
       main%density%data4D(1:n(1), 1:n(2), 1:n(3), ispin) = cf%drs(1:n(1), 1:n(2), 1:n(3))
     end do
   else
@@ -526,10 +527,10 @@ subroutine output_etsf_density_write(st, mesh, cube, cf, ncid, namespace)
     d = st%rho(:, 1) + st%rho(:, 2)
     call magnetic_density(mesh, st%d, st%rho, md)
 
-    call dmesh_to_cube(mesh, d, cube, cf, local = .true.)
+    call dmesh_to_cube(mesh, d, cube, cf)
     main%density%data4D(1:n(1), 1:n(2), 1:n(3), 1) = cf%drs(1:n(1), 1:n(2), 1:n(3))
     do ispin = 1, 3
-      call dmesh_to_cube(mesh, md(:, ispin), cube, cf, local = .true.)
+      call dmesh_to_cube(mesh, md(:, ispin), cube, cf)
       main%density%data4D(1:n(1), 1:n(2), 1:n(3), ispin + 1) = cf%drs(1:n(1), 1:n(2), 1:n(3))
     end do
     SAFE_DEALLOCATE_A(d)
@@ -576,7 +577,7 @@ end subroutine output_etsf_wfs_rsp_dims
 
 subroutine output_etsf_wfs_rsp_write(st, mesh, cube, cf, ncid, namespace)
   type(states_elec_t),   intent(in)    :: st
-  type(mesh_t),          intent(in)    :: mesh
+  class(mesh_t),         intent(in)    :: mesh
   type(cube_t),          intent(inout) :: cube
   type(cube_function_t), intent(inout) :: cf
   integer,               intent(in)    :: ncid
@@ -617,16 +618,16 @@ subroutine output_etsf_wfs_rsp_write(st, mesh, cube, cf, ncid, namespace)
           if (states_are_real(st)) then
             call states_elec_get_state(st, mesh, idim, ist, ik + ispin - 1, dpsi)
 
-            call dmesh_to_cube(mesh, dpsi, cube, cf, local = .true.)
+            call dmesh_to_cube(mesh, dpsi, cube, cf)
             local_wfs(1, 1:n(1), 1:n(2), 1:n(3), idim, ist, ik+(ispin-1)*nkpoints) = cf%drs(1:n(1), 1:n(2), 1:n(3))
 
           else
             call states_elec_get_state(st, mesh, idim, ist, ik + ispin - 1, zpsi)
 
-            call dmesh_to_cube(mesh, TOFLOAT(zpsi), cube, cf, local = .true.)
+            call dmesh_to_cube(mesh, TOFLOAT(zpsi), cube, cf)
             local_wfs(1, 1:n(1), 1:n(2), 1:n(3), idim, ist, ik+(ispin-1)*nkpoints) = cf%drs(1:n(1), 1:n(2), 1:n(3))
 
-            call dmesh_to_cube(mesh, aimag(zpsi), cube, cf, local = .true.)
+            call dmesh_to_cube(mesh, aimag(zpsi), cube, cf)
             local_wfs(2, 1:n(1), 1:n(2), 1:n(3), idim, ist, ik+(ispin-1)*nkpoints) = cf%drs(1:n(1), 1:n(2), 1:n(3))
 
           end if
@@ -667,7 +668,7 @@ end subroutine output_etsf_basisdata_dims
 ! --------------------------------------------------------
 
 subroutine output_etsf_basisdata_write(mesh, shell, ncid, namespace)
-  type(mesh_t),          intent(in)    :: mesh
+  class(mesh_t),         intent(in)    :: mesh
   type(fourier_shell_t), intent(in)    :: shell
   integer,               intent(in)    :: ncid
   type(namespace_t),     intent(in)    :: namespace
@@ -732,7 +733,7 @@ end subroutine output_etsf_wfs_pw_dims
 
 subroutine output_etsf_wfs_pw_write(st, mesh, cube, cf, shell, ncid, namespace)
   type(states_elec_t),   intent(in)    :: st
-  type(mesh_t),          intent(in)    :: mesh
+  class(mesh_t),         intent(in)    :: mesh
   type(cube_t),          intent(inout) :: cube
   type(cube_function_t), intent(inout) :: cf
   type(fourier_shell_t), intent(in)    :: shell
@@ -771,7 +772,7 @@ subroutine output_etsf_wfs_pw_write(st, mesh, cube, cf, shell, ncid, namespace)
 
         ! for the moment we treat all functions as complex
         call states_elec_get_state(st, mesh, idim, ist, iq, zpsi)
-        call zmesh_to_cube(mesh, zpsi, cube, cf, local = .true.)
+        call zmesh_to_cube(mesh, zpsi, cube, cf)
         call zcube_function_rs2fs(cube, cf)
 
         do ig = 1, ng
@@ -806,7 +807,7 @@ subroutine output_etsf_wfs_pw_write(st, mesh, cube, cf, shell, ncid, namespace)
 end subroutine output_etsf_wfs_pw_write
 
 !> DAS: copied from ETSF_IO 1.0.3 etsf_io_low_level.f90, changed to send output to standard error
-!!****m* etsf_io_low_error_group/etsf_io_low_error_handle
+!!*** *m* etsf_io_low_error_group/etsf_io_low_error_handle
 !! NAME
 !!  etsf_io_low_error_handle
 !!

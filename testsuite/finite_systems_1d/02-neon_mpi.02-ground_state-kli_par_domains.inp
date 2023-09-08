@@ -1,6 +1,5 @@
 # -*- coding: utf-8 mode: shell-script -*-
 #
-
 CalculationMode = gs
 
 ParStates = no
@@ -18,7 +17,7 @@ OEPLevel = oep_kli
 %
 
 %Coordinates
-  "Neon1D" | 0 
+  "Neon1D" | 0
 %
 
 Debug = trace

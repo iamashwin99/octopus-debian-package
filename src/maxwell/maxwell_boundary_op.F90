@@ -18,6 +18,7 @@
 #include "global.h"
 
 module maxwell_boundary_op_oct_m
+  use accel_oct_m
   use box_sphere_oct_m
   use box_parallelepiped_oct_m
   use cube_function_oct_m
@@ -37,8 +38,10 @@ module maxwell_boundary_op_oct_m
   use par_vec_oct_m
   use parser_oct_m
   use profiling_oct_m
+  use plane_wave_oct_m
   use states_elec_oct_m
   use string_oct_m
+  use types_oct_m
   use unit_oct_m
   use unit_system_oct_m
   use varinfo_oct_m
@@ -48,11 +51,12 @@ module maxwell_boundary_op_oct_m
   implicit none
 
   private
-  public ::                    &
-    bc_mxll_init,              &
-    bc_mxll_end,               &
-    bc_mxll_t,                 &
+  public ::                          &
+    bc_mxll_init,                    &
+    bc_mxll_end,                     &
+    bc_mxll_t,                       &
     bc_mxll_generate_pml_parameters, &
+    bc_mxll_initialize_pml_simple,   &
     inner_and_outer_points_mapping,  &
     surface_grid_points_mapping
 
@@ -66,8 +70,8 @@ module maxwell_boundary_op_oct_m
     FLOAT,   allocatable :: kappa(:,:)
     FLOAT,   allocatable :: sigma_e(:,:)
     FLOAT,   allocatable :: sigma_m(:,:)
-    CMPLX,   allocatable :: a(:,:)
-    CMPLX,   allocatable :: b(:,:)
+    FLOAT,   allocatable :: a(:,:)
+    FLOAT,   allocatable :: b(:,:)
     FLOAT,   allocatable :: c(:,:)
     FLOAT,   allocatable :: mask(:)
     CMPLX,   allocatable :: aux_ep(:,:,:)
@@ -77,21 +81,9 @@ module maxwell_boundary_op_oct_m
     CMPLX,   allocatable :: conv_plus_old(:,:,:)
     CMPLX,   allocatable :: conv_minus_old(:,:,:)
     logical              :: parameters_initialized = .false.
+    ! GPU buffers
+    type(accel_mem_t)    :: buff_a, buff_b, buff_c, buff_conv_plus, buff_conv_minus, buff_map, buff_conv_plus_old
   end type pml_t
-
-  type plane_wave_t
-    integer                          :: points_number  !< number of points of plane wave boundary
-    integer,             allocatable :: points_map(:) !< points map for plane waves boundary
-    integer                          :: number !< number of plane waves given by user
-    integer,             allocatable :: modus(:) !< input file modus, either parser or Maxwell function
-    character(len=1024), allocatable :: e_field_string(:,:) !< string in case of parser
-    FLOAT,               allocatable :: k_vector(:,:) !< k vector for each plane wave
-    FLOAT,               allocatable :: v_vector(:,:) !< velocity vector for each plane wave
-    CMPLX,               allocatable :: e_field(:,:) !< field amplitude for each plane wave
-    type(mxf_t),         allocatable :: mx_function(:) !< Maxwell function for each plane wave
-    logical                          :: evaluate_on_one_side = .false.
-    integer                          :: side_of_the_box
-  end type plane_wave_t
 
   type bc_mxll_t
     integer              :: bc_type(MAX_DIM)
@@ -116,11 +108,12 @@ module maxwell_boundary_op_oct_m
     integer              :: constant_points_number
     integer, allocatable :: constant_points_map(:)
     CMPLX,   allocatable :: constant_rs_state(:,:)
+    type(accel_mem_t)    :: buff_constant_points_map
 
     integer              :: mirror_points_number(3)
     integer, allocatable :: mirror_points_map(:,:)
 
-    logical              :: do_plane_waves = .false.
+    logical              :: do_plane_waves = .false.   !! look here afterwards
     type(plane_wave_t)   :: plane_wave
     logical              :: plane_waves_dims(1:3) = .false.
 
@@ -164,14 +157,20 @@ contains
     type(block_t)       :: blk
     character(len=1024) :: string
     character(len=50)   :: ab_type_str
-    logical             :: plane_waves_check = .false., ab_mask_check = .false., ab_pml_check = .false.
-    logical             :: constant_check = .false., zero_check = .false.
+    logical             :: plane_waves_check, ab_mask_check, ab_pml_check
+    logical             :: constant_check, zero_check
     type(profile_t), save :: prof
     FLOAT :: ep_factor, mu_factor, sigma_e_factor, sigma_m_factor
 
     PUSH_SUB(bc_mxll_init)
 
     call profiling_in(prof, 'BC_MXLL_INIT')
+
+    plane_waves_check = .false.
+    ab_mask_check = .false.
+    ab_pml_check = .false.
+    constant_check = .false.
+    zero_check = .false.
 
     bc%ab_user_def = .false.
     bc%bc_ab_type(:) = MXLL_AB_NOT_ABSORBING ! default option
@@ -228,7 +227,7 @@ contains
 
     if (ab_mask_check .or. ab_pml_check) then
 
-      call messages_print_stress(msg='Maxwell Absorbing Boundaries', namespace=namespace)
+      call messages_print_with_emphasis(msg='Maxwell Absorbing Boundaries', namespace=namespace)
 
     end if
 
@@ -237,24 +236,24 @@ contains
 
       case (MXLL_BC_ZERO, MXLL_BC_MIRROR_PEC, MXLL_BC_MIRROR_PMC)
 
-        bounds(1, idim) = (gr%mesh%idx%nr(2, idim) - gr%mesh%idx%enlarge(idim))*gr%mesh%spacing(idim)
-        bounds(2, idim) = (gr%mesh%idx%nr(2, idim)) * gr%mesh%spacing(idim)
+        bounds(1, idim) = (gr%idx%nr(2, idim) - gr%idx%enlarge(idim))*gr%spacing(idim)
+        bounds(2, idim) = (gr%idx%nr(2, idim)) * gr%spacing(idim)
 
       case (MXLL_BC_CONSTANT, MXLL_BC_PERIODIC)
 
-        bounds(1, idim) = (gr%mesh%idx%nr(2, idim) - 2*gr%mesh%idx%enlarge(idim))*gr%mesh%spacing(idim)
-        bounds(2, idim) = (gr%mesh%idx%nr(2, idim)) * gr%mesh%spacing(idim)
+        bounds(1, idim) = (gr%idx%nr(2, idim) - 2*gr%idx%enlarge(idim))*gr%spacing(idim)
+        bounds(2, idim) = (gr%idx%nr(2, idim)) * gr%spacing(idim)
 
       case (MXLL_BC_PLANE_WAVES)
 
-        bounds(1, idim) = (gr%mesh%idx%nr(2, idim) - 2*gr%mesh%idx%enlarge(idim))*gr%mesh%spacing(idim)
-        bounds(2, idim) = (gr%mesh%idx%nr(2, idim)) * gr%mesh%spacing(idim)
+        bounds(1, idim) = (gr%idx%nr(2, idim) - 2*gr%idx%enlarge(idim))*gr%spacing(idim)
+        bounds(2, idim) = (gr%idx%nr(2, idim)) * gr%spacing(idim)
         plane_waves_check = .true.
         bc%do_plane_waves = .true.
 
       case (MXLL_BC_MEDIUM)
         call bc_mxll_medium_init(gr, namespace, bounds, idim, ep_factor, mu_factor, sigma_e_factor, sigma_m_factor)
-        call maxwell_medium_points_mapping(bc, gr%mesh, bounds)
+        call maxwell_medium_points_mapping(bc, gr, bounds)
         call bc_mxll_generate_medium(bc, space, gr, bounds, ep_factor, mu_factor, sigma_e_factor, sigma_m_factor)
 
       end select
@@ -362,48 +361,48 @@ contains
     end do
 
     ! initialization of surfaces
-    call maxwell_surfaces_init(gr%mesh, st, bounds)
+    call maxwell_surfaces_init(gr, st, bounds)
 
     ! mapping of mask boundary points
     if (ab_mask_check) then
-      call maxwell_mask_points_mapping(bc, gr%mesh, ab_bounds)
+      call maxwell_mask_points_mapping(bc, gr, ab_bounds)
     end if
 
     ! mapping of pml boundary points
     if (ab_pml_check) then
-      call maxwell_pml_points_mapping(bc, gr%mesh, ab_bounds)
+      call maxwell_pml_points_mapping(bc, gr, ab_bounds)
     end if
 
     ! mapping of constant boundary points
     if (constant_check) then
-      call maxwell_constant_points_mapping(bc, gr%mesh, bounds)
+      call maxwell_constant_points_mapping(bc, gr, bounds)
     end if
 
     ! mapping of plane waves boundary points
     if (plane_waves_check) then
-      call maxwell_plane_waves_points_mapping(bc, gr%mesh, bounds, namespace)
-      call maxwell_plane_waves_boundaries_init(bc, namespace)
+      call maxwell_plane_waves_points_mapping(bc, gr, bounds, namespace)
+      call plane_wave_init(bc%plane_wave, namespace) !bc%plane_wave
     end if
 
     ! mapping of zero points
     if (zero_check) then
-      call maxwell_zero_points_mapping(bc, gr%mesh, bounds)
+      call maxwell_zero_points_mapping(bc, gr, bounds)
     end if
 
     if (ab_mask_check) then
-      call bc_mxll_generate_mask(bc, gr%mesh, ab_bounds)
+      call bc_mxll_generate_mask(bc, gr, ab_bounds)
     end if
 
     if (ab_pml_check) then
       call bc_mxll_generate_pml(bc, space)
     end if
 
-    !call bc_generate_zero(bc, gr%mesh, ab_bounds)
+    !call bc_generate_zero(bc, gr, ab_bounds)
 
-    if (debug%info) call bc_mxll_write_info(bc, gr%mesh, namespace, space)
+    if (debug%info) call bc_mxll_write_info(bc, gr, namespace, space)
 
     if (ab_mask_check .or. ab_pml_check) then
-      call messages_print_stress(namespace=namespace)
+      call messages_print_with_emphasis(namespace=namespace)
     end if
 
     call profiling_out(prof)
@@ -434,6 +433,9 @@ contains
 
     SAFE_DEALLOCATE_A(bc%constant_points_map)
     SAFE_DEALLOCATE_A(bc%constant_rs_state)
+    if (accel_is_enabled()) then
+      call accel_release_buffer(bc%buff_constant_points_map)
+    end if
 
     SAFE_DEALLOCATE_A(bc%mirror_points_map)
 
@@ -466,26 +468,21 @@ contains
     SAFE_DEALLOCATE_A(pml%conv_minus)
     SAFE_DEALLOCATE_A(pml%conv_plus_old)
     SAFE_DEALLOCATE_A(pml%conv_minus_old)
+    if (accel_is_enabled()) then
+      call accel_release_buffer(pml%buff_map)
+      call accel_release_buffer(pml%buff_a)
+      call accel_release_buffer(pml%buff_b)
+      call accel_release_buffer(pml%buff_c)
+      call accel_release_buffer(pml%buff_conv_plus)
+      call accel_release_buffer(pml%buff_conv_minus)
+      call accel_release_buffer(pml%buff_conv_plus_old)
+    end if
+
 
     POP_SUB(pml_end)
   end subroutine pml_end
 
-  ! ---------------------------------------------------------
-  subroutine plane_wave_end(plane_wave)
-    type(plane_wave_t),   intent(inout) :: plane_wave
 
-    PUSH_SUB(plane_wave_end)
-
-    SAFE_DEALLOCATE_A(plane_wave%points_map)
-    SAFE_DEALLOCATE_A(plane_wave%modus)
-    SAFE_DEALLOCATE_A(plane_wave%e_field_string)
-    SAFE_DEALLOCATE_A(plane_wave%k_vector)
-    SAFE_DEALLOCATE_A(plane_wave%v_vector)
-    SAFE_DEALLOCATE_A(plane_wave%e_field)
-    SAFE_DEALLOCATE_A(plane_wave%mx_function)
-
-    POP_SUB(plane_wave_end)
-  end subroutine plane_wave_end
 
   ! ---------------------------------------------------------
   subroutine bc_mxll_medium_init(gr, namespace, bounds, idim, ep_factor, mu_factor, sigma_e_factor, sigma_m_factor)
@@ -513,9 +510,9 @@ contains
     !% Width of the boundary region with medium
     !%End
     call parse_variable(namespace, 'MediumWidth', M_ZERO, width, units_inp%length)
-    bounds(1,idim) = ( gr%mesh%idx%nr(2, idim) - gr%mesh%idx%enlarge(idim) ) * gr%mesh%spacing(idim)
+    bounds(1,idim) = ( gr%idx%nr(2, idim) - gr%idx%enlarge(idim) ) * gr%spacing(idim)
     bounds(1,idim) = bounds(1,idim) - width
-    bounds(2,idim) = ( gr%mesh%idx%nr(2, idim) ) * gr%mesh%spacing(idim)
+    bounds(2,idim) = ( gr%idx%nr(2, idim) ) * gr%spacing(idim)
 
     !%Variable MediumEpsilonFactor
     !%Type float
@@ -578,7 +575,7 @@ contains
     !% the derivative order.
     !%End
 
-    default_width = M_TWO * gr%der%order * maxval(gr%mesh%spacing(1:3))
+    default_width = M_TWO * gr%der%order * maxval(gr%spacing(1:3))
     call parse_variable(namespace, 'MaxwellABWidth', default_width, bc%ab_width, units_inp%length)
 
     if (bc%ab_width < default_width) then
@@ -631,7 +628,7 @@ contains
   ! ---------------------------------------------------------
   subroutine bc_mxll_write_info(bc, mesh, namespace, space)
     type(bc_mxll_t),       intent(in) :: bc
-    type(mesh_t),          intent(in) :: mesh
+    class(mesh_t),         intent(in) :: mesh
     type(namespace_t),     intent(in) :: namespace
     type(space_t),         intent(in) :: space
 
@@ -688,11 +685,6 @@ contains
         tmp(:) = M_ZERO
         call get_pml_io_function(TOFLOAT(bc%pml%a(:, idim)), bc, tmp)
         call write_files("maxwell_sigma_pml_a_e-"//dim_label(idim), tmp)
-
-        ! pml_a for magnetic field dim = 1
-        tmp(:) = M_ZERO
-        call get_pml_io_function(aimag(bc%pml%a(:, idim)), bc, tmp)
-        call write_files("maxwell_sigma_pml_a_m-"//dim_label(idim), tmp)
       end do
       SAFE_DEALLOCATE_A(tmp)
     end if
@@ -802,7 +794,7 @@ contains
   ! ---------------------------------------------------------
   subroutine maxwell_mask_points_mapping(bc, mesh, bounds)
     type(bc_mxll_t),     intent(inout) :: bc
-    type(mesh_t),        intent(in)    :: mesh
+    class(mesh_t),       intent(in)    :: mesh
     FLOAT,               intent(in)    :: bounds(:,:)
 
     integer :: ip, ip_in, ip_in_max, point_info, idim
@@ -850,7 +842,7 @@ contains
   ! ---------------------------------------------------------
   subroutine maxwell_pml_points_mapping(bc, mesh, bounds)
     type(bc_mxll_t),     intent(inout) :: bc
-    type(mesh_t),        intent(in)    :: mesh
+    class(mesh_t),       intent(in)    :: mesh
     FLOAT,               intent(in)    :: bounds(:,:)
 
     integer :: ip, ip_in, point_info
@@ -858,7 +850,7 @@ contains
 
     PUSH_SUB(maxwell_pml_points_mapping)
 
-    call profiling_in(prof, 'MAXWELL_PML_POINTS_MAPPING')
+    call profiling_in(prof, 'MXWL_PML_POINTS_MAPPING')
 
     ! allocate pml points map
     ip_in = 0
@@ -890,7 +882,7 @@ contains
   ! ---------------------------------------------------------
   subroutine maxwell_constant_points_mapping(bc, mesh, bounds)
     type(bc_mxll_t),     intent(inout) :: bc
-    type(mesh_t),        intent(in)    :: mesh
+    class(mesh_t),       intent(in)    :: mesh
     FLOAT,               intent(in)    :: bounds(:,:)
 
     integer :: ip, ip_in, point_info
@@ -922,6 +914,11 @@ contains
       end if
     end do
 
+    if (accel_is_enabled()) then
+      call accel_create_buffer(bc%buff_constant_points_map, ACCEL_MEM_READ_ONLY, TYPE_INTEGER, bc%constant_points_number)
+      call accel_write_buffer(bc%buff_constant_points_map, bc%constant_points_number, bc%constant_points_map)
+    end if
+
     call profiling_out(prof)
 
     POP_SUB(maxwell_constant_points_mapping)
@@ -930,7 +927,7 @@ contains
   ! ---------------------------------------------------------
   subroutine maxwell_plane_waves_points_mapping(bc, mesh, bounds, namespace)
     type(bc_mxll_t),     intent(inout) :: bc
-    type(mesh_t),        intent(in)    :: mesh
+    class(mesh_t),       intent(in)    :: mesh
     FLOAT,               intent(in)    :: bounds(:,:)
     type(namespace_t),   intent(in)    :: namespace
 
@@ -939,7 +936,7 @@ contains
 
     PUSH_SUB(maxwell_plane_waves_points_mapping)
 
-    call profiling_in(prof, 'MXLL_PLANE_WAVES_POINTS_MAP')
+    call profiling_in(prof, 'MXLL_PW_POINTS_MAP')
 
     !%Variable PlaneWavesOnOneSide
     !%Type logical
@@ -988,6 +985,11 @@ contains
       end if
     end do
 
+    if (accel_is_enabled()) then
+      call accel_create_buffer(bc%plane_wave%buff_map, ACCEL_MEM_READ_ONLY, TYPE_INTEGER, bc%plane_wave%points_number)
+      call accel_write_buffer(bc%plane_wave%buff_map, bc%plane_wave%points_number, bc%plane_wave%points_map)
+    end if
+
     call profiling_out(prof)
 
     POP_SUB(maxwell_plane_waves_points_mapping)
@@ -996,7 +998,7 @@ contains
   ! ---------------------------------------------------------
   subroutine maxwell_zero_points_mapping(bc, mesh, bounds)
     type(bc_mxll_t),     intent(inout) :: bc
-    type(mesh_t),        intent(in)    :: mesh
+    class(mesh_t),       intent(in)    :: mesh
     FLOAT,               intent(in)    :: bounds(:,:)
 
     integer :: ip, ip_in, ip_in_max, point_info, idim
@@ -1046,7 +1048,7 @@ contains
   ! ---------------------------------------------------------
   subroutine maxwell_medium_points_mapping(bc, mesh, bounds)
     type(bc_mxll_t),     intent(inout) :: bc
-    type(mesh_t),        intent(in)    :: mesh
+    class(mesh_t),       intent(in)    :: mesh
     FLOAT,               intent(in)    :: bounds(:,:)
 
     integer :: ip, ip_in, ip_in_max, ip_bd, ip_bd_max, point_info, boundary_info, idim
@@ -1134,14 +1136,34 @@ contains
     bc%pml%kappa                 = M_ONE
     bc%pml%sigma_e               = M_ZERO
     bc%pml%sigma_m               = M_ZERO
-    bc%pml%a                     = M_z0
-    bc%pml%b                     = M_z0
+    bc%pml%a                     = M_ZERO
+    bc%pml%b                     = M_ZERO
     bc%pml%c                     = M_ZERO
     bc%pml%mask                  = M_ONE
     bc%pml%conv_plus             = M_z0
     bc%pml%conv_minus            = M_z0
     bc%pml%conv_plus_old         = M_z0
     bc%pml%conv_minus_old        = M_z0
+
+    if (accel_is_enabled()) then
+      call accel_create_buffer(bc%pml%buff_map, ACCEL_MEM_READ_ONLY, TYPE_INTEGER, bc%pml%points_number)
+      call accel_create_buffer(bc%pml%buff_a, ACCEL_MEM_READ_ONLY, TYPE_FLOAT, int(bc%pml%points_number, i8)*space%dim)
+      call accel_create_buffer(bc%pml%buff_b, ACCEL_MEM_READ_ONLY, TYPE_FLOAT, int(bc%pml%points_number, i8)*space%dim)
+      call accel_create_buffer(bc%pml%buff_c, ACCEL_MEM_READ_ONLY, TYPE_FLOAT, int(bc%pml%points_number, i8)*space%dim)
+      call accel_create_buffer(bc%pml%buff_conv_plus, ACCEL_MEM_READ_WRITE, TYPE_CMPLX, &
+        int(bc%pml%points_number, i8)*space%dim*space%dim)
+      call accel_create_buffer(bc%pml%buff_conv_minus, ACCEL_MEM_READ_WRITE, TYPE_CMPLX, &
+        int(bc%pml%points_number, i8)*space%dim*space%dim)
+      call accel_create_buffer(bc%pml%buff_conv_plus_old, ACCEL_MEM_READ_WRITE, TYPE_CMPLX, &
+        int(bc%pml%points_number, i8)*space%dim*space%dim)
+
+      call accel_write_buffer(bc%pml%buff_a, int(bc%pml%points_number, i8)*space%dim, bc%pml%a)
+      call accel_write_buffer(bc%pml%buff_b, int(bc%pml%points_number, i8)*space%dim, bc%pml%b)
+      call accel_write_buffer(bc%pml%buff_c, int(bc%pml%points_number, i8)*space%dim, bc%pml%c)
+      call accel_write_buffer(bc%pml%buff_conv_plus, int(bc%pml%points_number, i8)*space%dim*space%dim, bc%pml%conv_plus)
+      call accel_write_buffer(bc%pml%buff_conv_minus, int(bc%pml%points_number, i8)*space%dim*space%dim, bc%pml%conv_minus)
+      call accel_write_buffer(bc%pml%buff_conv_plus, int(bc%pml%points_number, i8)*space%dim*space%dim, bc%pml%conv_plus_old)
+    end if
 
     call profiling_out(prof)
 
@@ -1162,8 +1184,8 @@ contains
     FLOAT, allocatable  :: tmp(:), tmp_grad(:,:)
 
     PUSH_SUB(bc_mxll_generate_pml_parameters)
-    SAFE_ALLOCATE(tmp(gr%mesh%np_part))
-    SAFE_ALLOCATE(tmp_grad(gr%mesh%np, 1:gr%box%dim))
+    SAFE_ALLOCATE(tmp(gr%np_part))
+    SAFE_ALLOCATE(tmp_grad(gr%np, 1:gr%box%dim))
     ! here bounds are ab_bounds, for which ab_bounds(1,:) = bc%bounds(1,:)
     ! width is stored in bc%pml%width
     ! assuming that the width is the same in the 3 dimensions (only case implemented now), we can change the following line:
@@ -1174,7 +1196,7 @@ contains
     ! PML variables for all boundary points
     do ip_in = 1, bc%pml%points_number
       ip = bc%pml%points_map(ip_in)
-      ddv(1:3) = abs(gr%mesh%x(ip, 1:3)) - bc%bc_bounds(1, 1:3)
+      ddv(1:3) = abs(gr%x(ip, 1:3)) - bc%bc_bounds(1, 1:3)
       do idim = 1, space%dim
         if (ddv(idim) >= M_ZERO) then
           gg     = (ddv(idim)/bc%pml%width)**bc%pml%power
@@ -1193,16 +1215,16 @@ contains
           if (ll_m == M_ZERO) aa_m = M_ZERO
           bc%pml%sigma_e(ip_in, idim) = ss_e
           bc%pml%sigma_m(ip_in, idim) = ss_m
-          bc%pml%a(ip_in, idim)       = aa_e + M_zI * aa_m
-          bc%pml%b(ip_in, idim)       = bb_e + M_zI * bb_m
+          bc%pml%a(ip_in, idim)       = aa_e
+          bc%pml%b(ip_in, idim)       = bb_e
           bc%pml%kappa(ip_in, idim)   = kk
           bc%pml%mask(ip_in)          = bc%pml%mask(ip_in) * (M_ONE - sin(ddv(idim)*M_PI/(M_TWO*(width(idim))))**2)
         else
           bc%pml%kappa(ip_in, idim)   = M_ONE
           bc%pml%sigma_e(ip_in, idim) = M_ZERO
           bc%pml%sigma_m(ip_in, idiM) = M_ZERO
-          bc%pml%a(ip_in, idim)       = M_z0
-          bc%pml%b(ip_in, idim)       = M_z0
+          bc%pml%a(ip_in, idim)       = M_ZERO
+          bc%pml%b(ip_in, idim)       = M_ZERO
           bc%pml%mask(ip_in)          = M_ONE
         end if
       end do
@@ -1245,6 +1267,15 @@ contains
     SAFE_DEALLOCATE_A(tmp)
     SAFE_DEALLOCATE_A(tmp_grad)
 
+    if (accel_is_enabled()) then
+      call accel_write_buffer(bc%pml%buff_map, bc%pml%points_number, bc%pml%points_map)
+      call accel_write_buffer(bc%pml%buff_a, int(bc%pml%points_number, i8)*space%dim, bc%pml%a)
+      call accel_write_buffer(bc%pml%buff_b, int(bc%pml%points_number, i8)*space%dim, bc%pml%b)
+      call accel_write_buffer(bc%pml%buff_c, int(bc%pml%points_number, i8)*space%dim, bc%pml%c)
+      call accel_write_buffer(bc%pml%buff_conv_plus, int(bc%pml%points_number, i8)*space%dim*space%dim, bc%pml%conv_plus)
+      call accel_write_buffer(bc%pml%buff_conv_minus, int(bc%pml%points_number, i8)*space%dim*space%dim, bc%pml%conv_minus)
+    end if
+
     bc%pml%parameters_initialized = .true.
 
     POP_SUB(bc_mxll_generate_pml_parameters)
@@ -1252,9 +1283,60 @@ contains
   end subroutine bc_mxll_generate_pml_parameters
 
   ! ---------------------------------------------------------
+  subroutine bc_mxll_initialize_pml_simple(bc, space, gr, dt)
+    type(bc_mxll_t),    intent(inout) :: bc
+    type(space_t),      intent(in)    :: space
+    type(grid_t),       intent(in)    :: gr
+    FLOAT,              intent(in)    :: dt
+
+    integer :: ip_in, ip, idir
+    FLOAT :: ddv(1:space%dim), kappa, sigma, alpha
+    PUSH_SUB(bc_mxll_initialize_pml_simple)
+
+    ! PML variables for all boundary points
+    do ip_in = 1, bc%pml%points_number
+      ip = bc%pml%points_map(ip_in)
+      ddv(1:3) = abs(gr%x(ip, 1:3)) - bc%bc_bounds(1, 1:3)
+      do idir = 1, space%dim
+        if (ddv(idir) >= M_ZERO) then
+          sigma = (ddv(idir)/bc%pml%width)**bc%pml%power * &
+            -(bc%pml%power + M_ONE)*P_c*P_ep*log(bc%pml%refl_error)/(M_TWO * bc%pml%width)
+          ! kappa and alpha could be set to different values, but these seem to be fine
+          kappa = M_ONE
+          ! non-zero values for alpha can be used to modify the low-frequency behavior
+          alpha = M_ZERO
+          bc%pml%b(ip_in, idir) = exp(-(alpha + sigma/kappa)/P_ep*dt)
+          if (abs(sigma) < M_EPSILON) then
+            bc%pml%c(ip_in, idir) = M_ZERO
+          else
+            bc%pml%c(ip_in, idir) = M_ONE/(kappa + kappa**2*alpha/sigma) * &
+              (bc%pml%b(ip_in, idir) - 1)
+          end if
+        else
+          bc%pml%b(ip_in, idir) = M_ZERO
+          bc%pml%c(ip_in, idir) = M_ZERO
+        end if
+      end do
+    end do
+    if (accel_is_enabled()) then
+      call accel_write_buffer(bc%pml%buff_map, &
+        bc%pml%points_number, bc%pml%points_map)
+      call accel_write_buffer(bc%pml%buff_b, &
+        int(bc%pml%points_number, i8)*space%dim, bc%pml%b)
+      call accel_write_buffer(bc%pml%buff_c, &
+        int(bc%pml%points_number, i8)*space%dim, bc%pml%c)
+      call accel_write_buffer(bc%pml%buff_conv_plus, &
+        int(bc%pml%points_number, i8)*space%dim*space%dim, bc%pml%conv_plus)
+      call accel_write_buffer(bc%pml%buff_conv_plus_old, &
+        int(bc%pml%points_number, i8)*space%dim*space%dim, bc%pml%conv_plus_old)
+    end if
+    POP_SUB(bc_mxll_initialize_pml_simple)
+  end subroutine bc_mxll_initialize_pml_simple
+
+  ! ---------------------------------------------------------
   subroutine bc_mxll_generate_mask(bc, mesh, bounds)
     type(bc_mxll_t),    intent(inout) :: bc
-    type(mesh_t),       intent(in)    :: mesh
+    class(mesh_t),      intent(in)    :: mesh
     FLOAT,              intent(in)    :: bounds(:,:)
 
     integer :: ip, ip_in, idim, ip_in_max
@@ -1326,25 +1408,25 @@ contains
     call profiling_in(prof, 'BC_MXLL_GENERATE_MEDIUM')
 
     ip_in_max = max(bc%medium(1)%points_number, bc%medium(2)%points_number, bc%medium(3)%points_number)
-    dd_max = max(2*gr%mesh%spacing(1), 2*gr%mesh%spacing(2), 2*gr%mesh%spacing(3))
+    dd_max = max(2*gr%spacing(1), 2*gr%spacing(2), 2*gr%spacing(3))
 
     do idim = 1, 3
       call single_medium_box_allocate(bc%medium(idim), ip_in_max)
-      SAFE_ALLOCATE(tmp(gr%mesh%np_part))
-      SAFE_ALLOCATE(tmp_grad(1:gr%mesh%np_part,1:space%dim))
+      SAFE_ALLOCATE(tmp(gr%np_part))
+      SAFE_ALLOCATE(tmp_grad(1:gr%np_part,1:space%dim))
       bc%medium(idim)%aux_ep = M_ZERO
       bc%medium(idim)%aux_mu = M_ZERO
       bc%medium(idim)%c = P_c
 
       tmp = P_ep
-      do  ip = 1, gr%mesh%np_part
-        call maxwell_box_point_info(bc, gr%mesh, ip, bounds, point_info)
-        if ((point_info /= 0) .and. (abs(gr%mesh%x(ip, idim)) <= bounds(1, idim))) then
-          xx(:) = gr%mesh%x(ip, :)
+      do  ip = 1, gr%np_part
+        call maxwell_box_point_info(bc, gr, ip, bounds, point_info)
+        if ((point_info /= 0) .and. (abs(gr%x(ip, idim)) <= bounds(1, idim))) then
+          xx(:) = gr%x(ip, :)
           dd_min = M_HUGE
           do ip_bd = 1, bc%medium(idim)%bdry_number
             ipp = bc%medium(idim)%bdry_map(ip_bd)
-            xxp(:) = gr%mesh%x(ipp, :)
+            xxp(:) = gr%x(ipp, :)
             dd = norm2(xx(1:3) - xxp(1:3))
             if (dd < dd_min) dd_min = dd
           end do
@@ -1361,14 +1443,14 @@ contains
 
     do idim = 1, 3
       tmp = P_mu
-      do ip = 1, gr%mesh%np_part
-        call maxwell_box_point_info(bc, gr%mesh, ip, bounds, point_info)
-        if ((point_info == 1) .and. (abs(gr%mesh%x(ip, idim)) <= bounds(1, idim))) then
-          xx(:) = gr%mesh%x(ip, :)
+      do ip = 1, gr%np_part
+        call maxwell_box_point_info(bc, gr, ip, bounds, point_info)
+        if ((point_info == 1) .and. (abs(gr%x(ip, idim)) <= bounds(1, idim))) then
+          xx(:) = gr%x(ip, :)
           dd_min = M_HUGE
           do ip_bd = 1, bc%medium(idim)%bdry_number
             ipp = bc%medium(idim)%bdry_map(ip_bd)
-            xxp(:) = gr%mesh%x(ipp,:)
+            xxp(:) = gr%x(ipp,:)
             dd = norm2(xx(1:3) - xxp(1:3))
             if (dd < dd_min) dd_min = dd
           end do
@@ -1386,11 +1468,11 @@ contains
     do idim = 1, 3
       do ip_in = 1, bc%medium(idim)%points_number
         ip = bc%medium(idim)%points_map(ip_in)
-        xx(:) = gr%mesh%x(ip, :)
+        xx(:) = gr%x(ip, :)
         dd_min = M_HUGE
         do ip_bd = 1, bc%medium(idim)%bdry_number
           ipp = bc%medium(idim)%bdry_map(ip_bd)
-          xxp(:) = gr%mesh%x(ipp, :)
+          xxp(:) = gr%x(ipp, :)
           dd = norm2(xx(1:3) - xxp(1:3))
           if (dd < dd_min) dd_min = dd
         end do
@@ -1415,172 +1497,8 @@ contains
   end subroutine bc_mxll_generate_medium
 
   ! ---------------------------------------------------------
-  subroutine maxwell_plane_waves_boundaries_init(bc, namespace)
-    type(bc_mxll_t),        intent(inout) :: bc
-    type(namespace_t),      intent(in)    :: namespace
-
-    type(block_t)        :: blk
-    integer              :: il, nlines, ncols, ierr
-    FLOAT                :: k_vector(3), vv(3), xx(3), rr, dummy(3), test, test_limit!, angle, sigma
-    CMPLX                :: e_field(3)
-    character(len=1024)  :: k_string(3)
-    character(len=1024)  :: mxf_expression
-    type(profile_t), save :: prof
-
-    PUSH_SUB(maxwell_plane_waves_boundaries_init)
-
-    call profiling_in(prof, 'MXLL_PLANE_WAVES_BOUND_INI')
-
-    test_limit = CNST(10.0e-9)
-
-    !%Variable MaxwellIncidentWaves
-    !%Type block
-    !%Section MaxwellStates
-    !%Description
-    !% The initial electromagnetic fields can be set by the user
-    !% with the <tt>MaxwellIncidentWaves</tt> block variable.
-    !% The electromagnetic fields have to fulfill the
-    !% Maxwells equations in vacuum.
-    !%
-    !% Example:
-    !%
-    !% <tt>%MaxwellIncidentWaves
-    !% <br>&nbsp;&nbsp;   plane_wave_parser      | "k1x" | "k1y" | "k1z" | "E1x" | "E1z" | "E1x"
-    !% <br>&nbsp;&nbsp;   plane_wave_parser      | "k2x" | "k2y" | "k2z" | "E2x" | "E2y" | "E2z"
-    !% <br>&nbsp;&nbsp;   plane_wave_gauss       | "k3x" | "k3y" | "k3z" | "E3x" | "E3y" | "E3z" | "width" | "shift"
-    !% <br>&nbsp;&nbsp;   plane_wave_mx_function | "E4x" | "E4y" | "E4z" | mx_envelope_name
-    !% <br>%</tt>
-    !%
-    !% Description about MaxwellIncidentWaves follows
-    !%
-    !%Option plane_wave_parser 0
-    !% Parser input modus
-    !%Option plane_wave_mx_function 1
-    !% The incident wave envelope is defined by an mx_function
-    !%End
-
-    if (parse_block(namespace, 'MaxwellIncidentWaves', blk) == 0) then
-
-      call messages_print_stress(msg='Substitution of the electromagnetic incident waves', namespace=namespace)
-
-      ! find out how many lines (i.e. states) the block has
-      nlines = parse_block_n(blk)
-
-      bc%plane_wave%number = nlines
-      SAFE_ALLOCATE(bc%plane_wave%modus(1:nlines))
-      SAFE_ALLOCATE(bc%plane_wave%e_field_string(1:3, 1:nlines))
-      SAFE_ALLOCATE(bc%plane_wave%e_field(1:3, 1:nlines))
-      SAFE_ALLOCATE(bc%plane_wave%k_vector(1:3, 1:nlines))
-      SAFE_ALLOCATE(bc%plane_wave%v_vector(1:3, 1:nlines))
-      SAFE_ALLOCATE(bc%plane_wave%mx_function(1:nlines))
-
-      ! read all lines
-      do il = 1, nlines
-        ! Check that number of columns is five or six.
-        ncols = parse_block_cols(blk, il - 1)
-        if ((ncols /= 5) .and. (ncols /= 7) .and. (ncols /= 9)) then
-          message(1) = 'Each line in the MaxwellIncidentWaves block must have five, seven or nine columns.'
-          call messages_fatal(1, namespace=namespace)
-        end if
-
-        ! check input modus e.g. parser of defined functions
-        call parse_block_integer(blk, il - 1, 0, bc%plane_wave%modus(il))
-
-        ! parse formula string
-        if (bc%plane_wave%modus(il) == OPTION__MAXWELLINCIDENTWAVES__PLANE_WAVE_PARSER) then
-
-          call parse_block_string( blk, il - 1, 1, k_string(1))
-          call parse_block_string( blk, il - 1, 2, k_string(2))
-          call parse_block_string( blk, il - 1, 3, k_string(3))
-          call parse_block_string( blk, il - 1, 4, bc%plane_wave%e_field_string(1, il))
-          call parse_block_string( blk, il - 1, 5, bc%plane_wave%e_field_string(2, il))
-          call parse_block_string( blk, il - 1, 6, bc%plane_wave%e_field_string(3, il))
-
-          write(message(1), '(a,i2,a) ') 'Substituting electromagnetic incident wave ', il, ' with the expressions: '
-          call messages_info(1, namespace=namespace)
-          write(message(1), '(6a)')     '  Wave vector k(x)   = ', trim(k_string(1))
-          write(message(2), '(2a)')     '  Wave vector k(y)   = ', trim(k_string(2))
-          write(message(3), '(2a)')     '  Wave vector k(z)   = ', trim(k_string(3))
-          write(message(4), '(2a)')     '  E-field(x) for t_0 = ', trim(bc%plane_wave%e_field_string(1, il))
-          write(message(5), '(2a)')     '  E-field(y) for t_0 = ', trim(bc%plane_wave%e_field_string(2, il))
-          write(message(6), '(2a)')     '  E-field(z) for t_0 = ', trim(bc%plane_wave%e_field_string(3, il))
-          call messages_info(6, namespace=namespace)
-
-          call conv_to_C_string(k_string(1))
-          call conv_to_C_string(k_string(2))
-          call conv_to_C_string(k_string(3))
-          call conv_to_C_string(bc%plane_wave%e_field_string(1, il))
-          call conv_to_C_string(bc%plane_wave%e_field_string(2, il))
-          call conv_to_C_string(bc%plane_wave%e_field_string(3, il))
-
-          xx(:) = M_ZERO
-          rr    = M_ZERO
-          call parse_expression(k_vector(1), dummy(1), 1, xx, rr, M_ZERO, k_string(1))
-          call parse_expression(k_vector(2), dummy(2), 2, xx, rr, M_ZERO, k_string(2))
-          call parse_expression(k_vector(3), dummy(3), 3, xx, rr, M_ZERO, k_string(3))
-          k_vector(1) = units_to_atomic(unit_one/units_inp%length, k_vector(1))
-          k_vector(2) = units_to_atomic(unit_one/units_inp%length, k_vector(2))
-          k_vector(3) = units_to_atomic(unit_one/units_inp%length, k_vector(3))
-
-          vv(:)    = k_vector(:) / norm2(k_vector) * P_c
-          bc%plane_wave%k_vector(:,il) = k_vector(:)
-          bc%plane_wave%v_vector(:,il) = vv(:)
-
-        else if (bc%plane_wave%modus(il) == OPTION__MAXWELLINCIDENTWAVES__PLANE_WAVE_MX_FUNCTION) then
-          call parse_block_cmplx( blk, il - 1, 1, e_field(1))
-          call parse_block_cmplx( blk, il - 1, 2, e_field(2))
-          call parse_block_cmplx( blk, il - 1, 3, e_field(3))
-          call parse_block_string( blk, il - 1, 4, mxf_expression)
-
-          write(message(1), '(a,i2) ') 'Substituting electromagnetic incident wave ', il
-          write(message(3), '(a)'    ) 'with the expression: '
-          call messages_info(2, namespace=namespace)
-          write(message(1), '(a,f9.4,sp,f9.4,"i")') '  E-field(x) complex amplitude  = ', real(e_field(1)), aimag(e_field(1))
-          write(message(2), '(a,f9.4,sp,f9.4,"i")') '  E-field(y) complex amplitude  = ', real(e_field(2)), aimag(e_field(2))
-          write(message(3), '(a,f9.4,sp,f9.4,"i")') '  E-field(z) complex amplitude  = ', real(e_field(3)), aimag(e_field(3))
-          write(message(4), '(2a)'    )      '  Maxwell wave function name = ', trim(mxf_expression)
-          call messages_info(4, namespace=namespace)
-          call mxf_read(bc%plane_wave%mx_function(il), namespace, trim(mxf_expression), ierr)
-          if (ierr /= 0) then
-            write(message(1),'(3A)') 'Error in the ""', trim(mxf_expression), &
-              '"" field defined in the MaxwellIncidentWaves block'
-            call messages_fatal(1, namespace=namespace)
-          end if
-          e_field  = units_to_atomic(units_inp%energy/units_inp%length, e_field)
-          k_vector(1:3) = bc%plane_wave%mx_function(il)%k_vector(1:3)
-
-          test = TOFLOAT(dot_product(k_vector(1:3), e_field(1:3)))
-          if (abs(test) > test_limit) then
-            message(1) = 'The wave vector k(:) or its electric field E-field(:) '
-            message(2) = 'is not perpendicular enough.'
-            call messages_fatal(2, namespace=namespace)
-          end if
-          if (norm2(k_vector) < 1e-10) then
-            message(1) = 'The k vector is not defined correctly.'
-            call messages_fatal(1, namespace=namespace)
-          end if
-
-          bc%plane_wave%e_field(:,il)  = e_field(:)
-          bc%plane_wave%k_vector(:,il) = k_vector(:)
-          bc%plane_wave%v_vector(:,il) = k_vector(:) / norm2(k_vector) * P_c
-
-        end if
-      end do
-
-      call parse_block_end(blk)
-
-      call messages_print_stress(namespace=namespace)
-
-    end if
-
-    call profiling_out(prof)
-
-    POP_SUB(maxwell_plane_waves_boundaries_init)
-  end subroutine maxwell_plane_waves_boundaries_init
-
-  ! ---------------------------------------------------------
   subroutine maxwell_surfaces_init(mesh, st, bounds)
-    type(mesh_t),             intent(in)    :: mesh
+    class(mesh_t),            intent(in)    :: mesh
     type(states_mxll_t),      intent(inout) :: st
     FLOAT,                    intent(in)    :: bounds(:,:)
 
@@ -1688,7 +1606,7 @@ contains
   ! ---------------------------------------------------------
   subroutine maxwell_box_point_info(bc, mesh, ip, bounds, point_info)
     type(bc_mxll_t),     intent(inout) :: bc
-    type(mesh_t),        intent(in)    :: mesh
+    class(mesh_t),       intent(in)    :: mesh
     integer,             intent(in)    :: ip
     FLOAT,               intent(in)    :: bounds(:,:)
     integer,             intent(out)   :: point_info
@@ -1764,7 +1682,7 @@ contains
 
   ! ---------------------------------------------------------
   subroutine maxwell_boundary_point_info(mesh, ip, bounds, boundary_info)
-    type(mesh_t),        intent(in)    :: mesh
+    class(mesh_t),       intent(in)    :: mesh
     integer,             intent(in)    :: ip
     FLOAT,               intent(in)    :: bounds(:,:)
     integer,             intent(out)   :: boundary_info
@@ -1787,7 +1705,7 @@ contains
 
   ! ---------------------------------------------------------
   subroutine inner_and_outer_points_mapping(mesh, st, bounds)
-    type(mesh_t),        intent(in)    :: mesh
+    class(mesh_t),       intent(in)    :: mesh
     type(states_mxll_t), intent(inout) :: st
     FLOAT,               intent(in)    :: bounds(:,:)
 
@@ -1797,7 +1715,7 @@ contains
 
     PUSH_SUB(inner_and_outer_points_mapping)
 
-    call profiling_in(prof, 'INNER_AND_OUTER_POINTS_MAP')
+    call profiling_in(prof, 'IN_OUT_POINTS_MAP')
 
     ! allocate inner and boundary points points map
     ip_in = 0
@@ -1853,6 +1771,13 @@ contains
       end if
     end do
 
+    if (accel_is_enabled()) then
+      call accel_create_buffer(st%buff_inner_points_map, ACCEL_MEM_READ_ONLY, TYPE_INTEGER, st%inner_points_number)
+      call accel_write_buffer(st%buff_inner_points_map, st%inner_points_number, st%inner_points_map)
+      call accel_create_buffer(st%buff_boundary_points_map, ACCEL_MEM_READ_ONLY, TYPE_INTEGER, st%boundary_points_number)
+      call accel_write_buffer(st%buff_boundary_points_map, st%boundary_points_number, st%boundary_points_map)
+    end if
+
     call profiling_out(prof)
 
     POP_SUB(inner_and_outer_points_mapping)
@@ -1860,7 +1785,7 @@ contains
 
   ! ---------------------------------------------------------
   subroutine surface_grid_points_mapping(mesh, st, bounds)
-    type(mesh_t),        intent(in)    :: mesh
+    class(mesh_t),       intent(in)    :: mesh
     type(states_mxll_t), intent(inout) :: st
     FLOAT,               intent(in)    :: bounds(:,:)
 
@@ -1872,7 +1797,7 @@ contains
 
     PUSH_SUB(surface_grid_points_mapping)
 
-    call profiling_in(prof, 'SURFACE_GRID_POINTS_MAPPING')
+    call profiling_in(prof, 'SURF_GRID_POINTS_MAPPING')
 
     st%surface_grid_rows_number(1) = 3
     ix_max  = st%surface_grid_rows_number(1)

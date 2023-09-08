@@ -2,7 +2,7 @@ CalculationMode = gs
 
 PseudopotentialSet = hscv_pbe
 
-%Coordinates 
+%Coordinates
  'C' |  1.128442 | 0.000000 | 0.000000
  'C' | -1.128442 | 0.000000 | 0.000000
  'H' |  3.116852 | 0.000000 | 0.000000

@@ -12,7 +12,7 @@ ExperimentalFeatures = yes
 Spacing = 0.65
 Radius = 7.5589
 
-%EMFreqs 
+%EMFreqs
 2 | 0.0 | 0.1
 %
 

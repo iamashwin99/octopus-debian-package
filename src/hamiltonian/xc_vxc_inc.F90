@@ -16,9 +16,9 @@
 !! 02110-1301, USA.
 !!
 
-subroutine xc_get_vxc(der, xcs, st, kpoints, psolver, namespace, space, rho, ispin, rcell_volume, &
+subroutine xc_get_vxc(gr, xcs, st, kpoints, psolver, namespace, space, rho, ispin, rcell_volume, &
   vxc, ex, ec, deltaxc, vtau, ex_density, ec_density)
-  type(derivatives_t),    intent(in)    :: der             !< Discretization and the derivative operators and details
+  type(grid_t),           intent(in)    :: gr              !< Discretization and the derivative operators and details
   type(xc_t), target,     intent(inout) :: xcs             !< Details about the xc functional used
   type(states_elec_t),    intent(in)    :: st              !< State of the system (wavefunction,eigenvalues...)
   type(kpoints_t),        intent(in)    :: kpoints
@@ -37,15 +37,15 @@ subroutine xc_get_vxc(der, xcs, st, kpoints, psolver, namespace, space, rho, isp
   FLOAT, optional, target, intent(out)  :: ec_density(:)   !< The correlation energy density
 
   PUSH_SUB(xc_get_vxc)
- 
-  call xc_update_internal_quantities(der, xcs, st, kpoints, psolver, namespace, space, rho, &
+
+  call xc_update_internal_quantities(gr, xcs, st, kpoints, psolver, namespace, space, rho, &
     xcs%quantities, ispin, rcell_volume)
 
-  call xc_compute_vxc(der, xcs, st, psolver, namespace, space, xcs%quantities, ispin, &
-    vxc, ex, ec, deltaxc, vtau, ex_density, ec_density) 
+  call xc_compute_vxc(gr%der, xcs, st, psolver, namespace, space, xcs%quantities, ispin, &
+    vxc, ex, ec, deltaxc, vtau, ex_density, ec_density)
 
-  call xc_release_internal_quantities(xcs%quantities) 
-  
+  call xc_release_internal_quantities(xcs%quantities)
+
   POP_SUB(xc_get_vxc)
 end subroutine xc_get_vxc
 
@@ -53,8 +53,8 @@ end subroutine xc_get_vxc
 !> Given a functional, we are updating/transfering/computing the needed internal quantities
 !> that are later needed to perform an actual call to xc_compute_vxc
 ! -----------------------------------------------------
-subroutine xc_update_internal_quantities(der, xcs, st, kpoints, psolver, namespace, space, rho, quantities, ispin, rcell_volume)
-  type(derivatives_t),    intent(in)    :: der             !< Discretization and the derivative operators and details
+subroutine xc_update_internal_quantities(gr, xcs, st, kpoints, psolver, namespace, space, rho, quantities, ispin, rcell_volume)
+  type(grid_t),           intent(in)    :: gr             !< Discretization and the derivative operators and details
   type(xc_t), target,     intent(inout) :: xcs             !< Details about the xc functional used
   type(states_elec_t),    intent(in)    :: st              !< State of the system (wavefunction,eigenvalues...)
   type(kpoints_t),        intent(in)    :: kpoints
@@ -88,7 +88,7 @@ subroutine xc_update_internal_quantities(der, xcs, st, kpoints, psolver, namespa
   if (bitand(xcs%family, families) == 0) then
     POP_SUB(xc_update_internal_quantities)
     return
-  end if 
+  end if
 
   ! initialize a couple of handy variables
   gga  = family_is_gga(xcs%family)
@@ -103,28 +103,29 @@ subroutine xc_update_internal_quantities(der, xcs, st, kpoints, psolver, namespa
 
   ! Only for GGAs and MGGAs we need to take derivatives of the density
   if(gga) then
-    SAFE_ALLOCATE(quantities%dens(1:der%mesh%np_part, 1:spin_channels))
+    SAFE_ALLOCATE(quantities%dens(1:gr%np_part, 1:spin_channels))
   else
-    SAFE_ALLOCATE(quantities%dens(1:der%mesh%np, 1:spin_channels))
+    SAFE_ALLOCATE(quantities%dens(1:gr%np, 1:spin_channels))
   end if
 
   ! We first transfer the density to the dens array
   select case (ispin)
   case (UNPOLARIZED)
     !$omp parallel do
-    do ip = 1, der%mesh%np
+    do ip = 1, gr%np
       quantities%dens(ip, 1) = max(rho(ip, 1), M_ZERO)
     end do
 
   case (SPIN_POLARIZED)
     !$omp parallel do
-    do ip = 1, der%mesh%np
+    do ip = 1, gr%np
       quantities%dens(ip, 1) = max(rho(ip, 1), M_ZERO)
       quantities%dens(ip, 2) = max(rho(ip, 2), M_ZERO)
     end do
 
   case (SPINORS)
-    do ip = 1, der%mesh%np
+    !$omp parallel do private(d, dtot, dpol)
+    do ip = 1, gr%np
       d(1:spin_channels) = rho(ip, 1:spin_channels)
       dtot = d(1) + d(2)
       dpol = sqrt((d(1) - d(2))**2 + &
@@ -133,7 +134,7 @@ subroutine xc_update_internal_quantities(der, xcs, st, kpoints, psolver, namespa
       quantities%dens(ip, 2) = max(M_HALF*(dtot - dpol), M_ZERO)
     end do
   end select
-  
+
   !We also store a pointer to the density, as we might need it to compute the potential
   quantities%rho => rho
 
@@ -141,17 +142,17 @@ subroutine xc_update_internal_quantities(der, xcs, st, kpoints, psolver, namespa
   ! We do it here instead of doing it in gga_init and mgga_init in order to
   ! avoid calling the subroutine states_elec_calc_quantities twice
   if ((gga .and. (.not. mgga)) .or. xcs%xc_density_correction == LR_X) then
-    SAFE_ALLOCATE(quantities%gdens(1:der%mesh%np, 1:space%dim, 1:spin_channels)) 
+    SAFE_ALLOCATE(quantities%gdens(1:gr%np, 1:space%dim, 1:spin_channels))
     ! get gradient of the density (this is faster than calling states_elec_calc_quantities)
     do is = 1, spin_channels
-      call dderivatives_grad(der, quantities%dens(:, is), quantities%gdens(:, :, is))
+      call dderivatives_grad(gr%der, quantities%dens(:, is), quantities%gdens(:, :, is))
     end do
 
   else if (mgga) then
-    SAFE_ALLOCATE(quantities%gdens(1:der%mesh%np, 1:space%dim, 1:spin_channels))
-    SAFE_ALLOCATE(quantities%tau(1:der%mesh%np, 1:spin_channels))
+    SAFE_ALLOCATE(quantities%gdens(1:gr%np, 1:space%dim, 1:spin_channels))
+    SAFE_ALLOCATE(quantities%tau(1:gr%np, 1:spin_channels))
     if (needs_laplacian) then
-      SAFE_ALLOCATE(quantities%ldens(1:der%mesh%np, 1:spin_channels))
+      SAFE_ALLOCATE(quantities%ldens(1:gr%np, 1:spin_channels))
     end if
 
     ! We calculate everything from the wavefunctions to benefit from
@@ -167,24 +168,24 @@ subroutine xc_update_internal_quantities(der, xcs, st, kpoints, psolver, namespa
 
     if (needs_laplacian) then
       if (xcs%use_gi_ked) then
-        call states_elec_calc_quantities(der, st, kpoints, .true., gi_kinetic_energy_density = quantities%tau, &
+        call states_elec_calc_quantities(gr, st, kpoints, .true., gi_kinetic_energy_density = quantities%tau, &
           density_gradient = quantities%gdens, density_laplacian = quantities%ldens)
       else
-        call states_elec_calc_quantities(der, st, kpoints, .true., kinetic_energy_density = quantities%tau, &
+        call states_elec_calc_quantities(gr, st, kpoints, .true., kinetic_energy_density = quantities%tau, &
           density_gradient = quantities%gdens, density_laplacian = quantities%ldens)
       end if
     else
       if (xcs%use_gi_ked) then
-        call states_elec_calc_quantities(der, st, kpoints, .true., gi_kinetic_energy_density = quantities%tau, &
+        call states_elec_calc_quantities(gr, st, kpoints, .true., gi_kinetic_energy_density = quantities%tau, &
           density_gradient = quantities%gdens)
       else
-        call states_elec_calc_quantities(der, st, kpoints, .true., kinetic_energy_density = quantities%tau, &
+        call states_elec_calc_quantities(gr, st, kpoints, .true., kinetic_energy_density = quantities%tau, &
           density_gradient = quantities%gdens)
       end if
     end if
 
     if (functl(FUNC_X)%id == XC_MGGA_X_TB09) then
-      call calc_tb09_c(der%mesh, space, functl, quantities%dens, quantities%gdens, ispin, rcell_volume)
+      call calc_tb09_c(gr, space, functl, quantities%dens, quantities%gdens, ispin, rcell_volume)
     end if
   end if
 
@@ -193,7 +194,7 @@ subroutine xc_update_internal_quantities(der, xcs, st, kpoints, psolver, namespa
 
     if (xcs%functional(FUNC_C,1)%id == XC_HYB_GGA_XC_MVORB_HSE06  &
       .or. xcs%functional(FUNC_C,1)%id == XC_HYB_GGA_XC_MVORB_PBEH) then
-      call calc_mvorb_alpha(der%mesh, namespace, space, functl, quantities%dens, &
+      call calc_mvorb_alpha(gr, namespace, space, functl, quantities%dens, &
         quantities%gdens, ispin, rcell_volume, xcs%cam_alpha, xcs%cam_beta, xcs%cam_omega)
     end if
   end if
@@ -402,10 +403,12 @@ subroutine xc_compute_vxc(der, xcs, st, psolver, namespace, space, quantities, i
 
       if (calc_energy) then
         if (functl(ixc)%type == XC_EXCHANGE) then
+          !$omp parallel do
           do ib = 1, n_block
             ex_per_vol(ib + ip - 1) = ex_per_vol(ib + ip - 1) + sum(l_dens(1:spin_channels, ib))*l_zk(ib)
           end do
         else
+          !$omp parallel do
           do ib = 1, n_block
             ec_per_vol(ib + ip - 1) = ec_per_vol(ib + ip - 1) + sum(l_dens(1:spin_channels, ib))*l_zk(ib)
           end do
@@ -421,6 +424,7 @@ subroutine xc_compute_vxc(der, xcs, st, psolver, namespace, space, quantities, i
         SAFE_ALLOCATE(unp_dens(1:n_block))
         SAFE_ALLOCATE(unp_dedd(1:n_block))
 
+        !$omp parallel do
         do ib = 1, n_block
           unp_dens(ib) = sum(l_dens(1:spin_channels, ib))
         end do
@@ -435,6 +439,7 @@ subroutine xc_compute_vxc(der, xcs, st, psolver, namespace, space, quantities, i
           call xc_f03_gga_vxc(xcs%functional(ixc, 1)%conf, int(n_block, XC_SIZE_T), unp_dens, l_sigma, unp_dedd, l_vsigma)
         end select
 
+        !$omp parallel do
         do ib = 1, n_block
           vx(ib + ip - 1) = unp_dedd(ib)
         end do
@@ -447,6 +452,7 @@ subroutine xc_compute_vxc(der, xcs, st, psolver, namespace, space, quantities, i
       end if
 
       if (family_is_gga(functl(ixc)%family).and.functl(ixc)%family /= XC_FAMILY_LIBVDWXC) then
+        !$omp parallel do
         do ib = 1, n_block
           dedgd(ib + ip - 1,:,1) = dedgd(ib + ip - 1,:,1) + M_TWO*l_vsigma(1, ib)*quantities%gdens(ib + ip - 1,:,1)
           if (ispin /= UNPOLARIZED) then
@@ -479,11 +485,13 @@ subroutine xc_compute_vxc(der, xcs, st, psolver, namespace, space, quantities, i
     energy(1:2) = M_ZERO
 
     if (der%mesh%use_curvilinear) then
+      !$omp parallel do reduction(+:energy)
       do ip = ipstart, ipend
         energy(1) = energy(1) + ex_per_vol(ip)*der%mesh%vol_pp(ip)
         energy(2) = energy(2) + ec_per_vol(ip)*der%mesh%vol_pp(ip)
       end do
     else
+      !$omp parallel do reduction(+:energy)
       do ip = ipstart, ipend
         energy(1) = energy(1) + ex_per_vol(ip)
         energy(2) = energy(2) + ec_per_vol(ip)
@@ -560,6 +568,7 @@ subroutine xc_compute_vxc(der, xcs, st, psolver, namespace, space, quantities, i
       ! correct the energy density from Levy-Perdew, note that vx now
       ! contains the correction applied to the xc potential.
       do is = 1, spin_channels
+        !$omp parallel do
         do ip = 1, der%mesh%np
           ex_per_vol(ip) = vx(ip)*(M_THREE*quantities%dens(ip, is) &
             + sum(der%mesh%x(ip, 1:space%dim)*quantities%gdens(ip, 1:space%dim, is)))
@@ -646,6 +655,7 @@ contains
     call copy_global_to_local(quantities%dens, l_dens, nblock, spin_channels, ip)
 
     if (gga) then
+      !$omp parallel do
       do ib = 1, nblock
         l_sigma(1, ib) = sum(quantities%gdens(ib + ip - 1, 1:space%dim, 1)**2)
         if (ispin /= UNPOLARIZED) then
@@ -661,8 +671,8 @@ contains
       call copy_global_to_local(quantities%tau, l_tau, nblock, spin_channels, ip)
       ! we adjust for the different definition of tau in libxc
       l_tau(1:spin_channels, 1:nblock) = l_tau(1:spin_channels, 1:nblock) / M_TWO
-      
-      if (needs_laplacian) then 
+
+      if (needs_laplacian) then
         call copy_global_to_local(quantities%ldens, l_ldens, nblock, spin_channels, ip)
       end if
     end if
@@ -729,17 +739,18 @@ contains
 
       if (ispin == SPINORS) then
         ! rotate back (do not need the rotation matrix for this).
+        !$omp parallel do private(d, dpol, vpol)
         do ip = 1, der%mesh%np
           d(1:spin_channels) = quantities%rho(ip, 1:spin_channels)
 
           dpol = sqrt((d(1) - d(2))**2 + &
             M_FOUR*(quantities%rho(ip, 3)**2 + quantities%rho(ip, 4)**2))
-          vpol = (dedd(ip, 1) - dedd(ip, 2))*(d(1) - d(2))/(dpol + tiny)
+          vpol = (dedd(ip, 1) - dedd(ip, 2))*(d(1) - d(2))/(SAFE_TOL(dpol, tiny))
 
           vxc(ip, 1) = vxc(ip, 1) + M_HALF*(dedd(ip, 1) + dedd(ip, 2) + vpol)
           vxc(ip, 2) = vxc(ip, 2) + M_HALF*(dedd(ip, 1) + dedd(ip, 2) - vpol)
-          vxc(ip, 3) = vxc(ip, 3) + (dedd(ip, 1) - dedd(ip, 2))*quantities%rho(ip, 3)/(dpol + tiny)
-          vxc(ip, 4) = vxc(ip, 4) + (dedd(ip, 1) - dedd(ip, 2))*quantities%rho(ip, 4)/(dpol + tiny)
+          vxc(ip, 3) = vxc(ip, 3) + (dedd(ip, 1) - dedd(ip, 2))*quantities%rho(ip, 3)/(SAFE_TOL(dpol, tiny))
+          vxc(ip, 4) = vxc(ip, 4) + (dedd(ip, 1) - dedd(ip, 2))*quantities%rho(ip, 4)/(SAFE_TOL(dpol, tiny))
         end do
       elseif (ispin == SPIN_POLARIZED) then
         call lalg_axpy(der%mesh%np, M_ONE, dedd(:, 1), vxc(:, 1))
@@ -895,23 +906,10 @@ contains
 
 end subroutine xc_compute_vxc
 
-pure logical function family_is_gga(family)
-  integer, intent(in) :: family
-
-  family_is_gga = bitand(family, XC_FAMILY_GGA + XC_FAMILY_HYB_GGA + &
-    XC_FAMILY_MGGA + XC_FAMILY_HYB_MGGA + XC_FAMILY_LIBVDWXC) /= 0
-end function  family_is_gga
-
-pure logical function family_is_mgga(family)
-  integer, intent(in) :: family
-
-  family_is_mgga = bitand(family, XC_FAMILY_MGGA + XC_FAMILY_HYB_MGGA) /= 0
-end function family_is_mgga
-
 pure logical function functional_needs_laplacian(functl)
   type(xc_functional_t),  intent(in) :: functl(:)
 
-  integer :: ixc  
+  integer :: ixc
 
   functional_needs_laplacian = .false.
   do ixc = 1, 2

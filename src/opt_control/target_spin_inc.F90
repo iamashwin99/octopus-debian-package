@@ -83,14 +83,14 @@ FLOAT function target_j1_spin(tg, gr, psi) result(j1)
 
   PUSH_SUB(target_j1_spin)
 
-  SAFE_ALLOCATE(zpsi(1:gr%mesh%np, 1:tg%st%d%dim))
+  SAFE_ALLOCATE(zpsi(1:gr%np, 1:tg%st%d%dim))
 
-  call states_elec_get_state(psi, gr%mesh, 1, 1, zpsi)
+  call states_elec_get_state(psi, gr, 1, 1, zpsi)
 
   j1 = M_ZERO
   do i = 1, 2
     do j = 1, 2
-      j1 = j1 + real(tg%spin_matrix(i,j)*zmf_dotp(gr%mesh, zpsi(:, i), zpsi(:, j)))
+      j1 = j1 + real(tg%spin_matrix(i,j)*zmf_dotp(gr, zpsi(:, i), zpsi(:, j)))
     end do
   end do
 
@@ -114,20 +114,20 @@ subroutine target_chi_spin(tg, gr, psi_in, chi_out)
 
   PUSH_SUB(target_chi_spin)
 
-  SAFE_ALLOCATE(zpsi(1:gr%mesh%np, 1:tg%st%d%dim))
-  SAFE_ALLOCATE(zchi(1:gr%mesh%np, 1:tg%st%d%dim))
+  SAFE_ALLOCATE(zpsi(1:gr%np, 1:tg%st%d%dim))
+  SAFE_ALLOCATE(zchi(1:gr%np, 1:tg%st%d%dim))
 
-  call states_elec_get_state(psi_in, gr%mesh, 1, 1, zpsi)
+  call states_elec_get_state(psi_in, gr, 1, 1, zpsi)
 
-  zchi(1:gr%mesh%np, 1:tg%st%d%dim) = CNST(0.0)
+  zchi(1:gr%np, 1:tg%st%d%dim) = CNST(0.0)
 
   do i = 1, 2
     do j = 1, 2
-      zchi(1:gr%mesh%np, i) = zchi(1:gr%mesh%np, i) + tg%spin_matrix(i, j)*zpsi(1:gr%mesh%np, j)
+      zchi(1:gr%np, i) = zchi(1:gr%np, i) + tg%spin_matrix(i, j)*zpsi(1:gr%np, j)
     end do
   end do
 
-  call states_elec_set_state(chi_out, gr%mesh, 1, 1, zchi)
+  call states_elec_set_state(chi_out, gr, 1, 1, zchi)
 
   SAFE_DEALLOCATE_A(zpsi)
   SAFE_DEALLOCATE_A(zchi)

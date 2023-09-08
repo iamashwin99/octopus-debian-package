@@ -1,5 +1,5 @@
 CalculationMode = gs
-fromScratch = yes
+FromScratch = yes
 
 %Coordinates
 "He" | 0 | 0 | 0

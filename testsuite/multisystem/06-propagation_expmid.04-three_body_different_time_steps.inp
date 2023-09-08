@@ -43,7 +43,7 @@ Sun.ParticleMass = 1.98855e30
  0.0 | 0.0 | 0.0
 %
 
-TDSystemPropagator = exp_mid
+TDSystemPropagator = exp_mid_2step
 
 sampling = 24 # Time-steps per day
 days = 3

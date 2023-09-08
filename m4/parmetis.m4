@@ -48,7 +48,7 @@ if test x"$acx_parmetis_ok" != xno; then
   esac
 
   if test x"$acx_parmetis_ok" != xdisabled; then
-  
+
     dnl Backup LIBS and FCFLAGS
     acx_parmetis_save_CFLAGS="$CFLAGS"
     acx_parmetis_save_LIBS="$LIBS"

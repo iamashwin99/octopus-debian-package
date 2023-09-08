@@ -57,6 +57,7 @@ subroutine X(eigensolver_plan) (namespace, mesh, st, hm, pre, tol, niter, conver
   type(wfs_elec_t) :: vvb, avb
   integer  :: blk, ist, ii, dim, jst, d1, d2, matvec, nconv
   FLOAT :: xx
+  type(batch_t) :: ffb
 
   ! Some hard-coded parameters.
   integer, parameter  :: winsiz = 5  ! window size, number of eigenvalues computed simultaneously
@@ -155,6 +156,12 @@ subroutine X(eigensolver_plan) (namespace, mesh, st, hm, pre, tol, niter, conver
             call X(mf_random)(mesh, vv(:, 1, ist), &
               pre_shift = mesh%pv%xlocal-1, &
               post_shift = mesh%pv%np_global - mesh%pv%xlocal - mesh%np + 1)
+            ! Ensures that the grid points are properly distributed in the domain parallel case
+            if(mesh%parallel_in_domains) then
+              call batch_init(ffb, vv(:,1, ist))
+              call X(mesh_batch_exchange_points)(mesh, ffb, backward_map = .true.)
+              call ffb%end()
+            end if
           else
             call X(mf_random)(mesh, vv(:, 1, ist))
           end if

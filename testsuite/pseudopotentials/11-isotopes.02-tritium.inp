@@ -1,6 +1,9 @@
 CalculationMode = gs
+Debug = info
 
-PseudopotentialSet = sg15
+%Species
+"T" | species_pseudo | file | 'T_ONCV_PBE-1.2.upf'
+%
 
 %Coordinates
  'T' | 0.0 | 0.0 | 0.0
@@ -8,8 +11,3 @@ PseudopotentialSet = sg15
 
 Spacing = 0.35
 Radius = 6.0
-
-Debug = info
-
-ExperimentalFeatures = yes
-

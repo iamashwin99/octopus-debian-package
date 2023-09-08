@@ -1,0 +1,81 @@
+# ----- Calculation mode and parallelization ------------------------------------------------------
+
+CalculationMode   = td
+RestartWrite = no
+ExperimentalFeatures = yes
+FromScratch = yes
+
+%Systems
+  'Maxwell' | maxwell
+%
+
+Maxwell.ParDomains = auto
+Maxwell.ParStates  = no
+
+# ----- Maxwell box variables ---------------------------------------------------------------------
+
+lsize_mx = 14.0
+dx_mx    = 0.5
+
+BoxShape   = parallelepiped
+
+%Lsize
+ lsize_mx | lsize_mx | lsize_mx
+%
+
+%Spacing
+ dx_mx | dx_mx | dx_mx
+%
+
+
+# ----- Maxwell calculation variables -------------------------------------------------------------
+
+MaxwellHamiltonianOperator = faraday_ampere
+
+%MaxwellBoundaryConditions
+ zero | zero | zero
+%
+
+%MaxwellAbsorbingBoundaries
+ cpml | cpml | cpml
+%
+MaxwellABWidth = 8*dx_mx
+MaxwellABPMLPower = 2
+
+
+# ----- Output variables --------------------------------------------------------------------------
+
+OutputFormat = plane_z
+
+
+# ----- Maxwell output variables ------------------------------------------------------------------
+
+%MaxwellOutput
+ electric_field
+%
+
+MaxwellOutputInterval = 100
+MaxwellTDOutput       = maxwell_energy
+
+
+# ----- Time step variables -----------------------------------------------------------------------
+
+factor = 0.8
+Maxwell.TDSystemPropagator = prop_leapfrog
+TDTimeStep                        = factor * 1/(c * 1.731 * sqrt(3/dx_mx^2))
+TDPropagationTime               = 200*TDTimeStep
+
+# ----- Maxwell field variables -------------------------------------------------------------------
+
+lambda = 5.0
+omega  = 2 * pi * c / lambda
+kx     = omega / c
+Ez     = 0.05
+pw     = lambda/2.0
+p_s     = - lsize_mx + MaxwellABWidth + pw
+
+# cosinoidal pulse
+%UserDefinedInitialMaxwellStates
+ formula | 3 | electric_field | "      Ez*cos(kx*(x-p_s))*(-cos(pi/2*(x-p_s-2*pw)/pw)) * step(pw-abs(x-p_s)) "
+ formula | 2 | magnetic_field | " -1/c*Ez*cos(kx*(x-p_s))*(-cos(pi/2*(x-p_s-2*pw)/pw)) * step(pw-abs(x-p_s)) "
+%

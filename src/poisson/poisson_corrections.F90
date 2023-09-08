@@ -301,8 +301,8 @@ contains
 
   ! ---------------------------------------------------------
   subroutine internal_laplacian_op(xx, yy)
-    FLOAT, intent(in)    :: xx(:)
-    FLOAT, intent(out)   :: yy(:)
+    FLOAT,             intent(in)    :: xx(:)
+    FLOAT, contiguous, intent(out)   :: yy(:)
 
     FLOAT, allocatable :: xx_tmp(:)
 

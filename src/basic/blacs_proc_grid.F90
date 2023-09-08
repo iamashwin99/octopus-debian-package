@@ -18,6 +18,7 @@
 
 #include "global.h"
 
+!> @brief This module provides the BLACS processor grid
 module blacs_proc_grid_oct_m
   use debug_oct_m
   use global_oct_m
@@ -52,10 +53,10 @@ module blacs_proc_grid_oct_m
 contains
 
   ! -----------------------------------------------------------------------
-  !> Initializes a blacs context from an MPI communicator with
+  !> @brief Initializes a blacs context from an MPI communicator with
   !! topological information.
   !!
-  !! \Warning: For the moment this function only works if mpi_grp holds
+  !! \warning: For the moment this function only works if mpi_grp holds
   !! all the nodes of mpi_world.
   subroutine blacs_proc_grid_init(this, mpi_grp, procdim)
     type(blacs_proc_grid_t),           intent(inout) :: this

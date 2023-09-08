@@ -84,8 +84,8 @@ program oct_local_multipoles
   call profiling_init(global_namespace)
 
   call print_header()
-  call messages_print_stress(msg="Local Domains mode", namespace=global_namespace)
-  call messages_print_stress(namespace=global_namespace)
+  call messages_print_with_emphasis(msg="Local Domains mode", namespace=global_namespace)
+  call messages_print_with_emphasis(namespace=global_namespace)
 
   call messages_experimental("oct-local_multipoles utility")
 
@@ -298,7 +298,7 @@ contains
     message(2) = ''
     call messages_info(2)
 
-    call local_init(sys%space, sys%gr%mesh, sys%ions, nd, loc_domains)
+    call local_init(sys%space, sys%gr, sys%ions, nd, loc_domains)
 
     ! Starting loop over selected densities.
     if (any(loc_domains(:)%dshape == BADER)) then
@@ -315,8 +315,8 @@ contains
     if (ldrestart) then
       !TODO: check for domains & mesh compatibility
       call restart_init(restart_ld, global_namespace, RESTART_UNDEFINED, RESTART_TYPE_LOAD, sys%mc, err, &
-        dir=trim(ldrestart_folder), mesh = sys%gr%mesh)
-      call local_restart_read(sys%space, sys%gr%mesh, sys%ions, nd, loc_domains, restart_ld)
+        dir=trim(ldrestart_folder), mesh = sys%gr)
+      call local_restart_read(sys%space, sys%gr, sys%ions, nd, loc_domains, restart_ld)
       call restart_end(restart_ld)
     end if
 
@@ -332,7 +332,7 @@ contains
       restart_folder = folder
     end if
     call restart_init(restart, global_namespace, RESTART_UNDEFINED, RESTART_TYPE_LOAD, sys%mc, err, &
-      dir=trim(restart_folder), mesh = sys%gr%mesh)
+      dir=trim(restart_folder), mesh = sys%gr)
 
 !!$    call loct_progress_bar(-1, l_end-l_start)
     do iter = l_start, l_end, l_step
@@ -359,7 +359,7 @@ contains
       ! FIXME: why only real functions? Please generalize.
       ! TODO: up to know the local_multipoles utlity acts over density functions, which are real.
       if (err == 0) then
-        call drestart_read_mesh_function(restart, sys%space, trim(filename), sys%gr%mesh, sys%st%rho(:,1), err)
+        call drestart_read_mesh_function(restart, sys%space, trim(filename), sys%gr, sys%st%rho(:,1), err)
       end if
       if (err /= 0) then
         write(message(1),*) 'While reading density: "', trim(filename), '", error code:', err
@@ -368,13 +368,13 @@ contains
 
       ! Look for the mesh points inside local domains
       if ((iter == l_start .and. .not. ldrestart) .or. ldupdate) then
-        call local_inside_domain(sys%space, sys%gr%mesh, sys%ions, nd, loc_domains, global_namespace, sys%st%rho(:,1))
-        call local_restart_write(global_namespace, sys%space, sys%gr%mesh, sys%mc, nd, loc_domains)
+        call local_inside_domain(sys%space, sys%gr, sys%ions, nd, loc_domains, global_namespace, sys%st%rho(:,1))
+        call local_restart_write(global_namespace, sys%space, sys%gr, sys%mc, nd, loc_domains)
       end if
 
       do id = 1, nd
         call local_write_iter(loc_domains(id)%writ, global_namespace, sys%space, loc_domains(id)%lab, loc_domains(id)%ions_mask, &
-          loc_domains(id)%mesh_mask, sys%gr%mesh, sys%st, sys%hm, sys%ks, sys%ions, &
+          loc_domains(id)%mesh_mask, sys%gr, sys%st, sys%hm, sys%ks, sys%ions, &
           sys%ext_partners, kick, iter, l_start, ldoverwrite)
       end do
       call loct_progress_bar(iter-l_start, l_end-l_start)
@@ -401,7 +401,7 @@ contains
   ! ---------------------------------------------------------
   subroutine local_init(space, mesh, ions, nd, loc_domains)
     type(space_t),    intent(in)  :: space
-    type(mesh_t),     intent(in)  :: mesh
+    class(mesh_t),    intent(in)  :: mesh
     type(ions_t),     intent(in)  :: ions
     integer,          intent(out) :: nd
     type(local_domain_t), allocatable, intent(out) :: loc_domains(:)
@@ -582,7 +582,7 @@ contains
   subroutine local_restart_write(namespace, space, mesh, mc, nd, loc_domains)
     type(namespace_t),    intent(in) :: namespace
     type(space_t),        intent(in) :: space
-    type(mesh_t),         intent(in) :: mesh
+    class(mesh_t),        intent(in) :: mesh
     type(multicomm_t),    intent(in) :: mc
     integer,              intent(in) :: nd
     type(local_domain_t), intent(in) :: loc_domains(:)
@@ -630,7 +630,7 @@ contains
   ! ---------------------------------------------------------
   subroutine local_restart_read(space, mesh, ions, nd, loc_domains, restart)
     type(space_t),        intent(in)    :: space
-    type(mesh_t),         intent(in)    :: mesh
+    class(mesh_t),        intent(in)    :: mesh
     type(ions_t),         intent(in)    :: ions
     integer,              intent(in)    :: nd
     type(local_domain_t), intent(inout) :: loc_domains(:)
@@ -673,7 +673,7 @@ contains
   ! ---------------------------------------------------------
   subroutine local_inside_domain(space, mesh, ions, nd, loc_domains, namespace, ff)
     type(space_t),          intent(in)    :: space
-    type(mesh_t),           intent(in)    :: mesh
+    class(mesh_t),          intent(in)    :: mesh
     type(ions_t),           intent(in)    :: ions
     integer,                intent(in)    :: nd
     type(local_domain_t),   intent(inout) :: loc_domains(:)
@@ -740,11 +740,11 @@ contains
 
         write(filename,'(a,a)') 'domain.', trim(loc_domains(id)%lab)
         call dio_function_output(how, 'local.general', trim(filename), namespace, space, mesh, dble_domain_map, unit_one, ierr, &
-          ions = ions)
+          pos=ions%pos, atoms=ions%atom)
       end do
 
       call dio_function_output(how, 'local.general', 'domain.mesh', namespace, space, mesh, domain_mesh, unit_one, ierr, &
-        ions = ions)
+        pos=ions%pos, atoms=ions%atom)
 
       SAFE_DEALLOCATE_A(dble_domain_map)
       SAFE_DEALLOCATE_A(domain_mesh)
@@ -757,7 +757,7 @@ contains
   subroutine create_basins(namespace, space, mesh, ions, ff, basins)
     type(namespace_t),  intent(in)    :: namespace
     type(space_t),      intent(in)    :: space
-    type(mesh_t),       intent(in)    :: mesh
+    class(mesh_t),      intent(in)    :: mesh
     type(ions_t),       intent(in)    :: ions
     FLOAT,              intent(in)    :: ff(:)
     type(basins_t),     intent(inout) :: basins
@@ -806,8 +806,9 @@ contains
       end if
 
       call dio_function_output(how, 'local.general', 'basinsmap', namespace, space, mesh, TOFLOAT(basins%map(1:mesh%np)), &
-        unit_one, ierr, ions = ions)
-      call dio_function_output(how, 'local.general', 'dens_ff2', namespace, space, mesh, ff2(:,1), unit_one, ierr, ions = ions)
+        unit_one, ierr, pos=ions%pos, atoms=ions%atom)
+      call dio_function_output(how, 'local.general', 'dens_ff2', namespace, space, mesh, ff2(:,1), &
+        unit_one, ierr, pos=ions%pos, atoms=ions%atom)
     end if
     SAFE_DEALLOCATE_A(ff2)
 
@@ -847,7 +848,7 @@ contains
   ! ---------------------------------------------------------
   subroutine box_domain_create_mask(domain, mesh)
     class(local_domain_t), intent(inout) :: domain
-    type(mesh_t),          intent(in)    :: mesh
+    class(mesh_t),         intent(in)    :: mesh
 
     PUSH_SUB(box_domain_create_mask)
 
@@ -860,7 +861,7 @@ contains
   subroutine bader_domain_create_mask(domain, basins, mesh, ions)
     class(local_domain_t), intent(inout) :: domain
     type(basins_t),        intent(in)    :: basins
-    type(mesh_t),          intent(in)    :: mesh
+    class(mesh_t),         intent(in)    :: mesh
     type(ions_t),          intent(in)    :: ions
 
     integer               :: ia, ib, ip, ix, n_basins, rankmin
@@ -903,7 +904,7 @@ contains
   subroutine local_ions_mask(mesh_mask, ions, mesh, ions_mask)
     logical,            intent(in)  :: mesh_mask(:)
     type(ions_t),       intent(in)  :: ions
-    type(mesh_t),       intent(in)  :: mesh
+    class(mesh_t),      intent(in)  :: mesh
     logical,            intent(out) :: ions_mask(:)
 
     integer              :: ia, ix

@@ -39,10 +39,10 @@ contains
 
   !----------------------------------------------
   subroutine partial_charges_calculate(mesh, st, ions, hirshfeld_charges)
-    type(mesh_t),            intent(in)    :: mesh
+    class(mesh_t),           intent(in)    :: mesh
     type(states_elec_t),     intent(in)    :: st
     type(ions_t),            intent(in)    :: ions
-    FLOAT, optional,         intent(out)   :: hirshfeld_charges(:)
+    FLOAT,                   intent(out)   :: hirshfeld_charges(:)
 
     integer :: iatom
     type(profile_t), save :: prof
@@ -51,16 +51,13 @@ contains
     PUSH_SUB(partial_charges_calculate)
     call profiling_in(prof, 'PARTIAL_CHARGES')
 
-    if (present(hirshfeld_charges)) then
+    call hirshfeld_init(hirshfeld, mesh, ions, st%d%nspin)
 
-      call hirshfeld_init(hirshfeld, mesh, ions, st)
+    do iatom = 1, ions%natoms
+      call hirshfeld_charge(hirshfeld, iatom, st%rho, hirshfeld_charges(iatom))
+    end do
 
-      do iatom = 1, ions%natoms
-        call hirshfeld_charge(hirshfeld, iatom, st%rho, hirshfeld_charges(iatom))
-      end do
-
-      call hirshfeld_end(hirshfeld)
-    end if
+    call hirshfeld_end(hirshfeld)
 
     call profiling_out(prof)
     POP_SUB(partial_charges_calculate)

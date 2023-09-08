@@ -1,7 +1,7 @@
 CalculationMode = test
 
 %Coordinates
-"Na" | 0.0 | 0.0 |  0.0	
+"Na" | 0.0 | 0.0 |  0.0
 %
 
 BoxShape = sphere
@@ -14,4 +14,3 @@ PoissonFFTKernel = multipole_correction
 FFTLibrary = pfft
 
 PoissonSolverMaxMultipole = 5
-

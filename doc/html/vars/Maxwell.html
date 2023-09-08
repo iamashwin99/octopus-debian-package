@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML-full"></script>
 <style>
-   BODY {background-color: white; 
+   BODY {background-color: white;
          font-size: 10pt; font-family: verdana,helvetica;}
    A  {text-decoration: none;color: blue}
 </style>
@@ -13,6 +13,15 @@
 
 <a name='Maxwell'</a>
 <H2>Maxwell</H2>
+
+
+<p><b><a name='AnalyticalExternalSource'></a>AnalyticalExternalSource</b>
+<br/><i>Section</i>: Maxwell
+<br/><i>Type</i>: logical
+<br/><i>Default</i>: no
+<br/><br> This means the analytical evaluation of formula will be used, Maxwell propagation will not be used.
+
+</p><hr width='30%' align='left'/>
 
 
 <p><b><a name='CheckPointsMediumFromFile'></a>CheckPointsMediumFromFile</b>
@@ -173,6 +182,51 @@
 <li><b>negative</b>:  Negative side.
 </li>
 <li><b>positive</b>:  Positive side.
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='RegularizationFunction'></a>RegularizationFunction</b>
+<br/><i>Section</i>: Maxwell
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: COS2
+<br/><br> The current arising from charged point particles must be mapped onto the Maxwell
+ propagation grid. This requires a smearing or regularization function $\phi(\mathbf{r})$ attached to
+ each particle position $\mathbf{r}_i$ with user defined cutoff width, $\sigma$
+
+<br/><i>Options</i>:
+<ul>
+<li><b>COS2</b>:  $\phi(r)=\text{cos}^2(\frac{\pi}{2}\frac{|\mathbf{r}-\mathbf{r}_i|}{\sigma})$
+ if $|\mahtbf{r}-\mathbf{r}_i|<\sigma$, and 0 otherwise.
+</li>
+</ul>
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='RegularizationFunctionWidth'></a>RegularizationFunctionWidth</b>
+<br/><i>Section</i>: Maxwell
+<br/><i>Type</i>: float
+<br/><i>Default</i>: 2
+<br/><br> The current arising from charged point particles must be mapped onto the Maxwell
+ propagation grid. This requires a smearing or regularization function $\phi(\mathbf{r})$ attached to
+ each particle position $\mathbf{r}_i$ with user defined cutoff width, $\sigma$.
+ Default 2 bohrradii
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='TransverseFieldCalculation'></a>TransverseFieldCalculation</b>
+<br/><i>Section</i>: Maxwell
+<br/><i>Type</i>: integer
+<br/><i>Default</i>: no
+<br/><br> This variable selects the method for the calculation of the transverse field.
+
+<br/><i>Options</i>:
+<ul>
+<li><b>helmholtz</b>:  Transverse field calculated from Helmholtz decompisition (unreliable at the moment).
+</li>
+<li><b>total_minus_long</b>:  Total field minus longitudinal field.
 </li>
 </ul>
 </p><hr width='30%' align='left'/>

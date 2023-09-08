@@ -18,29 +18,32 @@
 
 #include "global.h"
 
+!> This module defines a linear medium for use in classical electrodynamics calculations
+!!
 module linear_medium_oct_m
   use algorithm_oct_m
   use calc_mode_par_oct_m
-  use clock_oct_m
   use cgal_polyhedra_oct_m
+  use clock_oct_m
+  use comm_oct_m
   use debug_oct_m
   use derivatives_oct_m
   use global_oct_m
+  use grid_oct_m
   use interaction_oct_m
   use interactions_factory_oct_m
   use iso_c_binding
   use io_oct_m
   use linear_medium_to_em_field_oct_m
   use messages_oct_m
-  use multicomm_oct_m
-  use comm_oct_m
-  use grid_oct_m
   use mesh_oct_m
   use mpi_oct_m
+  use multicomm_oct_m
   use namespace_oct_m
   use output_oct_m
+  use output_linear_medium_oct_m
   use parser_oct_m
-  use propagator_exp_mid_oct_m
+  use propagator_exp_mid_2step_oct_m
   use propagator_oct_m
   use profiling_oct_m
   use quantity_oct_m
@@ -62,10 +65,12 @@ module linear_medium_oct_m
     MEDIUM_PARALLELEPIPED = 1,         &
     MEDIUM_BOX_FILE       = 2
 
+  !> @brief linear medium for classical electrodynamics
+  !!
   type, extends(system_t) :: linear_medium_t
-    FLOAT                 :: ep_factor !< permitivity before applying edge profile
+    FLOAT                 :: ep_factor !< permittivity before applying edge profile
     FLOAT                 :: mu_factor !< permeability before applying edge profile
-    FLOAT                 :: sigma_e_factor !< electric conductivy before applying edge profile
+    FLOAT                 :: sigma_e_factor !< electric conductivity before applying edge profile
     FLOAT                 :: sigma_m_factor !< magnetic conductivity before applying edge4 profile
     integer               :: edge_profile  !< edge shape profile (smooth or steep)
     type(output_t)        :: outp
@@ -77,7 +82,7 @@ module linear_medium_oct_m
     procedure :: init_interaction => linear_medium_init_interaction
     procedure :: init_interaction_as_partner => linear_medium_init_interaction_as_partner
     procedure :: initial_conditions => linear_medium_initial_conditions
-    procedure :: do_td_operation => linear_medium_do_td
+    procedure :: do_algorithmic_operation => linear_medium_do_algorithmic_operation
     procedure :: is_tolerance_reached => linear_medium_is_tolerance_reached
     procedure :: update_quantity => linear_medium_update_quantity
     procedure :: update_exposed_quantity => linear_medium_update_exposed_quantity
@@ -140,14 +145,14 @@ contains
     call grid_init_stage_1(this%gr, this%namespace, this%space)
     ! store the ranges for these two indices (serves as initial guess
     ! for parallelization strategy)
-    index_range(1) = this%gr%mesh%np_global  ! Number of points in mesh
+    index_range(1) = this%gr%np_global  ! Number of points in mesh
     index_range(2) = 1                      ! Number of states
     index_range(3) = 1                      ! Number of k-points
     index_range(4) = 100000                 ! Some large number
 
     ! create index and domain communicators
     call multicomm_init(this%mc, this%namespace, mpi_world, calc_mode_par_parallel_mask(), &
-         &calc_mode_par_default_parallel_mask(), mpi_world%size, index_range, (/ 5000, 1, 1, 1 /))
+    &calc_mode_par_default_parallel_mask(), mpi_world%size, index_range, (/ 5000, 1, 1, 1 /))
     call grid_init_stage_2(this%gr, this%namespace, this%space, this%mc)
 
     call medium_box_init(this%medium_box, this%namespace)
@@ -189,7 +194,7 @@ contains
       call messages_info(5, namespace=namespace)
       call parse_block_end(blk)
 
-      call messages_print_stress(namespace=namespace)
+      call messages_print_with_emphasis(namespace=namespace)
     else
       message(1) = 'You must specify the properties of your linear medium through the LinearMediumProperties block.'
       call messages_fatal(1, namespace=namespace)
@@ -217,26 +222,37 @@ contains
 
     call this%supported_interactions_as_partner%add(LINEAR_MEDIUM_TO_EM_FIELD)
     this%quantities(PERMITTIVITY)%required = .true.
+    this%quantities(PERMITTIVITY)%updated_on_demand = .false.
+    this%quantities(PERMITTIVITY)%available_at_any_time = .true.
+
     this%quantities(PERMEABILITY)%required = .true.
+    this%quantities(PERMEABILITY)%updated_on_demand = .false.
+    this%quantities(PERMEABILITY)%available_at_any_time = .true.
+
     this%quantities(E_CONDUCTIVITY)%required = .true.
+    this%quantities(E_CONDUCTIVITY)%updated_on_demand = .false.
+    this%quantities(E_CONDUCTIVITY)%available_at_any_time = .true.
+
     this%quantities(M_CONDUCTIVITY)%required = .true.
+    this%quantities(M_CONDUCTIVITY)%updated_on_demand = .false.
+    this%quantities(M_CONDUCTIVITY)%available_at_any_time = .true.
 
     call output_linear_medium_init(this%outp, this%namespace, this%space)
 
     call get_medium_box_points_map(this%medium_box, this%gr)
     call get_linear_medium_em_properties(this, this%medium_box, this%gr)
-    call output_linear_medium(this%outp, this%namespace, this%space, this%gr%mesh, &
-         this%outp%iter_dir, this%medium_box%points_map, this%medium_box%ep, &
-         this%medium_box%mu, this%medium_box%c)
+    call output_linear_medium(this%outp, this%namespace, this%space, this%gr, &
+      this%outp%iter_dir, this%medium_box%points_map, this%medium_box%ep, &
+      this%medium_box%mu, this%medium_box%c)
 
     if (this%medium_box%check_medium_points) then
-      SAFE_ALLOCATE(tmp(1:this%gr%mesh%np))
+      SAFE_ALLOCATE(tmp(1:this%gr%np))
       n_global_points = 0
       write(message(1),'(a, a, a)')   'Check of points inside surface of medium ', trim(this%medium_box%filename), ":"
       call messages_info(1, namespace=this%namespace)
-      call get_points_map_from_file(this%medium_box%filename, this%gr%mesh, n_points, n_global_points, tmp, CNST(0.99))
+      call get_points_map_from_file(this%medium_box%filename, this%gr, n_points, n_global_points, tmp, CNST(0.99))
       write(message(1),'(a, I8)')'Number of points inside medium (normal coordinates):', &
-           this%medium_box%global_points_number
+        this%medium_box%global_points_number
       write(message(2),'(a, I8)')'Number of points inside medium (rescaled coordinates):', n_global_points
       write(message(3), '(a)') ""
       call messages_info(3, namespace=this%namespace)
@@ -269,49 +285,30 @@ contains
     class(linear_medium_t),   intent(in)    :: partner
     class(interaction_t),     intent(inout) :: interaction
 
-    integer  :: ip_in, ip_med, ip_mxll, ip_med_gr, ip_mxll_gr
-    integer, allocatable:: aux_map(:),  partner_to_system_map(:), medium_inverse_mapping(:)
+    type(regridding_t), pointer :: regridding
+    type(single_medium_box_t), pointer :: medium_box_grid
 
     PUSH_SUB(linear_medium_init_interaction_as_partner)
 
     select type (interaction)
     type is (linear_medium_to_em_field_t)
-      call grid_transfer_mapping(interaction%system_gr, partner%gr, partner_to_system_map, partner%namespace)
+      regridding => regridding_t(interaction%system_gr, &
+        partner%gr, partner%space, partner%namespace)
 
-      ! find which medium box points are part of Maxwell grid
-      ip_mxll = 0
-      allocate(aux_map(partner%medium_box%points_number)) ! at the most it will have these many points
-      allocate(medium_inverse_mapping(partner%gr%mesh%np))
-      aux_map = 0
-      medium_inverse_mapping = 0
-      do ip_in = 1, partner%medium_box%points_number
-        ip_med_gr = partner%medium_box%points_map(ip_in)
-        ip_mxll_gr = partner_to_system_map(ip_med_gr)
-        if (ip_mxll_gr > 0) then
-          ip_mxll = ip_mxll + 1
-          aux_map(ip_mxll) = ip_mxll_gr
-          medium_inverse_mapping(ip_mxll) = ip_in
-        end if
-      end do
+      ! create a medium box with the size of the partner grid and map all quantities to it
+      medium_box_grid => partner%medium_box%to_grid(partner%gr)
 
-      ! allocate and fill medium box on the Maxwell side
-      call single_medium_box_allocate(interaction%medium_box, ip_mxll)
-      interaction%medium_box%points_map(1:ip_mxll) = aux_map(1:ip_mxll)
-      interaction%medium_box%points_number = ip_mxll
+      ! now do the grid transfer to the medium box stored in the interaction which has the size of the system grid
+      call regridding%do_transfer(interaction%medium_box%aux_ep, medium_box_grid%aux_ep)
+      call regridding%do_transfer(interaction%medium_box%aux_mu, medium_box_grid%aux_mu)
+      call regridding%do_transfer(interaction%medium_box%ep, medium_box_grid%ep)
+      call regridding%do_transfer(interaction%medium_box%mu, medium_box_grid%mu)
+      call regridding%do_transfer(interaction%medium_box%c, medium_box_grid%c)
+      call regridding%do_transfer(interaction%medium_box%sigma_e, medium_box_grid%sigma_e)
+      call regridding%do_transfer(interaction%medium_box%sigma_m, medium_box_grid%sigma_m)
 
-      do ip_in = 1, interaction%medium_box%points_number
-        ip_med = medium_inverse_mapping(ip_in)
-        interaction%medium_box%aux_ep(ip_in,1:3) = partner%medium_box%aux_ep(ip_med,1:3)
-        interaction%medium_box%aux_mu(ip_in,1:3) = partner%medium_box%aux_mu(ip_med,1:3)
-        interaction%medium_box%ep(ip_in) = partner%medium_box%ep(ip_med)
-        interaction%medium_box%mu(ip_in) = partner%medium_box%mu(ip_med)
-        interaction%medium_box%c(ip_in) = partner%medium_box%c(ip_med)
-        interaction%medium_box%sigma_e(ip_in) = partner%medium_box%sigma_e(ip_med)
-        interaction%medium_box%sigma_m(ip_in) = partner%medium_box%sigma_m(ip_med)
-      end do
-      SAFE_DEALLOCATE_A(aux_map)
-      SAFE_DEALLOCATE_A(medium_inverse_mapping)
-      SAFE_DEALLOCATE_A(partner_to_system_map)
+      SAFE_DEALLOCATE_P(regridding)
+      SAFE_DEALLOCATE_P(medium_box_grid)
     class default
       message(1) = "Trying to initialize an unsupported interaction by a linear medium."
       call messages_fatal(1, namespace=partner%namespace)
@@ -330,22 +327,17 @@ contains
   end subroutine linear_medium_initial_conditions
 
   ! ---------------------------------------------------------
-  subroutine linear_medium_do_td(this, operation)
-    class(linear_medium_t),    intent(inout) :: this
+  logical function linear_medium_do_algorithmic_operation(this, operation) result(done)
+    class(linear_medium_t),         intent(inout) :: this
     class(algorithmic_operation_t), intent(in)    :: operation
 
-    PUSH_SUB(linear_medium_do_td)
+    PUSH_SUB(linear_medium_do_algorithmic_operation)
 
-    select case (operation%id)
-    case (SKIP)
-      ! Do nothing
-    case default
-      message(1) = "Unsupported TD operation."
-      call messages_fatal(1, namespace=this%namespace)
-    end select
+    ! Currently there are no linear medium specific algorithmic operations
+    done = .false.
 
-    POP_SUB(linear_medium_do_td)
-  end subroutine linear_medium_do_td
+    POP_SUB(linear_medium_do_algorithmic_operation)
+  end function linear_medium_do_algorithmic_operation
 
   ! ---------------------------------------------------------
   logical function linear_medium_is_tolerance_reached(this, tol) result(converged)
@@ -368,8 +360,8 @@ contains
 
     PUSH_SUB(linear_medium_update_quantity)
 
-    ! We are not allowed to update protected quantities!
-    ASSERT(.not. this%quantities(iq)%protected)
+    ! We are only allowed to update quantities that can be updated on demand
+    ASSERT(this%quantities(iq)%updated_on_demand)
 
     select case (iq)
     case default
@@ -387,12 +379,12 @@ contains
 
     PUSH_SUB(linear_medium_update_exposed_quantity)
 
-    ! We are not allowed to update protected quantities!
-    ASSERT(.not. partner%quantities(iq)%protected)
+    ! We are only allowed to update quantities that can be updated on demand
+    ASSERT(partner%quantities(iq)%updated_on_demand)
 
     select case (iq)
     case (PERMITTIVITY, PERMEABILITY, E_CONDUCTIVITY, M_CONDUCTIVITY)
-      call partner%quantities(iq)%clock%set_time(partner%prop%clock)
+      call partner%quantities(iq)%clock%set_time(partner%algo%clock)
     case default
       message(1) = "Incompatible quantity."
       call messages_fatal(1, namespace=partner%namespace)
@@ -511,14 +503,14 @@ contains
 
     call profiling_in(prof, 'GET_MEDIUM_BOX_POINTS_MAP')
 
-    SAFE_ALLOCATE(tmp_points_map(1:gr%mesh%np))
-    SAFE_ALLOCATE(tmp_bdry_map(1:gr%mesh%np))
+    SAFE_ALLOCATE(tmp_points_map(1:gr%np))
+    SAFE_ALLOCATE(tmp_bdry_map(1:gr%np))
     tmp_points_map = 0
     tmp_bdry_map = 0
 
     if (medium_box%box_shape == MEDIUM_BOX_FILE) then
 
-      call get_points_map_from_file(medium_box%filename, gr%mesh, medium_box%points_number,&
+      call get_points_map_from_file(medium_box%filename, gr, medium_box%points_number,&
         medium_box%global_points_number, tmp_points_map)
 
     else
@@ -529,8 +521,8 @@ contains
       end do
       ip_in = 0
       ip_bd = 0
-      do ip = 1, gr%mesh%np
-        xx(1:3) = gr%mesh%x(ip, 1:3)
+      do ip = 1, gr%np
+        xx(1:3) = gr%x(ip, 1:3)
         inside = check_point_in_bounds(xx, bounds(:,:))
         if (check_point_in_bounds(xx, bounds(:,:))) then
           ip_in = ip_in + 1
@@ -615,21 +607,21 @@ contains
 
     call profiling_in(prof, 'GET_LINEAR_MEDIUM_EM_PROPERTIES')
 
-    SAFE_ALLOCATE(tmp(1:gr%mesh%np_part))
-    SAFE_ALLOCATE(tmp_grad(1:gr%mesh%np_part,1:gr%box%dim))
-    dd_max = max(2*gr%mesh%spacing(1), 2*gr%mesh%spacing(2), 2*gr%mesh%spacing(3))
+    SAFE_ALLOCATE(tmp(1:gr%np_part))
+    SAFE_ALLOCATE(tmp_grad(1:gr%np_part, 1:gr%box%dim))
+    dd_max = max(2*gr%spacing(1), 2*gr%spacing(2), 2*gr%spacing(3))
 
     do ip_in = 1, medium_box%points_number
       ip = medium_box%points_map(ip_in)
       if (this%edge_profile == OPTION__LINEARMEDIUMEDGEPROFILE__SMOOTH) then
         ASSERT(allocated(medium_box%bdry_map))
 
-        xx(1:3) = gr%mesh%x(ip,1:3)
+        xx(1:3) = gr%x(ip,1:3)
         dd_min = M_HUGE
 
         do ip_bd = 1, medium_box%bdry_number
           ipp = medium_box%bdry_map(ip_bd)
-          xxp(1:3) = gr%mesh%x(ipp,1:3)
+          xxp(1:3) = gr%x(ipp,1:3)
           dd = norm2(xx(1:3) - xxp(1:3))
           if (dd < dd_min) dd_min = dd
         end do
@@ -691,7 +683,7 @@ contains
   !> Populate list of point indices for points inside the polyhedron
   subroutine get_points_map_from_file(filename, mesh, n_points, global_points_number, tmp_map, scale_factor)
     character(len=256),       intent(in)    :: filename
-    type(mesh_t),             intent(in)    :: mesh
+    class(mesh_t),            intent(in)    :: mesh
     integer,                  intent(out)   :: n_points
     integer,                  intent(out)   :: global_points_number
     integer,                  intent(inout) :: tmp_map(:)
@@ -777,7 +769,7 @@ contains
       !%End
 
       if (parse_block(namespace, 'LinearMediumBoxSize', blk) == 0) then
-        call messages_print_stress(msg=trim('Linear Medium box center and size:'), namespace=namespace)
+        call messages_print_with_emphasis(msg=trim('Linear Medium box center and size:'), namespace=namespace)
 
         nlines = parse_block_n(blk)
         if (nlines /=  1) then
@@ -799,7 +791,7 @@ contains
         call messages_info(3)
         call parse_block_end(blk)
 
-        call messages_print_stress(namespace=namespace)
+        call messages_print_with_emphasis(namespace=namespace)
       else
         message(1) = "For parallelepiped box shapes, you must provide a LinearMediumBoxSize block."
         call messages_fatal(1, namespace=namespace)

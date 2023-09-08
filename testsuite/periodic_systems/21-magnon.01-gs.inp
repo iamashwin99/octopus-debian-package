@@ -1,7 +1,6 @@
 CalculationMode = gs
 ExperimentalFeatures = yes
 FromScratch = yes
-DisableAccel = yes
 
 ParKPoints = 2
 ParDomains = 2
@@ -47,7 +46,7 @@ GuessMagnetDensity = user_defined
  0 | 0 | 2
 %
 
-%Output 
+%Output
   xc_torque | axis_x
   eigenval_kpt | vtk
 %

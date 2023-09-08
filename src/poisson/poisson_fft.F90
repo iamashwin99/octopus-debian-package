@@ -200,33 +200,6 @@ contains
   end subroutine get_cutoff
 
   !-----------------------------------------------------------------
-  subroutine poisson_fft_gg_transform(gg_in, temp, periodic_dim, latt, qq, gg, modg2)
-    integer,                 intent(in)    :: gg_in(:)
-    FLOAT,                   intent(in)    :: temp(:)
-    integer,                 intent(in)    :: periodic_dim
-    type(lattice_vectors_t), intent(in)    :: latt
-    FLOAT,                   intent(in)    :: qq(:)
-    FLOAT,                   intent(inout) :: gg(:)
-    FLOAT,                   intent(out)   :: modg2
-
-!    integer :: idir
-
-    ! no PUSH_SUB, called too frequently
-
-    gg(1:3) = gg_in(1:3)
-    gg(1:periodic_dim) = gg(1:periodic_dim) + qq(1:periodic_dim)
-    gg(1:3) = gg(1:3) * temp(1:3)
-    gg(1:3) = matmul(latt%klattice_primitive(1:3,1:3),gg(1:3))
-! MJV 27 jan 2015 this should not be necessary
-!    do idir = 1, 3
-!      gg(idir) = gg(idir) / lalg_nrm2(3, latt%klattice_primitive(1:3, idir))
-!    end do
-
-    modg2 = sum(gg(1:3)**2)
-
-  end subroutine poisson_fft_gg_transform
-
-  !-----------------------------------------------------------------
   subroutine poisson_fft_build_3d_3d(cube, coulb)
     type(cube_t),             intent(in)    :: cube
     type(fourier_space_op_t), intent(inout) :: coulb
@@ -263,25 +236,22 @@ contains
           iz = cube%fs_istart(3) + lz - 1
           ixx(3) = pad_feq(iz, db(3), .true.)
 
-          call poisson_fft_gg_transform(ixx, temp, 3, cube%latt, coulb%qq, gg, modg2)
+          call fft_gg_transform(ixx, temp, 3, cube%latt, coulb%qq, gg, modg2)
 
           !HH not very elegant
           if (cube%fft%library.eq.FFTLIB_NFFT) modg2=cube%Lfs(ix,1)**2+cube%Lfs(iy,2)**2+cube%Lfs(iz,3)**2
 
-          if (abs(modg2) > CNST(1e-6)) then
+          if (modg2 > CNST(1e-6)) then
             !Screened coulomb potential (erfc function)
             if (coulb%mu > M_EPSILON) then
               fft_Coulb_FS(lx, ly, lz) = M_FOUR*M_PI/modg2*(M_ONE-exp(-modg2*inv_four_mu2))
             else
               fft_Coulb_FS(lx, ly, lz) = M_FOUR*M_PI/modg2
             end if
-          else
-            !Screened coulomb potential (erfc function)
-            if (coulb%mu > M_EPSILON) then
-              !Analytical limit of 1/|q|^2*(1-exp(-|q|^2/4mu^2))
+          else ! This is the term q+G = 0
+            if (coulb%mu > M_EPSILON) then !Analytical limit of 1/|q|^2*(1-exp(-|q|^2/4mu^2))
               fft_Coulb_FS(lx, ly, lz) =  M_FOUR*M_PI*inv_four_mu2
-            else
-              !We use the user-defined value of the singularity
+            else !We use the user-defined value of the singularity
               fft_Coulb_FS(lx, ly, lz) = coulb%singularity
             end if
           end if
@@ -344,7 +314,7 @@ contains
         do iz = 1, nfs(3)
           ixx(3) = pad_feq(iz, db(3), .true.)
 
-          call poisson_fft_gg_transform(ixx, temp, 3, cube%latt, coulb%qq, gg, modg2)
+          call fft_gg_transform(ixx, temp, 3, cube%latt, coulb%qq, gg, modg2)
 
           if (abs(modg2) > M_EPSILON) then
             fft_Coulb_FS(ix, iy, iz) = M_ONE/modg2
@@ -464,7 +434,7 @@ contains
           iz = cube%fs_istart(3) + lz - 1
           ixx(3) = pad_feq(iz, db(3), .true.)
 
-          call poisson_fft_gg_transform(ixx, temp, 2, cube%latt, coulb%qq, gg, modg2)
+          call fft_gg_transform(ixx, temp, 2, cube%latt, coulb%qq, gg, modg2)
 
           if (abs(modg2) > M_EPSILON) then
             gz = abs(gg(3))
@@ -553,7 +523,7 @@ contains
           ixx(3) = pad_feq(iz, db(3), .true.)
           lxx(3) = ixx(3) - cube%fs_istart(3) + 1
 
-          call poisson_fft_gg_transform(ixx, temp, 1, cube%latt, coulb%qq, gg, modg2)
+          call fft_gg_transform(ixx, temp, 1, cube%latt, coulb%qq, gg, modg2)
 
           if (abs(modg2) > M_EPSILON) then
             gperp = hypot(gg(2), gg(3))
@@ -656,7 +626,7 @@ contains
           iz = cube%fs_istart(3) + lz - 1
           ixx(3) = pad_feq(iz, db(3), .true.)
 
-          call poisson_fft_gg_transform(ixx, temp, 0, cube%latt, coulb%qq, gg, modg2)
+          call fft_gg_transform(ixx, temp, 0, cube%latt, coulb%qq, gg, modg2)
 
           !HH
           if (cube%fft%library.eq.FFTLIB_NFFT) then

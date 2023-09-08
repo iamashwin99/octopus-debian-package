@@ -20,6 +20,7 @@
 
 module io_function_oct_m
   use affine_coordinates_oct_m
+  use atom_oct_m
   use box_oct_m
   use box_parallelepiped_oct_m
   use comm_oct_m
@@ -32,8 +33,8 @@ module io_function_oct_m
   use io_oct_m
   use io_binary_oct_m
   use io_csv_oct_m
-  use ions_oct_m
   use kpoints_oct_m
+  use lattice_vectors_oct_m
   use mesh_oct_m
   use mesh_function_oct_m
   use messages_oct_m
@@ -126,7 +127,7 @@ contains
 
     type(block_t) :: blk
     integer :: ncols, nrows, iout, column_index, what_i
-    integer(i8) :: what_no_how(10)       !> these kinds of Output do not have a how
+    integer(i8) :: what_no_how(11)       !> these kinds of Output do not have a how
     character(len=80) :: what_tag
     character(len=80) :: how_tag
     character(len=80) :: output_interval_tag
@@ -319,7 +320,7 @@ contains
     !% Outputs the electronic density resolved in momentum space.
     !%Option occ_matrices 35
     !% Only for DFT+U calculations.
-    !% Outputs the occupation matrices of LDA+U
+    !% Outputs the occupation matrices of DFT+U
     !%Option effectiveU 36
     !% Only for DFT+U calculations.
     !% Outputs the value of the effectiveU for each atoms
@@ -340,6 +341,8 @@ contains
     !% Outputs the exchange-correlation torque. Only for the spinor case and in the 3D case.
     !%Option eigenval_kpt 41
     !% Outputs the eigenvalues resolved in momentum space, with one file for each band.
+    !%Option stress 42
+    !% Outputs the stress tensor and each of its contributing terms
     !%End
 
     !%Variable OutputFormat
@@ -421,6 +424,7 @@ contains
     !%Option cube bit(16)
     !% Generates output in the <a href=http://paulbourke.net/dataformats/cube>cube file format</a>.
     !% Available only in 3D. Only writes the real part of complex functions.
+    !% This output format always uses atomic units.
     !%Option bild bit(19)
     !% Generates output in <a href=http://plato.cgl.ucsf.edu/chimera/docs/UsersGuide/bild.html>BILD format</a>.
     !%Option vtk bit(20)
@@ -456,7 +460,7 @@ contains
 
     what_no_how = (/ OPTION__OUTPUT__MATRIX_ELEMENTS, OPTION__OUTPUT__BERKELEYGW, OPTION__OUTPUT__DOS, &
       OPTION__OUTPUT__TPA, OPTION__OUTPUT__MMB_DEN, OPTION__OUTPUT__J_FLOW, OPTION__OUTPUT__OCC_MATRICES, &
-      OPTION__OUTPUT__EFFECTIVEU, OPTION__OUTPUT__MAGNETIZATION, OPTION__OUTPUT__KANAMORIU /)
+      OPTION__OUTPUT__EFFECTIVEU, OPTION__OUTPUT__MAGNETIZATION, OPTION__OUTPUT__KANAMORIU, OPTION__OUTPUT__STRESS /)
 
     if (parse_block(namespace, what_tag, blk) == 0) then
       nrows = parse_block_n(blk)
@@ -709,12 +713,15 @@ contains
   !> Includes information about simulation box and periodicity when applicable.
   !> This differs from a normal xyz file by including information about box
   !> shape and always using Angstroms.
-  subroutine write_canonicalized_xyz_file(dir, fname, ions, box, namespace)
-    character(len=*),  intent(in) :: dir
-    character(len=*),  intent(in) :: fname
-    type(ions_t),      intent(in) :: ions
-    class(box_t),      intent(in) :: box
-    type(namespace_t), intent(in) :: namespace
+  subroutine write_canonicalized_xyz_file(dir, fname, space, latt, pos, atoms, box, namespace)
+    character(len=*),        intent(in) :: dir
+    character(len=*),        intent(in) :: fname
+    type(space_t),           intent(in) :: space
+    type(lattice_vectors_t), intent(in) :: latt
+    FLOAT,                   intent(in) :: pos(:,:)
+    type(atom_t),            intent(in) :: atoms(:)
+    class(box_t),            intent(in) :: box
+    type(namespace_t),       intent(in) :: namespace
 
     integer :: iunit
     integer :: idir
@@ -726,20 +733,20 @@ contains
     call io_mkdir(dir, namespace)
     iunit = io_open(trim(dir)//'/'//trim(fname)//'.xyz', namespace, action='write', position='asis')
 
-    write(iunit, '(i6)') ions%natoms
-    write(iunit, '(a,a,a)', advance='no') trim(ions%space%short_info()), '; ', trim(box%short_info(unit_angstrom))
-    if (ions%space%is_periodic()) then
-      write(iunit, '(a,a)') '; ', trim(ions%latt%short_info(unit_angstrom))
+    write(iunit, '(i6)') size(atoms)
+    write(iunit, '(a,a,a)', advance='no') trim(space%short_info()), '; ', trim(box%short_info(unit_angstrom))
+    if (space%is_periodic()) then
+      write(iunit, '(a,a)') '; ', trim(latt%short_info(unit_angstrom))
     else
       write(iunit, '()')
     end if
 
     ! xyz-style labels and positions:
-    do iatom = 1, ions%natoms
-      write(iunit, '(10a)', advance='no') ions%atom(iatom)%label
+    do iatom = 1, size(atoms)
+      write(iunit, '(10a)', advance='no') atoms(iatom)%label
       do idir = 1, 3
-        if (idir <= ions%space%dim) then
-          position = ions%pos(idir, iatom)
+        if (idir <= space%dim) then
+          position = pos(idir, iatom)
         else
           position = M_ZERO
         end if
@@ -754,16 +761,18 @@ contains
   end subroutine write_canonicalized_xyz_file
 
   ! ---------------------------------------------------------
-  subroutine write_xsf_geometry_file(dir, fname, ions, mesh, namespace, write_forces)
-    character(len=*),   intent(in) :: dir, fname
-    type(ions_t),       intent(in) :: ions
-    type(mesh_t),       intent(in) :: mesh
-    type(namespace_t),  intent(in) :: namespace
-    logical,  optional, intent(in) :: write_forces
+  subroutine write_xsf_geometry_file(dir, fname, space, latt, pos, atoms, mesh, namespace, total_forces)
+    character(len=*),        intent(in) :: dir, fname
+    type(space_t),           intent(in) :: space
+    type(lattice_vectors_t), intent(in) :: latt
+    FLOAT,                   intent(in) :: pos(:,:)
+    type(atom_t),            intent(in) :: atoms(:)
+    class(mesh_t),           intent(in) :: mesh
+    type(namespace_t),       intent(in) :: namespace
+    FLOAT,  optional,        intent(in) :: total_forces(:,:)
 
     integer :: iunit
     FLOAT, allocatable :: forces(:,:)
-    logical :: write_forces_
 
     if (.not. mpi_grp_is_root(mpi_world)) return
 
@@ -772,19 +781,13 @@ contains
     call io_mkdir(dir, namespace)
     iunit = io_open(trim(dir)//'/'//trim(fname)//'.xsf', namespace, action='write', position='asis')
 
-    if (.not. present(write_forces)) then
-      write_forces_ = .false.
-    else
-      write_forces_ = write_forces
-    end if
-
-    if (write_forces_) then
-      SAFE_ALLOCATE(forces(1:ions%space%dim, 1:ions%natoms))
-      forces = units_from_atomic(units_out%force, ions%tot_force)
-      call write_xsf_geometry(iunit, ions, mesh, forces = forces)
+    if (present(total_forces)) then
+      SAFE_ALLOCATE(forces(1:space%dim, 1:size(atoms)))
+      forces = units_from_atomic(units_out%force, total_forces)
+      call write_xsf_geometry(iunit, space, latt, pos, atoms, mesh, forces = forces)
       SAFE_DEALLOCATE_A(forces)
     else
-      call write_xsf_geometry(iunit, ions, mesh)
+      call write_xsf_geometry(iunit, space, latt, pos, atoms, mesh)
     end if
 
     call io_close(iunit)
@@ -795,14 +798,17 @@ contains
   ! ---------------------------------------------------------
   !> for format specification see:
   !! http://www.xcrysden.org/doc/XSF.html#__toc__11
-  subroutine write_xsf_geometry(iunit, ions, mesh, forces, index)
-    integer,           intent(in) :: iunit
-    type(ions_t),      intent(in) :: ions
-    type(mesh_t),      intent(in) :: mesh
-    FLOAT,   optional, intent(in) :: forces(1:ions%space%dim, 1:ions%natoms)
-    integer, optional, intent(in) :: index !< for use in writing animated files
+  subroutine write_xsf_geometry(iunit, space, latt, pos, atoms, mesh, forces, index)
+    integer,                 intent(in) :: iunit
+    type(space_t),           intent(in) :: space
+    type(lattice_vectors_t), intent(in) :: latt
+    FLOAT,                   intent(in) :: pos(:,:)
+    type(atom_t),            intent(in) :: atoms(:)
+    class(mesh_t),           intent(in) :: mesh
+    FLOAT,         optional, intent(in) :: forces(:, :)
+    integer,       optional, intent(in) :: index !< for use in writing animated files
 
-    integer :: idir, idir2, iatom, index_
+    integer :: idir, idir2, iatom, index_, natoms
     character(len=7) :: index_str
     FLOAT :: offset(3)
     FLOAT :: rlattice(3,3)
@@ -816,20 +822,21 @@ contains
       write(index_str, '(a)') ''
       index_ = 1
     end if
+    natoms = size(pos, dim=2)
 
     ! The corner of the cell is always (0,0,0) to XCrySDen
     ! so the offset is applied to the atomic coordinates.
     ! Along periodic dimensions the offset is -1/2 in reduced coordinates, as
     ! our origin is at the center of the cell instead of being at the edge.
-    offset(1:ions%space%dim) = ions%latt%red_to_cart(spread(-M_HALF, 1, ions%space%dim))
+    offset(1:space%dim) = latt%red_to_cart(spread(-M_HALF, 1, space%dim))
     ! Offset in aperiodic directions:
-    do idir = ions%space%periodic_dim + 1, 3
+    do idir = space%periodic_dim + 1, 3
       offset(idir) = -(mesh%idx%ll(idir) - 1)/2 * mesh%spacing(idir)
     end do
 
-    if (ions%space%is_periodic()) then
+    if (space%is_periodic()) then
       if (index_ == 1) then
-        select case (ions%space%periodic_dim)
+        select case (space%periodic_dim)
         case (3)
           write(iunit, '(a)') 'CRYSTAL'
         case (2)
@@ -842,25 +849,25 @@ contains
       write(iunit, '(a)') 'PRIMVEC'//trim(index_str)
 
       !Computes the rlattice corresponding to the 3D periodic version of the simulation box
-      rlattice = ions%latt%rlattice
-      do idir = ions%space%periodic_dim+1, 3
+      rlattice = latt%rlattice
+      do idir = space%periodic_dim+1, 3
         rlattice(:,idir) = rlattice(:,idir)*M_TWO*mesh%box%bounding_box_l(idir)
       end do
 
-      do idir = 1, ions%space%dim
-        write(iunit, '(3f12.6)') (units_from_atomic(units_out%length, rlattice(idir2, idir)), idir2 = 1, ions%space%dim)
+      do idir = 1, space%dim
+        write(iunit, '(3f12.6)') (units_from_atomic(units_out%length, rlattice(idir2, idir)), idir2 = 1, space%dim)
       end do
 
       write(iunit, '(a)') 'PRIMCOORD'//trim(index_str)
-      write(iunit, '(i10, a)') ions%natoms, ' 1'
+      write(iunit, '(i10, a)') natoms, ' 1'
     else
       write(iunit, '(a)') 'ATOMS'//trim(index_str)
     end if
 
     ! BoxOffset should be considered here
-    do iatom = 1, ions%natoms
-      write(iunit, '(a10, 3f12.6)', advance='no') trim(ions%atom(iatom)%label), &
-        (units_from_atomic(units_out%length, ions%pos(idir, iatom) - offset(idir)), idir = 1, ions%space%dim)
+    do iatom = 1, natoms
+      write(iunit, '(a10, 3f12.6)', advance='no') trim(atoms(iatom)%label), &
+        (units_from_atomic(units_out%length, pos(idir, iatom) - offset(idir)), idir = 1, space%dim)
       if (present(forces)) then
         write(iunit, '(5x, 3f12.6)', advance='no') forces(:, iatom)
       end if
@@ -873,13 +880,16 @@ contains
 ! ---------------------------------------------------------
   !> for format specification see:
   !! http://www.xcrysden.org/doc/XSF.html#__toc__11
-  subroutine write_xsf_geometry_supercell(iunit, ions, mesh, centers, supercell, extra_atom)
-    integer,           intent(in) :: iunit
-    type(ions_t),      intent(in) :: ions
-    type(mesh_t),      intent(in) :: mesh
-    FLOAT,             intent(in) :: centers(:, :)
-    integer,           intent(in) :: supercell(:)
-    FLOAT, optional,   intent(in) :: extra_atom(:) !< An extra atom, with ther symbol 'X'
+  subroutine write_xsf_geometry_supercell(iunit, space, latt, pos, atoms, mesh, centers, supercell, extra_atom)
+    integer,                 intent(in) :: iunit
+    type(space_t),           intent(in) :: space
+    type(lattice_vectors_t), intent(in) :: latt
+    FLOAT,                   intent(in) :: pos(:,:)
+    type(atom_t),            intent(in) :: atoms(:)
+    class(mesh_t),           intent(in) :: mesh
+    FLOAT,                   intent(in) :: centers(:, :)
+    integer,                 intent(in) :: supercell(:)
+    FLOAT, optional,         intent(in) :: extra_atom(:) !< An extra atom, with ther symbol 'X'
 
     integer :: idir, idir2, iatom, index_
     character(len=7) :: index_str
@@ -891,42 +901,42 @@ contains
     write(index_str, '(a)') ''
     index_ = 1
 
-    Nreplica = product(supercell(1:ions%space%dim))
+    Nreplica = product(supercell(1:space%dim))
 
     ! The corner of the cell is always (0,0,0) to XCrySDen
     ! so the offset is applied to the atomic coordinates.
     ! Offset in periodic directions:
-    offset(1:ions%space%dim) = ions%latt%red_to_cart(spread(-M_HALF, 1, ions%space%dim))
+    offset(1:space%dim) = latt%red_to_cart(spread(-M_HALF, 1, space%dim))
     offset(1:3) = offset(1:3) + centers(1:3,1)
     ! Offset in aperiodic directions:
-    do idir = ions%space%periodic_dim + 1, 3
+    do idir = space%periodic_dim + 1, 3
       offset(idir) = -(mesh%idx%ll(idir) - 1)/2 * mesh%spacing(idir)
     end do
 
-    if(ions%space%is_periodic()) then
+    if(space%is_periodic()) then
       if(index_ == 1) then
-        select case(ions%space%periodic_dim)
-          case(3)
-            write(iunit, '(a)') 'CRYSTAL'
-          case(2)
-            write(iunit, '(a)') 'SLAB'
-          case(1)
-            write(iunit, '(a)') 'POLYMER'
+        select case(space%periodic_dim)
+        case(3)
+          write(iunit, '(a)') 'CRYSTAL'
+        case(2)
+          write(iunit, '(a)') 'SLAB'
+        case(1)
+          write(iunit, '(a)') 'POLYMER'
         end select
       end if
 
       write(iunit, '(a)') 'PRIMVEC'//trim(index_str)
 
-      do idir = 1, ions%space%dim
+      do idir = 1, space%dim
         write(iunit, '(3f12.6)') (units_from_atomic(units_out%length, &
-          ions%latt%rlattice(idir2, idir)*supercell(idir)), idir2 = 1, ions%space%dim)
+          latt%rlattice(idir2, idir)*supercell(idir)), idir2 = 1, space%dim)
       end do
 
       write(iunit, '(a)') 'PRIMCOORD'//trim(index_str)
       if(.not.present(extra_atom)) then
-        write(iunit, '(i10, a)') ions%natoms*Nreplica, ' 1'
+        write(iunit, '(i10, a)') size(atoms)*Nreplica, ' 1'
       else
-        write(iunit, '(i10, a)') ions%natoms*Nreplica+1, ' 1'
+        write(iunit, '(i10, a)') size(atoms)*Nreplica+1, ' 1'
       end if
     else
       write(iunit, '(a)') 'ATOMS'//trim(index_str)
@@ -935,15 +945,15 @@ contains
 
     do irep = 1, Nreplica
       ! BoxOffset should be considered here
-      do iatom = 1, ions%natoms
-        write(iunit, '(a10, 3f12.6)', advance='no') trim(ions%atom(iatom)%label), &
-          (units_from_atomic(units_out%length, ions%pos(idir, iatom) + centers(idir, irep) &
-                                  - offset(idir)), idir = 1, ions%space%dim)
+      do iatom = 1, size(atoms)
+        write(iunit, '(a10, 3f12.6)', advance='no') trim(atoms(iatom)%label), &
+          (units_from_atomic(units_out%length, pos(idir, iatom) + centers(idir, irep) &
+          - offset(idir)), idir = 1, space%dim)
         write(iunit, '()')
       end do
     end do
     write(iunit, '(a10, 3f12.6)', advance='no') 'X', &
-       (units_from_atomic(units_out%length, extra_atom(idir) - offset(idir)), idir = 1, ions%space%dim)
+      (units_from_atomic(units_out%length, extra_atom(idir) - offset(idir)), idir = 1, space%dim)
     write(iunit, '()')
 
     POP_SUB(write_xsf_geometry_supercell)

@@ -32,9 +32,9 @@ match ; J1 1st iteration  ; GREPFIELD(opt-control/convergence, ' 1  ', 3) ; 0.00
 match ; J1 1st iteration  ; GREPFIELD(opt-control/convergence, ' 2  ', 3) ; 0.57906033
 
 # Now use add a filter. This corresponds to the case presented in
-# Fig. 5 of the same paper. Once again, we stop at iteration #2; 
-# however if the run is continued it reproduces nicely the result 
-# given in the paper (not exactly, due probably to small numerical 
+# Fig. 5 of the same paper. Once again, we stop at iteration #2;
+# however if the run is continued it reproduces nicely the result
+# given in the paper (not exactly, due probably to small numerical
 # differences).
 Input: 05-adw.04-filter_indirect.inp
 match ; J1 1st iteration  ; GREPFIELD(opt-control/convergence, ' 1  ', 3) ; 0.16377508

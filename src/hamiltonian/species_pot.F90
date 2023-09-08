@@ -24,7 +24,10 @@ module species_pot_oct_m
   use global_oct_m
   use io_function_oct_m
   use index_oct_m
+  use lalg_basic_oct_m
   use lattice_vectors_oct_m
+  use loct_math_oct_m
+  use logrid_oct_m
   use mesh_function_oct_m
   use mesh_oct_m
   use messages_oct_m
@@ -59,7 +62,7 @@ module species_pot_oct_m
   type(mesh_t), pointer :: mesh_p
   FLOAT, allocatable :: rho_p(:)
   FLOAT, allocatable :: grho_p(:, :)
-  FLOAT :: alpha_p
+  FLOAT :: alpha2_p
   FLOAT, pointer :: pos_p(:)
 
 contains
@@ -84,10 +87,9 @@ contains
     type(volume_t) :: volume
     integer :: in_points_red
     type(lattice_iterator_t) :: latt_iter
-    integer :: iorb, ii, ll, mm
+    integer :: iorb, ii, nn, ll, mm
     FLOAT :: radius
     type(submesh_t) :: sphere
-    
 
     PUSH_SUB(species_atom_density)
 
@@ -97,29 +99,37 @@ contains
 
     ! build density ...
     select case (species_type(species))
-    case (SPECIES_FROM_FILE, SPECIES_USDEF, SPECIES_SOFT_COULOMB, SPECIES_FULL_GAUSSIAN) ! ... from userdef
+    case (SPECIES_FROM_FILE, SPECIES_USDEF, SPECIES_SOFT_COULOMB) ! ... from userdef
       do isp = 1, spin_channels
         rho(1:mesh%np, isp) = M_ONE
         x = (species_zval(species)/TOFLOAT(spin_channels)) / dmf_integrate(mesh, rho(:, isp))
         rho(1:mesh%np, isp) = x * rho(1:mesh%np, isp)
       end do
 
-    case (SPECIES_FULL_DELTA)
+    case (SPECIES_FULL_DELTA, SPECIES_FULL_GAUSSIAN, SPECIES_FULL_ANC)
+
+      ! Needed to get the occupations
+      ps => species_ps(species)
 
       do isp = 1, spin_channels
         do iorb = 1, species_niwfs(species)
           call species_iwf_ilm(species, iorb, isp, ii, ll, mm)
+          ! For all-electron species, we want to use the principal quantum number
+          call species_iwf_n(species, iorb, isp, nn)
 
-          radius = species_get_iwf_radius(species, ii, isp)
+          radius = species_get_iwf_radius(species, nn, isp)
           ! make sure that if the spacing is too large, the orbitals fit in a few points at least
           radius = max(radius, M_TWO*maxval(mesh%spacing(1:mesh%box%dim)))
 
           call submesh_init(sphere, space, mesh, latt, pos, radius)
           SAFE_ALLOCATE(dorbital(1:sphere%np))
 
-          call datomic_orbital_get_submesh(species, sphere, ii, ll, mm, isp, dorbital)
+          call datomic_orbital_get_submesh(species, sphere, nn, ll, mm, isp, dorbital)
+          ! The occupations are for one type of orbitals, e.g. 2p gets 6 electrons
+          ! So we normalize them by (2*l+1) such that they get distributed evenly
+          ! for each value of m
           do ip = 1, sphere%np
-            dorbital(ip) = dorbital(ip)*dorbital(ip)
+            dorbital(ip) = ps%conf%occ(ii, isp)/TOFLOAT(2*ll+1)*dorbital(ip)*dorbital(ip)
           end do
           call submesh_add_to_mesh(sphere, dorbital, rho(:, isp))
           SAFE_DEALLOCATE_A(dorbital)
@@ -127,6 +137,8 @@ contains
           call submesh_end(sphere)
         end do
       end do
+
+      nullify(ps)
 
     case (SPECIES_CHARGE_DENSITY, SPECIES_JELLIUM_CHARGE_DENSITY)
       ! We put, for the electron density, the same as the positive density that
@@ -551,62 +563,98 @@ contains
 
   ! ---------------------------------------------------------
 
-  subroutine species_get_long_range_density(species, namespace, space, latt, pos, mesh, rho)
-    type(species_t),            intent(in)  :: species
-    type(namespace_t),          intent(in)  :: namespace
-    type(space_t),              intent(in)  :: space
-    type(lattice_vectors_t),    intent(in)  :: latt
-    FLOAT,              target, intent(in)  :: pos(1:space%dim)
-    type(mesh_t),       target, intent(in)  :: mesh
-    FLOAT,                      intent(out) :: rho(:)
+  subroutine species_get_long_range_density(species, namespace, space, latt, pos, mesh, rho, sphere_inout, nlr_x)
+    type(species_t),            intent(in)    :: species
+    type(namespace_t),          intent(in)    :: namespace
+    type(space_t),              intent(in)    :: space
+    type(lattice_vectors_t),    intent(in)    :: latt
+    FLOAT,              target, intent(in)    :: pos(1:space%dim)
+    class(mesh_t),      target, intent(in)    :: mesh
+    FLOAT,                      intent(out)   :: rho(:)
+    type(submesh_t), optional, target, intent(inout) :: sphere_inout
+    FLOAT,           optional,  intent(inout) :: nlr_x(:,:) !< rho(ip)*(xx(ip)-R_I)
 
     type(root_solver_t) :: rs
     logical :: conv
-    FLOAT   :: x(space%dim+1), startval(space%dim + 1)
-    FLOAT   :: delta, alpha, beta, xx(space%dim), yy(space%dim), rr, imrho1, rerho
+    FLOAT   :: startval(space%dim)
+    FLOAT   :: delta, alpha, xx(space%dim), yy(space%dim), rr, imrho1, rerho
     FLOAT   :: dist2, dist2_min
-    integer :: icell, ipos, ip
+    integer :: icell, ipos, ip, idir
     type(lattice_iterator_t) :: latt_iter
     type(ps_t), pointer :: ps
     type(volume_t) :: volume
+    type(submesh_t), target  :: sphere_local
+    type(submesh_t), pointer :: sphere
     logical :: have_point
     FLOAT   :: local_min(2), global_min(2)
-    type(submesh_t)       :: sphere
     type(profile_t), save :: prof
     FLOAT,    allocatable :: rho_sphere(:)
     FLOAT, parameter      :: threshold = CNST(1e-6)
-    FLOAT                 :: norm_factor, range
+    FLOAT                 :: norm_factor, range, radius, radius_nlr, radius_vl
 
     PUSH_SUB(species_get_long_range_density)
 
-    call profiling_in(prof, "SPECIES_LONG_RANGE_DENSITY")
+    call profiling_in(prof, "SPECIES_LR_DENSITY")
+
+    if(present(nlr_x)) then
+      ASSERT(species_type(species) == SPECIES_PSEUDO .or. species_type(species) == SPECIES_PSPIO)
+    end if
 
     select case (species_type(species))
 
     case (SPECIES_PSEUDO, SPECIES_PSPIO)
       ps => species_ps(species)
+      radius_nlr = spline_cutoff_radius(ps%nlr, threshold)
+      if (present(sphere_inout)) then
+        radius_vl  = spline_cutoff_radius(ps%vl, ps%projectors_sphere_threshold)*CNST(1.05)
+        radius = max(radius_nlr, radius_vl)
+        call submesh_init(sphere_inout, space, mesh, latt, pos, radius)
+        sphere => sphere_inout
+      else
+        radius = radius_nlr
+        call submesh_init(sphere_local, space, mesh, latt, pos, radius)
+        sphere => sphere_local
+      endif
 
-      call submesh_init(sphere, space, mesh, latt, pos, spline_cutoff_radius(ps%nlr, threshold))
       SAFE_ALLOCATE(rho_sphere(1:sphere%np))
-
-      do ip = 1, sphere%np
-        rho_sphere(ip) = sphere%r(ip)
-      end do
-      if (sphere%np > 0) call spline_eval_vec(ps%nlr, sphere%np, rho_sphere)
+      if (.not. present(sphere_inout) .and. sphere%np > 0) then
+        do ip = 1, sphere%np
+          rho_sphere(ip) = sphere%r(ip)
+        end do
+        call spline_eval_vec(ps%nlr, sphere%np, rho_sphere)
+      else
+        do ip = 1, sphere%np
+          if(sphere%r(ip) <= radius_nlr) then
+            rho_sphere(ip) = spline_eval(ps%nlr, sphere%r(ip))
+          else
+            rho_sphere(ip) = M_ZERO
+          endif
+        end do
+      end if
 
       rho(1:mesh%np) = M_ZERO
 
       ! A small amount of charge is missing with the cutoff, we
       ! renormalize so that the long range potential is exact
       norm_factor = abs(species_zval(species)/dsm_integrate(mesh, sphere, rho_sphere))
-
       do ip = 1, sphere%np
         rho(sphere%map(ip)) = rho(sphere%map(ip)) + norm_factor*rho_sphere(ip)
       end do
 
+      if (present(nlr_x)) then
+        do idir = 1, space%dim
+          do ip = 1, sphere%np
+            nlr_x(sphere%map(ip), idir) = nlr_x(sphere%map(ip), idir) + norm_factor*rho_sphere(ip)*sphere%rel_x(idir, ip)
+          end do
+        end do
+      end if
+
       SAFE_DEALLOCATE_A(rho_sphere)
-      call submesh_end(sphere)
       nullify(ps)
+      if ( .not. present(sphere_inout) ) then
+        call submesh_end(sphere)
+      end if
+      nullify(sphere)
 
     case (SPECIES_FULL_DELTA)
 
@@ -654,7 +702,13 @@ contains
 
       ! periodic copies are not considered in this routine
       if (space%is_periodic()) then
-        call messages_experimental("species_full_gaussian for periodic systems", namespace=namespace)
+        call messages_not_implemented("species_full_gaussian for periodic systems", namespace=namespace)
+      end if
+
+      ! We need to work with \xi and \xi_0, not x(\xi) and x(\xi_0) as we do now
+      ! for the argument of the Gaussian
+      if (mesh%use_curvilinear) then
+        call messages_not_implemented("species_full_gaussian with curvilinear coordinates", namespace=namespace)
       end if
 
       ! --------------------------------------------------------------
@@ -662,8 +716,9 @@ contains
       ! sketched in Modine et al. [Phys. Rev. B 55, 10289 (1997)],
       ! section II.B
       ! --------------------------------------------------------------
+
       SAFE_ALLOCATE(rho_p(1:mesh%np))
-      SAFE_ALLOCATE(grho_p(1:mesh%np, 1:space%dim+1))
+      SAFE_ALLOCATE(grho_p(1:mesh%np, 1:space%dim))
 
       mesh_p => mesh
       pos_p => pos
@@ -671,26 +726,18 @@ contains
       ! Initial guess.
       delta   = mesh%spacing(1)
       alpha   = sqrt(M_TWO)*species_sigma(species)*delta
-      alpha_p = alpha  ! global copy of alpha
-      beta    = M_ONE
+      alpha2_p = alpha**2  ! global copy of alpha
 
-      ! the first dim variables are the position of the delta function
-      startval(1:space%dim) = M_ONE
-
-      ! the dim+1 variable is the normalization of the delta function
-      startval(space%dim+1) = beta
-
-      ! get a better estimate for beta
-      call getrho(space%dim, startval)
-      beta = M_ONE / dmf_integrate(mesh, rho_p)
-      startval(space%dim + 1) = beta
+      ! the dim variables are the position of the delta function
+      startval(1:space%dim) = pos
 
       ! solve equation
-      call root_solver_init(rs, namespace, space%dim+1, solver_type=ROOT_NEWTON, maxiter=500, abs_tolerance=CNST(1.0e-10))
-      call droot_solver_run(rs, func, x, conv, startval=startval)
+      ! Setting a tolerance such that the distance to the first moment is smaller than 1e-5 Bohr
+      call root_solver_init(rs, namespace, space%dim, solver_type=ROOT_NEWTON, maxiter=500, abs_tolerance=CNST(1.0e-10))
+      call droot_solver_run(rs, func, xx, conv, startval=startval)
 
       if (.not. conv) then
-        write(message(1),'(a)') 'Internal error in species_get_density.'
+        write(message(1),'(a)') 'Root finding in species_get_density did not converge.'
         call messages_fatal(1, namespace=namespace)
       end if
 
@@ -702,6 +749,9 @@ contains
       SAFE_DEALLOCATE_A(grho_p)
       SAFE_DEALLOCATE_A(rho_p)
 
+    case (SPECIES_FULL_ANC)
+
+      rho = M_ZERO
 
     case (SPECIES_CHARGE_DENSITY, SPECIES_JELLIUM_CHARGE_DENSITY)
 
@@ -751,32 +801,33 @@ contains
     FLOAT, intent(out) :: ff(:), jacobian(:,:)
 
     FLOAT, allocatable :: xrho(:)
-    integer :: idir, jdir, dim
+    integer :: idir, jdir, dim, ip
 
     PUSH_SUB(func)
 
     dim = mesh_p%box%dim
 
-    call getrho(dim, xin(1:dim+1))
+    call getrho(dim, xin)
     SAFE_ALLOCATE(xrho(1:mesh_p%np))
 
     ! First, we calculate the function ff.
     do idir = 1, dim
-      xrho(1:mesh_p%np) = rho_p(1:mesh_p%np) * mesh_p%x(1:mesh_p%np, idir)
+      !$omp parallel do simd
+      do ip = 1, mesh_p%np
+        xrho(ip) = rho_p(ip) * mesh_p%x(ip, idir)
+      end do
       ff(idir) = dmf_integrate(mesh_p, xrho) - pos_p(idir)
     end do
-    ff(dim+1) = dmf_integrate(mesh_p, rho_p) - M_ONE
 
     ! Now the jacobian.
     do idir = 1, dim
-      do jdir = 1, dim+1
-        xrho(1:mesh_p%np) = grho_p(1:mesh_p%np, jdir) * mesh_p%x(1:mesh_p%np, idir)
+      do jdir = 1, dim
+        !$omp parallel do simd
+        do ip = 1, mesh_p%np
+          xrho(ip) = grho_p(ip, jdir) * mesh_p%x(ip, idir)
+        end do
         jacobian(idir, jdir) = dmf_integrate(mesh_p, xrho)
       end do
-    end do
-    do jdir = 1, dim+1
-      xrho(1:mesh_p%np) = grho_p(1:mesh_p%np, jdir)
-      jacobian(dim+1, jdir) = dmf_integrate(mesh_p, xrho)
     end do
 
     SAFE_DEALLOCATE_A(xrho)
@@ -823,78 +874,97 @@ contains
   end subroutine species_get_nlcc
 
   ! ---------------------------------------------------------
-  subroutine species_get_nlcc_grad(species, space, latt, pos, mesh, rho_core_grad)
-    type(species_t), target, intent(in)  :: species
-    type(space_t),           intent(in)  :: space
-    type(lattice_vectors_t), intent(in)  :: latt
-    FLOAT,                   intent(in)  :: pos(1:space%dim)
-    type(mesh_t),            intent(in)  :: mesh
-    FLOAT,                   intent(out) :: rho_core_grad(:,:)
+  subroutine species_get_nlcc_grad(species, space, latt, pos, mesh, rho_core_grad, gnlcc_x)
+    type(species_t), target, intent(in)    :: species
+    type(space_t),           intent(in)    :: space
+    type(lattice_vectors_t), intent(in)    :: latt
+    FLOAT,                   intent(in)    :: pos(1:space%dim)
+    class(mesh_t),           intent(in)    :: mesh
+    FLOAT,                   intent(out)   :: rho_core_grad(:,:)
+    FLOAT, optional,         intent(inout) :: gnlcc_x(:,:,:)
 
     FLOAT :: center(space%dim), rr, spline
-    integer :: icell, ip, idir
+    integer :: icell, ip, idir, jdir
     type(lattice_iterator_t) :: latt_iter
     type(ps_t), pointer :: ps
 
     PUSH_SUB(species_get_nlcc_grad)
 
+    rho_core_grad = M_ZERO
+
     ! only for 3D pseudopotentials, please
-    if (species_is_ps(species)) then
-      ps => species_ps(species)
-      rho_core_grad = M_ZERO
-      if (ps_has_nlcc(ps)) then
+    if (.not. species_is_ps(species)) then
+      POP_SUB(species_get_nlcc_grad)
+      return
+    endif
 
-        latt_iter = lattice_iterator_t(latt, spline_cutoff_radius(ps%core_der, ps%projectors_sphere_threshold))
-        do icell = 1, latt_iter%n_cells
-          center = pos + latt_iter%get(icell)
-          do ip = 1, mesh%np
-            call mesh_r(mesh, ip, rr, origin = center)
-            rr = max(rr, R_SMALL)
-            if (rr >= spline_range_max(ps%core_der)) cycle
-            spline = spline_eval(ps%core_der, rr)
+    ps => species_ps(species)
+    if (.not. ps_has_nlcc(ps)) then
+      POP_SUB(species_get_nlcc_grad)
+      return
+    endif
 
-            do idir = 1, space%dim
-              rho_core_grad(ip, idir) = rho_core_grad(ip, idir) - spline*(mesh%x(ip, idir)-center(idir))/rr
+    latt_iter = lattice_iterator_t(latt, spline_cutoff_radius(ps%core_der, ps%projectors_sphere_threshold))
+    ! TODO: (#706) These loops should be reformulated as the code here is most likely very slow and inefficient
+    do icell = 1, latt_iter%n_cells
+      center = pos + latt_iter%get(icell)
+      do ip = 1, mesh%np
+        call mesh_r(mesh, ip, rr, origin = center)
+        rr = max(rr, R_SMALL)
+        if (rr >= spline_range_max(ps%core_der)) cycle
+        spline = spline_eval(ps%core_der, rr)
+
+        do idir = 1, space%dim
+          rho_core_grad(ip, idir) = rho_core_grad(ip, idir) - spline*(mesh%x(ip, idir)-center(idir))/rr
+          if (present(gnlcc_x)) then
+            do jdir = 1, space%dim
+              gnlcc_x(ip, idir, jdir) = gnlcc_x(ip, idir, jdir) &
+                - spline*(mesh%x(ip, idir)-center(idir))/rr*(mesh%x(ip, jdir)-center(jdir))
             end do
-          end do
+          end if
+
         end do
-      end if
-    else
-      rho_core_grad = M_ZERO
-    end if
+      end do
+    end do
 
     POP_SUB(species_get_nlcc_grad)
   end subroutine species_get_nlcc_grad
 
   ! ---------------------------------------------------------
+  ! Return the density of a normalized Gaussian centered on xin
+  ! as well as its gradient with respect to the central position
   subroutine getrho(dim, xin)
     integer, intent(in) :: dim
-    FLOAT,   intent(in) :: xin(1:dim+1)
+    FLOAT,   intent(in) :: xin(1:dim)
 
-    integer :: ip, idir, idx(dim)
-    FLOAT   :: r, chi(dim)
+    integer :: ip, idir
+    FLOAT   :: r2, chi(dim), norm, threshold
 
     PUSH_SUB(getrho)
 
-    rho_p = M_ZERO
+    ! We set here a threshold of 0.001 for the tail of the Gaussian, similar to what we do for the
+    ! pseudopotentials. The value of the threshold correspond to the default for pseudopotentials
+    threshold = -log(CNST(0.001)*alpha2_p)
+
     do ip = 1, mesh_p%np
-      call mesh_local_index_to_coords(mesh_p, ip, idx)
-      chi(1:dim) = idx(1:dim) * mesh_p%spacing(1:dim)
+      ! This is not correct for curviliniear meshes
+      chi(1:dim) = mesh_p%x(ip,1:dim)
+      r2 = sum((chi - xin(1:dim))**2)
 
-      r = norm2(chi - xin(1:dim))
-
-      if ((r/alpha_p)**2 < CNST(10.0)) then
-        grho_p(ip, dim+1) = exp(-(r/alpha_p)**2)
-        rho_p(ip)         = xin(dim+1) * grho_p(ip, dim+1)
+      if (r2 < threshold) then
+        rho_p(ip) = exp(-r2/alpha2_p)
       else
-        grho_p(ip, dim+1) = M_ZERO
-        rho_p(ip)         = M_ZERO
+        rho_p(ip) = M_ZERO
       end if
 
       do idir = 1, dim
-        grho_p(ip, idir) = (M_TWO/alpha_p**2) * (chi(idir) - xin(idir)) * rho_p(ip)
+        grho_p(ip, idir) = (chi(idir) - xin(idir)) * rho_p(ip)
       end do
     end do
+
+    norm = dmf_integrate(mesh_p, rho_p)
+    call lalg_scal(mesh_p%np, M_ONE/norm, rho_p)
+    call lalg_scal(mesh_p%np, dim, M_TWO/alpha2_p/norm, grho_p)
 
     POP_SUB(getrho)
   end subroutine getrho
@@ -903,13 +973,13 @@ contains
   ! ---------------------------------------------------------
   !> used when the density is not available, or otherwise the Poisson eqn would be used instead
   subroutine species_get_local(species, namespace, space, latt, pos, mesh, vl)
-    type(species_t), target, intent(in)  :: species
-    type(namespace_t),       intent(in)  :: namespace
-    type(space_t),           intent(in)  :: space
-    type(lattice_vectors_t), intent(in)  :: latt
-    FLOAT,                   intent(in)  :: pos(1:space%dim)
-    type(mesh_t),            intent(in)  :: mesh
-    FLOAT,                   intent(out) :: vl(:)
+    type(species_t), target, intent(in)    :: species
+    type(namespace_t),       intent(in)    :: namespace
+    type(space_t),           intent(in)    :: space
+    type(lattice_vectors_t), intent(in)    :: latt
+    FLOAT,                   intent(in)    :: pos(1:space%dim)
+    type(mesh_t),            intent(in)    :: mesh
+    FLOAT,                   intent(out)   :: vl(:)
 
     FLOAT :: a1, a2, Rb2, range ! for jellium
     FLOAT :: xx(space%dim), pos_pc(space%dim), r, r2, threshold
@@ -917,6 +987,7 @@ contains
     type(ps_t), pointer :: ps
     CMPLX :: zpot
     type(lattice_iterator_t) :: latt_iter
+    FLOAT :: aa, bb
 
     type(profile_t), save :: prof
 
@@ -1028,6 +1099,32 @@ contains
 
     case (SPECIES_FULL_DELTA, SPECIES_FULL_GAUSSIAN, SPECIES_CHARGE_DENSITY, SPECIES_JELLIUM_CHARGE_DENSITY)
       vl(1:mesh%np) = M_ZERO
+
+    case (SPECIES_FULL_ANC)
+      ! periodic copies are not considered in this routine
+      if (space%is_periodic()) then
+        call messages_experimental("species_full_anc for periodic systems", namespace=namespace)
+      end if
+
+      aa = species_a(species)
+      bb = species_b(species)
+      ASSERT(bb < M_ZERO) ! To be sure it was computed
+
+      ! Evaluation of the scaled potential, see Eq. 19
+      do ip = 1, mesh%np
+        r2 = sum((mesh%x(ip, :) - pos)**2)*(species_z(species)*aa)**2
+        if(r2 > R_SMALL**2) then
+          r = sqrt(r2)
+          vl(ip) = -M_HALF &
+            - (loct_erf(r) + M_TWO*(aa*bb + M_ONE/sqrt(M_PI))*r*exp(-r2))/r*aa &
+            + (loct_erf(r) + M_TWO*(aa*bb + M_ONE/sqrt(M_PI))*r*exp(-r2))**2*M_HALF &
+            + (-M_TWO*aa**2*bb - M_FOUR*aa/sqrt(M_PI) &
+            + M_FOUR*aa*(aa*bb + M_ONE/sqrt(M_PI))*r2)*exp(-r2)*M_HALF
+        else ! Eq. 10
+          vl(ip) = -M_HALF - M_THREE * aa**2*bb - CNST(6.0)*aa/sqrt(M_PI)
+        end if
+        vl(ip) = vl(ip) * (species_z(species))**2
+      end do
 
     end select
 

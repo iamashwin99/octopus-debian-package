@@ -20,6 +20,8 @@
 
 #include "global.h"
 
+!> @brief This module implements the Casida equations for excited states
+
 module casida_oct_m
   use batch_oct_m
   use blacs_proc_grid_oct_m
@@ -27,6 +29,7 @@ module casida_oct_m
   use comm_oct_m
   use debug_oct_m
   use density_oct_m
+  use electrons_oct_m
 #ifdef HAVE_ELPA
   use elpa
 #endif
@@ -52,7 +55,8 @@ module casida_oct_m
   use parser_oct_m
   use pblas_oct_m
   use pcm_oct_m
-  use pert_oct_m
+  use perturbation_oct_m
+  use perturbation_ionic_oct_m
   use phonons_lr_oct_m
   use photon_mode_oct_m
   use poisson_oct_m
@@ -66,13 +70,13 @@ module casida_oct_m
   use states_elec_dim_oct_m
   use states_elec_restart_oct_m
   use sternheimer_oct_m
-  use electrons_oct_m
   use unit_oct_m
   use unit_system_oct_m
   use utils_oct_m
   use varinfo_oct_m
   use v_ks_oct_m
   use xc_oct_m
+  use xc_sic_oct_m
 
   implicit none
 
@@ -92,6 +96,7 @@ module casida_oct_m
     SOLVER_ELPA         = 1, &
     SOLVER_SCALAPACK    = 2
 
+  !> @brief This class contains all parameters, needed for Casida calculations
   type casida_t
     private
     integer :: type !< CASIDA_EPS_DIFF | CASIDA_PETERSILKA | CASIDA_TAMM_DANCOFF |
@@ -269,9 +274,9 @@ contains
     message(1) = 'Info: Starting Casida linear-response calculation.'
     call messages_info(1, namespace=sys%namespace)
 
-    call restart_init(gs_restart, sys%namespace, RESTART_GS, RESTART_TYPE_LOAD, sys%mc, ierr, mesh=sys%gr%mesh, exact=.true.)
+    call restart_init(gs_restart, sys%namespace, RESTART_GS, RESTART_TYPE_LOAD, sys%mc, ierr, mesh=sys%gr, exact=.true.)
     if (ierr == 0) then
-      call states_elec_look_and_load(gs_restart, sys%namespace, sys%space, sys%st, sys%gr%mesh, sys%kpoints)
+      call states_elec_look_and_load(gs_restart, sys%namespace, sys%space, sys%st, sys%gr, sys%kpoints)
       call restart_end(gs_restart)
     else
       message(1) = "Previous gs calculation is required."
@@ -361,7 +366,7 @@ contains
     cas%pt_nmodes = 0
     if (cas%has_photons) then
       call messages_experimental('EnablePhotons = yes', namespace=sys%namespace)
-      call photon_mode_init(cas%pt, sys%namespace, sys%gr%mesh, sys%space%dim, sys%st%qtot)
+      call photon_mode_init(cas%pt, sys%namespace, sys%gr, sys%space%dim, sys%st%qtot)
       write(message(1), '(a,i7,a)') 'INFO: Solving Casida equation with ', &
         cas%pt%nmodes, ' photon modes.'
       write(message(2), '(a)') 'as described in ACS Photonics 2019, 6, 11, 2757-2778.'
@@ -896,7 +901,7 @@ contains
     type(casida_t),              intent(inout) :: cas
 
     type(states_elec_t), pointer :: st
-    type(mesh_t),   pointer :: mesh
+    class(mesh_t),   pointer :: mesh
 
     FLOAT, allocatable :: rho_spin(:, :)
     FLOAT, allocatable :: fxc_spin(:,:,:)
@@ -909,7 +914,7 @@ contains
 
     ! some shortcuts
     st => sys%st
-    mesh => sys%gr%mesh
+    mesh => sys%gr
 
     ! initialize stuff
     if (cas%states_are_real) then
@@ -951,7 +956,7 @@ contains
         call xc_get_fxc(sys%ks%xc, mesh, sys%namespace, cas%rho, st%d%ispin, cas%fxc)
       end if
 
-      if (sys%ks%sic_type == SIC_ADSIC) then
+      if (sys%ks%sic%level == SIC_ADSIC) then
         call fxc_add_adsic(sys%namespace, sys%ks, st, mesh, cas)
       end if
 

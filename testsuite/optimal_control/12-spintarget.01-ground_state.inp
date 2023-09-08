@@ -9,7 +9,7 @@ CalculationMode = gs
 
 DisableAccel = yes
 
-fromScratch = yes
+FromScratch = yes
 
 TheoryLevel = independent_particles
 ExperimentalFeatures = yes
@@ -89,7 +89,7 @@ omega = omega_Ha * (epsilon^2/meff)
 #Grid
 #*********************************************************
 
-Dimensions = 2 
+Dimensions = 2
 BoxShape = sphere
 Radius = 20.0
 Spacing = 1.0
@@ -97,19 +97,19 @@ Spacing = 1.0
 #*********************************************************
 #External Magnetic field
 #
-# MISSING: Reference with typical magnetic fields used in 
+# MISSING: Reference with typical magnetic fields used in
 # experiments or calculations.
 #*********************************************************
 
 # We need to multiply the true gyromagnetic factor by meff
-GyroMagneticRatio = gfactor * meff 
+GyroMagneticRatio = gfactor * meff
 
 # This i the magnetic field, in teslas:
 mag_tesla = 1.0
 # Now we convert to atomic units:
-mag_au = mag_tesla * (1.0/1715.25539471980586102447) 
+mag_au = mag_tesla * (1.0/1715.25539471980586102447)
 # Now we convert to effective atomic units:
-mag_effau = mag_au * sqrt(epsilon^5) / (meff^2) 
+mag_effau = mag_au * sqrt(epsilon^5) / (meff^2)
 # And now we divide by sqrt(epsilon):
 mag = mag_effau / sqrt(epsilon)
 
@@ -155,7 +155,7 @@ EigenSolver = cg
 #------------------------------------------
 
 # Amplitude of the lser field
-# For example, 1000 V/m = 1000 * 1.94469046723545440170e-10 a.u.[EF] = 
+# For example, 1000 V/m = 1000 * 1.94469046723545440170e-10 a.u.[EF] =
 # 1000 * 2.785113504876579447118e-5 e.a.u.[EF]
 
 %TDExternalFields
@@ -186,6 +186,3 @@ electric_field | 1 | 1 | 0 | 0.0 | "envelope_function"
 #Output = wfs + potential
 #OutputFormat = plane_z + axis_x
 #TDOutput = laser + spin
-
-
-

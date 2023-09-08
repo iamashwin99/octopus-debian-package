@@ -18,7 +18,9 @@
 
 #include "global.h"
 
-!> This module uses a module-scope global object to allow calculation modes
+!> @brief This module handles the calculation mode.
+!!
+!! This module uses a module-scope global object to allow calculation modes
 !! to set the available parallelization strategies and whether the layout
 !! must be compatible with ScaLAPACK, and to allow this information to be
 !! accessed elsewhere. It does not, and should not, contain the definitions

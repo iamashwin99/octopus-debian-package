@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML-full"></script>
 <style>
-   BODY {background-color: white; 
+   BODY {background-color: white;
          font-size: 10pt; font-family: verdana,helvetica;}
    A  {text-decoration: none;color: blue}
 </style>
@@ -586,6 +586,23 @@
 <H2>Mesh::Simulation Box</H2>
 
 
+<p><b><a name='BoxCenter'></a>BoxCenter</b>
+<br/><i>Section</i>: Mesh::Simulation Box
+<br/><i>Type</i>: float
+<br/><br> This block defines the coordinate center of the simulation box
+
+</p><hr width='30%' align='left'/>
+
+
+<p><b><a name='BoxCgalFile'></a>BoxCgalFile</b>
+<br/><i>Section</i>: Mesh::Simulation Box
+<br/><i>Type</i>: string
+<br/><br> Filename to be read in by the cgal library. It should describe a shape that
+ is used for the simulation box
+
+</p><hr width='30%' align='left'/>
+
+
 <p><b><a name='BoxShape'></a>BoxShape</b>
 <br/><i>Section</i>: Mesh::Simulation Box
 <br/><i>Type</i>: integer
@@ -615,6 +632,10 @@
  The image will be scaled to fit <tt>Lsize</tt>, while its resolution will define the default <tt>Spacing</tt>.
  The actual box may be slightly larger than <tt>Lsize</tt> to ensure one grid point = one pixel for
  default <tt>Spacing</tt>.
+</li>
+<li><b>box_cgal</b>:  The simulation box will be defined by a file read using the CGAL library.
+ The file name needs to be specified with <tt>BoxCgalFile</tt>.
+ <tt>Lsize</tt> needs to be large enough to contain the shape defined in the file.
 </li>
 <li><b>user_defined</b>:  The shape of the simulation box will be read from the variable <tt>BoxShapeUsDef</tt>.
 </li>

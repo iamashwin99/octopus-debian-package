@@ -46,14 +46,14 @@ module global_oct_m
     i4, i8, r4, r8,   &
     i4_to_i8,         &
     i8_to_i4
-    ! Make these kind variables from kind_oct_m public here so that they are
-    ! available basically everywhere in the code. They still need to be in a
-    ! separate module because they are also needed in hardware_oct_m and some
-    ! other low-level modules.
+  ! Make these kind variables from kind_oct_m public here so that they are
+  ! available basically everywhere in the code. They still need to be in a
+  ! separate module because they are also needed in hardware_oct_m and some
+  ! other low-level modules.
 
 
-  integer, public, parameter :: MAX_PATH_LEN=256
-  integer, public, parameter :: MAX_OUTPUT_TYPES=41
+  integer, public, parameter :: MAX_PATH_LEN=512
+  integer, public, parameter :: MAX_OUTPUT_TYPES=42
 
   type conf_t
     ! Components are public by default
@@ -61,7 +61,7 @@ module global_oct_m
     logical :: report_memory
     character(len=256) :: share       !< Name of the share dir
     character(len=256) :: git_commit  !< hash of latest git commit
-    character(len=50)  :: build_time  !< time octopus was compiled
+    character(len=50)  :: config_time !< time octopus was configured
     character(len=20)  :: version     !< version number
     character(len=256) :: cc
     character(len=256) :: cflags
@@ -75,6 +75,9 @@ module global_oct_m
   type(conf_t),      public :: conf
 
   FLOAT, public, parameter :: R_SMALL = CNST(1e-8)
+
+  !> Minimal distance between two distinguishable atoms
+  FLOAT, public, parameter :: R_MIN_ATOM_DIST = CNST(1e-3)
 
   !> some mathematical constants
   FLOAT, public, parameter :: M_Pi        = CNST(3.1415926535897932384626433832795029)
@@ -99,6 +102,7 @@ module global_oct_m
   FLOAT, public, parameter :: M_TINY      =  tiny(M_ONE)
   FLOAT, public, parameter :: M_HUGE      =  huge(M_ONE)
   FLOAT, public, parameter :: M_MIN_EXP_ARG = CNST(-650)
+  FLOAT, public, parameter :: M_MAX_EXP_ARG = CNST(700)
 
 
   !> some physical constants
@@ -206,10 +210,10 @@ contains
     else
       conf%share = SHARE_DIR
     end if
-    conf%git_commit = GIT_COMMIT
-    conf%build_time = BUILD_TIME
-    conf%version    = PACKAGE_VERSION
-    conf%cc         = CC
+    conf%git_commit  = GIT_COMMIT
+    conf%config_time = BUILD_TIME
+    conf%version     = PACKAGE_VERSION
+    conf%cc          = CC
     ! split to have all flags in case they don`t fit in one line
     conf%cflags     = &
       CFLAGS //&

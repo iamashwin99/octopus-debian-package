@@ -16,6 +16,10 @@
 !! 02110-1301, USA.
 !!
 
+!> defgroup Fortran_Module Fortran Modules
+!> defgroup Fortran_Class Fortran Classes
+
+
 #include "global.h"
 
 program octopus

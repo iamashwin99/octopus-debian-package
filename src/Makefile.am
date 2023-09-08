@@ -51,6 +51,7 @@ basic_f_srcs =                                 \
 	basic/cgal_polyhedra.F90               \
 	basic/command_line.F90                 \
 	basic/comm.F90                         \
+        basic/clblas.F90                       \
 	basic/cuda.F90                         \
 	basic/debug.F90                        \
 	basic/distributed.F90                  \
@@ -96,6 +97,8 @@ basic_f_srcs =                                 \
 basic_c_srcs =                                 \
 	basic/alloc_cache_low.cc               \
 	basic/cgal_polyhedra_low.cc            \
+        basic/clblas_low.c                     \
+        basic/clblast_low.c                    \
 	basic/cublas.cc                        \
 	basic/cuda_low.cc                      \
 	basic/getopt_f.c                       \
@@ -146,6 +149,7 @@ noinst_HEADERS +=                          \
 # Sources in boxes
 boxes_f_srcs =                            \
 	boxes/box.F90                     \
+	boxes/box_cgal.F90                \
 	boxes/box_cylinder.F90            \
 	boxes/box_factory.F90             \
 	boxes/box_image.F90               \
@@ -170,6 +174,8 @@ math_f_srcs =                                 \
 	math/fft.F90                          \
 	math/fftw.F90                         \
 	math/gauss_legendre.F90               \
+	math/helmholtz_decomposition.F90      \
+	math/helmholtz_decomposition_test.F90 \
 	math/lalg_adv.F90                     \
 	math/lalg_basic.F90                   \
 	math/lapack.F90                       \
@@ -214,6 +220,7 @@ math_srcs = $(math_f_srcs) $(math_c_srcs)
 noinst_HEADERS +=                             \
 	math/accel_blas_inc.F90               \
 	math/fft_inc.F90                      \
+	math/helmholtz_decomposition_inc.F90  \
 	math/lalg_basic_blas_inc.F90          \
 	math/lalg_adv_lapack_inc.F90          \
 	math/math_inc.F90                     \
@@ -221,7 +228,7 @@ noinst_HEADERS +=                             \
 	math/pnfft_inc.F90                    \
 	math/sparskit_inc.F90                 \
 	math/solvers_inc.F90                  \
-	math/symm_op_inc.F90        
+	math/symm_op_inc.F90
 
 # Sources in species
 species_f_srcs =                                 \
@@ -272,6 +279,7 @@ noinst_HEADERS +=                                \
 # Sources in ions
 ions_f_srcs =                                 \
 	ions/atom.F90                         \
+	ions/born_charges.F90                 \
 	ions/ions.F90                         \
 	ions/ion_dynamics.F90                 \
 	ions/read_coords.F90                  \
@@ -323,6 +331,7 @@ grid_f_srcs =                                 \
 	grid/partition.F90                    \
 	grid/partition_transfer.F90           \
 	grid/par_vec.F90                      \
+        grid/regridding.F90                   \
 	grid/restart.F90                      \
 	grid/stencil_cube.F90                 \
 	grid/stencil.F90                      \
@@ -332,6 +341,7 @@ grid_f_srcs =                                 \
 	grid/stencil_variational.F90          \
 	grid/submesh.F90                      \
 	grid/symmetrizer.F90                  \
+	grid/time_interpolation.F90           \
 	grid/transfer_table.F90               \
 	grid/volume.F90                       \
 	grid/vtk.F90
@@ -351,6 +361,7 @@ noinst_HEADERS +=                             \
 	grid/cube_function_inc.F90            \
 	grid/derivatives_inc.F90              \
 	grid/fourier_space_inc.F90            \
+        grid/grid_inc.F90                     \
 	grid/io_function_inc.F90              \
 	grid/mesh_batch_inc.F90               \
 	grid/mesh_function_inc.F90            \
@@ -361,9 +372,11 @@ noinst_HEADERS +=                             \
 	grid/operate_inc.c                    \
 	grid/partition_transfer_inc.F90       \
 	grid/par_vec_inc.F90                  \
+        grid/regridding_inc.F90               \
 	grid/restart_inc.F90                  \
 	grid/submesh_inc.F90                  \
 	grid/symmetrizer_inc.F90              \
+	grid/time_interpolation_inc.F90       \
 	grid/vtk_inc.F90
 
 
@@ -437,7 +450,6 @@ noinst_HEADERS +=                               \
 hamiltonian_f_srcs =                                 \
 	hamiltonian/absorbing_boundaries.F90         \
 	hamiltonian/berry.F90                        \
-	hamiltonian/born_charges.F90                 \
 	hamiltonian/energy.F90                       \
 	hamiltonian/epot.F90                         \
         hamiltonian/exchange_operator.F90            \
@@ -493,24 +505,31 @@ noinst_HEADERS +=                                    \
 
 
 # Sources in multisystem
-multisystem_f_srcs =                                 \
-	multisystem/algorithm.F90                    \
-        multisystem/convergence_criterion.F90        \
-	multisystem/ghost_interaction.F90            \
-	multisystem/interaction.F90                  \
-	multisystem/interaction_partner.F90          \
-	multisystem/interaction_with_partner.F90     \
-	multisystem/interactions_factory_abst.F90    \
-	multisystem/multisystem.F90                  \
-	multisystem/multisystem_basic.F90            \
-	multisystem/multisystem_debug.F90            \
-	multisystem/propagator.F90                   \
-	multisystem/propagator_beeman.F90            \
-	multisystem/propagator_exp_mid.F90           \
-	multisystem/propagator_static.F90            \
-	multisystem/propagator_verlet.F90            \
-	multisystem/quantity.F90                     \
-	multisystem/system.F90                       \
+multisystem_f_srcs =                                   \
+	multisystem/algorithm.F90                      \
+	multisystem/algorithm_factory.F90              \
+        multisystem/convergence_criterion.F90          \
+	multisystem/ghost_interaction.F90              \
+	multisystem/interaction.F90                    \
+	multisystem/interaction_partner.F90            \
+	multisystem/interaction_with_partner.F90       \
+	multisystem/interactions_factory_abst.F90      \
+	multisystem/multisystem.F90                    \
+	multisystem/multisystem_basic.F90              \
+	multisystem/multisystem_debug.F90              \
+	multisystem/propagator.F90                     \
+	multisystem/propagator_aetrs.F90               \
+	multisystem/propagator_beeman.F90              \
+	multisystem/propagator_bomd.F90                \
+	multisystem/propagator_exp_mid.F90             \
+	multisystem/propagator_exp_mid_2step.F90       \
+	multisystem/propagator_factory.F90             \
+	multisystem/propagator_leapfrog.F90            \
+	multisystem/propagator_rk4.F90                 \
+	multisystem/propagator_static.F90              \
+	multisystem/propagator_verlet.F90              \
+	multisystem/quantity.F90                       \
+	multisystem/system.F90                         \
 	multisystem/system_factory_abst.F90
 
 multisystem_srcs = $(multisystem_f_srcs)
@@ -521,12 +540,14 @@ interactions_f_srcs =                                 \
 	interactions/coulomb_force.F90                \
         interactions/density_interaction.F90          \
         interactions/external_potential.F90           \
+	interactions/field_transfer.F90               \
 	interactions/force_interaction.F90            \
 	interactions/gravity.F90                      \
         interactions/ion_electron_local_potential.F90 \
 	interactions/interactions_factory.F90         \
 	interactions/current_to_mxll_field.F90        \
 	interactions/linear_medium_to_em_field.F90    \
+	interactions/lennard_jones.F90                \
 	interactions/lorentz_force.F90                \
 	interactions/mxll_field_to_medium.F90         \
         interactions/nlcc.F90                         \
@@ -549,26 +570,30 @@ classical_srcs = $(classical_f_srcs)
 # Sources in output
 output_f_srcs =                                 \
 	output/output.F90                       \
-	output/output_me.F90
+        output/output_berkeleygw.F90            \
+	output/output_me.F90                    \
+        output/output_modelmb.F90               \
+	output/output_mxll.F90                  \
+	output/output_linear_medium.F90
 
 noinst_HEADERS +=                               \
 	output/output_berkeleygw_inc.F90        \
 	output/output_etsf_inc.F90              \
 	output/output_h_inc.F90                 \
-	output/output_linear_medium_inc.F90     \
 	output/output_linear_response_inc.F90   \
 	output/output_me_inc.F90                \
 	output/output_modelmb_inc.F90           \
-	output/output_mxll_inc.F90              \
 	output/output_states_inc.F90
 
 output_srcs = $(output_f_srcs)
 
 # Sources in electrons
-electrons_f_srcs =                                 \
+electrons_f_srcs =                             \
 	electrons/current.F90                      \
 	electrons/dos.F90                          \
 	electrons/eigen_cg.F90                     \
+	electrons/chebyshev_filter_bounds.F90      \
+	electrons/eigen_chebyshev.F90              \
 	electrons/eigen_rmmdiis.F90                \
 	electrons/eigensolver.F90                  \
 	electrons/elf.F90                          \
@@ -580,27 +605,40 @@ electrons_f_srcs =                                 \
 	electrons/magnetic.F90                     \
 	electrons/matter.F90                       \
 	electrons/partial_charges.F90              \
-	electrons/pert.F90                         \
+	electrons/perturbation.F90                 \
+	electrons/perturbation_electric.F90        \
+        electrons/perturbation_ionic.F90           \
+	electrons/perturbation_kdotp.F90           \
+	electrons/perturbation_magnetic.F90        \
+	electrons/perturbation_none.F90            \
 	electrons/preconditioners.F90              \
 	electrons/stress.F90                       \
 	electrons/subspace.F90                     \
 	electrons/electrons.F90                    \
 	electrons/v_ks.F90                         \
 	electrons/xc_ks_inversion.F90              \
-	electrons/xc_oep.F90
+	electrons/xc_oep.F90                       \
+	electrons/xc_sic.F90
 
 electrons_srcs = $(electrons_f_srcs)
 
 noinst_HEADERS +=                                  \
-        electrons/eigensolver_inc.F90              \
+	electrons/eigensolver_inc.F90              \
 	electrons/eigen_cg_inc.F90                 \
+	electrons/chebyshev_filter_bounds_inc.F90  \
+	electrons/eigen_chebyshev_inc.F90          \
 	electrons/eigen_evolution_inc.F90          \
 	electrons/eigen_plan_inc.F90               \
 	electrons/eigen_rmmdiis_inc.F90            \
 	electrons/energy_calc_inc.F90              \
 	electrons/forces_inc.F90                   \
 	electrons/linear_solver_inc.F90            \
-	electrons/pert_inc.F90                     \
+	electrons/perturbation_inc.F90             \
+	electrons/perturbation_electric_inc.F90    \
+	electrons/perturbation_ionic_inc.F90       \
+	electrons/perturbation_kdotp_inc.F90       \
+	electrons/perturbation_magnetic_inc.F90    \
+	electrons/perturbation_none_inc.F90        \
 	electrons/preconditioners_inc.F90          \
 	electrons/subspace_inc.F90                 \
 	electrons/xc_kli_inc.F90                   \
@@ -608,20 +646,21 @@ noinst_HEADERS +=                                  \
 	electrons/xc_oep_inc.F90                   \
 	electrons/xc_oep_qed_inc.F90               \
 	electrons/xc_oep_sic_inc.F90               \
-        electrons/xc_slater_inc.F90                \
-        electrons/x_fbe_inc.F90
+	electrons/xc_slater_inc.F90                \
+	electrons/x_fbe_inc.F90
 
 # Sources in maxwell
 maxwell_f_srcs =                                 \
 	maxwell/maxwell_boundary_op.F90          \
 	maxwell/energy_mxll.F90                  \
         maxwell/external_densities.F90           \
+	maxwell/external_source.F90              \
 	maxwell/hamiltonian_mxll.F90             \
+	maxwell/plane_wave.F90                   \
 	maxwell/propagator_mxll.F90              \
 	maxwell/dispersive_medium.F90            \
         maxwell/linear_medium.F90                \
-	maxwell/maxwell.F90                      \
-        maxwell/regridding.F90
+	maxwell/maxwell.F90
 
 maxwell_srcs = $(maxwell_f_srcs)
 
@@ -679,7 +718,7 @@ td_srcs = $(td_f_srcs)
 
 noinst_HEADERS +=                           \
 	td/pes_mask_out_inc.F90             \
-	td/pes_flux_out_inc.F90            
+	td/pes_flux_out_inc.F90
 
 
 # Sources in opt_control
@@ -902,10 +941,10 @@ utils_f_srcs = \
 
 
 include/options.h: $(all_f_srcs) $(octopus_f_srcs) $(utils_f_srcs) $(noinst_HEADERS)
-	$(top_srcdir)/build/mk_varinfo.pl -s $(top_srcdir) -b $(top_builddir)
+	$(top_srcdir)/scripts/mk_varinfo.pl -s $(top_srcdir) -b $(top_builddir)
 
 include/defaults.h: $(all_f_srcs) $(octopus_f_srcs) $(utils_f_srcs) $(noinst_HEADERS)
-	$(top_srcdir)/build/mk_varinfo.pl -s $(top_srcdir) -b $(top_builddir)
+	$(top_srcdir)/scripts/mk_varinfo.pl -s $(top_srcdir) -b $(top_builddir)
 
 
 # debug files from MacOS gcc with -g

@@ -45,12 +45,14 @@ module interaction_with_partner_oct_m
     integer,              public :: n_partner_quantities  !< Number of quantities needed from the partner
     integer, allocatable, public :: partner_quantities(:) !< Identifiers of the quantities needed from the partner
   contains
-    procedure :: update => interaction_with_partner_update
+    procedure :: update => interaction_with_partner_update !< update the interacion, if it is not yet at the required time
   end type interaction_with_partner_t
 
 contains
 
   ! ---------------------------------------------------------
+  !> attempt to update the interaction ro the requested_time. If the update was successful, return .TRUE.,
+  !! otherwise return .FALSE. to indicate that the update failed.
   logical function interaction_with_partner_update(this, requested_time) result(updated)
     class(interaction_with_partner_t), intent(inout) :: this
     class(clock_t),                    intent(in)    :: requested_time

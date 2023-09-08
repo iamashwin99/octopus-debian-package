@@ -28,14 +28,14 @@
 #define MCM_POINT 3
 #define MCM_COUNT 4
 
-__kernel void X(mesh_to_cube)(const long long nmap,
+__kernel void X(mesh_to_cube)(const int nmap,
 			    const int stridex,
 			    const int stridey,
 			    const int stridez,
 			    const int centerx,
 			    const int centery,
 			    const int centerz,
-			    __global long long const * restrict map,
+			    __global int const * restrict map,
 			    __global rtype const * restrict mesh_function,
 			    __global rtype * restrict cube_function){
   
@@ -55,14 +55,14 @@ __kernel void X(mesh_to_cube)(const long long nmap,
 
 }
 
-__kernel void X(cube_to_mesh)(const long long nmap,
+__kernel void X(cube_to_mesh)(const int nmap,
 			    const int stridex,
 			    const int stridey,
 			    const int stridez,
 			    const int centerx,
 			    const int centery,
 			    const int centerz,
-			    __global long long const * restrict map,
+			    __global int const * restrict map,
 			    __global rtype const * restrict cube_function,
 			    __global rtype * restrict mesh_function){
   

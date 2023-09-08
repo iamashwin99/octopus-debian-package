@@ -21,11 +21,12 @@
 module interactions_factory_oct_m
   use debug_oct_m
   use global_oct_m
-  use interaction_oct_m
+  use interaction_with_partner_oct_m
   use coulomb_force_oct_m
   use gravity_oct_m
   use current_to_mxll_field_oct_m
   use linear_medium_to_em_field_oct_m
+  use lennard_jones_oct_m
   use lorentz_force_oct_m
   use mxll_field_to_medium_oct_m
   use interaction_partner_oct_m
@@ -43,8 +44,9 @@ module interactions_factory_oct_m
     LORENTZ_FORCE    = 2,       &
     COULOMB_FORCE    = 3,       &
     LINEAR_MEDIUM_TO_EM_FIELD = 4, &
-    CURRENT_TO_MXLL_FIELD  = 5,    &
-    MXLL_FIELD_TO_MEDIUM   = 6
+    CURRENT_TO_MXLL_FIELD  = 5, &
+    MXLL_FIELD_TO_MEDIUM   = 6, &
+    LENNARD_JONES          = 7
   !# doc_end
 
   type, extends(interactions_factory_abst_t) :: interactions_factory_t
@@ -61,7 +63,7 @@ contains
     class(interactions_factory_t),         intent(in)    :: this
     integer,                               intent(in)    :: type
     class(interaction_partner_t),  target, intent(inout) :: partner
-    class(interaction_t),                  pointer       :: interaction
+    class(interaction_with_partner_t),     pointer       :: interaction
 
     PUSH_SUB(interactions_factory_create)
 
@@ -127,6 +129,9 @@ contains
     !%Option maxwell_field_to_medium 6
     !%  (interaction type)
     !% Electric field resulting from the Maxwell solver.
+    !%Option lennard_jones 7
+    !%  (interaction type)
+    !% Force resulting from a Lennard Jones potential between classical particles.
     !%End
     select case (type)
     case (GRAVITY)
@@ -141,6 +146,8 @@ contains
       interaction => current_to_mxll_field_t(partner)
     case (MXLL_FIELD_TO_MEDIUM)
       interaction => mxll_field_to_medium_t(partner)
+    case (LENNARD_JONES)
+      interaction => lennard_jones_t(partner, .false.)
     case default
       ! This should never happen, as this is handled in
       ! interactions_factory_abst_create_interactions
@@ -170,6 +177,8 @@ contains
       mode = ALL_PARTNERS
     case (MXLL_FIELD_TO_MEDIUM)
       mode = ALL_PARTNERS
+    case (LENNARD_JONES)
+      mode = NO_PARTNERS
     case default
       message(1) = "Unknown interaction type"
       call messages_fatal(1, namespace=namespace)

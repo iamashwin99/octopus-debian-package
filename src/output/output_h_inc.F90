@@ -45,35 +45,30 @@ subroutine output_hamiltonian(outp, namespace, space, dir, hm, st, der, ions, gr
     SAFE_ALLOCATE(v0(1:der%mesh%np, 1:hm%d%dim))
     v0(1:der%mesh%np, 1) = hm%ep%vpsl(1:der%mesh%np)
     call dio_function_output(outp%how(OPTION__OUTPUT__POTENTIAL), dir, "v0", namespace, &
-      space, der%mesh, v0(:, 1), units_out%energy, err, ions = ions, grp = grp)
+      space, der%mesh, v0(:, 1), units_out%energy, err, pos=ions%pos, atoms=ions%atom, grp = grp)
     SAFE_DEALLOCATE_A(v0)
-
-    if (hm%ep%classical_pot > 0) then
-      call dio_function_output(outp%how(OPTION__OUTPUT__POTENTIAL), dir, "vc", namespace, &
-        space, der%mesh, hm%ep%Vclassical, units_out%energy, err, ions = ions, grp = grp)
-    end if
 
     if (allocated(hm%v_static)) then
       call dio_function_output(outp%how(OPTION__OUTPUT__POTENTIAL), dir, "vext", namespace, &
-        space, der%mesh, hm%v_static, units_out%energy, err, ions = ions, grp = grp)
+        space, der%mesh, hm%v_static, units_out%energy, err, pos=ions%pos, atoms=ions%atom, grp = grp)
     end if
 
     if (hm%theory_level /= INDEPENDENT_PARTICLES) then
       call dio_function_output(outp%how(OPTION__OUTPUT__POTENTIAL), dir, 'vh', namespace, &
-        space, der%mesh, hm%vhartree, units_out%energy, err, ions = ions, grp = grp)
+        space, der%mesh, hm%vhartree, units_out%energy, err, pos=ions%pos, atoms=ions%atom, grp = grp)
       if (outp%what(OPTION__OUTPUT__POTENTIAL_GRADIENT)) then
         SAFE_ALLOCATE(vh(1:der%mesh%np_part))
         SAFE_ALLOCATE(gradvh(1:der%mesh%np, 1:space%dim))
         vh(1:der%mesh%np) = hm%vhartree(1:der%mesh%np)
-        call dderivatives_grad(der, vh, gradvh(1:der%mesh%np, 1:space%dim))
+        call dderivatives_grad(der, vh, gradvh)
         call io_function_output_vector(outp%how(OPTION__OUTPUT__POTENTIAL_GRADIENT), dir, 'grad_vh', namespace, &
-          space, der%mesh, gradvh(:, :), units_out%force, err, ions = ions, grp = grp)
+          space, der%mesh, gradvh(:, :), units_out%force, err, pos=ions%pos, atoms=ions%atom, grp = grp)
 
         SAFE_ALLOCATE(v0(1:der%mesh%np_part, 1))
         v0(1:der%mesh%np, 1) = hm%ep%vpsl(1:der%mesh%np)
-        call dderivatives_grad(der, v0(1:der%mesh%np_part, 1), gradvh(1:der%mesh%np, 1:space%dim))
+        call dderivatives_grad(der, v0(1:der%mesh%np_part, 1), gradvh)
         call io_function_output_vector(outp%how(OPTION__OUTPUT__POTENTIAL_GRADIENT), dir, 'grad_v0', namespace, &
-          space, der%mesh, gradvh(:, :), units_out%force, err, ions = ions, grp = grp)
+          space, der%mesh, gradvh(:, :), units_out%force, err, pos=ions%pos, atoms=ions%atom, grp = grp)
         SAFE_DEALLOCATE_A(v0)
         SAFE_DEALLOCATE_A(vh)
         SAFE_DEALLOCATE_A(gradvh)
@@ -87,7 +82,7 @@ subroutine output_hamiltonian(outp, namespace, space, dir, hm, st, der, ions, gr
           write(fname, '(a,i1)') 'vxc-sp', is
         end if
         call dio_function_output(outp%how(OPTION__OUTPUT__POTENTIAL), dir, fname, namespace, space, &
-          der%mesh, hm%vxc(:, is), units_out%energy, err, ions = ions, grp = grp)
+          der%mesh, hm%vxc(:, is), units_out%energy, err, pos=ions%pos, atoms=ions%atom, grp = grp)
 
         ! finally the full KS potential (without non-local PP contributions)
         potential = hm%ep%vpsl + hm%vhxc(:, is)
@@ -96,13 +91,8 @@ subroutine output_hamiltonian(outp, namespace, space, dir, hm, st, der, ions, gr
         else
           write(fname, '(a,i1)') 'vks-sp', is
         end if
-        if (hm%ep%classical_pot > 0) then
-          call dio_function_output(outp%how(OPTION__OUTPUT__POTENTIAL), dir, fname, namespace, space, &
-            der%mesh, potential + hm%ep%Vclassical, units_out%energy, err, ions = ions, grp = grp)
-        else
-          call dio_function_output(outp%how(OPTION__OUTPUT__POTENTIAL), dir, fname, namespace, space, &
-            der%mesh, potential, units_out%energy, err, ions = ions, grp = grp)
-        end if
+        call dio_function_output(outp%how(OPTION__OUTPUT__POTENTIAL), dir, fname, namespace, space, &
+          der%mesh, potential, units_out%energy, err, pos=ions%pos, atoms=ions%atom, grp = grp)
       end do
       SAFE_DEALLOCATE_A(potential)
     end if
@@ -112,33 +102,33 @@ subroutine output_hamiltonian(outp, namespace, space, dir, hm, st, der, ions, gr
       if (hm%pcm%solute .and. hm%pcm%localf) then
         call dio_function_output(outp%how(OPTION__OUTPUT__POTENTIAL), dir, 'vpcm', namespace, space, &
           der%mesh, hm%pcm%v_e_rs + hm%pcm%v_n_rs + hm%pcm%v_ext_rs , &
-          units_out%energy, err, ions = ions, grp = grp)
+          units_out%energy, err, pos=ions%pos, atoms=ions%atom, grp = grp)
         call dio_function_output(outp%how(OPTION__OUTPUT__POTENTIAL), dir, 'vpcm_sol', namespace, space, &
           der%mesh, hm%pcm%v_e_rs + hm%pcm%v_n_rs , &
-          units_out%energy, err, ions = ions, grp = grp)
+          units_out%energy, err, pos=ions%pos, atoms=ions%atom, grp = grp)
         call dio_function_output(outp%how(OPTION__OUTPUT__POTENTIAL), dir, 'vpcm_e', namespace, space, &
           der%mesh, hm%pcm%v_e_rs , &
-          units_out%energy, err, ions = ions, grp = grp)
+          units_out%energy, err, pos=ions%pos, atoms=ions%atom, grp = grp)
         call dio_function_output(outp%how(OPTION__OUTPUT__POTENTIAL), dir, 'vpcm_n', namespace, space, &
           der%mesh, hm%pcm%v_n_rs , &
-          units_out%energy, err, ions = ions, grp = grp)
+          units_out%energy, err, pos=ions%pos, atoms=ions%atom, grp = grp)
         call dio_function_output(outp%how(OPTION__OUTPUT__POTENTIAL), dir, 'vpcm_ext', namespace, space, &
           der%mesh, hm%pcm%v_ext_rs , &
-          units_out%energy, err, ions = ions, grp = grp)
+          units_out%energy, err, pos=ions%pos, atoms=ions%atom, grp = grp)
       else if (hm%pcm%solute .and. .not. hm%pcm%localf) then
         call dio_function_output(outp%how(OPTION__OUTPUT__POTENTIAL), dir, 'vpcm_sol', namespace, space, &
           der%mesh, hm%pcm%v_e_rs + hm%pcm%v_n_rs , &
-          units_out%energy, err, ions = ions, grp = grp)
+          units_out%energy, err, pos=ions%pos, atoms=ions%atom, grp = grp)
         call dio_function_output(outp%how(OPTION__OUTPUT__POTENTIAL), dir, 'vpcm_e', namespace, space, &
           der%mesh, hm%pcm%v_e_rs , &
-          units_out%energy, err, ions = ions, grp = grp)
+          units_out%energy, err, pos=ions%pos, atoms=ions%atom, grp = grp)
         call dio_function_output(outp%how(OPTION__OUTPUT__POTENTIAL), dir, 'vpcm_n', namespace, space, &
           der%mesh, hm%pcm%v_n_rs , &
-          units_out%energy, err, ions = ions, grp = grp)
+          units_out%energy, err, pos=ions%pos, atoms=ions%atom, grp = grp)
       else if (.not. hm%pcm%solute .and. hm%pcm%localf) then
         call dio_function_output(outp%how(OPTION__OUTPUT__POTENTIAL), dir, 'vpcm_ext', namespace, space, &
           der%mesh, hm%pcm%v_ext_rs , &
-          units_out%energy, err, ions = ions, grp = grp)
+          units_out%energy, err, pos=ions%pos, atoms=ions%atom, grp = grp)
       end if
     end if
 
@@ -149,11 +139,11 @@ subroutine output_hamiltonian(outp, namespace, space, dir, hm, st, der, ions, gr
         do idir = 1, space%dim
           call dio_function_output(outp%how(OPTION__OUTPUT__POTENTIAL), dir, 'Bind_'//index2axis(idir), namespace, &
             space, der%mesh, hm%b_ind(:, idir), &
-            units_out%force, err, ions = ions, grp = grp)
+            units_out%force, err, pos=ions%pos, atoms=ions%atom, grp = grp)
         end do
       case (2)
         call dio_function_output(outp%how(OPTION__OUTPUT__POTENTIAL), dir, 'Bind_z', namespace, &
-          space, der%mesh, hm%b_ind(:, 1), units_out%force, err, ions = ions, grp = grp)
+          space, der%mesh, hm%b_ind(:, 1), units_out%force, err, pos=ions%pos, atoms=ions%atom, grp = grp)
       end select
     end if
   end if
@@ -175,7 +165,7 @@ subroutine output_hamiltonian(outp, namespace, space, dir, hm, st, der, ions, gr
       call dderivatives_lapl(der, v0(:, 1), nxc)
 
       call dio_function_output(outp%how(OPTION__OUTPUT__XC_DENSITY), dir, fname, namespace, &
-        space, der%mesh, nxc, units_out%energy, err, ions = ions, grp = grp)
+        space, der%mesh, nxc, units_out%energy, err, pos=ions%pos, atoms=ions%atom, grp = grp)
 
     end do
 
@@ -198,7 +188,7 @@ subroutine output_hamiltonian(outp, namespace, space, dir, hm, st, der, ions, gr
 
         call io_function_output_vector(outp%how(OPTION__OUTPUT__CURRENT), dir, fname, namespace, space, der%mesh, &
           st%current(:, :, is), (unit_one/units_out%time)*units_out%length**(1 - space%dim), err, &
-          ions = ions, grp = st%dom_st_kpt_mpi_grp)
+          pos=ions%pos, atoms=ions%atom, grp = st%dom_st_kpt_mpi_grp)
 
       end do
     else
@@ -209,12 +199,16 @@ subroutine output_hamiltonian(outp, namespace, space, dir, hm, st, der, ions, gr
 
   if (outp%what_now(OPTION__OUTPUT__CURRENT_KPT, iter)) then
 
+    if (st%d%ispin == SPINORS) then
+      call messages_not_implemented('current_kpt output option with spinors')
+    end if
+
     if (states_are_complex(st)) then
 
       SAFE_ALLOCATE(current_kpt(st%d%kpt%start:st%d%kpt%end, 1:space%dim))
       do ik = st%d%kpt%start,st%d%kpt%end
         do idir = 1, space%dim
-          current_kpt(ik,idir) = dmf_integrate(der%mesh, st%current_kpt(:, idir, ik), reduce = .false.)
+          current_kpt(ik, idir) = dmf_integrate(der%mesh, st%current_kpt(:, idir, ik), reduce = .false.)
         end do
       end do
       if (der%mesh%parallel_in_domains) then
@@ -249,7 +243,7 @@ subroutine output_hamiltonian(outp, namespace, space, dir, hm, st, der, ions, gr
 
         call io_function_output_vector(outp%how(OPTION__OUTPUT__HEAT_CURRENT), dir, fname, namespace, space, der%mesh, &
           st%current(:, :, is), (unit_one/units_out%time)*units_out%length**(1 - space%dim), err, &
-          ions = ions, grp = st%dom_st_kpt_mpi_grp)
+          pos=ions%pos, atoms=ions%atom, grp = st%dom_st_kpt_mpi_grp)
 
         SAFE_DEALLOCATE_A(heat_current)
       end do
@@ -263,7 +257,7 @@ subroutine output_hamiltonian(outp, namespace, space, dir, hm, st, der, ions, gr
     SAFE_ALLOCATE(density_kpt(1:st%d%nik, 1:st%d%nspin))
     density_kpt(1:st%d%nik, 1:st%d%nspin) = M_ZERO
 
-    SAFE_ALLOCATE(density_tmp(1:gr%mesh%np, st%d%nspin))
+    SAFE_ALLOCATE(density_tmp(1:gr%np, st%d%nspin))
 
     !Compute the k-resolved density and integrate it over the mesh
     do ik = st%d%kpt%start,st%d%kpt%end
@@ -317,7 +311,7 @@ subroutine output_scalar_pot(outp, namespace, space, dir, mesh, ions, ext_partne
   type(namespace_t),        intent(in)    :: namespace
   type(space_t),            intent(in)    :: space
   character(len=*),         intent(in)    :: dir
-  type(mesh_t),             intent(in)    :: mesh
+  class(mesh_t),            intent(in)    :: mesh
   type(ions_t),             intent(in)    :: ions
   type(partner_list_t),     intent(in)    :: ext_partners
   FLOAT, optional,          intent(in)    :: time
@@ -338,7 +332,7 @@ subroutine output_scalar_pot(outp, namespace, space, dir, mesh, ions, ext_partne
         scalar_pot = M_ZERO
         call laser_potential(lasers%lasers(is), mesh, scalar_pot, time=time)
         call dio_function_output(outp%how(OPTION__OUTPUT__EXTERNAL_TD_POTENTIAL), dir, fname, namespace, &
-          space, mesh, scalar_pot, units_out%energy, err, ions = ions)
+          space, mesh, scalar_pot, units_out%energy, err, pos=ions%pos, atoms=ions%atom)
       end do
     end if
     SAFE_DEALLOCATE_A(scalar_pot)
@@ -348,38 +342,12 @@ subroutine output_scalar_pot(outp, namespace, space, dir, mesh, ions, ext_partne
 end subroutine output_scalar_pot
 
 
- ! ---------------------------------------------------------
-subroutine output_kick(outp, namespace, space, dir, mesh, ions, kick)
-  type(output_t),    intent(in) :: outp
-  type(namespace_t), intent(in) :: namespace
-  type(space_t),     intent(in) :: space
-  character(len=*),  intent(in) :: dir
-  type(mesh_t),      intent(in) :: mesh
-  type(ions_t),      intent(in) :: ions
-  type(kick_t),      intent(in) :: kick
-
-  integer :: err
-  CMPLX, allocatable :: kick_function(:)
-
-  PUSH_SUB(output_kick)
-
-  if (outp%what(OPTION__OUTPUT__DELTA_PERTURBATION)) then
-    SAFE_ALLOCATE(kick_function(1:mesh%np))
-    call kick_function_get(space, mesh, kick, kick_function, 1)
-    call zio_function_output(outp%how(OPTION__OUTPUT__DELTA_PERTURBATION), dir, "kick_function", namespace, &
-      space, mesh, kick_function(:), units_out%energy, err, ions = ions)
-    SAFE_DEALLOCATE_A(kick_function)
-  end if
-
-  POP_SUB(output_kick)
-end subroutine output_kick
-
- ! ---------------------------------------------------------
+! ---------------------------------------------------------
 subroutine output_xc_torque(outp, namespace, dir, mesh, hm, st, ions, space)
   type(output_t),           intent(in) :: outp
   type(namespace_t),        intent(in) :: namespace
   character(len=*),         intent(in) :: dir
-  type(mesh_t),             intent(in) :: mesh
+  class(mesh_t),            intent(in) :: mesh
   type(hamiltonian_elec_t), intent(in) :: hm
   type(states_elec_t),      intent(in) :: st
   type(ions_t),             intent(in) :: ions
@@ -399,7 +367,7 @@ subroutine output_xc_torque(outp, namespace, dir, mesh, hm, st, ions, space)
 
     fn_unit = units_out%length**(1 - 2*space%dim)
     call io_function_output_vector(outp%how(OPTION__OUTPUT__XC_TORQUE), dir, 'xc_torque', namespace, space, mesh, &
-      torque, fn_unit, err, ions = ions, grp = st%dom_st_kpt_mpi_grp)
+      torque, fn_unit, err, pos=ions%pos, atoms=ions%atom, grp = st%dom_st_kpt_mpi_grp)
 
     SAFE_DEALLOCATE_A(torque)
   end if

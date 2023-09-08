@@ -136,7 +136,7 @@ contains
     type(libvdwxc_t),  intent(inout) :: this
     type(namespace_t), intent(in)    :: namespace
     type(space_t),     intent(in)    :: space
-    type(mesh_t),      intent(inout) :: mesh
+    class(mesh_t),     intent(inout) :: mesh
 
     integer :: blocksize
     integer :: libvdwxc_mode
@@ -193,11 +193,13 @@ contains
     if (libvdwxc_mode == LIBVDWXC_MODE_SERIAL) then
       call cube_init(this%cube, mesh%idx%ll, namespace, cube_space, mesh%spacing, &
         mesh%coord_system)
+      call cube_init_cube_map(this%cube, mesh)
     else
 #ifdef HAVE_MPI
       call cube_init(this%cube, mesh%idx%ll, namespace, cube_space, mesh%spacing, &
         mesh%coord_system, mpi_grp = mesh%mpi_grp, &
         need_partition = .true., blocksize = blocksize)
+      call cube_init_cube_map(this%cube, mesh)
       call mesh_cube_parallel_map_init(this%mesh_cube_map, mesh, this%cube)
 #endif
     end if
@@ -353,11 +355,7 @@ contains
       if (this%cube%parallel_in_domains) then
         call dmesh_to_cube_parallel(this%mesh, array, this%cube, cf, this%mesh_cube_map)
       else
-        if (this%mesh%parallel_in_domains) then
-          call dmesh_to_cube(this%mesh, array, this%cube, cf, local = .true.)
-        else
-          call dmesh_to_cube(this%mesh, array, this%cube, cf)
-        end if
+        call dmesh_to_cube(this%mesh, array, this%cube, cf)
       end if
       cubearray(:,:,:) = cf%dRS
       POP_SUB(libvdwxc_calculate.tocube)
@@ -372,11 +370,7 @@ contains
       if (this%cube%parallel_in_domains) then
         call dcube_to_mesh_parallel(this%cube, cf, this%mesh, array, this%mesh_cube_map)
       else
-        if (this%mesh%parallel_in_domains) then
-          call dcube_to_mesh(this%cube, cf, this%mesh, array, local=.true.)
-        else
-          call dcube_to_mesh(this%cube, cf, this%mesh, array)
-        end if
+        call dcube_to_mesh(this%cube, cf, this%mesh, array)
       end if
       POP_SUB(libvdwxc_calculate.fromcube)
     end subroutine fromcube
@@ -399,6 +393,9 @@ contains
 #ifdef HAVE_LIBVDWXC
     call vdwxc_finalize(this%libvdwxc_ptr)
 #endif
+
+    call cube_end(this%cube)
+    call mesh_cube_parallel_map_end(this%mesh_cube_map)
 
     POP_SUB(libvdwxc_end)
   end subroutine libvdwxc_end

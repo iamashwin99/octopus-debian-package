@@ -26,7 +26,6 @@ module ground_state_oct_m
   use global_oct_m
   use grid_oct_m
   use hamiltonian_elec_oct_m
-  use ions_oct_m
   use messages_oct_m
   use multicomm_oct_m
   use multisystem_basic_oct_m

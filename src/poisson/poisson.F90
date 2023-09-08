@@ -42,7 +42,6 @@ module poisson_oct_m
   use messages_oct_m
   use mpi_oct_m
   use multicomm_oct_m
-  use multigrid_oct_m
   use namespace_oct_m
 #ifdef HAVE_OPENMP
   use omp_lib
@@ -141,7 +140,6 @@ module poisson_oct_m
     type(PokeGrid)   :: poke_grid
     type(PokeSolver) :: poke_solver
 #endif
-    type(multigrid_t), allocatable, public  :: mgrid
   end type poisson_t
 
   integer, parameter ::             &
@@ -157,7 +155,7 @@ contains
     type(namespace_t),           intent(in)    :: namespace
     type(derivatives_t), target, intent(in)    :: der
     type(multicomm_t),           intent(in)    :: mc
-    FLOAT,                       intent(in)    :: qtot !< total charge
+    FLOAT,             optional, intent(in)    :: qtot !< total charge
     character(len=*),  optional, intent(in)    :: label
     integer,           optional, intent(in)    :: solver
     logical,           optional, intent(in)    :: verbose
@@ -176,8 +174,8 @@ contains
 
     if (optional_default(verbose,.true.)) then
       str = "Hartree"
-      if (present(label)) str = trim(str) // trim(label)
-      call messages_print_stress(msg=trim(str), namespace=namespace)
+      if (present(label)) str = trim(label)
+      call messages_print_with_emphasis(msg=trim(str), namespace=namespace)
     end if
 
     this%nslaves = 0
@@ -201,6 +199,7 @@ contains
     call parse_variable(namespace, 'DressedOrbitals', .false., this%is_dressed)
     call messages_print_var_value('DressedOrbitals', this%is_dressed, namespace=namespace)
     if (this%is_dressed) then
+      ASSERT(present(qtot))
       call messages_experimental('Dressed Orbitals', namespace=namespace)
       ASSERT(qtot > M_ZERO)
       call photon_mode_init(this%photons, namespace, der%mesh, der%dim-1, qtot)
@@ -508,7 +507,7 @@ contains
 
     if (this%method == POISSON_PSOLVER) then
 #if !((defined HAVE_LIBISF) || (defined HAVE_PSOLVER))
-      message(1) = "The PSolver Poisson solver cannot be used since the code was not compiled with the PSolver libary."
+      message(1) = "The PSolver Poisson solver cannot be used since the code was not compiled with the PSolver library."
       call messages_fatal(1, namespace=namespace)
 #endif
 #ifdef HAVE_LIBISF
@@ -519,7 +518,7 @@ contains
     end if
 
     if (optional_default(verbose,.true.)) then
-      call messages_print_stress(namespace=namespace)
+      call messages_print_with_emphasis(namespace=namespace)
     end if
 
     ! Now that we know the method, we check if we need a cube and its dimentions
@@ -636,6 +635,7 @@ contains
       call cube_init(this%cube, box, namespace, space, der%mesh%spacing, &
         der%mesh%coord_system, fft_type = fft_type, &
         need_partition=.not.der%mesh%parallel_in_domains)
+      call cube_init_cube_map(this%cube, der%mesh)
       if (this%cube%parallel_in_domains .and. this%method == POISSON_FFT) then
         call mesh_cube_parallel_map_init(this%mesh_cube_map, der%mesh, this%cube)
       end if
@@ -722,11 +722,6 @@ contains
       call photon_mode_end(this%photons)
     end if
     this%is_dressed = .false.
-
-    if (allocated(this%mgrid)) then
-      call multigrid_end(this%mgrid)
-      SAFE_DEALLOCATE_A(this%mgrid)
-    end if
 
     POP_SUB(poisson_end)
   end subroutine poisson_end
@@ -988,9 +983,9 @@ contains
     integer, optional,           intent(in)    :: method
     logical, optional,           intent(in)    :: force_cmplx
 
-    integer :: default_solver, idir
+    integer :: default_solver, idir, iter, maxl
     integer :: box(MAX_DIM)
-    FLOAT   :: qq(der%dim)
+    FLOAT   :: qq(der%dim), threshold
 
     if (this%method /= POISSON_NULL) return ! already initialized
 
@@ -1028,6 +1023,7 @@ contains
       call submesh_init_cube_map(sm, space)
       call cube_init(this%cube, box, namespace, space, sm%mesh%spacing, sm%mesh%coord_system, &
         fft_type = FFT_NONE, need_partition=.not.der%mesh%parallel_in_domains)
+      call cube_init_cube_map(this%cube, sm%mesh)
       call poisson_isf_init(this%isf_solver, namespace, der%mesh, this%cube, mpi_world%comm, init_world = this%all_nodes_default)
 
     case (POISSON_PSOLVER)
@@ -1042,6 +1038,7 @@ contains
       call submesh_init_cube_map(sm, space)
       call cube_init(this%cube, box, namespace, space, sm%mesh%spacing, sm%mesh%coord_system, &
         fft_type = FFT_NONE, need_partition=.not.der%mesh%parallel_in_domains)
+      call cube_init_cube_map(this%cube, sm%mesh)
       qq = M_ZERO
       call poisson_psolver_init(this%psolver_solver, namespace, space, this%cube, M_ZERO, qq, force_isolated=.true.)
       call poisson_psolver_get_dims(this%psolver_solver, this%cube)
@@ -1061,11 +1058,21 @@ contains
       if (optional_default(force_cmplx, .false.)) then
         call cube_init(this%cube, box, namespace, space, sm%mesh%spacing, sm%mesh%coord_system, &
           fft_type = FFT_COMPLEX, need_partition=.not.der%mesh%parallel_in_domains)
+        call cube_init_cube_map(this%cube, sm%mesh)
       else
         call cube_init(this%cube, box, namespace, space, sm%mesh%spacing, sm%mesh%coord_system, &
           fft_type = FFT_REAL, need_partition=.not.der%mesh%parallel_in_domains)
+        call cube_init_cube_map(this%cube, sm%mesh)
       end if
       call poisson_fft_init(this%fft_solver, namespace, space, this%cube, this%kernel)
+    case (POISSON_CG)
+      call parse_variable(namespace, 'PoissonSolverMaxMultipole', 4, maxl)
+      write(message(1),'(a,i2)')'Info: Boundary conditions fixed up to L =',  maxl
+      call messages_info(1, namespace=namespace)
+      call parse_variable(namespace, 'PoissonSolverMaxIter', 500, iter)
+      call parse_variable(namespace, 'PoissonSolverThreshold', CNST(1.0e-6), threshold)
+      call poisson_corrections_init(this%corrector, namespace, space, maxl, this%der%mesh)
+      call poisson_cg_init(threshold, iter)
     end select
 
     POP_SUB(poisson_init_sm)
@@ -1081,7 +1088,7 @@ contains
   subroutine poisson_test(this, space, mesh, latt, namespace, repetitions)
     type(poisson_t),         intent(in) :: this
     type(space_t),           intent(in) :: space
-    type(mesh_t),            intent(in) :: mesh
+    class(mesh_t),           intent(in) :: mesh
     type(lattice_vectors_t), intent(in) :: latt
     type(namespace_t),       intent(in) :: namespace
     integer,                 intent(in) :: repetitions
@@ -1448,7 +1455,6 @@ contains
         write(message(1),'(a)') "Poisson solver with range separation is only implemented with FFT."
         call messages_fatal(1, namespace=namespace)
       end if
-      coulb%mu = mu
     end if
 
     !TODO: this should be a select case supporting other kernels.
@@ -1456,11 +1462,13 @@ contains
     select case (this%method)
     case (POISSON_FFT)
       !We only reinitialize the poisson sover if needed
-      if (any(abs(coulb%qq(1:space%periodic_dim) - qq(1:space%periodic_dim)) > M_EPSILON)) then
+      if (any(abs(coulb%qq(1:space%periodic_dim) - qq(1:space%periodic_dim)) > M_EPSILON) &
+        .or. (abs(coulb%mu-mu) > M_EPSILON .and. mu > M_EPSILON)) then
         call fourier_space_op_end(coulb)
         coulb%qq(1:space%periodic_dim) = qq(1:space%periodic_dim)
         !We must define the singularity if we specify a q vector and we do not use the short-range Coulomb potential
         coulb%singularity = optional_default(singul, M_ZERO)
+        coulb%mu = mu
         call poisson_fft_get_kernel(namespace, space, this%cube, coulb, this%kernel, &
           this%poisson_soft_coulomb_param)
       end if

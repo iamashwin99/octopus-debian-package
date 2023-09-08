@@ -31,8 +31,8 @@ module accel_oct_m
 #ifdef HAVE_OPENCL
   use cl
 #endif
-#ifdef HAVE_CLBLAS
-  use clblas
+#if defined(HAVE_CLBLAS) || defined(HAVE_CLBLAST)
+  use clblas_oct_m
 #endif
   use cuda_oct_m
 #ifdef HAVE_CLFFT
@@ -85,6 +85,9 @@ module accel_oct_m
     accel_global_memory_size,     &
     accel_max_size_per_dim,       &
     accel_get_device_pointer,     &
+    daccel_get_pointer_with_offset,&
+    zaccel_get_pointer_with_offset,&
+    accel_clean_pointer,          &
     accel_set_stream,             &
     accel_synchronize_all_streams
 
@@ -140,6 +143,8 @@ module accel_oct_m
     logical                :: shared_mem
     logical                :: cuda_mpi
     integer                :: warp_size
+    logical                :: initialize_buffers
+    character(len=32)      :: debug_flag
   end type accel_t
 
   type accel_mem_t
@@ -196,6 +201,8 @@ module accel_oct_m
   type(accel_kernel_t), public, target, save :: zkernel_dot_matrix_spinors
   type(accel_kernel_t), public, target, save :: dkernel_batch_axpy
   type(accel_kernel_t), public, target, save :: zkernel_batch_axpy
+  type(accel_kernel_t), public, target, save :: dkernel_ax_function_py
+  type(accel_kernel_t), public, target, save :: zkernel_ax_function_py
   type(accel_kernel_t), public, target, save :: dkernel_batch_dotp
   type(accel_kernel_t), public, target, save :: zkernel_batch_dotp
   type(accel_kernel_t), public, target, save :: dzmul
@@ -205,6 +212,10 @@ module accel_oct_m
   ! kernels used locally
   type(accel_kernel_t), save :: set_zero
 
+  interface accel_padded_size
+    module procedure accel_padded_size_i8, accel_padded_size_i4
+  end interface accel_padded_size
+
   interface accel_create_buffer
     module procedure accel_create_buffer_4, accel_create_buffer_8
   end interface accel_create_buffer
@@ -212,6 +223,10 @@ module accel_oct_m
   interface accel_kernel_run
     module procedure accel_kernel_run_4, accel_kernel_run_8
   end interface accel_kernel_run
+
+  interface accel_set_buffer_to_zero
+    module procedure accel_set_buffer_to_zero_i8, accel_set_buffer_to_zero_i4
+  end interface accel_set_buffer_to_zero
 
   interface accel_write_buffer
     module procedure iaccel_write_buffer_single, laccel_write_buffer_single, daccel_write_buffer_single, zaccel_write_buffer_single
@@ -253,6 +268,12 @@ module accel_oct_m
     module procedure daccel_get_device_pointer_1, zaccel_get_device_pointer_1
     module procedure daccel_get_device_pointer_2, zaccel_get_device_pointer_2
     module procedure daccel_get_device_pointer_3, zaccel_get_device_pointer_3
+    module procedure iaccel_get_device_pointer_1l, laccel_get_device_pointer_1l
+    module procedure iaccel_get_device_pointer_2l, laccel_get_device_pointer_2l
+    module procedure iaccel_get_device_pointer_3l, laccel_get_device_pointer_3l
+    module procedure daccel_get_device_pointer_1l, zaccel_get_device_pointer_1l
+    module procedure daccel_get_device_pointer_2l, zaccel_get_device_pointer_2l
+    module procedure daccel_get_device_pointer_3l, zaccel_get_device_pointer_3l
   end interface accel_get_device_pointer
 
   type(profile_t), save :: prof_read, prof_write
@@ -317,6 +338,11 @@ contains
     type(cl_platform_id), allocatable :: allplatforms(:)
     type(cl_device_id), allocatable :: alldevices(:)
     type(profile_t), save :: prof_init
+#endif
+#ifdef HAVE_CUDA
+#ifdef HAVE_MPI
+    character(len=256) :: sys_name
+#endif
 #endif
 
     PUSH_SUB(accel_init)
@@ -407,14 +433,16 @@ contains
       call messages_fatal()
     end if
 
-    call messages_print_stress(msg="GPU acceleration", namespace=namespace)
+    call messages_print_with_emphasis(msg="GPU acceleration", namespace=namespace)
 
 #ifdef HAVE_CUDA
     if (idevice<0) idevice = 0
     call cuda_init(accel%context%cuda_context, accel%device%cuda_device, accel%cuda_stream, &
       idevice, base_grp%rank)
 #ifdef HAVE_MPI
-    write(message(1), '(A, I5.5, A, I5.5)') "Rank ", base_grp%rank, " uses device number ", idevice
+    call loct_sysname(sys_name)
+    write(message(1), '(A,I5,A,I5,2A)') "Rank ", base_grp%rank, " uses device number ", idevice, &
+      " on ", trim(sys_name)
     call messages_info(1, all_nodes = .true.)
 #endif
 
@@ -609,6 +637,13 @@ contains
     ! now initialize the kernels
     call accel_kernel_global_init()
 
+#ifdef HAVE_CUDA
+    accel%debug_flag = "-lineinfo"
+#endif
+#ifdef HAVE_OPENCL
+    accel%debug_flag = "-g"
+#endif
+
     call accel_kernel_start_call(set_zero, 'set_zero.cl', "set_zero")
     call accel_kernel_start_call(set_one, 'set_one.cl', "set_one")
     call accel_kernel_start_call(kernel_vpsi, 'vpsi.cl', "vpsi")
@@ -617,10 +652,18 @@ contains
     call accel_kernel_start_call(kernel_vpsi_spinors_complex, 'vpsi.cl', "vpsi_spinors_complex")
     call accel_kernel_start_call(kernel_daxpy, 'axpy.cl', "daxpy", flags = '-DRTYPE_DOUBLE')
     call accel_kernel_start_call(kernel_zaxpy, 'axpy.cl', "zaxpy", flags = '-DRTYPE_COMPLEX')
-    call accel_kernel_start_call(dkernel_batch_axpy, 'axpy.cl', "dbatch_axpy_function", flags = '-lineinfo -DRTYPE_DOUBLE')
-    call accel_kernel_start_call(zkernel_batch_axpy, 'axpy.cl', "zbatch_axpy_function", flags = '-lineinfo -DRTYPE_COMPLEX')
-    call accel_kernel_start_call(dkernel_batch_dotp, 'mesh_batch_single.cl', "dbatch_mf_dotp", flags = '-lineinfo')
-    call accel_kernel_start_call(zkernel_batch_dotp, 'mesh_batch_single.cl', "zbatch_mf_dotp", flags = '-lineinfo')
+    call accel_kernel_start_call(dkernel_batch_axpy, 'axpy.cl', "dbatch_axpy_function", &
+      flags = accel%debug_flag//' -DRTYPE_DOUBLE')
+    call accel_kernel_start_call(zkernel_batch_axpy, 'axpy.cl', "zbatch_axpy_function", &
+      flags = accel%debug_flag//'-DRTYPE_COMPLEX')
+    call accel_kernel_start_call(dkernel_ax_function_py, 'axpy.cl', "dbatch_ax_function_py", &
+      flags = accel%debug_flag//'-DRTYPE_DOUBLE')
+    call accel_kernel_start_call(zkernel_ax_function_py, 'axpy.cl', "zbatch_ax_function_py", &
+      flags = accel%debug_flag//'-DRTYPE_COMPLEX')
+    call accel_kernel_start_call(dkernel_batch_dotp, 'mesh_batch_single.cl', "dbatch_mf_dotp", &
+      flags = accel%debug_flag)
+    call accel_kernel_start_call(zkernel_batch_dotp, 'mesh_batch_single.cl', "zbatch_mf_dotp", &
+      flags = accel%debug_flag)
     call accel_kernel_start_call(dpack, 'pack.cl', "dpack")
     call accel_kernel_start_call(zpack, 'pack.cl', "zpack")
     call accel_kernel_start_call(dunpack, 'pack.cl', "dunpack")
@@ -663,7 +706,7 @@ contains
     !% implementation is CUDA-aware (i.e., it supports communication using device pointers),
     !% this switch can be set to true to use the CUDA-aware MPI features. The advantage
     !% of this approach is that it can do, e.g., peer-to-peer copies between devices without
-    !% going through the host memmory.
+    !% going through the host memory.
     !% The default is false, except when the configure switch --enable-cudampi is set, in which
     !% case this variable is set to true.
     !%End
@@ -695,8 +738,16 @@ contains
     call parse_variable(namespace, 'AllowCPUonly', default, accel%allow_CPU_only)
 
 
+    !%Variable InitializeGPUBuffers
+    !%Type logical
+    !%Section Execution::Accel
+    !%Description
+    !% Initialize new GPU buffers to zero on creation (use only for debugging, as it has a performance impact!).
+    !%End
+    call parse_variable(namespace, 'InitializeGPUBuffers', .false., accel%initialize_buffers)
 
-    call messages_print_stress(namespace=namespace)
+
+    call messages_print_with_emphasis(namespace=namespace)
 
     POP_SUB(accel_init)
 
@@ -862,6 +913,11 @@ contains
       call messages_write('      Extension cl_amd_fp64  :')
       call messages_write(f90_cl_device_has_extension(accel%device%cl_device, "cl_amd_fp64"))
       call messages_new_line()
+
+      call messages_write('      Extension cl_khr_int64_base_atomics  :')
+      call messages_write(f90_cl_device_has_extension(accel%device%cl_device, "cl_khr_int64_base_atomics"))
+      call messages_new_line()
+
 #endif
 
       call messages_info()
@@ -916,7 +972,7 @@ contains
 
       call alloc_cache_end(memcache, hits, misses, volume_hits, volume_misses)
 
-      call messages_print_stress(msg="Acceleration-device allocation cache", namespace=namespace)
+      call messages_print_with_emphasis(msg="Acceleration-device allocation cache", namespace=namespace)
 
       call messages_new_line()
       call messages_write('    Number of allocations    =')
@@ -933,7 +989,7 @@ contains
       call messages_new_line()
       call messages_info()
 
-      call messages_print_stress(namespace=namespace)
+      call messages_print_with_emphasis(namespace=namespace)
     end if
 
     call accel_kernel_global_end()
@@ -977,10 +1033,10 @@ contains
 
   ! ------------------------------------------
 
-  integer function accel_padded_size(nn) result(psize)
-    integer,        intent(in) :: nn
+  integer(i8) function accel_padded_size_i8(nn) result(psize)
+    integer(i8), intent(in) :: nn
 
-    integer :: modnn, bsize
+    integer(i8) :: modnn, bsize
 
     psize = nn
 
@@ -994,26 +1050,37 @@ contains
 
     end if
 
-  end function accel_padded_size
+  end function accel_padded_size_i8
 
   ! ------------------------------------------
 
-  subroutine accel_create_buffer_4(this, flags, type, size)
+  integer(i4) function accel_padded_size_i4(nn) result(psize)
+    integer(i4), intent(in) :: nn
+
+    psize = int(accel_padded_size_i8(int(nn, i8)), i4)
+
+  end function accel_padded_size_i4
+
+  ! ------------------------------------------
+
+  subroutine accel_create_buffer_4(this, flags, type, size, set_zero)
     type(accel_mem_t),  intent(inout) :: this
     integer,            intent(in)    :: flags
     type(type_t),       intent(in)    :: type
     integer,            intent(in)    :: size
+    logical,  optional, intent(in)    :: set_zero
 
-    call accel_create_buffer_8(this, flags, type, int(size, 8))
+    call accel_create_buffer_8(this, flags, type, int(size, 8), set_zero)
   end subroutine accel_create_buffer_4
 
   ! ------------------------------------------
 
-  subroutine accel_create_buffer_8(this, flags, type, size)
+  subroutine accel_create_buffer_8(this, flags, type, size, set_zero)
     type(accel_mem_t),  intent(inout) :: this
     integer,            intent(in)    :: flags
     type(type_t),       intent(in)    :: type
     integer(i8),        intent(in)    :: size
+    logical,  optional, intent(in)    :: set_zero
 
     integer(i8) :: fsize
     logical    :: found
@@ -1047,6 +1114,10 @@ contains
       allocated_mem = allocated_mem + fsize
 
     end if
+
+    if(optional_default(set_zero,  accel%initialize_buffers)) then
+      call accel_set_buffer_to_zero_i8(this, type, size)
+    endif
 
     POP_SUB(accel_create_buffer_8)
   end subroutine accel_create_buffer_8
@@ -1342,16 +1413,18 @@ contains
 
     call clBuildProgram(prog, trim(string), ierr)
 
-    call clGetProgramBuildInfo(prog, accel%device%cl_device, CL_PROGRAM_BUILD_LOG, string, ierrlog)
-    if (ierrlog /= CL_SUCCESS) call opencl_print_error(ierrlog, "clGetProgramBuildInfo")
+    if(ierr /= CL_SUCCESS) then
+      call clGetProgramBuildInfo(prog, accel%device%cl_device, CL_PROGRAM_BUILD_LOG, string, ierrlog)
+      if (ierrlog /= CL_SUCCESS) call opencl_print_error(ierrlog, "clGetProgramBuildInfo")
 
-    ! CL_PROGRAM_BUILD_LOG seems to have a useless '\n' in it
-    newlen = scan(string, achar(010), back = .true.) - 1
-    if (newlen >= 0) string = string(1:newlen)
+      ! CL_PROGRAM_BUILD_LOG seems to have a useless '\n' in it
+      newlen = scan(string, achar(010), back = .true.) - 1
+      if (newlen >= 0) string = string(1:newlen)
 
-    if (len(trim(string)) > 0) write(stderr, '(a)') trim(string)
+      if (len(trim(string)) > 0) write(stderr, '(a)') trim(string)
 
-    if (ierr /= CL_SUCCESS) call opencl_print_error(ierr, "clBuildProgram")
+      call opencl_print_error(ierr, "clBuildProgram")
+    end if
 
     POP_SUB(opencl_build_program)
   end subroutine opencl_build_program
@@ -1495,7 +1568,7 @@ contains
     character(len=40) :: errcode
 
     PUSH_SUB(clblas_print_error)
-#ifdef HAVE_CLBLAS
+#if defined(HAVE_CLBLAS) || defined(HAVE_CLBLAST)
     select case (ierr)
     case (clblasSuccess);                    errcode = 'clblasSuccess'
     case (clblasInvalidValue);               errcode = 'clblasInvalidValue'
@@ -1527,13 +1600,28 @@ contains
     case (clblasInsufficientMemMatC);        errcode = 'clblasInsufficientMemMatC'
     case (clblasInsufficientMemVecX);        errcode = 'clblasInsufficientMemVecX'
     case (clblasInsufficientMemVecY);        errcode = 'clblasInsufficientMemVecY'
+#ifdef HAVE_CLBLAST
+    case (clblastInsufficientMemoryTemp);    errcode = 'clblastInsufficientMemoryTemp'
+    case (clblastInvalidBatchCount);         errcode = 'clblastInvalidBatchCount'
+    case (clblastInvalidOverrideKernel);     errcode = 'clblastInvalidOverrideKernel'
+    case (clblastMissingOverrideParameter);  errcode = 'clblastMissingOverrideParameter'
+    case (clblastInvalidLocalMemUsage);      errcode = 'clblastInvalidLocalMemUsage'
+    case (clblastNoHalfPrecision);           errcode = 'clblastNoHalfPrecision'
+    case (clblastNoDoublePrecision);         errcode = 'clblastNoDoublePrecision'
+    case (clblastInvalidVectorScalar);       errcode = 'clblastInvalidVectorScalar'
+    case (clblastInsufficientMemoryScalar);  errcode = 'clblastInsufficientMemoryScalar'
+    case (clblastDatabaseError);             errcode = 'clblastDatabaseError'
+    case (clblastUnknownError);              errcode = 'clblastUnknownError'
+    case (clblastUnexpectedError);           errcode = 'clblastUnexpectedError'
+#endif
+
     case default
       write(errcode, '(i10)') ierr
       errcode = 'UNKNOWN ERROR CODE ('//trim(adjustl(errcode))//')'
     end select
 #endif
 
-    message(1) = 'clblas '//trim(name)//' '//trim(errcode)
+    message(1) = 'Error in calling clblas routine '//trim(name)//' : '//trim(errcode)
     call messages_fatal(1)
 
     POP_SUB(clblas_print_error)
@@ -1637,11 +1725,11 @@ contains
 
   ! ---------------------------------------------------------
 
-  integer pure function opencl_pad(size, blk) result(pad)
-    integer, intent(in) :: size
+  integer(i8) pure function opencl_pad(size, blk) result(pad)
+    integer(i8), intent(in) :: size
     integer, intent(in) :: blk
 
-    integer :: mm
+    integer(i8) :: mm
 
     mm = mod(size, blk)
     if (mm == 0) then
@@ -1653,22 +1741,27 @@ contains
 
   ! ----------------------------------------------------
 
-  subroutine accel_set_buffer_to_zero(buffer, type, nval, offset)
-    type(accel_mem_t),  intent(inout) :: buffer
-    type(type_t),       intent(in)    :: type
-    integer,            intent(in)    :: nval
-    integer, optional,  intent(in)    :: offset
+  subroutine accel_set_buffer_to_zero_i8(buffer, type, nval, offset)
+    type(accel_mem_t),     intent(inout) :: buffer
+    type(type_t),          intent(in)    :: type
+    integer(i8),           intent(in)    :: nval
+    integer(i8), optional, intent(in)    :: offset
 
-    integer :: nval_real, bsize, offset_real
+    integer :: bsize
+    integer(i8) :: nval_real, offset_real
 
-    PUSH_SUB(accel_set_buffer_to_zero)
-
-    ASSERT(type == TYPE_CMPLX .or. type == TYPE_FLOAT)
+    PUSH_SUB(accel_set_buffer_to_zero_i8)
 
     if (nval > 0) then
 
-      nval_real = nval*(types_get_size(type)/8)
-      offset_real = optional_default(offset, 0)*(types_get_size(type)/8)
+      nval_real = nval
+      if (type == TYPE_CMPLX) nval_real = nval_real * 2
+      if (present(offset)) then
+        offset_real = offset
+        if (type == TYPE_CMPLX) offset_real = offset_real * 2
+      else
+        offset_real = 0_i8
+      end if
 
       ASSERT(nval_real > 0)
 
@@ -1678,14 +1771,32 @@ contains
 
       bsize = accel_kernel_workgroup_size(set_zero)
 
-
-      call accel_kernel_run(set_zero, (/ opencl_pad(nval_real, bsize) /), (/ bsize /))
+      call accel_kernel_run(set_zero, (/ opencl_pad(nval_real, bsize) /), (/ int(bsize, i8) /))
       call accel_finish()
 
     end if
 
-    POP_SUB(accel_set_buffer_to_zero)
-  end subroutine accel_set_buffer_to_zero
+    POP_SUB(accel_set_buffer_to_zero_i8)
+  end subroutine accel_set_buffer_to_zero_i8
+
+  ! ----------------------------------------------------
+
+  subroutine accel_set_buffer_to_zero_i4(buffer, type, nval, offset)
+    type(accel_mem_t),     intent(inout) :: buffer
+    type(type_t),          intent(in)    :: type
+    integer(i4),           intent(in)    :: nval
+    integer(i4), optional, intent(in)    :: offset
+
+    PUSH_SUB(accel_set_buffer_to_zero_i4)
+
+    if (present(offset)) then
+      call accel_set_buffer_to_zero_i8(buffer, type, int(nval, i8), int(offset, i8))
+    else
+      call accel_set_buffer_to_zero_i8(buffer, type, int(nval, i8))
+    end if
+
+    POP_SUB(accel_set_buffer_to_zero_i4)
+  end subroutine accel_set_buffer_to_zero_i4
 
   ! ----------------------------------------------------
 
@@ -1907,11 +2018,13 @@ contains
 
     size = 0
 #ifdef HAVE_OPENCL
-    size = 2**30
+    size = 32768 ! Setting here arbitrarily higher dimensions to 32768, as 2**30 leads to a
+    ! value of zero when multiplied by 2048 and converted to integer 4.
+    if (dim == 1) size = 2**30
 #endif
 #ifdef HAVE_CUDA
-    if (dim == 1) size = 2**30
     size = 32768
+    if (dim == 1) size = 2**30
 #endif
   end function accel_max_size_per_dim
 
@@ -1937,12 +2050,54 @@ contains
   subroutine accel_synchronize_all_streams()
     PUSH_SUB(accel_synchronize_all_streams)
 
+    if (accel_is_enabled()) then
 #ifdef HAVE_CUDA
-    call cuda_synchronize_all_streams()
+      call cuda_synchronize_all_streams()
 #endif
+    end if
 
     POP_SUB(accel_synchronize_all_streams)
   end subroutine accel_synchronize_all_streams
+
+  function daccel_get_pointer_with_offset(buffer, offset) result(buffer_offset)
+    type(c_ptr), intent(in) :: buffer
+    integer(i8), intent(in) :: offset
+    type(c_ptr) :: buffer_offset
+
+    PUSH_SUB(daccel_get_pointer_with_offset)
+#ifdef HAVE_CUDA
+    call cuda_get_pointer_with_offset(buffer, offset, buffer_offset)
+#else
+    ! this is needed to make the compiler happy for non-GPU compilations
+    buffer_offset = buffer
+#endif
+    POP_SUB(daccel_get_pointer_with_offset)
+  end function daccel_get_pointer_with_offset
+
+  function zaccel_get_pointer_with_offset(buffer, offset) result(buffer_offset)
+    type(c_ptr), intent(in) :: buffer
+    integer(i8), intent(in) :: offset
+    type(c_ptr) :: buffer_offset
+
+    PUSH_SUB(zaccel_get_pointer_with_offset)
+#ifdef HAVE_CUDA
+    call cuda_get_pointer_with_offset(buffer, 2_i8*offset, buffer_offset)
+#else
+    ! this is needed to make the compiler happy for non-GPU compilations
+    buffer_offset = buffer
+#endif
+    POP_SUB(zaccel_get_pointer_with_offset)
+  end function zaccel_get_pointer_with_offset
+
+  subroutine accel_clean_pointer(buffer)
+    type(c_ptr), intent(in) :: buffer
+
+    PUSH_SUB(accel_clean_pointer)
+#ifdef HAVE_CUDA
+    call cuda_clean_pointer(buffer)
+#endif
+    POP_SUB(accel_clean_pointer)
+  end subroutine accel_clean_pointer
 
 #include "undef.F90"
 #include "real.F90"

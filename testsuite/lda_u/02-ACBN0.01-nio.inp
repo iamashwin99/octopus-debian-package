@@ -2,16 +2,15 @@ CalculationMode = gs
 PeriodicDimensions = 3
 BoxShape = parallelepiped
 ExperimentalFeatures = yes
-DisableAccel = yes
 
 EigenSolver = rmmdiis
-ConvRelDens = 5.0e-7
-EigensolverTolerance = 5e-8
+ConvRelDens = 2.0e-7
+EigensolverTolerance = 2e-8
 MaximumIter = 200
 
 a = 7.8809
 %Species
-"Ni" | species_pseudo | hubbard_l | 2 
+"Ni" | species_pseudo | hubbard_l | 2
 %
 PseudopotentialSet = hscv_pbe
 DFTULevel = dft_u_acbn0

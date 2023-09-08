@@ -18,7 +18,7 @@
 
 subroutine X(states_elec_get_state2)(st, mesh, ist, iqn, psi)
   type(states_elec_t), intent(in)    :: st
-  type(mesh_t),        intent(in)    :: mesh
+  class(mesh_t),       intent(in)    :: mesh
   integer,             intent(in)    :: ist       !< current state
   integer,             intent(in)    :: iqn       !< current k-point
   R_TYPE,              intent(inout) :: psi(:, :)
@@ -38,7 +38,7 @@ end subroutine X(states_elec_get_state2)
 
 subroutine X(states_elec_get_state1)(st, mesh, idim, ist, iqn, psi)
   type(states_elec_t), intent(in)    :: st
-  type(mesh_t),        intent(in)    :: mesh
+  class(mesh_t),       intent(in)    :: mesh
   integer,             intent(in)    :: idim   !< current dimension
   integer,             intent(in)    :: ist
   integer,             intent(in)    :: iqn    !< current k-point
@@ -55,7 +55,7 @@ end subroutine X(states_elec_get_state1)
 
 subroutine X(states_elec_get_state4)(st, mesh, psi)
   type(states_elec_t), intent(in)    :: st
-  type(mesh_t),        intent(in)    :: mesh
+  class(mesh_t),       intent(in)    :: mesh
   R_TYPE,              intent(inout) :: psi(:, :, st%st_start:, st%d%kpt%start:)
 
   integer :: iqn, ist
@@ -75,7 +75,7 @@ end subroutine X(states_elec_get_state4)
 
 subroutine X(states_elec_get_state3)(st, mesh, iqn, psi)
   type(states_elec_t), intent(in)    :: st
-  type(mesh_t),        intent(in)    :: mesh
+  class(mesh_t),       intent(in)    :: mesh
   integer,             intent(in)    :: iqn
   R_TYPE,              intent(inout) :: psi(:, :, st%st_start:)
 
@@ -94,7 +94,7 @@ end subroutine X(states_elec_get_state3)
 
 subroutine X(states_elec_set_state2)(st, mesh, ist, iqn, psi)
   type(states_elec_t), intent(inout) :: st
-  type(mesh_t),        intent(in)    :: mesh
+  class(mesh_t),       intent(in)    :: mesh
   integer,             intent(in)    :: ist       !< current dimension
   integer,             intent(in)    :: iqn       !< current k-point
   R_TYPE,              intent(in)    :: psi(:, :)
@@ -114,7 +114,7 @@ end subroutine X(states_elec_set_state2)
 
 subroutine X(states_elec_set_state1)(st, mesh, idim, ist, iqn, psi)
   type(states_elec_t), intent(inout) :: st
-  type(mesh_t),        intent(in)    :: mesh
+  class(mesh_t),       intent(in)    :: mesh
   integer,             intent(in)    :: idim   !< current dimension
   integer,             intent(in)    :: ist    !< current state
   integer,             intent(in)    :: iqn    !< current k-point
@@ -131,7 +131,7 @@ end subroutine X(states_elec_set_state1)
 
 subroutine X(states_elec_set_state3)(st, mesh, iqn, psi)
   type(states_elec_t), intent(inout) :: st
-  type(mesh_t),        intent(in)    :: mesh
+  class(mesh_t),       intent(in)    :: mesh
   integer,             intent(in)    :: iqn
   R_TYPE,              intent(in)    :: psi(:, :, st%st_start:)
 
@@ -150,7 +150,7 @@ end subroutine X(states_elec_set_state3)
 
 subroutine X(states_elec_set_state4)(st, mesh, psi)
   type(states_elec_t), intent(inout) :: st
-  type(mesh_t),        intent(in)    :: mesh
+  class(mesh_t),       intent(in)    :: mesh
   R_TYPE,              intent(in)    :: psi(:, :, st%st_start:, st%d%kpt%start:)
 
   integer :: iqn, ist
@@ -211,6 +211,51 @@ subroutine X(states_elec_get_points2)(st, start_point, end_point, psi)
 
   POP_SUB(X(states_elec_get_points2))
 end subroutine X(states_elec_get_points2)
+
+
+!> @brief Generate a random vector.
+!!
+!! @warning This will not work for SPINORS when the spins are not fixed.
+subroutine X(states_elec_generate_random_vector)(mesh, st, vector, normalized)
+  class(mesh_t),          intent(in)    :: mesh           !< System grid.
+  type(states_elec_t),    intent(in)    :: st             !< Provide information on the basis.
+  R_TYPE,                 intent(out)   :: vector(:,  :)  !< Random vector.
+  logical, optional,      intent(in)    :: normalized     !< Normalize the random vector.
+
+  type(batch_t) :: ffb              !< A batch which contains the mesh functions whose points will be exchanged.
+  logical       :: normalized_      !< Local instance of normalized
+  integer       :: n_spin           !< Number of spin channels
+  integer       :: ispin            !< Spin index
+
+  PUSH_SUB(X(states_elec_generate_random_vector))
+
+  if ((st%d%ispin == SPINORS) .and. st%fixed_spins) then
+    call messages_not_implemented('`generate_random_vector` with a fixed spinor direction')
+  endif
+
+  normalized_ = optional_default(normalized, .true.)
+  n_spin = size(vector, dim=2)
+
+  do ispin = 1, n_spin
+    call X(mf_random)(mesh, vector(1:mesh%np, ispin), &
+      pre_shift = mesh%pv%xlocal-1, &
+      post_shift = mesh%pv%np_global - mesh%pv%xlocal - mesh%np + 1, &
+      normalized = .false.)
+  enddo
+
+  ! Ensures that the grid points are properly distributed in the domain parallel case
+  if(mesh%parallel_in_domains) then
+    do ispin = 1, n_spin
+      call batch_init(ffb, vector(1:mesh%np, ispin))
+      call X(mesh_batch_exchange_points)(mesh, ffb, backward_map = .true.)
+      call ffb%end()
+    enddo
+  end if
+
+  if (normalized_) call X(mf_normalize)(mesh, n_spin, vector)
+
+  POP_SUB(X(states_elec_generate_random_vector))
+end subroutine X(states_elec_generate_random_vector)
 
 !! Local Variables:
 !! mode: f90
