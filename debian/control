@@ -27,11 +27,14 @@ Standards-Version: 4.6.2
 Package: octopus
 Architecture: i386 amd64 powerpc
 Depends: ${shlibs:Depends}
-Description: ab initio td electronic structure 
- octopus is a program aimed at the ab initio virtual 
- experimentation on electron/ion dynamics in external 
- electromagnetic fields of arbitrary intensity, shape 
- and frequency in a hopefully ever increasing range of 
+, openmpi-bin
+, openmpi-common
+
+Description: ab initio td electronic structure
+ octopus is a program aimed at the ab initio virtual
+ experimentation on electron/ion dynamics in external
+ electromagnetic fields of arbitrary intensity, shape
+ and frequency in a hopefully ever increasing range of
  systems types.
 
 Package: octopus-doc
@@ -39,8 +42,8 @@ Architecture: all
 Section: doc
 Depends: ${shlibs:Depends}
 Description: Documentation for octopus-code
- octopus is a program aimed at the ab initio virtual 
- experimentation on electron/ion dynamics in external 
- electromagnetic fields of arbitrary intensity, shape 
- and frequency in a hopefully ever increasing range of 
+ octopus is a program aimed at the ab initio virtual
+ experimentation on electron/ion dynamics in external
+ electromagnetic fields of arbitrary intensity, shape
+ and frequency in a hopefully ever increasing range of
  systems types.
